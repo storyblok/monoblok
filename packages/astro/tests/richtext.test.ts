@@ -26,7 +26,7 @@ const clean = (result: string) =>
 
 describe("storyblok Richtext", async () => {
   describe("input handling", async () => {
-    it("returns empty string for null input", async () => {
+    it("should return empty string for null input", async () => {
       const container = await AstroContainer.create();
       const result = await container.renderToString(StoryblokRichText, {
         props: {
@@ -35,7 +35,7 @@ describe("storyblok Richtext", async () => {
       });
       expect(clean(result)).toBe("");
     });
-    it("returns empty string for undefined input", async () => {
+    it("should return empty string for undefined input", async () => {
       const container = await AstroContainer.create();
       const result = await container.renderToString(StoryblokRichText, {
         props: {
@@ -44,7 +44,7 @@ describe("storyblok Richtext", async () => {
       });
       expect(result).toBe("");
     });
-    it("returns empty string for empty array", async () => {
+    it("should return empty string for empty array", async () => {
       const container = await AstroContainer.create();
       const result = await container.renderToString(StoryblokRichText, {
         props: {
@@ -283,7 +283,7 @@ describe("storyblok Richtext", async () => {
       warn.mockRestore();
     });
 
-    it("renders through the component passed in `components.blok`", async () => {
+    it("should render through the component passed in `components.blok`", async () => {
       const container = await AstroContainer.create();
 
       const result = await container.renderToString(StoryblokRichText, {
@@ -305,7 +305,7 @@ describe("storyblok Richtext", async () => {
       ],
     };
 
-    it("applies optimized attributes as HTML attributes, not a serialized blob", async () => {
+    it("should apply optimized attributes as HTML attributes, not a serialized blob", async () => {
       const container = await AstroContainer.create();
 
       const result = await container.renderToString(StoryblokRichText, {
@@ -316,7 +316,7 @@ describe("storyblok Richtext", async () => {
       expect(result).not.toContain("attrs=");
     });
 
-    it("overrides src with the optimized URL", async () => {
+    it("should override src with the optimized URL", async () => {
       const container = await AstroContainer.create();
 
       const result = await container.renderToString(StoryblokRichText, {

@@ -2,7 +2,7 @@ import { describe, it } from "vitest";
 import type { StoryblokRichTextComponentProps } from "../src/richtext-helpers";
 
 describe("StoryblokRichTextComponentProps['optimizeImage'] typing", () => {
-  it("accepts a partial options object, matching @storyblok/richtext's own `optimizeImage`", () => {
+  it("should accept a partial options object, matching @storyblok/richtext's own `optimizeImage`", () => {
     // All fields on `StoryblokRichTextImageOptions` are required, but callers
     // (and the JSDoc example in `index.ts`) only ever pass a subset, e.g.
     // `optimizeImage={{ width: 800 }}`. `@storyblok/richtext` itself types

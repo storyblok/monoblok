@@ -1,10 +1,9 @@
 ---
-import { storyblokEditable } from "@storyblok/astro";
 import { StoryblokRichText } from "../storyblok";
 
-const { block } = Astro.props;
+const { block, editable } = Astro.props;
 ---
 
-<div {...storyblokEditable(block)} data-test="richtext-renderer-component">
+<div {...editable} data-test="richtext-renderer-component">
   <StoryblokRichText document={block.text} />
 </div>

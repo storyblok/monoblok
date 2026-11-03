@@ -9,6 +9,10 @@ import LoadCounter from "./blocks/LoadCounter.astro";
 import ReactCounter from "./blocks/ReactCounter.astro";
 import TestFallback from "./components/TestFallback.astro";
 
+// Shared by the fetch and the Preview Bridge: the bridge only resolves the
+// relations it's told about, so a live edit would otherwise turn them into UUIDs.
+export const RESOLVE_RELATIONS = ["featured-articles.posts"];
+
 export const client = createApiClient({
   accessToken: process.env.STORYBLOK_ACCESS_TOKEN ?? "OsvNv534kS2nivAAj1EPVgtt",
   inlineRelations: true,

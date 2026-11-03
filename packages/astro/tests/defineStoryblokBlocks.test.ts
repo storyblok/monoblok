@@ -6,7 +6,7 @@ import Hero from "./block-fixtures/Hero.astro";
 import ExtraPropsEcho from "./block-fixtures/ExtraPropsEcho.astro";
 
 describe("defineStoryblokBlocks", () => {
-  it("registers components and returns a StoryblokBlock component", () => {
+  it("should register components and return a StoryblokBlock component", () => {
     const { StoryblokBlock } = defineStoryblokBlocks(() => ({
       components: { teaser: Teaser },
     }));
@@ -14,7 +14,7 @@ describe("defineStoryblokBlocks", () => {
     expect(StoryblokBlock).toBeDefined();
   });
 
-  it("keeps independent calls from sharing or overwriting each other's components", async () => {
+  it("should keep independent calls from sharing or overwriting each other's components", async () => {
     const { StoryblokBlock: ContentTypeBlock } = defineStoryblokBlocks(() => ({
       components: { teaser: Teaser },
     }));
@@ -46,7 +46,7 @@ describe("defineStoryblokBlocks", () => {
     expect(heroMissingTeaser.trim()).toBe("");
   });
 
-  it("forwards extra props declared via the generic to the resolved component", async () => {
+  it("should forward extra props declared via the generic to the resolved component", async () => {
     type ExtraComponentProps = { locale: string };
 
     const { StoryblokBlock } = defineStoryblokBlocks<ExtraComponentProps>(() => ({
@@ -61,7 +61,7 @@ describe("defineStoryblokBlocks", () => {
     expect(result).toContain("Teaser");
   });
 
-  it("forwards extra props named `components` or `fallback` instead of letting the registry clobber them", async () => {
+  it("should forward extra props named `components` or `fallback` instead of letting the registry clobber them", async () => {
     type ExtraComponentProps = { components: string; fallback: string };
 
     const { StoryblokBlock } = defineStoryblokBlocks<ExtraComponentProps>(() => ({
@@ -81,7 +81,7 @@ describe("defineStoryblokBlocks", () => {
     expect(result).toContain("fallback&quot;:&quot;user-fallback");
   });
 
-  it("defers calling the factory until the first render, not the `defineStoryblokBlocks()` call", async () => {
+  it("should defer calling the factory until the first render, not the `defineStoryblokBlocks()` call", async () => {
     // Guards against the import-cycle hazard this API is meant to close:
     // `components` (and whatever component bindings it closes over, e.g. a
     // `Page` import that's circular with this module) must not be read until
@@ -101,7 +101,7 @@ describe("defineStoryblokBlocks", () => {
     expect(getOptions).toHaveBeenCalledTimes(1);
   });
 
-  it("resolves a component binding that was still unset when `defineStoryblokBlocks()` was called", async () => {
+  it("should resolve a component binding that was still unset when `defineStoryblokBlocks()` was called", async () => {
     // Mirrors the shape of the documented setup's import cycle: the
     // component a factory closes over isn't assigned yet at the time
     // `defineStoryblokBlocks()` runs, only by the time a block first renders.
@@ -119,7 +119,7 @@ describe("defineStoryblokBlocks", () => {
     expect(result).toContain("Teaser");
   });
 
-  it("calls the factory only once across multiple renders", async () => {
+  it("should call the factory only once across multiple renders", async () => {
     const getOptions = vi.fn(() => ({ components: { teaser: Teaser } }));
     const { StoryblokBlock } = defineStoryblokBlocks(getOptions);
     const container = await AstroContainer.create();

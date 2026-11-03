@@ -1,12 +1,12 @@
 ---
-import { storyblokEditable, StoryblokRichText } from "@storyblok/astro";
+import { StoryblokRichText } from "@storyblok/astro";
 import Heading from "./richtext/Heading.astro";
 import Bold from "./richtext/Bold.astro";
 
-const { block } = Astro.props;
+const { block, editable } = Astro.props;
 ---
 
-<div {...storyblokEditable(block)}>
+<div {...editable}>
   <h2 class="heading">
     {block.headline}
   </h2>

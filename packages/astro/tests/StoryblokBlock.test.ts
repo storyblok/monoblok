@@ -8,7 +8,7 @@ const EDITOR_URL =
   "https://example.com/?_storyblok=123&_storyblok_c=456&_storyblok_tk[space_id]=789";
 
 describe("StoryblokBlock", () => {
-  it("renders the component resolved for the block type", async () => {
+  it("should render the component resolved for the block type", async () => {
     const { StoryblokBlock } = defineStoryblokBlocks(() => ({ components: { teaser: Teaser } }));
     const container = await AstroContainer.create();
 
@@ -19,7 +19,7 @@ describe("StoryblokBlock", () => {
     expect(result).toContain("Hello");
   });
 
-  it("renders nothing when no component resolves and there is no fallback", async () => {
+  it("should render nothing when no component resolves and there is no fallback", async () => {
     const { StoryblokBlock } = defineStoryblokBlocks(() => ({ components: {} }));
     const container = await AstroContainer.create();
 
@@ -30,7 +30,7 @@ describe("StoryblokBlock", () => {
     expect(result.trim()).toBe("");
   });
 
-  it("renders the fallback when no component resolves", async () => {
+  it("should render the fallback when no component resolves", async () => {
     const { StoryblokBlock } = defineStoryblokBlocks(() => ({
       components: {},
       fallback: Fallback,
@@ -44,7 +44,7 @@ describe("StoryblokBlock", () => {
     expect(result).toContain("Missing component for unknown");
   });
 
-  it("falls back and warns when the registered component isn't a valid Astro component", async () => {
+  it("should fall back and warn when the registered component isn't a valid Astro component", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const { StoryblokBlock } = defineStoryblokBlocks(() => ({
       // Simulates a plain object slipping into `components` (e.g. block data
@@ -63,7 +63,7 @@ describe("StoryblokBlock", () => {
     warn.mockRestore();
   });
 
-  it("falls back and warns when the registered component is a plain function without `isAstroComponentFactory` (e.g. a React component)", async () => {
+  it("should fall back and warn when the registered component is a plain function without `isAstroComponentFactory` (e.g. a React component)", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     function FakeReactComponent() {
       return "<div>not an astro component</div>";
@@ -83,7 +83,7 @@ describe("StoryblokBlock", () => {
     warn.mockRestore();
   });
 
-  it("renders nothing and warns when `fallback` isn't a valid Astro component", async () => {
+  it("should render nothing and warn when `fallback` isn't a valid Astro component", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     function FakeReactComponent() {
       return "<div>not an astro component</div>";
@@ -104,7 +104,7 @@ describe("StoryblokBlock", () => {
     warn.mockRestore();
   });
 
-  it("renders nothing and warns in dev when `block` is undefined", async () => {
+  it("should render nothing and warn in dev when `block` is undefined", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const { StoryblokBlock } = defineStoryblokBlocks(() => ({ components: { teaser: Teaser } }));
     const container = await AstroContainer.create();

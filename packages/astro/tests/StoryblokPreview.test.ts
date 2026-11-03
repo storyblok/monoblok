@@ -11,7 +11,7 @@ describe("StoryblokPreview", () => {
   // only pins the no-op side: the warning for actual prerendered routes is
   // covered manually (the container API has no way to mark a route
   // prerendered) per the dev warning added in `StoryblokPreview.astro`.
-  it("does not warn when the route isn't prerendered", async () => {
+  it("should not warn when the route isn't prerendered", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const container = await AstroContainer.create();
 
@@ -20,7 +20,7 @@ describe("StoryblokPreview", () => {
     expect(warn).not.toHaveBeenCalled();
   });
 
-  it("renders a <storyblok-preview> custom element instead of a global", async () => {
+  it("should render a <storyblok-preview> custom element instead of a global", async () => {
     const container = await AstroContainer.create();
 
     const result = await container.renderToString(StoryblokPreview, { props: {} });
@@ -30,7 +30,7 @@ describe("StoryblokPreview", () => {
     expect(result).not.toContain("__storyblokPreviewProps");
   });
 
-  it("omits `data-live-update` when `liveUpdate` is not set", async () => {
+  it("should omit `data-live-update` when `liveUpdate` is not set", async () => {
     const container = await AstroContainer.create();
 
     const result = await container.renderToString(StoryblokPreview, { props: {} });
@@ -38,7 +38,7 @@ describe("StoryblokPreview", () => {
     expect(result).not.toContain("data-live-update");
   });
 
-  it("sets `data-live-update` when `liveUpdate` is true", async () => {
+  it("should set `data-live-update` when `liveUpdate` is true", async () => {
     const container = await AstroContainer.create();
 
     const result = await container.renderToString(StoryblokPreview, {
@@ -48,7 +48,7 @@ describe("StoryblokPreview", () => {
     expect(result).toContain("data-live-update");
   });
 
-  it("carries `debounceMs` and `bridgeOptions` as data attributes", async () => {
+  it("should carry `debounceMs` and `bridgeOptions` as data attributes", async () => {
     const container = await AstroContainer.create();
 
     const result = await container.renderToString(StoryblokPreview, {
@@ -59,7 +59,7 @@ describe("StoryblokPreview", () => {
     expect(result).toContain("resolveRelations");
   });
 
-  it("keeps two instances' props independent instead of sharing one global", async () => {
+  it("should keep two instances' props independent instead of sharing one global", async () => {
     const container = await AstroContainer.create();
 
     const first = await container.renderToString(StoryblokPreview, {

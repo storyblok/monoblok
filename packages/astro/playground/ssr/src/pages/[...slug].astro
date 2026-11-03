@@ -6,7 +6,7 @@ import {
   StoryblokServerData,
   type StoryblokBlockData,
 } from "@storyblok/astro";
-import { client, StoryblokBlock } from "../storyblok";
+import { client, RESOLVE_RELATIONS, StoryblokBlock } from "../storyblok";
 import BaseLayout from "../components/BaseLayout.astro";
 import { getUsers, type User } from "../lib/getUsers";
 import Widget from "../components/Widget.astro";
@@ -25,7 +25,7 @@ const payload = await getPayload<ServerData, MyStory>({ locals: Astro.locals });
 const response = payload?.story ? undefined : await client.stories.get(slug || "home", {
   query: {
     version: "draft",
-    resolve_relations: "featured-articles.posts",
+    resolve_relations: RESOLVE_RELATIONS.join(","),
   },
 });
 
@@ -54,6 +54,6 @@ const disableLivePreview = disabledSlugs.includes(slug || "");
       </Widget>
     )
   }
-  {!disableLivePreview && <StoryblokPreview liveUpdate />}
+  {!disableLivePreview && <StoryblokPreview liveUpdate bridgeOptions={{ resolveRelations: RESOLVE_RELATIONS }} />}
 </BaseLayout>
 <StoryblokServerData users={users} />

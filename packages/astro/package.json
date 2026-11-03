@@ -48,8 +48,6 @@
     "qa:editor": "playwright test --config test/visual-editor/playwright.config.ts",
     "lint": "vp lint",
     "lint:fix": "vp lint --fix",
-    "lint:playground": "pnpm -r --parallel --filter='./playground/*' run lint",
-    "lint:playground:fix": "pnpm -r --parallel --filter='./playground/*' run lint:fix",
     "test": "pnpm run test:unit && pnpm run test:e2e",
     "test:unit": "vp test run",
     "playground:test:foreground": "ASTRO_DEV_BACKGROUND=1 STORYBLOK_E2E=1 pnpm run --filter ./playground/test dev",
@@ -58,7 +56,7 @@
     "pw:run": "pnpm run pw:install && playwright test",
     "test:watch": "vp test",
     "test:ui": "vp test --ui",
-    "test:e2e:watch": "start-server-and-test playground:test:foreground http://localhost:4321/ pw:run --ui",
+    "test:e2e:watch": "start-server-and-test playground:test:foreground http://localhost:4321/ \"pw:run --ui\"",
     "test:coverage": "vp test run --coverage"
   },
   "dependencies": {

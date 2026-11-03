@@ -9,7 +9,7 @@ function next() {
 }
 
 describe("storyblokPreviewMiddleware", () => {
-  it("captures the preview payload for an editor POST request", async () => {
+  it("should capture the preview payload for an editor POST request", async () => {
     const story = { content: { component: "page" }, is_storyblok_preview: true };
     const request = new Request(EDITOR_URL, {
       method: "POST",
@@ -23,7 +23,7 @@ describe("storyblokPreviewMiddleware", () => {
     expect(locals._storyblok_preview_data).toEqual({ story });
   });
 
-  it("ignores POST requests that do not come from the editor", async () => {
+  it("should ignore POST requests that do not come from the editor", async () => {
     const request = new Request("https://example.com/", {
       method: "POST",
       body: JSON.stringify({ story: { is_storyblok_preview: true } }),
@@ -35,7 +35,7 @@ describe("storyblokPreviewMiddleware", () => {
     expect(locals._storyblok_preview_data).toBeUndefined();
   });
 
-  it("ignores GET requests", async () => {
+  it("should ignore GET requests", async () => {
     const request = new Request(EDITOR_URL, { method: "GET" });
     const locals: Record<string, unknown> = {};
 
@@ -44,7 +44,7 @@ describe("storyblokPreviewMiddleware", () => {
     expect(locals._storyblok_preview_data).toBeUndefined();
   });
 
-  it("ignores editor POST requests without the preview marker", async () => {
+  it("should ignore editor POST requests without the preview marker", async () => {
     const request = new Request(EDITOR_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -57,7 +57,7 @@ describe("storyblokPreviewMiddleware", () => {
     expect(locals._storyblok_preview_data).toBeUndefined();
   });
 
-  it("rejects a cross-site form POST forged with `Content-Type: text/plain`", async () => {
+  it("should reject a cross-site form POST forged with `Content-Type: text/plain`", async () => {
     // A plain HTML form can forge a cross-site POST (no CORS preflight) but
     // can only ever send `text/plain`, `multipart/form-data`, or
     // `application/x-www-form-urlencoded` — never `application/json`.
@@ -74,7 +74,7 @@ describe("storyblokPreviewMiddleware", () => {
     expect(locals._storyblok_preview_data).toBeUndefined();
   });
 
-  it("rejects a cross-site POST forged with a CORS-safelisted `text/plain; x=application/json` type", async () => {
+  it("should reject a cross-site POST forged with a CORS-safelisted `text/plain; x=application/json` type", async () => {
     // `text/plain` with parameters is still CORS-safelisted, so this never
     // triggers a preflight, and a browser that doesn't send `Sec-Fetch-Site`
     // (Safari < 16.4, Firefox < 90) wouldn't be caught by that check either.
@@ -93,7 +93,7 @@ describe("storyblokPreviewMiddleware", () => {
     expect(locals._storyblok_preview_data).toBeUndefined();
   });
 
-  it("rejects a same-site-looking POST whose `Sec-Fetch-Site` says otherwise", async () => {
+  it("should reject a same-site-looking POST whose `Sec-Fetch-Site` says otherwise", async () => {
     const attackerStory = { content: { component: "page" }, is_storyblok_preview: true };
     const request = new Request(EDITOR_URL, {
       method: "POST",
@@ -107,7 +107,7 @@ describe("storyblokPreviewMiddleware", () => {
     expect(locals._storyblok_preview_data).toBeUndefined();
   });
 
-  it("accepts a same-origin POST that sends `Sec-Fetch-Site: same-origin`", async () => {
+  it("should accept a same-origin POST that sends `Sec-Fetch-Site: same-origin`", async () => {
     const story = { content: { component: "page" }, is_storyblok_preview: true };
     const request = new Request(EDITOR_URL, {
       method: "POST",

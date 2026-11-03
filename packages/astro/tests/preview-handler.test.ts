@@ -9,7 +9,7 @@ describe("createPreviewHandler", () => {
     document.body.innerHTML = "";
   });
 
-  it("preserves client-added DOM state (open/aria-expanded/class) across an input update", async () => {
+  it("should preserve client-added DOM state (open/aria-expanded/class) across an input update", async () => {
     vi.useFakeTimers();
 
     document.body.innerHTML = `

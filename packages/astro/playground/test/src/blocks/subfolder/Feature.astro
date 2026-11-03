@@ -1,9 +1,7 @@
 ---
-import { storyblokEditable } from "@storyblok/astro";
-
-const { block } = Astro.props;
+const { block, editable } = Astro.props;
 ---
 
-<div {...storyblokEditable(block)} data-test="feature-component">
+<div {...editable} data-test="feature-component">
   <h2 class="text-center text-secondary text-xl font-bold">{block.name}</h2>
 </div>

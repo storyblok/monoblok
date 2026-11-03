@@ -1,12 +1,11 @@
 ---
-import { storyblokEditable } from "@storyblok/astro";
 import { StoryblokBlock } from "../storyblok";
 import type { StoryblokBlockData } from "@storyblok/astro";
 
-const { block } = Astro.props;
+const { block, editable } = Astro.props;
 ---
 
-<div {...storyblokEditable(block)}>
+<div {...editable}>
   <div class="grid">
     {
       block.columns?.map((child: StoryblokBlockData) => {

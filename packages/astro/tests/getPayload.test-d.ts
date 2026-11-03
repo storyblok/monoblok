@@ -1,8 +1,9 @@
 import { describe, expectTypeOf, it } from "vitest";
+import type { Story } from "@storyblok/live-preview";
 import { getPayload } from "../src/get-payload";
 
 describe("getPayload typing", () => {
-  it("accepts `locals` whose own augmentation declares unrelated fields", async () => {
+  it("should accept `locals` whose own augmentation declares unrelated fields", async () => {
     // Reproduces `App.Locals` declaring a field of its own, e.g. `user`. An
     // inline `{ _storyblok_preview_data?: ... }` parameter type used to
     // trigger TS2559 ("has no properties in common") here.
@@ -13,10 +14,10 @@ describe("getPayload typing", () => {
 
     const payload = await getPayload({ locals });
 
-    expectTypeOf(payload.story).toEqualTypeOf(payload.story);
+    expectTypeOf(payload.story).toEqualTypeOf<Story | undefined>();
   });
 
-  it("defaults the story type to a usable shape instead of `unknown`", async () => {
+  it("should default the story type to a usable shape instead of `unknown`", async () => {
     const payload = await getPayload({ locals: {} });
     const fetched = { content: { component: "page" } };
 

@@ -6,7 +6,7 @@ import type { StoryblokBlockComponentProps, StoryblokBlockProps } from "../src/t
 declare function component<Props>(): (props: Props) => any;
 
 describe("defineStoryblokBlocks extra props typing", () => {
-  it("makes a required extra prop mandatory on StoryblokBlock", () => {
+  it("should make a required extra prop mandatory on StoryblokBlock", () => {
     type ExtraComponentProps = { locale: string };
     type Props = StoryblokBlockProps<ExtraComponentProps>;
 
@@ -18,18 +18,16 @@ describe("defineStoryblokBlocks extra props typing", () => {
     expectTypeOf(_withLocale.locale).toEqualTypeOf<string>();
   });
 
-  it("keeps an optional extra prop optional on StoryblokBlock", () => {
+  it("should keep an optional extra prop optional on StoryblokBlock", () => {
     type ExtraComponentProps = { locale?: string };
     type Props = StoryblokBlockProps<ExtraComponentProps>;
 
-    const _withoutLocale: Props = { block: { component: "teaser" } };
-    const _withLocale: Props = { block: { component: "teaser" }, locale: "fr" };
-
-    expectTypeOf(_withoutLocale).toEqualTypeOf<Props>();
-    expectTypeOf(_withLocale).toEqualTypeOf<Props>();
+    expectTypeOf<{ block: { component: string } }>().toExtend<Props>();
+    expectTypeOf<{ block: { component: string }; locale: string }>().toExtend<Props>();
+    expectTypeOf<Props["locale"]>().toEqualTypeOf<string | undefined>();
   });
 
-  it("requires extra props on a registered component's own props too", () => {
+  it("should require extra props on a registered component's own props too", () => {
     type ExtraComponentProps = { locale: string };
     type Props = StoryblokBlockComponentProps<{ headline: string }, ExtraComponentProps>;
 

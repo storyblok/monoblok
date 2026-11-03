@@ -1,12 +1,11 @@
 ---
-import { storyblokEditable } from "@storyblok/astro";
 import { StoryblokBlock } from "../storyblok";
 import type { StoryblokBlockData } from "@storyblok/astro";
 
-const { block } = Astro.props;
+const { block, editable } = Astro.props;
 ---
 
-<main {...storyblokEditable(block)} data-test="page-component">
+<main {...editable} data-test="page-component">
   {
     block.body?.map((child: StoryblokBlockData) => {
       return <StoryblokBlock block={child} />;

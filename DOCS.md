@@ -132,7 +132,7 @@ with an error.
 
 ## Examples
 
-The following examples assume that a `space` has been defined in a configuration file.
+The following examples assume you defined a `space` in a configuration file.
 
 ```bash
 # Preview a migration
@@ -181,7 +181,7 @@ storyblok migrations list [flags]
 
 ## Examples
 
-The following examples assume that a `space` has been defined in a configuration file.
+The following examples assume you defined a `space` in a configuration file.
 
 ```bash
 storyblok migrations list
@@ -223,7 +223,7 @@ storyblok migrations undo [flags]
 A block conflicts when a field the run changed was changed again since, by an editor or by a
 migration run that isn’t in the local journal. The command leaves a conflicting block as it is,
 reports its fields, and restores the other blocks. Pass `--force` to overwrite conflicting blocks.
-The command also reports blocks that are no longer in the story and stories that were deleted.
+The command also reports blocks that are no longer in the story and deleted stories.
 
 ## Undone runs
 
@@ -258,7 +258,7 @@ for the first time stays published.
 
 ## Examples
 
-The following examples assume that a `space` has been defined in a configuration file.
+The following examples assume you defined a `space` in a configuration file.
 
 ```bash
 # Undo the latest run

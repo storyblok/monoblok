@@ -128,8 +128,9 @@ generateCmd.action(
         : beforePush && push
           ? push.components
           : await fetchComponents(space);
+      const nameInComponents = beforePush && push ? push.blockBefore : componentName;
       const component = components
-        ? components.find((candidate) => candidate.name === componentName)
+        ? components.find((candidate) => candidate.name === nameInComponents)
         : await fetchComponent(space, componentName);
 
       if (!component) {

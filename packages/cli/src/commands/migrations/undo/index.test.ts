@@ -392,6 +392,30 @@ describe("migrations undo command", () => {
       );
     });
 
+    it("should name the stories it restored as drafts but could not publish, and how to publish them", async () => {
+      const warn = vi.spyOn(getUI(), "warn");
+      space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+      space.hasStories(publishedStory());
+      await run("apply", "--publish", "published");
+      space.failsToPublishStories("The field card.title can't be blank");
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      await run("undo");
+
+      expect(cardOf(space.story(1))).toEqual({ _uid: "card-1", component: "card", title: "Hi" });
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringMatching(
+          /home.*: the draft was restored, but publishing it failed: .*can't be blank/,
+        ),
+      );
+      expect(process.exitCode).toBe(2);
+      expect(error).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "1 story was restored as a draft but could not be published: home. If the schema changed since the run, push the schema as it was before the run, then publish it.",
+        ),
+      );
+    });
+
     it("should report a story the run published for the first time", async () => {
       const warn = vi.spyOn(getUI(), "warn");
       space.hasMigrations(["0001-rename-card-title", renameCardTitle]);

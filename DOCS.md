@@ -229,6 +229,14 @@ on to the run before it. A run stays open while blocks are left in place, so
 place, `migrations list` shows the run as partly undone. When a story can’t be read or written, the
 command exits with an error and the run stays open. Run the undo again to retry.
 
+The space checks content against its current schema, not the schema of the run. When a schema push
+after the run changed what the space accepts, such as making a field required, the space can refuse
+the restored content. Push the schema as it was before the run, then undo again. When the space
+saves the draft but refuses to publish it, the command restores the draft, names the story, and
+exits with an error. Publish the story once the space accepts its content. `migrations apply`
+reports a draft it migrated but couldn’t publish the same way and records it, so the run can still
+be undone.
+
 ## Undo order
 
 The command refuses to undo a run while a later run that isn’t undone changed any of the same

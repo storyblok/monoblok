@@ -17,6 +17,7 @@ import { session } from "../../../session";
 import { migrationsCommand } from "../command";
 import {
   contentJournal,
+  DraftNotPublishedError,
   guardPendingReleases,
   plural,
   storyAccess,
@@ -142,6 +143,7 @@ undoCmd.action(async (_options: unknown, command: Command) => {
     }
 
     const restored = new Set<string>();
+    const notPublished: string[] = [];
     for (const write of outcome.writes) {
       if (!isRecord(write.content)) {
         continue;
@@ -151,6 +153,20 @@ undoCmd.action(async (_options: unknown, command: Command) => {
         restored.add(write.story.slug);
         logger.info("Story undone", { storyId: write.story.id, run: id, space });
       } catch (maybeError) {
+        if (maybeError instanceof DraftNotPublishedError) {
+          restored.add(write.story.slug);
+          notPublished.push(write.story.slug);
+          ui.warn(
+            `${chalk.bold(write.story.slug)}: the draft was restored, but publishing it failed: ${maybeError.message}`,
+          );
+          logger.error("Failed to publish undone story", {
+            storyId: write.story.id,
+            run: id,
+            space,
+            error: maybeError,
+          });
+          continue;
+        }
         failed++;
         const error = toError(maybeError);
         ui.warn(`${chalk.bold(write.story.slug)} could not be written: ${error.message}`);
@@ -195,10 +211,16 @@ undoCmd.action(async (_options: unknown, command: Command) => {
     } else if (restored.size > 0) {
       await journal.record({ ...plan.run, partlyUndoneAt: now }, plan.inverse);
     }
-    if (failed > 0) {
-      throw new CommandError(
-        `${plural(failed, "story", "stories")} could not be undone. See the warnings above, then run the undo again with --run ${id}.`,
-      );
+    // The space validates content against its current schema, which may no
+    // longer accept the content as it was before the run.
+    const problems = [
+      failed > 0 &&
+        `${plural(failed, "story", "stories")} could not be undone. See the warnings above. If the schema changed since the run, push the schema as it was before the run first, then run the undo again with --run ${id}.`,
+      notPublished.length > 0 &&
+        `${plural(notPublished.length, "story was", "stories were")} restored as ${notPublished.length === 1 ? "a draft" : "drafts"} but could not be published: ${notPublished.join(", ")}. If the schema changed since the run, push the schema as it was before the run, then publish ${notPublished.length === 1 ? "it" : "them"}.`,
+    ].filter(Boolean);
+    if (problems.length > 0) {
+      throw new CommandError(problems.join("\n"));
     }
   } catch (maybeError) {
     handleError(toMigrationCommandError(maybeError), verbose);

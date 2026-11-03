@@ -137,6 +137,30 @@ export function createRemoteSpace(server: SetupServerApi) {
         }),
       );
     },
+    /**
+     * The API saves the draft of a write that also publishes, then refuses to
+     * publish it, as it does when the content breaks a field's validation.
+     */
+    failsToPublishStories(message: string) {
+      server.use(
+        http.put(`${MAPI}/stories/:id`, async ({ request, params }) => {
+          const body = await request.json();
+          const id = Number(params.id);
+          const story = stories.get(id);
+          if (story && isRecord(body) && isRecord(body.story) && isRecord(body.story.content)) {
+            stories.set(id, {
+              ...story,
+              content: body.story.content,
+              unpublished_changes: story.published === true,
+            });
+          }
+          if (new URL(request.url).searchParams.get("publish") === "true") {
+            return HttpResponse.json({ error: message }, { status: 422 });
+          }
+          return HttpResponse.json({ story: { id } });
+        }),
+      );
+    },
     failsToUpdateStories() {
       server.use(
         http.put(`${MAPI}/stories/:id`, () =>

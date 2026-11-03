@@ -3,6 +3,7 @@
  * and their journal live, the story fields the engine reads, and the guard
  * against pending releases.
  */
+import { isDeepStrictEqual } from "node:util";
 import chalk from "chalk";
 import { checkPendingReleases, MigrationError, resolveJournal } from "@storyblok/schema";
 import type { Journal, StoryForMigration } from "@storyblok/schema";
@@ -34,6 +35,12 @@ export function toStoryForMigration(story: Story): StoryForMigration {
 }
 
 /**
+ * The API saved the draft of a write but refused to publish it, for example
+ * because the content breaks the validation of a field the schema requires.
+ */
+export class DraftNotPublishedError extends Error {}
+
+/**
  * Reads and writes the stories of one command run. A content write without the
  * story's name clears it, so each write carries the name its read returned.
  */
@@ -45,17 +52,41 @@ export function storyAccess(space: string) {
       if (story) names.set(id, story.name);
       return story;
     },
+    /**
+     * Throws {@link DraftNotPublishedError} when only the publish failed, since
+     * the API saves the draft before it validates the publish.
+     */
     async write(id: number, content: Record<string, unknown>, publish: boolean): Promise<void> {
-      await updateStory(space, id, {
-        story: { content, name: names.get(id) },
-        force_update: "1",
-        ...(publish ? { publish: 1 } : {}),
-      });
+      try {
+        await updateStory(space, id, {
+          story: { content, name: names.get(id) },
+          force_update: "1",
+          ...(publish ? { publish: 1 } : {}),
+        });
+      } catch (maybeError) {
+        if (publish && (await draftHolds(space, id, content))) {
+          throw new DraftNotPublishedError(toError(maybeError).message);
+        }
+        throw maybeError;
+      }
     },
   };
 }
 
 export type StoryAccess = ReturnType<typeof storyAccess>;
+
+async function draftHolds(
+  space: string,
+  id: number,
+  content: Record<string, unknown>,
+): Promise<boolean> {
+  try {
+    const story = await fetchStory(space, id);
+    return isDeepStrictEqual(story?.content, content);
+  } catch {
+    return false;
+  }
+}
 
 /** The engine's errors are about the user's migrations or journal, not a CLI failure. */
 export function toMigrationCommandError(error: unknown): Error {

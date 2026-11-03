@@ -35,6 +35,7 @@ import { session } from "../../../session";
 import { migrationsCommand } from "../command";
 import {
   contentJournal,
+  DraftNotPublishedError,
   guardPendingReleases,
   migrationsDirectory,
   plural,
@@ -352,6 +353,7 @@ applyCmd.action(async (rawName: string | undefined, _options: unknown, command: 
     const access = storyAccess(space);
     const refusedEverything: string[] = [];
     let failed = 0;
+    const notPublished: string[] = [];
 
     for (const entry of selected) {
       const spinner = ui.createSpinner(`${entry.id}: fetching stories...`);
@@ -413,6 +415,21 @@ applyCmd.action(async (rawName: string | undefined, _options: unknown, command: 
           landed.add(write.story.id);
           logger.info("Story migrated", { storyId: write.story.id, migration: entry.id, space });
         } catch (maybeError) {
+          // The draft changed, so the run records it and undo can restore it.
+          if (maybeError instanceof DraftNotPublishedError) {
+            landed.add(write.story.id);
+            notPublished.push(write.story.slug);
+            ui.warn(
+              `${chalk.bold(write.story.slug)}: the draft was migrated, but publishing it failed: ${maybeError.message}`,
+            );
+            logger.error("Failed to publish migrated story", {
+              storyId: write.story.id,
+              migration: entry.id,
+              space,
+              error: maybeError,
+            });
+            continue;
+          }
           failed++;
           const error = toError(maybeError);
           ui.warn(`${chalk.bold(write.story.slug)} could not be written: ${error.message}`);
@@ -445,6 +462,11 @@ applyCmd.action(async (rawName: string | undefined, _options: unknown, command: 
 
     const problems = [
       ...refusedEverything.map((id) => `${id} refused every story it matched`),
+      ...(notPublished.length > 0
+        ? [
+            `${plural(notPublished.length, "story was", "stories were")} migrated as ${notPublished.length === 1 ? "a draft" : "drafts"} but could not be published: ${notPublished.join(", ")}`,
+          ]
+        : []),
       ...(failed > 0
         ? [
             `${plural(failed, "story", "stories")} could not be ${dryRun ? "read" : "read or written"}`,

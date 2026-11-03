@@ -777,6 +777,27 @@ describe("migrations apply command", () => {
       ]);
     });
 
+    it("should record a story it migrated as a draft but could not publish, so undo can restore it", async () => {
+      const warn = vi.spyOn(getUI(), "warn");
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+      space.hasStories(publishedStory(1, false));
+      space.failsToPublishStories("The field card.heading can't be blank");
+
+      await apply("--publish", "published");
+
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringMatching(/story-1.*: the draft was migrated, but publishing it failed: /),
+      );
+      expect(journalEntries()).toEqual([expect.objectContaining({ stories: 1 })]);
+      expect(process.exitCode).toBe(2);
+      expect(error).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "1 story was migrated as a draft but could not be published: story-1",
+        ),
+      );
+    });
+
     it("should reject an unknown --publish mode", async () => {
       space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
       space.hasStories(storyWithCard());

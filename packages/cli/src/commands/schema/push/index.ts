@@ -103,7 +103,10 @@ schemaCommand
     [],
   )
   .option("--no-renames", "Treat detected renames as removals and new blocks or fields")
-  .option("--migrations", "Generate scaffold migration files for breaking changes", true)
+  .option(
+    "--migrations",
+    "Generate migration files for breaking changes without asking, taking detected field renames as given",
+  )
   .addOption(new Option("--no-migrations", "Skip migration generation for breaking changes"))
   .option(
     "--typed",
@@ -143,16 +146,28 @@ schemaCommand
     const runCommand = options.typed ? "migrations apply" : "migrations run";
 
     /**
-     * Asks a yes/no question, or fails when no one can answer it, so a script
-     * or CI run never waits on a prompt or answers the wrong one.
+     * Without a terminal, questions are collected instead of asked, so a script
+     * or CI run never waits on a prompt, and `failOnUnanswered` names all of
+     * them at once before anything is written. Until then each one counts as
+     * accepted, so the questions that follow from it are collected too.
      */
+    const unanswered: string[] = [];
     const ask = async (message: string, flags: string): Promise<boolean> => {
       if (!process.stdin.isTTY) {
-        throw new CommandError(
-          `schema push needs an answer to "${message}", but stdin is not a terminal. ${flags}`,
-        );
+        unanswered.push(`${message} ${flags}`);
+        return true;
       }
       return confirm({ message, default: true }, stderrPromptContext);
+    };
+    const failOnUnanswered = (): void => {
+      if (unanswered.length === 0) return;
+      const needs =
+        unanswered.length === 1
+          ? "an answer to 1 question"
+          : `answers to ${unanswered.length} questions`;
+      throw new CommandError(
+        `schema push needs ${needs}, but stdin is not a terminal:\n${unanswered.map((question) => `  - ${question}`).join("\n")}`,
+      );
     };
 
     try {
@@ -404,7 +419,7 @@ schemaCommand
         }
         if (options.dryRun) {
           ui.info(
-            `Possible block rename: ${rename.from} → ${rename.to}${stories}. Without --dry-run, schema push asks whether to rename the block in place.`,
+            `Possible block rename: ${rename.from} → ${rename.to}${stories}. Pass --rename-block ${rename.from}:${rename.to} to rename it in place, or --no-renames to create ${rename.to} as a new block.`,
           );
           continue;
         }
@@ -444,7 +459,7 @@ schemaCommand
       ui.log(formatDiffOutput(diffResult, { delete: options.delete }));
 
       // 6. Analyze breaking changes and offer migration generation
-      if (options.migrations) {
+      if (options.migrations !== false) {
         const breakingChanges = analyzeBreakingChanges(diffResult, local, remote);
         for (const { from, to } of blockRenames) {
           let entry = breakingChanges.find((comp) => comp.componentName === to);
@@ -470,7 +485,7 @@ schemaCommand
           // Dry-run: show analysis only, no prompts, no file writes
           if (options.dryRun) {
             ui.info(
-              "Without --dry-run, schema push offers to generate a migration for these changes.",
+              "Without --dry-run, schema push asks whether to generate a migration for these changes. Pass --migrations to generate it without asking, or --no-migrations to skip it.",
             );
             for (const comp of breakingChanges) {
               for (const change of comp.changes) {
@@ -490,7 +505,7 @@ schemaCommand
               options.yes ||
               (await ask(
                 "Generate migration files for breaking changes?",
-                "Pass --migrations to generate them or --no-migrations to skip them.",
+                "Pass --migrations to generate them, which also takes detected field renames as given, or --no-migrations to skip them.",
               ));
 
             if (shouldGenerate) {
@@ -529,6 +544,7 @@ schemaCommand
                 comp.changes = kept;
               }
 
+              failOnUnanswered();
               const files = await writeMigrations(breakingChanges);
               for (const file of files) {
                 ui.log(`  Generated: ${displayPath(file, basePath)}`);
@@ -604,6 +620,8 @@ schemaCommand
         });
         return;
       }
+
+      failOnUnanswered();
 
       // 8. Save changeset
       const resolvedPath = resolvePath(basePath, "");

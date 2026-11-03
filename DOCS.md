@@ -433,10 +433,11 @@ that throws until you write the split.
 
 ### Running without a terminal
 
-When stdin isn’t a terminal, the command doesn’t prompt. It fails on the first question it would ask
-and names the flags that answer it:
+When stdin isn’t a terminal, the command doesn’t prompt. Before it changes anything, it fails with
+every question it would ask and the flags that answer each one:
 
-- `--migrations` or `--no-migrations` answers whether to generate migrations.
+- `--migrations` or `--no-migrations` answers whether to generate migrations. `--migrations` also
+  accepts every detected field rename unless `--rename` or `--no-renames` says otherwise.
 - `--yes` accepts every detected block and field rename.
 - `--rename <block>.<field>:<new-field>` declares a field rename, which replaces what rename
   detection made of that field.

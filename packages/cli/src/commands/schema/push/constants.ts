@@ -6,7 +6,8 @@ export interface SchemaPushOptions {
   rename: string[];
   renameBlock: string[];
   renames: boolean;
-  migrations: boolean;
+  /** `undefined` asks whether to generate migrations for breaking changes. */
+  migrations?: boolean;
   before: boolean;
   typed?: boolean;
   writeComponents: boolean;

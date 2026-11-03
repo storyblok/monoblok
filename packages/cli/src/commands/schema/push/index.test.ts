@@ -311,7 +311,7 @@ describe("schema push command", () => {
     pushCmd?.setOptionValueWithSource("rename", [], "default");
     pushCmd?.setOptionValueWithSource("renameBlock", [], "default");
     pushCmd?.setOptionValueWithSource("renames", true, "default");
-    pushCmd?.setOptionValueWithSource("migrations", true, "default");
+    pushCmd?.setOptionValueWithSource("migrations", undefined, "default");
     pushCmd?.setOptionValueWithSource("typed", undefined, "default");
     pushCmd?.setOptionValueWithSource("dryRun", false, "default");
     pushCmd?.setOptionValueWithSource("delete", false, "default");
@@ -1394,7 +1394,7 @@ describe("schema push command", () => {
       expect(confirm).not.toHaveBeenCalled();
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining(
-          'schema push needs an answer to "Generate migration files for breaking changes?", but stdin is not a terminal. Pass --migrations to generate them or --no-migrations to skip them.',
+          "Generate migration files for breaking changes? Pass --migrations to generate them, which also takes detected field renames as given, or --no-migrations to skip them.",
         ),
       );
       expect(migrationFiles()).toEqual([]);
@@ -1466,6 +1466,79 @@ describe("schema push command", () => {
         ),
       );
       expect(migrationFiles()).toEqual([]);
+    });
+
+    it("should name every question it cannot ask in one error and change nothing", async () => {
+      preconditions.hasLocalSchema({
+        components: [
+          makeMockComponent({
+            name: "hero",
+            is_root: true,
+            schema: { title: { type: "text", pos: 0 }, body: { type: "textarea", pos: 1 } },
+          }),
+        ] as any,
+        datasources: [],
+      });
+      preconditions.hasRemoteComponents([
+        makeMockComponent({
+          name: "banner",
+          is_root: true,
+          schema: { headline: { type: "text", pos: 0 }, body: { type: "textarea", pos: 1 } },
+        }),
+      ]);
+      preconditions.hasStories({ banner: 3 });
+      const writes: string[] = [];
+      server.use(
+        http.all(
+          `https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/components/*`,
+          ({ request }) => {
+            writes.push(request.method);
+            return HttpResponse.json({});
+          },
+        ),
+      );
+
+      await push("--typed");
+
+      expect(confirm).not.toHaveBeenCalled();
+      const [message] = vi
+        .mocked(console.error)
+        .mock.calls.find(([text]) => String(text).includes("stdin is not a terminal"))!;
+      expect(message).toContain("schema push needs answers to 3 questions");
+      expect(message).toContain("Rename block banner → hero (3 stories)?");
+      expect(message).toContain("Generate migration files for breaking changes?");
+      expect(message).toContain("Rename field hero.headline → title?");
+      expect(writes).toEqual([]);
+      expect(migrationFiles()).toEqual([]);
+    });
+
+    it("should name the flags that answer a possible rename on a dry run", async () => {
+      preconditions.hasLocalSchema({
+        components: [
+          makeMockComponent({
+            name: "hero",
+            is_root: true,
+            schema: { title: { type: "text", pos: 0 } },
+          }),
+        ] as any,
+        datasources: [],
+      });
+      preconditions.hasRemoteComponents([
+        makeMockComponent({
+          name: "banner",
+          is_root: true,
+          schema: { title: { type: "text", pos: 0 } },
+        }),
+      ]);
+      preconditions.hasStories({ banner: 3 });
+
+      await push("--dry-run");
+
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "Possible block rename: banner → hero (3 stories). Pass --rename-block banner:hero to rename it in place, or --no-renames to create hero as a new block.",
+        ),
+      );
     });
 
     it("should rename a block declared with --rename-block without asking", async () => {

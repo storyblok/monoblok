@@ -231,6 +231,22 @@ describe("measure", () => {
     expect(pkg.entries["."].size).toBeGreaterThan(0);
   });
 
+  it("should leave out `.astro` components an entry imports", async () => {
+    writePackage(
+      "pkg",
+      { name: "@storyblok/pkg", type: "module", exports: { ".": "./dist/index.mjs" } },
+      {
+        "dist/index.mjs": `import Block from "./components/Block.astro";\nexport { Block };\n`,
+        "dist/components/Block.astro": `---\nconst { block } = Astro.props;\n---\n\n<div>{block}</div>\n`,
+      },
+    );
+
+    const pkg = (await measure(root)).packages["@storyblok/pkg"];
+
+    expect(pkg.error).toBeUndefined();
+    expect(pkg.entries["."].size).toBeGreaterThan(0);
+  });
+
   it("should measure only ES modules, skipping CommonJS, UMD, and CSS", async () => {
     writePackage(
       "pkg",

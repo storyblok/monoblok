@@ -14,7 +14,8 @@ export const IGNORED_PACKAGES: readonly string[] = [
 
 /**
  * Exports that only run at build time, so neither a browser nor a server bundle includes them.
- * Exports of `.astro` components are skipped too: Astro compiles them, not a bundler.
+ * Exports of `.astro` components are skipped too: Astro compiles them, not a bundler. The same goes
+ * for `.astro` components an entry imports, which `bundleEntry` leaves out.
  */
 export const IGNORED_EXPORTS: Readonly<Record<string, readonly string[]>> = {
   "@storyblok/nuxt": ["."],
@@ -282,8 +283,8 @@ function svelteCompiler(packageDir: string): Plugin {
 /**
  * Bundles an entry the way a consumer's bundler would: dependencies, and theirs, are included and
  * minified. A dependency the importing package declares as a peer is left out, since the app
- * provides it, and so are Node built-ins and specifiers nothing resolves (framework virtual
- * modules). Only the entry chunk and the chunks it imports statically count: dynamic imports load
+ * provides it, and so are Node built-ins, `.astro` components, and specifiers nothing resolves
+ * (framework virtual modules). Only the entry chunk and the chunks it imports statically count: dynamic imports load
  * later and only when their feature runs, so they are not part of the up-front cost of an import.
  */
 export async function bundleEntry(
@@ -304,7 +305,8 @@ export async function bundleEntry(
     tsconfig: false,
     plugins: [svelteCompiler(packageDir)],
     external: (id, importer) => {
-      if (id.startsWith("node:") || BUILTINS.has(id)) {
+      // Astro compiles `.astro` components when it builds the app; no bundler can parse them.
+      if (id.startsWith("node:") || BUILTINS.has(id) || id.endsWith(".astro")) {
         return true;
       }
       const name = packageNameOf(id);

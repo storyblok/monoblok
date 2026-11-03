@@ -100,9 +100,9 @@ migration before you push the next schema change:
 
 - Push the schema before you apply a migration that writes new fields. `schema push --typed` does
   this, since it pushes before you apply the migration it wrote.
-- An op on a field that a later push renamed or removed is skipped, even in stories that still hold
-  the field.
-- A `renameField` is skipped while the block still has the field it renames.
+- The command skips an op on a field that a later push renamed or removed, even in stories that
+  still hold the field.
+- The command skips a `renameField` while the block still has the field it renames.
 
 Delete a migration once every space it targets has applied it. A later rename, removal, or type
 change of a field it writes is a type error in that migration.
@@ -151,8 +151,8 @@ with an error.
 
 ## Examples
 
-The following examples assume that a `space` has been defined in a configuration file. A typical
-schema change pushes the schema, previews the migration `schema push` wrote, and applies it:
+The following examples assume you defined a `space` in a configuration file. A typical schema change
+pushes the schema, previews the migration `schema push` wrote, and applies it:
 
 ```bash
 storyblok schema push src/schema/schema.ts --typed
@@ -185,9 +185,9 @@ shows its ID, the migration title, and the stories and blocks it changed:
 ℹ 2026-10-29T13-32-45-737Z-20261029132727-rename-teaser-to-excerpt  Rename teaser to excerpt on blog entries and events  478 stories, 478 blocks
 ```
 
-A run also shows when it was undone, partly undone, or interrupted. Runs are recorded on the machine
-that ran them, so a migration applied elsewhere shows as pending here. The command reads local
-records only and doesn’t require a login.
+A run also shows when it was undone, partly undone, or interrupted. Each machine records its own
+runs, so a migration applied elsewhere shows as pending here. The command reads local records only
+and doesn’t require a login.
 
 ## Usage
 
@@ -205,7 +205,7 @@ storyblok migrations list [flags]
 
 ## Examples
 
-The following examples assume that a `space` has been defined in a configuration file.
+The following examples assume you defined a `space` in a configuration file.
 
 ```bash
 # List every run and the pending migrations
@@ -251,7 +251,7 @@ storyblok migrations undo [flags]
 A block conflicts when a field the run changed was changed again since, by an editor or by a
 migration run that isn’t in the local journal. The command leaves a conflicting block as it is,
 reports its fields, and restores the other blocks. Pass `--force` to overwrite conflicting blocks.
-The command also reports blocks that are no longer in the story and stories that were deleted.
+The command also reports blocks that are no longer in the story and deleted stories.
 
 ## Undone runs
 
@@ -286,7 +286,7 @@ for the first time stays published.
 
 ## Examples
 
-The following examples assume that a `space` has been defined in a configuration file.
+The following examples assume you defined a `space` in a configuration file.
 
 ```bash
 # Undo the latest run
@@ -419,7 +419,7 @@ storyblok schema push src/schema/schema.ts --typed
 ```
 
 This migration is what the command wrote for a renamed field, a newly required `email` field, and a
-removed `large` option, after its `TODO` ops were completed:
+removed `large` option, with its `TODO` ops completed:
 
 ```ts title=".storyblok/migrations/12345/20261103093215-update-author-hero.ts"
 import { addField, alterField, defineMigration, renameField } from "@storyblok/schema";
@@ -448,7 +448,7 @@ The migration handles these changes:
 - Fills required boolean fields with `false` where the value is missing. For a required field of
   another type, it writes an op that needs a default. For a newly required text, textarea, markdown,
   or number field, that op also fills empty strings.
-- Renames a block that was renamed in place, after the ops that change its fields.
+- Renames a block the push renamed in place, after the ops that change its fields.
 - Marks the values an option or options field no longer offers. The op throws on a removed value
   until you map it to one the field still offers. Options a datasource supplies aren’t checked.
 

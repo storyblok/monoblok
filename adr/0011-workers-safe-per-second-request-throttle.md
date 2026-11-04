@@ -1,6 +1,7 @@
 # ADR-0011: Workers-Safe Per-Second Request Throttle
 
-**Status:** Accepted **Date:** 2026-07-23
+**Status:** Accepted  
+**Date:** 2026-07-23
 
 ## Context
 

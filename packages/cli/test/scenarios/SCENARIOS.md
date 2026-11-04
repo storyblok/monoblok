@@ -1,18 +1,8 @@
-# @storyblok/cli Scenarios
+# `storyblok` CLI Scenarios
 
-Seed with:
-
-```bash
-bash .agents/skills/qa-engineer-manual/scripts/seed-scenario.sh \
-  --scenario <name> \
-  --scenario-dir packages/cli/test/scenarios
-```
-
-For basic story testing, use the global `has-stories` scenario instead:
-
-```bash
-bash .agents/skills/qa-engineer-manual/scripts/seed-scenario.sh --scenario has-stories
-```
+Seed these with `--scenario-dir packages/cli/test/scenarios`, as described in the
+`qa-engineer-manual` skill. For basic story testing, use the skill's built-in `has-stories`
+scenario.
 
 | Scenario                   | Seeds                                                                                                                                                                                                                                                                    |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -22,10 +12,13 @@ bash .agents/skills/qa-engineer-manual/scripts/seed-scenario.sh --scenario has-s
 | `has-diverse-components`   | 6 components (1 root, 5 nestable) covering 20 of the 22 field types: text, textarea, richtext, markdown, number, datetime, boolean, option, options, asset, multiasset, image, file, link, multilink, bloks, table, section, tab, group, plus 1 datasource with entries. |
 | `has-restrictions`         | 5 components, 2 nested component groups and 1 component tag, covering all eight `bloks` restriction shapes and four `richtext` ones. Baseline for `schema init`/`push` round trips over restrictions.                                                                    |
 
-`kitchen_sink` carries the only `conditional_settings` in the corpus: `gallery` hides when `related`
-is empty (one condition, `display` modification) and `legacy_file` becomes required when both
-`notes` and `related` are filled (two conditions under `rule_match: 'all'`, `required`
-modification). Between them they cover both modification kinds and both rule matches.
+## `has-diverse-components`
+
+The scenario's `kitchen_sink` component carries the only `conditional_settings` in the corpus:
+`gallery` hides when `related` is empty (one condition, `display` modification) and `legacy_file`
+becomes required when both `notes` and `related` are filled (two conditions under
+`rule_match: 'all'`, `required` modification). Between them they cover both modification kinds and
+both rule matches.
 
 `kitchen_sink` also carries the shapes that only exist in older or API-authored spaces, so the round
 trip has something to lose: `legacy_link` (`link`, the string-valued predecessor of `multilink`),

@@ -100,5 +100,9 @@ if (import.meta.env.DEV && liveUpdate && Astro.isPrerendered) {
     }
   }
 
-  customElements.define('storyblok-preview', StoryblokPreviewElement);
+  // A second copy of this package on the page (duplicate installs) would
+  // otherwise throw `NotSupportedError` on the repeated `define`.
+  if (!customElements.get('storyblok-preview')) {
+    customElements.define('storyblok-preview', StoryblokPreviewElement);
+  }
 </script>

@@ -1,18 +1,20 @@
 export type {
   BlockContent,
   BlockContentInput,
+  DefineStoryblokBlocksOptions,
+  DefineStoryblokBlocksResult,
   Story,
-  StoryblokBlockData,
+  StoryblokBlockComponent,
   StoryblokBlockComponentProps,
+  StoryblokBlockData,
+  StoryblokBlockEntry,
+  StoryblokBlockProps,
+  StoryblokComponentMap,
   StoryblokEditableProps,
+  StoryblokExtraProps,
 } from "./types";
 
-export {
-  defineStoryblokBlocks,
-  type StoryblokBlockEntry,
-  type StoryblokBlocksOptions,
-  type StoryblokBlocksResult,
-} from "./define-storyblok-blocks";
+export { defineStoryblokBlocks } from "./define-storyblok-blocks";
 
 export {
   type StoryblokReactRichTextComponent,
@@ -23,8 +25,8 @@ export {
   createRichTextRenderer,
 } from "./richtext";
 
-export { editableField, storyblokEditable } from "@storyblok/live-preview";
-export { type LivePreviewStory } from "@storyblok/live-preview";
+export { editableField, isInEditor, storyblokEditable } from "@storyblok/live-preview";
+export type { BridgeParams, LivePreviewStory } from "@storyblok/live-preview";
 
 export { type StoryblokRichTextDoc } from "@storyblok/richtext";
 

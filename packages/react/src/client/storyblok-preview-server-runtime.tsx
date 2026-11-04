@@ -150,7 +150,7 @@ class LiveContentBoundary extends Component<LiveContentBoundaryProps, LiveConten
   }
 
   componentDidCatch(error: unknown) {
-    console.error("[Storyblok] StoryblokPreview: renderContent failed.", error);
+    console.error("[storyblok] StoryblokPreview: renderContent failed.", error);
   }
 
   render() {
@@ -185,7 +185,7 @@ export function StoryblokPreviewServerRuntime({
   // namespace is sealed in the test environment. It is verified manually.
   if (typeof reactUse !== "function") {
     throw new Error(
-      "[Storyblok] StoryblokPreview (server mode, from @storyblok/react/rsc) requires React 19 " +
+      "[storyblok] StoryblokPreview (server mode, from @storyblok/react/rsc) requires React 19 " +
         "(React.use is not available). Use StoryblokPreview from @storyblok/react for React 18.",
     );
   }

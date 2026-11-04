@@ -86,7 +86,7 @@ export function useStoryblokEditorEvent<TStory extends Story = Story>(
     };
 
     setup().catch((error: unknown) => {
-      console.error("[Storyblok] useStoryblokEditorEvent: live preview unavailable.", error);
+      console.error("[storyblok] useStoryblokEditorEvent: live preview unavailable.", error);
     });
 
     return () => {

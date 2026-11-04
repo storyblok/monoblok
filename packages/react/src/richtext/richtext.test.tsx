@@ -21,8 +21,7 @@ import { defineStoryblokBlocks } from "../define-storyblok-blocks";
 import { createStoryblokRichText } from "./create-storyblok-richtext";
 
 const { StoryblokRichText } = defineStoryblokBlocks(() => ({ components: {} }));
-// Standalone renderer with no embedded block support — the replacement for
-// the removed module-level `StoryblokRichText` export from "./index".
+// Standalone renderer with no embedded block support.
 const RootStoryblokRichText = createStoryblokRichText();
 
 interface AttributePositionRule {
@@ -295,6 +294,38 @@ describe("react StoryblokRichText component", () => {
         />,
       );
       expect(warnSpy).not.toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
+
+    // The warning is module-level (once per environment), so each test loads
+    // a fresh copy of the package entry point.
+    it("should warn about a blok node without a renderer only once", async () => {
+      vi.resetModules();
+      const { createRichTextRenderer } = await import("../index");
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      // `console.warn` is a shared mock (see test-setup.ts): drop earlier calls.
+      warnSpy.mockClear();
+      render(<>{createRichTextRenderer({})(blokDoc)}</>);
+      render(<>{createRichTextRenderer({})(blokDoc)}</>);
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[storyblok] "blok" nodes require a custom renderer passed through `components.blok`, ' +
+          "or use the `StoryblokRichText` returned by `defineStoryblokBlocks()`.",
+      );
+      warnSpy.mockRestore();
+    });
+
+    it("should not warn about a blok node without a renderer when warnings is false", async () => {
+      vi.resetModules();
+      const { createRichTextRenderer } = await import("../index");
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      // `console.warn` is a shared mock (see test-setup.ts): drop earlier calls.
+      warnSpy.mockClear();
+      render(<>{createRichTextRenderer({ warnings: false })(blokDoc)}</>);
+      expect(warnSpy).not.toHaveBeenCalled();
+      // A silenced instance doesn't use up the warning for the others.
+      render(<>{createRichTextRenderer({})(blokDoc)}</>);
+      expect(warnSpy).toHaveBeenCalledTimes(1);
       warnSpy.mockRestore();
     });
   });

@@ -1,6 +1,6 @@
 A client-rendered React app (Vite, React Router) that renders Storyblok stories with
 `@storyblok/react` (https://www.storyblok.com/docs/packages/storyblok-react). `src/App.jsx` fetches
-the story for the path, `home` for `/`. Register every new block in `src/main.jsx`.
+the story for the path, `home` for `/`. Register every new block in `src/storyblok.js`.
 
 - React: https://react.dev/llms.txt
 - Vite: https://vite.dev/llms.txt

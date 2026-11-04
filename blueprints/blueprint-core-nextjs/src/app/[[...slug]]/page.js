@@ -1,17 +1,15 @@
-import { StoryblokStory } from '@storyblok/react/rsc';
-import { getStoryblokApi } from '@/lib/storyblok';
+import { StoryblokPreview } from '@storyblok/react/rsc';
+import { getApiClient } from '@/lib/storyblok';
+import { renderContent } from '@/lib/actions';
 
 export default async function Page({ params }) {
 	const { slug } = await params;
 
-	let fullSlug = slug ? slug.join('/') : 'home';
+	const fullSlug = slug ? slug.join('/') : 'home';
 
-	let sbParams = {
-		version: 'draft',
-	};
+	const result = await getApiClient().stories.get(fullSlug, {
+		query: { version: 'draft' },
+	});
 
-	const storyblokApi = getStoryblokApi();
-	let { data } = await storyblokApi.get(`cdn/stories/${fullSlug}`, sbParams);
-
-	return <StoryblokStory story={data.story} />;
+	return <StoryblokPreview story={result.data.story} renderContent={renderContent} />;
 }

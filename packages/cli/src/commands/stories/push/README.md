@@ -26,6 +26,7 @@ storyblok stories push --space YOUR_SPACE_ID
 | `-d, --dry-run`       | Preview changes without applying them to Storyblok                                                                                | `false`           |
 | `--cleanup`           | Delete local story files after a successful push                                                                                  | `false`           |
 | `--publish`           | Publish stories after pushing (otherwise they remain unpublished/unpublished changes)                                             | `false`           |
+| `--validate <mode>`   | How to handle stories that do not match local component schemas: `strict` (abort), `warn` (report and push), `ignore` (skip)      | `strict`          |
 
 ## Notes
 

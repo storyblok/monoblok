@@ -23,6 +23,19 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/setup-node
 
+      # A PR that adds a package needs its folder as a scope, but the checkout
+      # above is `main`. List the PR's `packages/` folders through the API, so
+      # only their names reach the config and no PR code runs.
+      - name: Collect PR package scopes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          scopes=$(gh api "repos/$HEAD_REPO/contents/packages?ref=$HEAD_SHA" \
+            --jq '[.[] | select(.type == "dir") | .name] | join(",")')
+          echo "COMMITLINT_PR_SCOPES=$scopes" >> "$GITHUB_ENV"
+
       # The PR title becomes the squash commit message, so it has to satisfy
       # the same rules as every other commit, including the scope requirement.
       - name: Lint PR title

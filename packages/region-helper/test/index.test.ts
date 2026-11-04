@@ -23,6 +23,8 @@ import {
   CN_API_DOMAIN,
   CA_API_DOMAIN,
   AP_API_DOMAIN,
+  EDITOR_ORIGINS,
+  isEditorOrigin,
 } from "../src";
 
 const bigIntSpaceIds = {
@@ -277,5 +279,21 @@ describe("isSpaceIdWithinRange", () => {
   it("should return false for very large numbers as strings", () => {
     expect(isSpaceIdWithinRange("9007199254740992")).toBe(false); // Beyond safe integer
     expect(isSpaceIdWithinRange("99999999999999999999")).toBe(false);
+  });
+});
+
+describe("isEditorOrigin", () => {
+  it("should accept every Visual Editor origin", () => {
+    for (const origin of EDITOR_ORIGINS) {
+      expect(isEditorOrigin(origin)).toBe(true);
+    }
+  });
+
+  it("should reject origins that only resemble a Visual Editor origin", () => {
+    expect(isEditorOrigin("http://app.storyblok.com")).toBe(false);
+    expect(isEditorOrigin("https://app.storyblok.com/")).toBe(false);
+    expect(isEditorOrigin("https://app.storyblok.com.example.com")).toBe(false);
+    expect(isEditorOrigin("https://evil-storyblok.io")).toBe(false);
+    expect(isEditorOrigin("null")).toBe(false);
   });
 });

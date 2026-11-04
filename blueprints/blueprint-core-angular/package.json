@@ -1,0 +1,44 @@
+{
+  "name": "blueprint-core-angular",
+  "version": "0.0.0",
+  "scripts": {
+    "ng": "ng",
+    "dev": "ng serve --ssl",
+    "start": "ng serve --ssl",
+    "build": "ng build",
+    "watch": "ng build --watch --configuration development",
+    "test": "ng test",
+    "serve:ssr:my-storyblok-app": "node dist/my-storyblok-app/server/server.mjs"
+  },
+  "nx": {
+    "includedScripts": [
+      "build"
+    ]
+  },
+  "private": true,
+  "dependencies": {
+    "@angular/common": "^21.2.23",
+    "@angular/compiler": "^21.2.23",
+    "@angular/core": "^21.2.23",
+    "@angular/forms": "^21.2.23",
+    "@angular/platform-browser": "^21.2.23",
+    "@angular/platform-server": "^21.2.23",
+    "@angular/router": "^21.2.23",
+    "@angular/ssr": "^21.2.24",
+    "@storyblok/angular": "workspace:^",
+    "express": "^5.1.0",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0"
+  },
+  "devDependencies": {
+    "@angular/build": "^21.2.24",
+    "@angular/cli": "^21.2.24",
+    "@angular/compiler-cli": "^21.2.23",
+    "@types/express": "^5.0.1",
+    "@types/node": "^20.17.19",
+    "jsdom": "^28.0.0",
+    "prettier": "^3.8.1",
+    "typescript": "~5.9.2",
+    "vitest": "^4.0.8"
+  }
+}

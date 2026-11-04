@@ -1,0 +1,21 @@
+{
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "tags": [
+    "blueprint"
+  ],
+  "implicitDependencies": [
+    "@storyblok/blueprint-sync"
+  ],
+  "targets": {
+    "build": {
+      "inputs": [
+        "blueprint",
+        "^default"
+      ],
+      "outputs": [
+        "{projectRoot}/.next"
+      ]
+    },
+    "smoke": {}
+  }
+}

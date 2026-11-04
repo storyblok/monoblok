@@ -72,6 +72,7 @@ export default defineNuxtModule<AllModuleOptions>({
       "useStoryblok",
       "useStoryblokApi",
       "useStoryblokBridge",
+      "editableField",
       "renderRichText",
       "StoryblokRichText",
       "useStoryblokRichText",

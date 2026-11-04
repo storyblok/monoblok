@@ -189,6 +189,7 @@ const preconditions = {
 describe("stories push command", () => {
   beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
   afterEach(() => {
+    process.exitCode = undefined;
     vi.resetAllMocks();
     vi.clearAllMocks();
     vol.reset();
@@ -1713,6 +1714,7 @@ describe("stories push command", () => {
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining("- page.stray (in stories: story-a)"),
       );
+      expect(process.exitCode).toBe(1);
     });
 
     it("should not delete local stories when validation fails even if --cleanup is passed", async () => {
@@ -1766,6 +1768,128 @@ describe("stories push command", () => {
       );
     });
 
+    it("should warn about drift fields and push them as they are with --validate=warn", async () => {
+      const storyA = makeMockStory({
+        slug: "story-a",
+        content: { _uid: randomUUID(), component: "page", stray: 1 },
+      });
+      preconditions.canLoadStories([storyA]);
+      preconditions.canLoadComponents([makeMockComponent({ name: "page", schema: {} })]);
+      const remoteStories = preconditions.canCreateStories([storyA]);
+      preconditions.canUpdateStories(remoteStories);
+
+      await storiesCommand.parseAsync([
+        "node",
+        "test",
+        "push",
+        "--space",
+        DEFAULT_SPACE,
+        "--validate=warn",
+      ]);
+
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining("Schema validation found issues. Continuing the push in warn mode"),
+      );
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining("- page.stray (in stories: story-a)"),
+      );
+      expect(actions.updateStory).toHaveBeenCalledWith(
+        DEFAULT_SPACE,
+        remoteStories[0].id,
+        expect.objectContaining({
+          story: expect.objectContaining({
+            content: expect.objectContaining({ stray: 1 }),
+          }),
+        }),
+      );
+      expect(getReport()?.status).toBe("SUCCESS");
+      expect(process.exitCode ?? 0).toBe(0);
+      expect(getLogFileContents(LOG_PREFIX)).toContain("Schema validation found issues");
+    });
+
+    it("should warn about missing component schemas and push the content as it is with --validate=warn", async () => {
+      const storyA = makeMockStory({
+        slug: "story-a",
+        content: { _uid: randomUUID(), component: "unknown_component", title: "Hi" },
+      });
+      preconditions.canLoadStories([storyA]);
+      preconditions.canLoadComponents([makeMockComponent({ name: "page", schema: {} })]);
+      const remoteStories = preconditions.canCreateStories([storyA]);
+      preconditions.canUpdateStories(remoteStories);
+
+      await storiesCommand.parseAsync([
+        "node",
+        "test",
+        "push",
+        "--space",
+        DEFAULT_SPACE,
+        "--validate=warn",
+      ]);
+
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining("- unknown_component (in stories: story-a)"),
+      );
+      expect(actions.updateStory).toHaveBeenCalledWith(
+        DEFAULT_SPACE,
+        remoteStories[0].id,
+        expect.objectContaining({
+          story: expect.objectContaining({
+            content: expect.objectContaining({ component: "unknown_component", title: "Hi" }),
+          }),
+        }),
+      );
+      expect(getReport()?.status).toBe("SUCCESS");
+    });
+
+    it("should skip schema validation with --validate=ignore", async () => {
+      const storyA = makeMockStory({
+        slug: "story-a",
+        content: { _uid: randomUUID(), component: "page", stray: 1 },
+      });
+      preconditions.canLoadStories([storyA]);
+      preconditions.canLoadComponents([makeMockComponent({ name: "page", schema: {} })]);
+      const remoteStories = preconditions.canCreateStories([storyA]);
+      preconditions.canUpdateStories(remoteStories);
+
+      await storiesCommand.parseAsync([
+        "node",
+        "test",
+        "push",
+        "--space",
+        DEFAULT_SPACE,
+        "--validate=ignore",
+      ]);
+
+      expect(console.warn).not.toHaveBeenCalledWith(expect.stringContaining("Schema validation"));
+      expect(console.error).not.toHaveBeenCalledWith(expect.stringContaining("Schema validation"));
+      expect(actions.updateStory).toHaveBeenCalledWith(
+        DEFAULT_SPACE,
+        remoteStories[0].id,
+        expect.objectContaining({
+          story: expect.objectContaining({
+            content: expect.objectContaining({ stray: 1 }),
+          }),
+        }),
+      );
+      expect(getReport()?.status).toBe("SUCCESS");
+    });
+
+    it("should reject an invalid --validate value", async () => {
+      const push = storiesCommand.commands.find((command) => command.name() === "push")!;
+      push.exitOverride();
+
+      await expect(
+        storiesCommand.parseAsync([
+          "node",
+          "test",
+          "push",
+          "--space",
+          DEFAULT_SPACE,
+          "--validate=loose",
+        ]),
+      ).rejects.toThrow(/Allowed choices/i);
+    });
+
     it("should proceed with the push when every content field is declared in its schema", async () => {
       const storyA = makeMockStory({
         slug: "story-a",
@@ -1786,7 +1910,7 @@ describe("stories push command", () => {
           name: "page",
           schema: {
             headline: { type: "text" },
-            color: { type: "custom", field_type: "official-colorpicker" },
+            color: { type: "custom", field_type: "storyblok-colorpicker" },
           },
         }),
       ]);
@@ -1824,8 +1948,8 @@ describe("stories push command", () => {
         makeMockComponent({
           name: "page",
           schema: {
-            color: { type: "custom", field_type: "official-colorpicker" },
-            secondary_color: { type: "custom", field_type: "official-colorpicker" },
+            color: { type: "custom", field_type: "storyblok-colorpicker" },
+            secondary_color: { type: "custom", field_type: "storyblok-colorpicker" },
           },
         }),
       ]);
@@ -1835,12 +1959,12 @@ describe("stories push command", () => {
       await storiesCommand.parseAsync(["node", "test", "push", "--space", DEFAULT_SPACE]);
 
       const warnCalls = (console.warn as unknown as ReturnType<typeof vi.fn>).mock.calls.filter(
-        (call) => typeof call[0] === "string" && call[0].includes("official-colorpicker"),
+        (call) => typeof call[0] === "string" && call[0].includes("storyblok-colorpicker"),
       );
       expect(warnCalls).toHaveLength(1);
       const logFile = getLogFileContents(LOG_PREFIX);
       expect(logFile).toContain(
-        'The custom plugin \\"official-colorpicker\\" may contain references that require manual updates.',
+        'The custom plugin \\"storyblok-colorpicker\\" may contain references that require manual updates.',
       );
     });
 
@@ -1871,7 +1995,7 @@ describe("stories push command", () => {
         }),
         makeMockComponent({
           name: "hero",
-          schema: { bg_color: { type: "custom", field_type: "official-colorpicker" } },
+          schema: { bg_color: { type: "custom", field_type: "storyblok-colorpicker" } },
         }),
       ]);
       const remoteStories = preconditions.canCreateStories([storyA]);
@@ -1881,9 +2005,61 @@ describe("stories push command", () => {
 
       expect(console.warn).toHaveBeenCalledWith(
         expect.stringContaining(
-          'The custom plugin "official-colorpicker" may contain references that require manual updates.',
+          'The custom plugin "storyblok-colorpicker" may contain references that require manual updates.',
         ),
       );
+    });
+
+    it.each([
+      { value: 4 },
+      { value: "linked-story-uuid" },
+      { value: ["linked-story-uuid"] },
+      { value: { storyId: 123 } },
+    ])(
+      "should warn about a custom plugin value without a plugin key: $value",
+      async ({ value }) => {
+        const storyA = makeMockStory({
+          slug: "story-a",
+          content: { _uid: randomUUID(), component: "page", related: value },
+        });
+        preconditions.canLoadStories([storyA]);
+        preconditions.canLoadComponents([
+          makeMockComponent({
+            name: "page",
+            schema: { related: { type: "custom", field_type: "my-story-picker" } },
+          }),
+        ]);
+        const remoteStories = preconditions.canCreateStories([storyA]);
+        preconditions.canUpdateStories(remoteStories);
+
+        await storiesCommand.parseAsync(["node", "test", "push", "--space", DEFAULT_SPACE]);
+
+        expect(console.warn).toHaveBeenCalledWith(
+          expect.stringContaining(
+            'The custom plugin "my-story-picker" may contain references that require manual updates.',
+          ),
+        );
+      },
+    );
+
+    it("should not warn about an empty custom plugin value", async () => {
+      const storyA = makeMockStory({
+        slug: "story-a",
+        content: { _uid: randomUUID(), component: "page", related: "" },
+      });
+      preconditions.canLoadStories([storyA]);
+      preconditions.canLoadComponents([
+        makeMockComponent({
+          name: "page",
+          schema: { related: { type: "custom", field_type: "my-story-picker" } },
+        }),
+      ]);
+      const remoteStories = preconditions.canCreateStories([storyA]);
+      preconditions.canUpdateStories(remoteStories);
+
+      await storiesCommand.parseAsync(["node", "test", "push", "--space", DEFAULT_SPACE]);
+
+      expect(console.warn).not.toHaveBeenCalledWith(expect.stringContaining("my-story-picker"));
     });
 
     it("should handle errors when reading local stories fails", async () => {

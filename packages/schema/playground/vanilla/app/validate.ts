@@ -70,7 +70,7 @@ const validColor = validateStory(
         {
           component: "hero",
           headline: "Welcome",
-          accent_color: { plugin: "storyblok-colorpicker", color: "#0ea5e9" },
+          accent_color: { plugin: "official-colorpicker", color: "#0ea5e9" },
         },
       ],
     },
@@ -89,7 +89,7 @@ const badColor = validateStory(
         {
           component: "hero",
           headline: "Welcome",
-          accent_color: { plugin: "storyblok-colorpicker", color: 12345 },
+          accent_color: { plugin: "official-colorpicker", color: 12345 },
         },
       ],
     },

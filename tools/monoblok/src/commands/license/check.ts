@@ -31,6 +31,8 @@ const PERMITTED_LICENSES = [
  */
 const EXCLUDED_PACKAGES = [
   "/^@storyblok\\//", // regex: exclude all @storyblok/* packages
+  // axe-core is MPL-2.0. Legal approved an exception for it (used by @storyblok/accessibility-checker).
+  "/^axe-core@/",
 ];
 export function checkCommand(program: Command): void {
   program

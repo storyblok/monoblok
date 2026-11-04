@@ -43,6 +43,8 @@
 - 👀 **Dry Run Mode** - Preview migrations changes before applying them to your Storyblok space
 - 🔍 **Filtering Capabilities** - Filter components and stories using glob patterns and Storyblok
   query syntax
+- 🔎 **Content Search** - Find stories by text, block usage, tags, workflow stage, or a JSONPath
+  expression over their content, and stream the matches as JSONL for `jq` and other commands
 - 📊 **Verbose Logging** - Improved error handling and detailed logging options for debugging and
   monitoring
 
@@ -56,8 +58,8 @@
 
 ## Documentation
 
-> [!WARNING] Official documentation for this package v4 is still in development. In the meantime,
-> please refer to the internal documentation for the [v4 beta](src/README.md).
+For complete documentation, please visit the
+[package reference](https://www.storyblok.com/docs/tooling/cli).
 
 ## Setup
 

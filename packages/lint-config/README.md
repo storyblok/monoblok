@@ -121,7 +121,7 @@ Then update your `package.json`:
 - }
 + "devDependencies": {
 +   "@storyblok/lint-config": "^0.1.0",
-+   "oxlint": "^0.15.0"
++   "oxlint": "^1.45.0"
 + }
 ```
 

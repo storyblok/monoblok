@@ -16,6 +16,13 @@ export const CN_MANAGEMENT_API_DOMAIN = "app.storyblokchina.cn";
 export const AP_MANAGEMENT_API_DOMAIN = "api-ap.storyblok.com";
 export const CA_MANAGEMENT_API_DOMAIN = "api-ca.storyblok.com";
 
+/** Origins the Storyblok Visual Editor runs on. */
+export const EDITOR_ORIGINS: readonly string[] = [
+  "https://app.storyblok.com",
+  "https://app-beta.storyblok.com",
+  "https://app.storyblokchina.cn",
+];
+
 export const EU_CODE = "eu";
 export const US_CODE = "us";
 export const CN_CODE = "cn";
@@ -198,6 +205,19 @@ export function isSpaceIdWithinRange(spaceId: unknown): spaceId is number {
   }
 
   return validatedSpaceId >= 0 && getRegion(validatedSpaceId) !== undefined;
+}
+
+/**
+ * Checks whether an origin, such as `MessageEvent.origin`, is one of the
+ * Storyblok Visual Editor's origins.
+ * @example
+ * ```ts
+ * isEditorOrigin("https://app.storyblok.com") // true
+ * isEditorOrigin("https://app.storyblok.com.example.com") // false
+ * ```
+ */
+export function isEditorOrigin(origin: string): boolean {
+  return EDITOR_ORIGINS.includes(origin);
 }
 
 function getRegionDomain(region: Region): string {

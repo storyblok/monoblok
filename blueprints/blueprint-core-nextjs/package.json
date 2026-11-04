@@ -1,0 +1,27 @@
+{
+	"name": "blueprint-core-nextjs",
+	"version": "0.1.0",
+	"private": true,
+	"scripts": {
+		"dev": "next dev --experimental-https",
+		"build": "next build",
+		"start": "next start",
+		"lint": "eslint ."
+	},
+	"nx": {
+		"includedScripts": [
+			"build"
+		]
+	},
+	"dependencies": {
+		"@storyblok/react": "workspace:^",
+		"next": "^16.3.5",
+		"react": "^19.3.0",
+		"react-dom": "^19.3.0"
+	},
+	"devDependencies": {
+		"@netlify/plugin-nextjs": "^5.15.13",
+		"eslint": "^9.39.5",
+		"eslint-config-next": "^16.3.5"
+	}
+}

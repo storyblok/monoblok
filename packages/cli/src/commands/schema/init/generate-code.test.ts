@@ -1,3 +1,4 @@
+import ts from "typescript";
 import { describe, expect, it } from "vitest";
 
 import { mapFieldToWire } from "../map-to-wire";
@@ -15,6 +16,22 @@ import {
   resolveFolders,
   resolveVarNames,
 } from "./generate-code";
+
+/** Compiles and runs a generated block file, returning the block it defines. */
+function evaluateBlockFile(code: string): unknown {
+  const { outputText, diagnostics } = ts.transpileModule(code, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS },
+    reportDiagnostics: true,
+  });
+  expect(diagnostics).toEqual([]);
+  const exports: Record<string, unknown> = {};
+  const schemaModule = {
+    defineBlock: (block: unknown) => block,
+    defineField: (name: string, field: object) => ({ name, ...field }),
+  };
+  new Function("require", "exports", outputText)(() => schemaModule, exports);
+  return Object.values(exports)[0];
+}
 
 describe("generateComponentFile", () => {
   it("should omit component metadata that is already at its reset value", () => {
@@ -911,6 +928,23 @@ describe("generateComponentFile", () => {
     expect(result).toContain("internal_tag_ids");
     expect(result).not.toContain("metadata");
     expect(result).toContain("name: 'hero',");
+  });
+
+  it("should round-trip field option keys that are not identifiers", () => {
+    const custom = {
+      "weird key": "x",
+      "a: 1, injected: (() => 1)(), b": 1,
+      "it's": { "nested}\nkey": true },
+    };
+    const component = {
+      id: 1,
+      name: "hero",
+      schema: { title: { type: "text", pos: 0, custom } },
+    };
+
+    const block = evaluateBlockFile(generateComponentFile(component as any));
+
+    expect(block).toMatchObject({ fields: [{ custom }] });
   });
 
   it("should generate camelCase variable name from snake_case component name", () => {

@@ -4,22 +4,42 @@ import { createRichTextRenderer } from "./renderer";
 import type { StoryblokReactRichTextComponentProps, StoryblokReactRichTextProps } from "./renderer";
 import type { StoryblokBlockData } from "../types";
 
-function isStoryblokBlock(block: unknown): block is StoryblokBlockData {
-  if (typeof block !== "object" || block === null) {
-    return false;
-  }
+/**
+ * Renders a block through a registry. Extra props are spread onto the
+ * rendered component.
+ */
+type RegistryBlock = ComponentType<{ block: StoryblokBlockData } & Record<string, unknown>>;
 
-  const candidate = block as { _uid?: unknown; component?: unknown };
-  return typeof candidate["_uid"] === "string" && typeof candidate.component === "string";
+/**
+ * The `StoryblokBlock` of a registry, plus a variant of it with every
+ * registry warning silenced (used when `warnings={false}` is passed to
+ * `StoryblokRichText`).
+ */
+export type RichTextBlockRenderers = {
+  StoryblokBlock: RegistryBlock;
+  SilentStoryblokBlock: RegistryBlock;
+};
+
+function isStoryblokBlock(block: unknown): block is StoryblokBlockData {
+  return (
+    typeof block === "object" &&
+    block !== null &&
+    typeof Reflect.get(block, "component") === "string"
+  );
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /**
  * Returns a `StoryblokRichText` React component.
  *
- * When called without arguments it returns a standalone richtext renderer with
- * no embedded block support. Pass a `StoryblokBlock` to inject a default
- * `blok` renderer that delegates to it — this is what `defineStoryblokBlocks`
- * uses internally.
+ * When called without arguments it returns a standalone rich text renderer:
+ * embedded bloks render only through `components.blok`, and warn otherwise
+ * unless `warnings={false}`. Pass a registry's block renderers to inject a
+ * default `blok` renderer that delegates to them — this is what
+ * `defineStoryblokBlocks` uses internally.
  *
  * **Extra props for embedded blocks:** unlike `StoryblokBlock`, this
  * component cannot automatically forward extra props (e.g. `locale`) from an
@@ -35,31 +55,32 @@ function isStoryblokBlock(block: unknown): block is StoryblokBlockData {
  * ```
  *
  * **Performance:** the rendered output is memoized and recomputed only when
- * `document`, `optimizeImage`, `components`, or `data` change by reference.
- * Pass stable references (module-level constants or values wrapped in
- * `useMemo`) for `components` and `data` to get cache hits across renders.
+ * `document`, `optimizeImage`, `components`, `data`, or `warnings` change by
+ * reference. Pass stable references (module-level constants or values wrapped
+ * in `useMemo`) for `components` and `data` to get cache hits across renders.
  * Inline object literals create a new reference on every render and defeat
  * the cache.
  */
 export function createStoryblokRichText(
-  StoryblokBlock?: ComponentType<{ block: StoryblokBlockData }>,
-) {
+  blocks?: RichTextBlockRenderers,
+): (props: StoryblokReactRichTextComponentProps) => ReactNode {
   // Captured once per factory call — stable for the lifetime of the returned component.
-  const DefaultBlock = StoryblokBlock
+  const DefaultBlock = blocks
     ? function DefaultBlock({ attrs, context }: StoryblokReactRichTextProps<"blok">) {
-        if (!Array.isArray(attrs?.body)) {
-          return null;
-        }
-        // Opt-in prop forwarding: a plain-object `data` passed to StoryblokRichText
-        // is spread onto every embedded block, mirroring the extra props
-        // StoryblokBlock forwards to a block it renders directly.
-        const extraProps =
-          typeof context?.data === "object" && context.data !== null ? context.data : undefined;
-        return attrs.body.map((block) =>
-          isStoryblokBlock(block) ? (
-            <StoryblokBlock block={block} key={block["_uid"]} {...extraProps} />
-          ) : null,
-        );
+        const body: unknown[] = Array.isArray(attrs?.body) ? attrs.body : [];
+        // `warnings={false}` on `StoryblokRichText` also silences the
+        // registry's warnings for the embedded blocks it renders.
+        const Block =
+          context?.warnings === false ? blocks.SilentStoryblokBlock : blocks.StoryblokBlock;
+        // A plain-object `data` passed to `StoryblokRichText` is forwarded to
+        // every embedded block as extra props, like the extra props
+        // `StoryblokBlock` passes to a block it renders directly.
+        const extraProps = isPlainObject(context?.data) ? context.data : {};
+        return body.filter(isStoryblokBlock).map((block, index) => (
+          // `StoryblokBlock` passes `block` after the extra props, so a
+          // `data.block` can't replace the block.
+          <Block {...extraProps} key={block._uid ?? index} block={block} />
+        ));
       }
     : undefined;
 
@@ -68,6 +89,7 @@ export function createStoryblokRichText(
     optimizeImage,
     components,
     data,
+    warnings,
   }: StoryblokReactRichTextComponentProps): ReactNode {
     // Memoize the rendered output so that the full document traversal
     // (normalizeNodes → addKeys → renderChildren) is skipped when none of
@@ -81,9 +103,10 @@ export function createStoryblokRichText(
           optimizeImage,
           components: DefaultBlock ? { blok: DefaultBlock, ...components } : components,
           data,
+          warnings,
         })(document),
       // eslint-disable-next-line react-hooks/exhaustive-deps
-      [document, optimizeImage, components, data],
+      [document, optimizeImage, components, data, warnings],
     );
   };
 }

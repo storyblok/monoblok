@@ -10,7 +10,7 @@ import { render } from "@testing-library/react";
 // defineStoryblokBlocks() call time), importing `page.tsx` before
 // `storyblok.ts` — as a real app does when a layout imports its block
 // component directly — threw:
-//   [Storyblok] defineStoryblokBlocks: components["page"] is undefined.
+//   [storyblok] defineStoryblokBlocks: components["page"] is undefined.
 // because `Page`'s `const` binding was still in the temporal dead zone when
 // storyblok.ts's module body ran. The factory API defers reading
 // `components` until the first render, by which point the cycle has

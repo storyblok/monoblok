@@ -18,7 +18,7 @@ describe("calling StoryblokBlock synchronously during module evaluation (not via
     // (being entered mid-cycle, before Page is assigned) immediately invokes
     // StoryblokBlock as a plain function at its own module scope.
     await expect(import("./page-eager")).rejects.toThrow(
-      '[Storyblok] defineStoryblokBlocks: components["page"] is undefined.',
+      '[storyblok] defineStoryblokBlocks: components["page"] is undefined.',
     );
   });
 });

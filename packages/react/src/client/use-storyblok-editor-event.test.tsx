@@ -94,7 +94,7 @@ describe("useStoryblokEditorEvent", () => {
 
     await vi.waitFor(() =>
       expect(consoleError).toHaveBeenCalledWith(
-        "[Storyblok] useStoryblokEditorEvent: live preview unavailable.",
+        "[storyblok] useStoryblokEditorEvent: live preview unavailable.",
         bridgeError,
       ),
     );

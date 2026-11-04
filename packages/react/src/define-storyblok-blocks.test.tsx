@@ -17,6 +17,10 @@ import { defineStoryblokBlocks } from "./define-storyblok-blocks";
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
+const missingMessage = (type: string) =>
+  `[storyblok] No component registered for block type "${type}". ` +
+  "Register it in `defineStoryblokBlocks(() => ({ components }))` or provide a `fallback`.";
+
 function makeBlockData(overrides: { component: string } & Record<string, unknown>): BlockContent {
   return { _uid: "test-uid", ...overrides } as BlockContent;
 }
@@ -81,18 +85,19 @@ describe("defineStoryblokBlocks", () => {
       const { StoryblokBlock } = defineStoryblokBlocks(() => ({ components: {} }));
       const { container } = render(<StoryblokBlock block={unknownBlock} />);
       expect(container.firstChild).toBeNull();
-      expect(consoleSpy).toHaveBeenCalledWith('[Storyblok] No component registered for "unknown".');
+      expect(consoleSpy).toHaveBeenCalledWith(missingMessage("unknown"));
       consoleSpy.mockRestore();
     });
 
-    it("returns null and logs an error when the block prop is missing", () => {
-      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    it("should render nothing and warn when the block prop is undefined", () => {
+      const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
       const { StoryblokBlock } = defineStoryblokBlocks(() => ({ components: {} }));
-      // @ts-expect-error — testing missing required prop
-      const { container } = render(<StoryblokBlock />);
+      const { container } = render(<StoryblokBlock block={undefined} />);
       expect(container.firstChild).toBeNull();
       expect(consoleSpy).toHaveBeenCalledWith(
-        "[Storyblok] StoryblokBlock: 'block' prop is required.",
+        expect.stringContaining(
+          "[storyblok] <StoryblokBlock /> received an undefined `block` prop",
+        ),
       );
       consoleSpy.mockRestore();
     });
@@ -558,7 +563,7 @@ describe("defineStoryblokBlocks", () => {
       const resultB = defineStoryblokBlocks(() => ({ components: { teaser: Teaser } }));
 
       render(<resultA.StoryblokBlock block={teaserBlock} />);
-      expect(consoleSpy).toHaveBeenCalledWith('[Storyblok] No component registered for "teaser".');
+      expect(consoleSpy).toHaveBeenCalledWith(missingMessage("teaser"));
       consoleSpy.mockRestore();
 
       const { getByTestId } = render(<resultB.StoryblokBlock block={teaserBlock} />);
@@ -610,11 +615,13 @@ describe("defineStoryblokBlocks", () => {
   // when the returned StoryblokBlock renders, not at defineStoryblokBlocks() call time.
 
   describe("registry validation", () => {
-    it("throws a clear error when components is missing", () => {
-      const { StoryblokBlock } = defineStoryblokBlocks(() => ({}) as any);
-      expect(() => render(<StoryblokBlock block={pageBlock} />)).toThrow(
-        '[Storyblok] defineStoryblokBlocks: "components" is required.',
-      );
+    it("should treat omitted components as an empty registry", () => {
+      const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const { StoryblokBlock } = defineStoryblokBlocks(() => ({}));
+      const { container } = render(<StoryblokBlock block={pageBlock} />);
+      expect(container.firstChild).toBeNull();
+      expect(consoleSpy).toHaveBeenCalledWith(missingMessage("page"));
+      consoleSpy.mockRestore();
     });
 
     it("throws a clear error naming the block key when an entry is undefined", () => {
@@ -622,7 +629,7 @@ describe("defineStoryblokBlocks", () => {
         components: { teaser: undefined as any },
       }));
       expect(() => render(<StoryblokBlock block={teaserBlock} />)).toThrow(
-        '[Storyblok] defineStoryblokBlocks: components["teaser"] is undefined.',
+        '[storyblok] defineStoryblokBlocks: components["teaser"] is undefined.',
       );
     });
 
@@ -631,7 +638,7 @@ describe("defineStoryblokBlocks", () => {
         components: { teaser: { suspense: true } as any },
       }));
       expect(() => render(<StoryblokBlock block={teaserBlock} />)).toThrow(
-        '[Storyblok] defineStoryblokBlocks: components["teaser"] is missing "component".',
+        '[storyblok] defineStoryblokBlocks: components["teaser"] is missing "component".',
       );
     });
   });
@@ -904,7 +911,7 @@ describe("registry is pre-computed on first render, then cached", () => {
 
     const { container } = render(<StoryblokBlock block={teaserBlock} />);
     expect(container.firstChild).toBeNull();
-    expect(consoleSpy).toHaveBeenCalledWith('[Storyblok] No component registered for "teaser".');
+    expect(consoleSpy).toHaveBeenCalledWith(missingMessage("teaser"));
     consoleSpy.mockRestore();
   });
 
@@ -1156,19 +1163,14 @@ describe("StoryblokBlockComponentProps — type", () => {
     expectTypeOf<keyof Props>().toEqualTypeOf<"block" | "editable">();
   });
 
-  it("with TExtraProps, adds its keys typed as optional (Partial<TExtraProps>)", () => {
-    type Props = StoryblokBlockComponentProps<{ title: string }, { locale: string }>;
-    expectTypeOf<keyof Props>().toEqualTypeOf<"block" | "editable" | "locale">();
-    expectTypeOf<Props["locale"]>().toEqualTypeOf<string | undefined>();
-  });
-
-  it("omitting a TExtraProps field compiles (it's optional, not required)", () => {
-    type Props = StoryblokBlockComponentProps<{ title: string }, { locale: string }>;
-    // Should compile even though `locale` is part of TExtraProps: forcing it to
-    // be required here would make this component unassignable to the
-    // registry in defineStoryblokBlocks (see that function's docs).
-    const _p: Props = { block: { ...pageBlock, title: "hello" } };
-    void _p;
+  it("should keep the optionality declared in TExtraProps", () => {
+    type Props = StoryblokBlockComponentProps<
+      { title: string },
+      { locale: string; count?: number }
+    >;
+    expectTypeOf<keyof Props>().toEqualTypeOf<"block" | "editable" | "locale" | "count">();
+    expectTypeOf<Props["locale"]>().toEqualTypeOf<string>();
+    expectTypeOf<Props["count"]>().toEqualTypeOf<number | undefined>();
   });
 
   it("a component typed with TExtraProps registers against and receives props from the matching defineStoryblokBlocks<TExtraProps>", () => {
@@ -1195,9 +1197,9 @@ describe("StoryblokBlockComponentProps — type", () => {
 describe("StoryblokBlock — type safety", () => {
   const { StoryblokBlock } = defineStoryblokBlocks(() => ({ components: {} }));
 
-  it("requires the block prop", () => {
-    // @ts-expect-error — block is required
+  it("should accept an omitted block, so `story?.content` can be passed", () => {
     void (<StoryblokBlock />);
+    void (<StoryblokBlock block={undefined} />);
   });
 
   it("accepts a single BlockContent", () => {
@@ -1267,5 +1269,150 @@ describe("StoryblokBlock — type safety with TExtraProps", () => {
   it("still requires the declared prop's type", () => {
     // @ts-expect-error — locale must be a string
     void (<StoryblokBlock block={pageBlock} locale={123} />);
+  });
+});
+
+// ─── Alignment with the Svelte and Astro SDKs ───────────────────────────────
+
+describe("warnings", () => {
+  it("should print each warning once per registry", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    // `console.warn` is a shared mock (see test-setup.ts): drop earlier calls.
+    warnSpy.mockClear();
+    const { StoryblokBlock } = defineStoryblokBlocks(() => ({ components: {} }));
+    render(<StoryblokBlock block={unknownBlock} />);
+    render(<StoryblokBlock block={unknownBlock} />);
+    render(<StoryblokBlock />);
+    render(<StoryblokBlock />);
+    expect(warnSpy).toHaveBeenCalledTimes(2);
+    expect(warnSpy).toHaveBeenCalledWith(missingMessage("unknown"));
+
+    // A second registry warns on its own.
+    const other = defineStoryblokBlocks(() => ({ components: {} }));
+    render(<other.StoryblokBlock block={unknownBlock} />);
+    expect(warnSpy).toHaveBeenCalledTimes(3);
+    warnSpy.mockRestore();
+  });
+
+  it("should not warn when the registry is defined with warnings: false", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    // `console.warn` is a shared mock (see test-setup.ts): drop earlier calls.
+    warnSpy.mockClear();
+    const { StoryblokBlock } = defineStoryblokBlocks(() => ({ components: {}, warnings: false }));
+    render(<StoryblokBlock block={unknownBlock} />);
+    render(<StoryblokBlock />);
+    expect(warnSpy).not.toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
+
+  it("should not warn about an undefined block inside the Visual Editor", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    // `console.warn` is a shared mock (see test-setup.ts): drop earlier calls.
+    warnSpy.mockClear();
+    const original = window.location.href;
+    // `window.location` is a plain stub (see test-setup.ts), so `href` is set directly.
+    window.location.href =
+      "http://localhost:3000/?_storyblok=1&_storyblok_c=page&_storyblok_tk[space_id]=1";
+    try {
+      const { StoryblokBlock } = defineStoryblokBlocks(() => ({ components: {} }));
+      render(<StoryblokBlock />);
+      expect(warnSpy).not.toHaveBeenCalled();
+    } finally {
+      window.location.href = original;
+      warnSpy.mockRestore();
+    }
+  });
+
+  it("should silence embedded block warnings when StoryblokRichText has warnings={false}", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    // `console.warn` is a shared mock (see test-setup.ts): drop earlier calls.
+    warnSpy.mockClear();
+    const { StoryblokRichText } = defineStoryblokBlocks(() => ({ components: {} }));
+    const doc: StoryblokRichTextInput = {
+      type: "doc",
+      content: [{ type: "blok", attrs: { id: "b1", body: [{ component: "ghost", _uid: "g" }] } }],
+    };
+    render(<StoryblokRichText document={doc} warnings={false} />);
+    expect(warnSpy).not.toHaveBeenCalled();
+    render(<StoryblokRichText document={doc} />);
+    expect(warnSpy).toHaveBeenCalledWith(missingMessage("ghost"));
+    warnSpy.mockRestore();
+  });
+});
+
+describe("injected props", () => {
+  function Echo({ block, editable }: { block: BlockContent; editable?: StoryblokEditableProps }) {
+    return (
+      <span
+        data-testid="echo"
+        data-uid={block._uid}
+        data-editable={String(editable !== undefined)}
+      />
+    );
+  }
+
+  it("should not let an extra prop replace the injected block or editable", () => {
+    const { StoryblokBlock } = defineStoryblokBlocks(() => ({ components: { page: Echo } }));
+    const extra: Record<string, unknown> = { block: teaserBlock, editable: undefined };
+    // Untyped extra props, as rich text `data` would pass them.
+    const Untyped: ComponentType<Record<string, unknown>> = StoryblokBlock;
+    const { getByTestId } = render(<Untyped {...extra} block={pageBlock} />);
+    expect(getByTestId("echo")).toHaveAttribute("data-uid", "uid-page");
+    expect(getByTestId("echo")).toHaveAttribute("data-editable", "true");
+  });
+
+  it("should not let rich text data replace an embedded block", () => {
+    const { StoryblokRichText } = defineStoryblokBlocks(() => ({ components: { page: Echo } }));
+    const doc: StoryblokRichTextInput = {
+      type: "doc",
+      content: [{ type: "blok", attrs: { id: "b1", body: [pageBlock] } }],
+    };
+    const { getByTestId } = render(
+      <StoryblokRichText document={doc} data={{ block: teaserBlock }} />,
+    );
+    expect(getByTestId("echo")).toHaveAttribute("data-uid", "uid-page");
+  });
+
+  it("should render an embedded blok without a _uid", () => {
+    const { StoryblokRichText } = defineStoryblokBlocks(() => ({ components: { page: Page } }));
+    const doc: StoryblokRichTextInput = {
+      type: "doc",
+      content: [{ type: "blok", attrs: { id: "b1", body: [{ component: "page" }] } }],
+    };
+    const { getByTestId } = render(<StoryblokRichText document={doc} />);
+    expect(getByTestId("page")).toBeInTheDocument();
+  });
+
+  it("should not forward an array data as extra props", () => {
+    let received: Record<string, unknown> | undefined;
+    function Spy(props: { block: BlockContent }) {
+      received = props;
+      return null;
+    }
+    const { StoryblokRichText } = defineStoryblokBlocks(() => ({ components: { page: Spy } }));
+    const doc: StoryblokRichTextInput = {
+      type: "doc",
+      content: [{ type: "blok", attrs: { id: "b1", body: [pageBlock] } }],
+    };
+    render(<StoryblokRichText document={doc} data={["a", "b"]} />);
+    expect(received).not.toHaveProperty("0");
+  });
+});
+
+describe("reserved and declared extra props — type safety", () => {
+  it("should reject block or editable as extra props", () => {
+    // @ts-expect-error — `block` is reserved
+    defineStoryblokBlocks<{ block: string }>(() => ({ components: {} }));
+    // @ts-expect-error — `editable` is reserved
+    defineStoryblokBlocks<{ editable: boolean }>(() => ({ components: {} }));
+  });
+
+  it("should reject a component that requires an undeclared extra prop", () => {
+    function NeedsLocale({ locale }: { block: BlockContent; locale: string }) {
+      return <span>{locale}</span>;
+    }
+    // @ts-expect-error — `locale` isn't declared in TExtraProps
+    defineStoryblokBlocks(() => ({ components: { teaser: NeedsLocale } }));
+    defineStoryblokBlocks<{ locale: string }>(() => ({ components: { teaser: NeedsLocale } }));
   });
 });

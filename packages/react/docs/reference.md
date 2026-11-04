@@ -350,7 +350,7 @@ it, they only accept `block`/`blocks`.
 
 Import from `@storyblok/react`.
 
-```ts
+```tsx
 function defineStoryblokBlocks(config: StoryblokBlocksOptions): StoryblokBlocksResult<TExtraProps>;
 ```
 
@@ -417,7 +417,7 @@ For RSC routes driven by a Server Action, use `StoryblokPreview` from
 `renderContent`), but `renderContent` there is `async` and reruns on the
 server.
 
-```ts
+```tsx
 function StoryblokPreview(options: StoryblokPreviewProps<TStory>): ReactNode;
 ```
 
@@ -457,7 +457,7 @@ here is `async` and reruns on the server. Requires React 19 (`React.use`)
 and Server Actions; use `@storyblok/react` on React 18 or with
 `output: 'export'`.
 
-```ts
+```tsx
 function StoryblokPreview(options: StoryblokPreviewProps<TStory>): Promise<ReactNode>;
 ```
 
@@ -490,7 +490,7 @@ with the updated story—triggering a re-render of the calling component.
 
 Import from `@storyblok/react`.
 
-```ts
+```tsx
 function useStoryblokState(
   story: TStory,
   options?: UseStoryblokStateOptions,
@@ -539,7 +539,7 @@ https://github.com/storyblok/monoblok/pull/794.
 
 Import from `@storyblok/react`.
 
-```ts
+```tsx
 function useStoryblokEditorEvent(
   callback: (story: {
     id: TStory["id"];
@@ -579,7 +579,7 @@ function Page({ story }: { story: Story }) {
 
 Import from `@storyblok/react`.
 
-```ts
+```tsx
 function storyblokEditable(block?: { _editable?: string }): ({ data-blok-c?: undefined; data-blok-uid?: undefined }) | ({ data-blok-c: string; data-blok-uid: string });
 ```
 
@@ -609,7 +609,7 @@ Prefer `<StoryblokRichText>` for typical use; use this when you need a plain fun
 
 Import from `@storyblok/react`.
 
-```ts
+```tsx
 function createRichTextRenderer(
   options: StoryblokReactRichTextRenderContext,
 ): (document: StoryblokRichTextInput) => ReactNode;

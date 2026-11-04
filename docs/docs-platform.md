@@ -14,6 +14,25 @@ Astro + Starlight docs site. MDX files for API/package reference, Storyblok CMS 
 - **Always run `pnpm lint`** before pushing — CI checks Prettier, ESLint, and Stylelint
 - **Storyblok space IDs:** dev `286748359290148`, prod `212319`
 
+## Library references
+
+A package's reference page on the docs site is written here, in plain Markdown, and synced to the
+docs platform when the package is published:
+
+- **Location:** `packages/<pkg>/docs/reference.md`, plus `docs/migrations/<slug>.md` for each
+  migration guide. One file per package, not per version: the release tag pins the version.
+- **Template:** Frontmatter with `title` and `description`, an H1 that matches the title, an intro,
+  then `Requirements` (optional), `Installation`, `Usage`, `TypeScript` (optional), the API
+  sections, and `Further resources` (optional, a list of `- [Title](url)—Description`).
+- **Markdown only:** No HTML or MDX components. Use GitHub alerts (`> [!NOTE]`) for asides and
+  absolute `https://www.storyblok.com/docs/...` URLs for links, so the file reads the same on
+  GitHub, on npm, and on the docs site.
+- **Checks:** `node tools/docs-check.mjs` checks the template. CI also runs Vale with the docs
+  platform's config. Both run in the `library-docs` job.
+- **Shipping:** Add `docs` to `files` in `package.json`. After the Publish workflow publishes a
+  package with a `docs/reference.md`, it notifies the docs platform, which reads the docs from the
+  npm tarball and opens a PR with the regenerated pages.
+
 ## Stage docs in a PR
 
 Internal contributors draft user-facing docs next to the code they describe, so reviewers see both

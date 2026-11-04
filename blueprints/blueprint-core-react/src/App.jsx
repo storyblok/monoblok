@@ -1,26 +1,25 @@
-import { useEffect, useState } from 'react';
+import useSWR from 'swr';
 import { StoryblokPreview } from '@storyblok/react';
 import { useParams } from 'react-router';
 
 import { apiClient, StoryblokBlock } from './storyblok';
 
+async function fetchStory(slug) {
+	const result = await apiClient.stories.get(slug, {
+		query: { version: 'draft' },
+	});
+	if (!result.data) throw new Error(`Story not found: ${slug}`);
+	return result.data.story;
+}
+
 export default function App() {
 	const currentYear = new Date().getFullYear();
 	const { '*': slug } = useParams();
-	const [story, setStory] = useState(null);
+	const { data: story, error } = useSWR(slug || 'home', fetchStory);
 
-	useEffect(() => {
-		let ignore = false;
-		apiClient.stories
-			.get(slug || 'home', { query: { version: 'draft' } })
-			.then((result) => {
-				if (!ignore) setStory(result.data?.story ?? null);
-			});
-		return () => {
-			ignore = true;
-		};
-	}, [slug]);
-
+	if (error) {
+		return <div>Failed to load story.</div>;
+	}
 	if (!story?.content) {
 		return <div>Loading...</div>;
 	}

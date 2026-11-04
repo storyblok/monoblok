@@ -32,6 +32,11 @@ docs platform when the package is published:
 - **Shipping:** Add `docs` to `files` in `package.json`. After the Publish workflow publishes a
   package with a `docs/reference.md`, it notifies the docs platform, which reads the docs from the
   npm tarball and opens a PR with the regenerated pages.
+- **Who reviews what:** The DX team owns the package docs. A DX engineer reviews and merges them in
+  the same PR as the code, with no Docs review needed: the template check and Vale are the quality
+  gate. Ask the Docs team when a change needs a new section in the template, a new page, or a call
+  on wording that the checks can't settle. The sync PR on the docs platform needs a Docs approval
+  for now, while the process settles.
 
 ## Stage docs in a PR
 

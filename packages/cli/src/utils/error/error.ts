@@ -4,6 +4,7 @@ import { getUI } from "../../lib/ui";
 import type { FetchError } from "../fetch";
 import { APIError } from "./api-error";
 import { CommandError } from "./command-error";
+import { EXIT_CODE_USAGE_ERROR, getRuntimeErrorExitCode } from "./exit-code";
 import { FileSystemError } from "./filesystem-error";
 
 interface ErrorWithMessage {
@@ -126,7 +127,8 @@ export function handleError(
   });
 
   if (!process.exitCode) {
-    process.exitCode = error instanceof CommandError ? 2 : 1;
+    process.exitCode =
+      error instanceof CommandError ? EXIT_CODE_USAGE_ERROR : getRuntimeErrorExitCode();
   }
 }
 

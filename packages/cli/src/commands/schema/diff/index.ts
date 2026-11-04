@@ -8,6 +8,8 @@ import { diffSchema } from "../diff-schema";
 import type { NormalizedSchema } from "../types";
 import { formatSchemaDiff, isSpaceRef, resolveSource } from "./actions";
 
+const EXIT_CODE_SCHEMAS_DIFFER = 1;
+
 schemaCommand
   .command("diff")
   .description("Diff two schemas (space IDs or local entry files) and report what changed")
@@ -18,6 +20,10 @@ schemaCommand
   .requiredOption(
     "--to <space-id|path>",
     "Target schema: a space ID or a path to a schema entry file",
+  )
+  .option(
+    "--exit-code",
+    "Exit 0 when the schemas match, 1 when they differ, and 2 on error, like git diff --exit-code",
   )
   .addHelpText(
     "after",
@@ -31,9 +37,11 @@ the per-space group uuids and tag ids are translated to folder paths and tag
 names before comparing.
 
 "removed" means absent from --to, not that a push would delete it: \`schema push\`
-leaves remote-only entities alone unless it is given --delete.`,
+leaves remote-only entities alone unless it is given --delete.
+
+Without --exit-code, differences exit 0 and failures exit non-zero.`,
   )
-  .action(async (options: { from: string; to: string }, command) => {
+  .action(async (options: { from: string; to: string; exitCode?: boolean }, command) => {
     const ui = getUI();
     const logger = getLogger();
     const { verbose } = command.optsWithGlobals();
@@ -88,6 +96,11 @@ leaves remote-only entities alone unless it is given --delete.`,
         unchanged: diffResult.unchanged,
         stale: diffResult.stale,
       });
+
+      const hasDrift = diffResult.creates + diffResult.updates + diffResult.stale > 0;
+      if (options.exitCode && hasDrift) {
+        process.exitCode = EXIT_CODE_SCHEMAS_DIFFER;
+      }
     } catch (maybeError) {
       handleError(toError(maybeError), verbose);
     }

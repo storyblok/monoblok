@@ -39,6 +39,7 @@ export type {
 export * from "./types";
 
 export { apiPlugin, useStoryblokBridge } from "@storyblok/js";
+export { editableField } from "@storyblok/js";
 export { StoryblokClient };
 
 const vEditableDirective: Directive<HTMLElement> = {

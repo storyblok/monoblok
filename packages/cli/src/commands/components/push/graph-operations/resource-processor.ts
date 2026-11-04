@@ -5,7 +5,7 @@ import type {
   ProcessingLevel,
   PushResults,
 } from "./types";
-import { determineProcessingOrder } from "./dependency-graph";
+import { ComponentNode, determineProcessingOrder } from "./dependency-graph";
 import { pushComponent } from "../actions";
 import type { ComponentCreate } from "../../../../types";
 import { getActiveConfig } from "../../../../lib/config";
@@ -79,11 +79,42 @@ export async function processAllResources(
         mergeResults(results, levelResults);
       }
     }
+    const linkResults = await linkPendingPresets(graph, space);
+    const unlinkedNames = new Set(linkResults.failed.map(({ name }) => name));
+    results.successful = results.successful.filter((name) => !unlinkedNames.has(name));
+    mergeResults(results, linkResults);
   } finally {
     for (const bar of bars.values()) {
       bar.stop();
     }
     ui.stopAllProgressBars();
+  }
+
+  for (const node of graph.nodes.values()) {
+    if (node instanceof ComponentNode) {
+      node.warnings.forEach((warning) => ui.warn(warning));
+    }
+  }
+
+  return results;
+}
+
+async function linkPendingPresets(graph: DependencyGraph, space: string): Promise<PushResults> {
+  const logger = getLogger();
+  const results: PushResults = { successful: [], failed: [] };
+
+  for (const node of graph.nodes.values()) {
+    if (!(node instanceof ComponentNode)) {
+      continue;
+    }
+    try {
+      await node.linkPendingPreset(space, graph);
+    } catch (error) {
+      logger.error(`Failed to link default preset: ${node.getName()}`, {
+        error: error as Error,
+      });
+      results.failed.push({ name: node.getName(), error });
+    }
   }
 
   return results;

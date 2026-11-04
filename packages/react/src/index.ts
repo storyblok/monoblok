@@ -23,7 +23,7 @@ export {
   createRichTextRenderer,
 } from "./richtext";
 
-export { storyblokEditable } from "@storyblok/live-preview";
+export { editableField, storyblokEditable } from "@storyblok/live-preview";
 export { type LivePreviewStory } from "@storyblok/live-preview";
 
 export { type StoryblokRichTextDoc } from "@storyblok/richtext";

@@ -49,3 +49,11 @@ export const normalizeFullSlug = (slug: string): string => slug.replace(/\/$/, "
  * than let the filter silently select an empty set.
  */
 export const normalizeStartsWith = (prefix: string): string => prefix.replace(/^\/+/, "");
+
+/**
+ * How `stories push` handles story content that does not match the local
+ * component schemas: abort (`strict`), report and push anyway (`warn`), or skip
+ * the check (`ignore`).
+ */
+export const PUSH_VALIDATE_MODES = ["strict", "warn", "ignore"] as const;
+export type PushValidateMode = (typeof PUSH_VALIDATE_MODES)[number];

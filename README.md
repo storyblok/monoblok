@@ -117,8 +117,8 @@ table.
 NX orchestrates tasks across the monorepo with caching and affected-only execution:
 
 ```bash
-# Build all packages
-pnpm nx run-many --target=build
+# Build all packages (the blueprints are left out, CI builds the affected ones)
+pnpm build
 
 # Build a specific package
 pnpm nx build @storyblok/react

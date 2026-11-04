@@ -1,6 +1,13 @@
 import { Command } from "commander";
 import { join } from "pathe";
-import { CommandError, getPackageJson, handleError } from "./utils";
+import {
+  CommandError,
+  EXIT_CODE_RUNTIME_ERROR,
+  EXIT_CODE_USAGE_ERROR,
+  getPackageJson,
+  handleError,
+  setRuntimeErrorExitCode,
+} from "./utils";
 import { directories } from "./constants";
 
 import type { LogLevel, LogTransport } from "./lib/logger/logger";
@@ -63,6 +70,11 @@ export function getProgram(): Command {
     // Unified preAction hook: handles config resolution, then logging/reporting setup
     programInstance.hook("preAction", async (thisCommand, actionCommand) => {
       const targetCommand = actionCommand ?? thisCommand;
+
+      // Set before config resolution so a failure there can't read as a result.
+      setRuntimeErrorExitCode(
+        targetCommand.opts().exitCode ? EXIT_CODE_USAGE_ERROR : EXIT_CODE_RUNTIME_ERROR,
+      );
 
       // Step 1: Resolve and apply configuration
       const ancestry = getCommandAncestry(targetCommand);

@@ -112,10 +112,88 @@ jobs:
 
       - name: Check
         if: needs.changes.outputs.code == 'true'
-        run: pnpm nx run-many --target=build,lint,test,test:types --parallel=3 -p="${{ matrix.projects }}"
+        # Blueprints are nx projects, but the `blueprints` job owns them (ADR-0023).
+        run: pnpm nx run-many --target=build,lint,test,test:types --parallel=3 -p="${{ matrix.projects }}" --exclude="tag:blueprint"
         env:
           VITE_ACCESS_TOKEN: ${{ secrets.VITE_ACCESS_TOKEN }}
           VITE_SPACE_ID: ${{ vars.VITE_SPACE_ID }}
+
+  # Builds and smoke-tests the blueprints nx marks affected against the workspace SDK source, so a
+  # PR that breaks an SDK for a blueprint fails here and not in the post-release sync (ADR-0023).
+  # It tests "does the SDK change break the blueprint"; the sync workflow checks "does the template
+  # install and run as shipped".
+  blueprints:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    environment: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # `nx-set-shas` reads the workflow's run history. Replaces the top-level block for this job.
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      # `nx affected` needs the base commit, so the history is fetched in full.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-node
+
+      # Base: the merge base with the PR's target branch; on pushes, the last commit whose CI run
+      # passed on the pushed branch.
+      - uses: nrwl/nx-set-shas@afb73a62d26e41464e9254689e1fd6122ee683c1 # v5.0.1
+        with:
+          main-branch-name: ${{ github.base_ref || github.ref_name }}
+
+      # `nx affected` has no `--projects` filter and would forward the flag to each blueprint's own
+      # build script, so the affected blueprints are listed first and handed to `run-many`.
+      - name: List affected blueprints
+        id: affected
+        # Assigned on its own line, so a failing `nx` fails the step instead of listing nothing.
+        run: |
+          projects=$(pnpm nx show projects --affected --projects 'tag:blueprint' --withTarget build --sep=,)
+          echo "projects=$projects" >> "$GITHUB_OUTPUT"
+
+      # `--skip-nx-cache`: pnpm injects each SDK into the blueprints as a hard-linked copy and
+      # refreshes it only when the SDK's `build` script runs. A cache hit restores `dist` into the
+      # package but not into the copy, which a fresh install leaves without `dist`, so the
+      # blueprint could not resolve `@storyblok/*` (ADR-0023).
+      - name: Build affected blueprints
+        if: steps.affected.outputs.projects != ''
+        env:
+          PROJECTS: ${{ steps.affected.outputs.projects }}
+        run: pnpm nx run-many --target=build --projects="$PROJECTS" --parallel=3 --skip-nx-cache
+
+      # The demo delivery token is a read-only demo token, kept in a variable and not a secret. The
+      # smoke test is skipped when the variable is empty; the build above runs either way.
+      #
+      # `--excludeTaskDependencies`: the smoke target depends on `^build` for local use. The build
+      # step above already ran those SDK builds and refreshed the pnpm-injected SDK copies in this
+      # workspace, so running them again only costs time.
+      - name: Smoke-test affected blueprints
+        if: steps.affected.outputs.projects != '' && vars.BLUEPRINTS_DELIVERY_API_TOKEN != ''
+        run: pnpm nx run-many --target=smoke --projects="$PROJECTS" --skip-nx-cache --excludeTaskDependencies
+        env:
+          PROJECTS: ${{ steps.affected.outputs.projects }}
+          STORYBLOK_DELIVERY_API_TOKEN: ${{ vars.BLUEPRINTS_DELIVERY_API_TOKEN }}
+          NEXT_TELEMETRY_DISABLED: 1
+          # Not hidden, so upload-artifact keeps it. `smoke` writes into one folder per blueprint.
+          SMOKE_RESULTS_DIR: ${{ runner.temp }}/smoke-results
+
+      # Playwright traces of a failed smoke test. Only the browser's results: no blueprint files.
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: smoke-results
+          path: ${{ runner.temp }}/smoke-results
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Note the skipped smoke test
+        if: vars.BLUEPRINTS_DELIVERY_API_TOKEN == ''
+        run: echo "::notice::BLUEPRINTS_DELIVERY_API_TOKEN is not available, so the blueprint smoke test was skipped."
 
   licenses:
     needs: changes

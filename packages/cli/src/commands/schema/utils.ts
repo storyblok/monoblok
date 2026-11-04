@@ -1,5 +1,7 @@
 import { isAbsolute, relative } from "pathe";
 
+import type { Component } from "../../types";
+
 // Re-exported so the schema command tree keeps a single util import; the shared
 // definition lives in `src/utils/object.ts`.
 export { isRecord } from "../../utils/object";
@@ -10,15 +12,24 @@ export const COMPONENT_STRIP_KEYS = new Set([
   "created_at",
   "updated_at",
   "real_name", // API-computed display/technical name, read-only
-  "preset_id", // Instance-level preset selection, not part of schema definition
+  "preset_id", // Space-specific; schema push does not manage presets
   "all_presets", // Computed list of presets, managed via /presets API
   "internal_tags_list", // Read-only expanded form of internal_tag_ids ({id, name} objects)
-  "content_type_asset_preview", // Read-only, not in ComponentCreate/ComponentUpdate
-  "image", // Read-only preview image URL
-  "preview_tmpl", // Read-only preview template
-  "metadata", // Not in current API types, stripped defensively
+  "metadata", // Owned by apps (e.g. Figma frame links); schema push leaves it untouched
   "component_group_uuid", // UI grouping; stripped by default — kept for diffing only when a block opts into the group escape hatch
 ]);
+
+/**
+ * Optional component properties a block manages only when it sets them: an
+ * absent key leaves the remote value untouched, an explicit `null` clears it.
+ */
+export const COMPONENT_OPTIONAL_KEYS = [
+  "image",
+  "preview_tmpl",
+  "content_type_asset_preview",
+] as const satisfies readonly (keyof Component)[];
+
+export type ComponentOptionalKey = (typeof COMPONENT_OPTIONAL_KEYS)[number];
 
 /**
  * Every wire field key holding a restriction list. An empty list means what an
@@ -47,6 +58,15 @@ export const DATASOURCE_DIMENSION_STRIP_KEYS = new Set([
 ]);
 
 /**
+ * Default values for optional datasource fields.
+ * Applied to both local and remote entities before diffing to prevent false diffs
+ * from auto-populated fields (e.g. MAPI returns `dimensions: []` even when unset).
+ */
+export const DATASOURCE_DEFAULTS: Record<string, unknown> = {
+  dimensions: [],
+};
+
+/**
  * Default values for optional component fields.
  * Applied to both local and remote entities before diffing, and always included in push payloads.
  *
@@ -64,16 +84,8 @@ export const DATASOURCE_DIMENSION_STRIP_KEYS = new Set([
  * - `component_group_uuid`: stripped before diffing (see COMPONENT_STRIP_KEYS)
  *   unless a block opts into the group escape hatch by setting it explicitly;
  *   diffing then keeps it on both sides so a changed group is pushed
+ * - {@link COMPONENT_OPTIONAL_KEYS}: left untouched when a block omits them
  */
-/**
- * Default values for optional datasource fields.
- * Applied to both local and remote entities before diffing to prevent false diffs
- * from auto-populated fields (e.g. MAPI returns `dimensions: []` even when unset).
- */
-export const DATASOURCE_DEFAULTS: Record<string, unknown> = {
-  dimensions: [],
-};
-
 export const COMPONENT_DEFAULTS: Record<string, unknown> = {
   display_name: "",
   description: "",
@@ -123,6 +135,12 @@ export function quoteString(value: string): string {
   return `'${escaped}'`;
 }
 
+const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
+
+function formatKey(key: string): string {
+  return IDENTIFIER.test(key) ? key : quoteString(key);
+}
+
 /**
  * Formats a JavaScript value as a multi-line code string.
  * All object properties are placed on separate lines.
@@ -159,7 +177,7 @@ export function formatValue(value: unknown, depth: number): string {
       return "{}";
     }
     const props = entries.map(
-      ([key, val]) => `${innerIndent}${key}: ${formatValue(val, depth + 1)},`,
+      ([key, val]) => `${innerIndent}${formatKey(key)}: ${formatValue(val, depth + 1)},`,
     );
     return `{\n${props.join("\n")}\n${indent}}`;
   }

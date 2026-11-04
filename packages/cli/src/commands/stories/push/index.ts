@@ -1,9 +1,11 @@
 import { pipeline } from "node:stream/promises";
+import { Option } from "commander";
 import { join } from "pathe";
-import type { Story } from "../constants";
+import { PUSH_VALIDATE_MODES, type Story } from "../constants";
 import { colorPalette, commands, directories } from "../../../constants";
 import {
   CommandError,
+  EXIT_CODE_RUNTIME_ERROR,
   handleError,
   logOnlyError,
   requireAuthentication,
@@ -12,6 +14,7 @@ import {
 import { session } from "../../../session";
 import { storiesCommand } from "../command";
 import { loadManifest, resolveCommandPath } from "../../../utils/filesystem";
+import { isRecord } from "../../../utils/object";
 import { getUI } from "../../../lib/ui";
 import { getLogger } from "../../../lib/logger/logger";
 import { getReporter } from "../../../lib/reporter/reporter";
@@ -27,6 +30,7 @@ import {
   writeStoryStream,
 } from "../streams";
 import { findComponentSchemas } from "../utils";
+import { baseFieldName } from "../content-fields";
 import { loadAssetMap } from "../../assets/utils";
 import { prefetchTargetStoriesByKeys } from "../actions";
 import { collectSchemaIssues, formatSchemaIssues, hasSchemaIssues } from "../validate-story";
@@ -41,6 +45,14 @@ const pushCmd = storiesCommand
   .option(
     "--cleanup",
     "delete local stories after a successful push (note: does not cleanup manifests)",
+  )
+  .addOption(
+    new Option(
+      "--validate <mode>",
+      "how to handle stories that do not match the local component schemas",
+    )
+      .choices(PUSH_VALIDATE_MODES)
+      .default("strict"),
   )
   .description(`Push local stories to a Storyblok space.`);
 
@@ -108,32 +120,54 @@ pushCmd.action(async (options, command) => {
 
     const storiesDirectoryPath = resolveCommandPath(directories.stories, fromSpace, basePath);
 
-    // Pre-flight schema validation. Aborts before any API call if a story's
-    // content references a missing component, or has fields that the local
-    // schema does not declare (schema drift).
-    const schemaIssues = await collectSchemaIssues({
-      directoryPath: storiesDirectoryPath,
-      schemas,
-    });
-    if (hasSchemaIssues(schemaIssues)) {
-      const message = formatSchemaIssues(schemaIssues);
-      ui.error(message);
-      logger.error(message);
-      // Surface the failure in the run summary so the report status is
-      // FAILURE rather than a trivial zero-counts SUCCESS.
-      const total = Math.max(schemaIssues.total, 1);
-      summary.creationResults.total = total;
-      summary.creationResults.failed = total;
-      return;
+    // Pre-flight schema validation: finds stories whose content references a
+    // missing component, or has fields that the local schema does not declare
+    // (schema drift). `strict` aborts before any API call, `warn` reports and
+    // continues, `ignore` skips the check.
+    const validateMode = options.validate;
+    if (validateMode === "ignore") {
+      logger.info("Schema validation skipped");
+    } else {
+      const schemaIssues = await collectSchemaIssues({
+        directoryPath: storiesDirectoryPath,
+        schemas,
+      });
+      if (hasSchemaIssues(schemaIssues)) {
+        const message = formatSchemaIssues(schemaIssues, validateMode);
+        if (validateMode === "strict") {
+          ui.error(message);
+          logger.error(message);
+          // Surface the failure in the run summary so the report status is
+          // FAILURE rather than a trivial zero-counts SUCCESS.
+          const total = Math.max(schemaIssues.total, 1);
+          summary.creationResults.total = total;
+          summary.creationResults.failed = total;
+          // Fail the process so CI does not report a green job with nothing pushed.
+          process.exitCode = EXIT_CODE_RUNTIME_ERROR;
+          return;
+        }
+        ui.warn(message);
+        ui.br();
+        logger.warn(message);
+      }
     }
 
-    // Warn when story content includes custom plugin payloads. References
+    // Warn when story content includes custom plugin values. References
     // embedded inside a plugin's opaque JSON can't be auto-remapped, so the
-    // user may need to update them manually. Emitted once per plugin name
-    // per story during Pass 2, after schema validation has confirmed the
-    // content shape is trustworthy.
+    // user may need to update them manually. Custom fields are found through
+    // the component schema, because most field plugins store no `plugin` key.
+    // Emitted once per plugin name per story during Pass 2.
     const warnAboutCustomPlugins = (story: Story) => {
       const warned = new Set<string>();
+      const warnOnce = (pluginName: string) => {
+        if (warned.has(pluginName)) {
+          return;
+        }
+        warned.add(pluginName);
+        const message = `The custom plugin "${pluginName}" may contain references that require manual updates.`;
+        pendingWarnings.push(message);
+        logger.warn(message, { storyId: story.uuid });
+      };
       const visit = (node: unknown): void => {
         if (Array.isArray(node)) {
           for (const item of node) {
@@ -141,18 +175,22 @@ pushCmd.action(async (options, command) => {
           }
           return;
         }
-        if (!node || typeof node !== "object") {
+        if (!isRecord(node)) {
           return;
         }
-        const obj = node as Record<string, unknown>;
-        const plugin = obj.plugin;
-        if (typeof plugin === "string" && !warned.has(plugin)) {
-          warned.add(plugin);
-          const message = `The custom plugin "${plugin}" may contain references that require manual updates.`;
-          pendingWarnings.push(message);
-          logger.warn(message, { storyId: story.uuid });
+        const schema = typeof node.component === "string" ? schemas[node.component] : undefined;
+        if (schema) {
+          for (const [fieldName, value] of Object.entries(node)) {
+            const field = schema[baseFieldName(fieldName)];
+            if (field?.type !== "custom") {
+              visit(value);
+            } else if (value !== null && value !== undefined && value !== "") {
+              warnOnce(typeof field.field_type === "string" ? field.field_type : fieldName);
+            }
+          }
+          return;
         }
-        for (const value of Object.values(obj)) {
+        for (const value of Object.values(node)) {
           visit(value);
         }
       };

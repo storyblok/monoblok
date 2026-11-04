@@ -5,7 +5,7 @@ import type {
   DatasourceCreate,
   Field,
 } from "../../types";
-import { isRecord } from "./utils";
+import { type ComponentOptionalKey, isRecord } from "./utils";
 
 function isSchemaField(value: unknown): value is Field {
   return isRecord(value) && "type" in value;
@@ -55,7 +55,20 @@ function buildComponentPayload(input: unknown) {
       (typeof input.component_group_uuid === "string" || input.component_group_uuid === null) && {
         component_group_uuid: input.component_group_uuid,
       }),
+    ...toOptionalProperties(input),
   };
+}
+
+function toOptionalProperties(input: Record<string, unknown>) {
+  return {
+    image: toOptionalString(input.image),
+    preview_tmpl: toOptionalString(input.preview_tmpl),
+    content_type_asset_preview: toOptionalString(input.content_type_asset_preview),
+  } satisfies Record<ComponentOptionalKey, unknown>;
+}
+
+function toOptionalString(value: unknown): string | null | undefined {
+  return typeof value === "string" || value === null ? value : undefined;
 }
 
 // `component_group_uuid: null` (clearing a block's group) is modeled directly by

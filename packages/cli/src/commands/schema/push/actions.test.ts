@@ -23,8 +23,6 @@ describe("toComponentCreate", () => {
       real_name: "page",
       all_presets: [],
       preset_id: null,
-      image: null,
-      preview_tmpl: null,
     } as unknown as Component;
 
     const result = toComponentCreate(component);
@@ -46,7 +44,6 @@ describe("toComponentCreate", () => {
     expect(result).not.toHaveProperty("updated_at");
     expect(result).not.toHaveProperty("real_name");
     expect(result).not.toHaveProperty("all_presets");
-    expect(result).not.toHaveProperty("image");
   });
 
   it("should always include reset values for nullable string fields even when not set locally", () => {

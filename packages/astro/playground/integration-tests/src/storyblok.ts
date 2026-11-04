@@ -18,7 +18,7 @@ export const client = createApiClient({
   inlineRelations: true,
 });
 
-export const { StoryblokBlock } = defineStoryblokBlocks(() => ({
+export const { StoryblokBlock, StoryblokRichText } = defineStoryblokBlocks(() => ({
   components: {
     page: Page,
     feature: Feature,

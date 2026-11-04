@@ -20,7 +20,7 @@ export const client = createApiClient({
 interface ExtraProps {
   locale?: string;
 }
-export const { StoryblokBlock } = defineStoryblokBlocks<ExtraProps>(() => ({
+export const { StoryblokBlock, StoryblokRichText } = defineStoryblokBlocks<ExtraProps>(() => ({
   components: {
     page: Page,
     feature: Feature,

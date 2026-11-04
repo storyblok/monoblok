@@ -331,7 +331,7 @@ To narrow `story.content` to the blocks of a project, use the `withTypes()` meth
 | [`StoryblokPreview`](#storyblokpreview-client)        | Client component that subscribes to Storyblok Visual Editor events and re-renders its content with the latest story on every editor update. | `@storyblok/react`, `@storyblok/react/rsc` |
 | [`useStoryblokState`](#usestoryblokstate)             | Subscribes to Storyblok Visual Editor events and returns the latest story.                                                                  | `@storyblok/react`                         |
 | [`useStoryblokEditorEvent`](#usestoryblokeditorevent) | Subscribes to Storyblok Visual Editor events and calls `callback` with the updated story.                                                   | `@storyblok/react`                         |
-| [`storyblokEditable`](#storyblokeditable)             |                                                                                                                                             | `@storyblok/react`                         |
+| [`storyblokEditable`](#storyblokeditable)             | Returns the attributes that make an element editable in the Visual Editor.                                                                  | `@storyblok/react`                         |
 | [`createRichTextRenderer`](#createrichtextrenderer)   | Returns a render function for a Storyblok rich text document.                                                                               | `@storyblok/react`                         |
 
 ## Blocks
@@ -356,11 +356,11 @@ function defineStoryblokBlocks(config: StoryblokBlocksOptions): StoryblokBlocksR
 
 `defineStoryblokBlocks()` accepts a `config` object with the following properties:
 
-| Key                | Description                                                            | Type                                  |
-| ------------------ | ---------------------------------------------------------------------- | ------------------------------------- |
-| `components`       | Required.                                                              | `Record<string, StoryblokBlockEntry>` |
-| `fallback`         | Fallback component when a block type isn’t found                       | `AnyBlockComponent`                   |
-| `suspenseFallback` | Default Suspense fallback for async components (`<GlobalSkeleton />`). | `ReactNode`                           |
+| Key                | Description                                                                                                                                                                                              | Type                                  |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| `components`       | Maps the technical names of Storyblok blocks to React components or to a component configuration. Each component receives a `block` prop with the content of the block and an `editable` prop. Required. | `Record<string, StoryblokBlockEntry>` |
+| `fallback`         | Fallback component when a block type isn’t found                                                                                                                                                         | `AnyBlockComponent`                   |
+| `suspenseFallback` | Default Suspense fallback for async components (`<GlobalSkeleton />`).                                                                                                                                   | `ReactNode`                           |
 
 `defineStoryblokBlocks()` returns `StoryblokBlocksResult<TExtraProps>`, an object with the following properties:
 
@@ -488,6 +488,10 @@ Pass the initially fetched story (from your server component, route loader,
 or data-fetching hook). On every editor update the returned value is replaced
 with the updated story—triggering a re-render of the calling component.
 
+Use `StoryblokPreview` to wrap the rendered content of a story. Use
+`useStoryblokState()` when other parts of the component also depend on the
+live story, for example, to update the page title while editing.
+
 Import from `@storyblok/react`.
 
 ```tsx
@@ -499,10 +503,10 @@ function useStoryblokState(
 
 `useStoryblokState()` accepts the following parameters:
 
-| Key       | Description       | Type                       |
-| --------- | ----------------- | -------------------------- |
-| `story`   | Required.         | `TStory`                   |
-| `options` | Defaults to `{}`. | `UseStoryblokStateOptions` |
+| Key       | Description                                         | Type                       |
+| --------- | --------------------------------------------------- | -------------------------- |
+| `story`   | The story fetched from the Storyblok API. Required. | `TStory`                   |
+| `options` | Defaults to `{}`.                                   | `UseStoryblokStateOptions` |
 
 The `options` object accepts the following properties:
 
@@ -552,10 +556,10 @@ function useStoryblokEditorEvent(
 
 `useStoryblokEditorEvent()` accepts the following parameters:
 
-| Key        | Description       | Type                                                                                        |
-| ---------- | ----------------- | ------------------------------------------------------------------------------------------- |
-| `callback` | Required.         | `(story: { id: TStory["id"]; uuid?: TStory["uuid"]; content?: TStory["content"] }) => void` |
-| `options`  | Defaults to `{}`. | `UseStoryblokEditorEventOptions`                                                            |
+| Key        | Description                                                            | Type                                                                                        |
+| ---------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `callback` | Called with the updated story on every Visual Editor change. Required. | `(story: { id: TStory["id"]; uuid?: TStory["uuid"]; content?: TStory["content"] }) => void` |
+| `options`  | Defaults to `{}`.                                                      | `UseStoryblokEditorEventOptions`                                                            |
 
 The `options` object accepts the following properties:
 
@@ -577,19 +581,45 @@ function Page({ story }: { story: Story }) {
 
 ### `storyblokEditable`
 
+Returns the attributes that make an element editable in the Visual Editor.
+
+Every component rendered through `StoryblokBlock` receives an `editable` prop.
+Spread `editable` onto the root element of the component to make the component
+editable in the Visual Editor.
+
+```jsx
+export default function Feature({ block, editable }) {
+  return <section {...editable}>{block.title}</section>;
+}
+```
+
+For components that aren’t rendered through `StoryblokBlock`, use
+`storyblokEditable()` instead. It accepts a block from the Storyblok API and
+returns the same attributes.
+
 Import from `@storyblok/react`.
 
 ```tsx
-function storyblokEditable(block?: { _editable?: string }): ({ data-blok-c?: undefined; data-blok-uid?: undefined }) | ({ data-blok-c: string; data-blok-uid: string });
+function storyblokEditable(block?: { _editable?: string }): StoryblokEditableProps;
 ```
 
 `storyblokEditable()` accepts the following parameters:
 
-| Key     | Description | Type                     |
-| ------- | ----------- | ------------------------ |
-| `block` |             | `{ _editable?: string }` |
+| Key     | Description                                                                                 | Type                     |
+| ------- | ------------------------------------------------------------------------------------------- | ------------------------ |
+| `block` | A block from the Storyblok API. Without `_editable`, the function returns empty attributes. | `{ _editable?: string }` |
 
-`storyblokEditable()` returns `({ data-blok-c?: undefined; data-blok-uid?: undefined }) | ({ data-blok-c: string; data-blok-uid: string })`.
+`storyblokEditable()` returns `StoryblokEditableProps`, the `data-blok-c` and `data-blok-uid` attributes the Visual Editor uses to find the block.
+
+#### Example
+
+```jsx
+import { storyblokEditable } from "@storyblok/react";
+
+export default function Feature({ block }) {
+  return <section {...storyblokEditable(block)}>{block.title}</section>;
+}
+```
 
 Related types:
 
@@ -617,11 +647,11 @@ function createRichTextRenderer(
 
 `createRichTextRenderer()` accepts an `options` object with the following properties:
 
-| Key             | Description | Type                                       |
-| --------------- | ----------- | ------------------------------------------ |
-| `optimizeImage` |             | `boolean \| StoryblokRichTextImageOptions` |
-| `components`    |             | `StoryblokReactRichTextComponentMap`       |
-| `data`          |             | `unknown`                                  |
+| Key             | Description                                                                                                                | Type                                       |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| `optimizeImage` | [Image optimization](https://www.storyblok.com/docs/api/image-service) options for image nodes.                            | `boolean \| StoryblokRichTextImageOptions` |
+| `components`    | Custom React components for rich text nodes and marks. To render embedded blocks, include a component for the `blok` node. | `StoryblokReactRichTextComponentMap`       |
+| `data`          | Custom data shared with all custom rich text components. Each component receives it as `context.data`.                     | `unknown`                                  |
 
 `createRichTextRenderer()` returns `(document: StoryblokRichTextInput) => ReactNode`.
 

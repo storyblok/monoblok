@@ -34,6 +34,15 @@ async function expectStyledCallout(page: Page, url: string): Promise<void> {
 }
 
 test.describe("head propagation through the block registry (dev)", () => {
+  // The first MDX page a fresh dev server renders misses its styles, even
+  // imported directly: Vite hasn't loaded the entry's modules yet when Astro
+  // collects them. Every later render has them, so one render warms the
+  // server. Without the fix, the registry pages miss them on every render.
+  test.beforeAll(async ({ request }) => {
+    const response = await request.get("/head-propagation/direct");
+    expect(response.ok()).toBe(true);
+  });
+
   for (const [name, path] of PAGES) {
     test(`applies a block's MDX styles when ${name}`, async ({ page }) => {
       await expectStyledCallout(page, path);

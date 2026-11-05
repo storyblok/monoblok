@@ -107,7 +107,7 @@
     "@tiptap/pm": "^3.22.3",
     "@tiptap/suggestion": "^3.22.3",
     "emojibase": "^17.0.0",
-    "happy-dom": "^20.8.8",
+    "happy-dom": "^21.0.4",
     "markdown-it": "^14.1.0"
   },
   "devDependencies": {

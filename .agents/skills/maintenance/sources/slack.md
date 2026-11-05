@@ -12,8 +12,9 @@ a cached one stays valid as days pass; age is applied when listing.
 Judge from the end of the thread and take the first verdict that fits:
 
 1. `answered`: the thread has a done marker.
-2. `promise`: DX made a concrete promise or offer (a fix, an answer, a docs change) that is not done
-   yet, even if thanks or follow-ups came after it.
+2. `promise`: DX made a promise or offer (a fix, an answer, a docs change) that is not done yet,
+   even if thanks or follow-ups came after it. It can be concrete ("I'll open a PR") or vague
+   ("we'll look into it soon").
 3. `open`: the last ask to DX has no DX reply after it. A follow-up such as "that didn't work" or
    "any update?" is a new ask. A "+1" or "same here" from someone else is not an answer.
 4. `not-dx`: nothing for DX to do: not addressed to DX, an announcement or cc, a topic the DX team
@@ -26,12 +27,13 @@ member lookup. When unsure whether a substantive answer came from DX, treat it a
 
 **Done marker**: a check-style reaction (`white_check_mark` ✅, `heavy_check_mark`,
 `ballot_box_with_check`, `done`, `resolved`) on the parent post or on any reply (the thread read
-shows reactions per message). Replies after the marked message reopen the thread only when they ask
-DX something new. Other reactions (`eyes`, thumbs) mean nothing.
+shows reactions per message). A marker on the parent closes the thread. After a marker on a reply,
+later replies reopen the thread only when they ask DX something new. Other reactions (`eyes`,
+thumbs) mean nothing.
 
 **Note**: every verdict is stored with a note that starts with the parent post's date. A `promise`
-note adds the promise's date, what was promised, and whether it is vague (such as "soon") or
-concrete.
+note has the form `<parent date>; promise <YYYY-MM-DD> vague|concrete: <what was promised>`, so the
+30-day rule can be applied to cache hits without reading the thread.
 
 ## Steps
 
@@ -55,8 +57,8 @@ concrete.
    `slack-cache.sh put <ts> <fingerprint> <answered|not-dx|open|promise> <note>`. The first run
    reads everything; later runs read only new or changed threads.
 5. **Re-check what would be listed.** For an `open` or `promise` thread served from the cache,
-   reactions on replies are not in the fingerprint, so read the thread once for a done marker. For a
-   `promise`, check whether it is done: a merged PR counts as done (search with
+   reactions on replies are not in the fingerprint, so read the thread once for a done marker. For
+   every `promise`, cached or not, check whether it is done: a merged PR counts as done (search with
    `gh pr list --state merged --search` for each promise); check other promises, such as archiving a
    repo, with `gh` too. If `gh` cannot confirm it, keep `promise`; do not guess. When either check
    finds it done, `put` the thread as `answered` with the same fingerprint.

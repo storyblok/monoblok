@@ -69,4 +69,4 @@ Sections, in this order, with the source file that defines each:
 6. Stale Slack threads (N) (`slack.md`)
 7. Stale (N) (`issues.md`)
 
-Start the file with `## Maintenance digest <date>` and give each section a `###` heading.
+Start the file with `## Maintenance digest <YYYY-MM-DD>` and give each section a `###` heading.

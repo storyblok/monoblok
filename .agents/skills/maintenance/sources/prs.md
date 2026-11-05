@@ -8,7 +8,8 @@ dropped. A maintainer whose org membership is private shows up in `outside`; ski
 For both lists, match each PR's title and package by meaning against all open GitHub issues
 (`gh issue list --repo storyblok/monoblok --state open --limit 200 --json number,title,url`, fetched
 once; `issues.sh` only covers issues awaiting triage) and the Linear issues that are not completed
-or canceled. Write "may solve [#N](url)" or "may solve [DX-N](url)" only for a clear match.
+or canceled. A PR named as the fix PR in a current triage report is a match too. Write "may solve
+[#N](url)" or "may solve [DX-N](url)" only for a clear match.
 
 ## Outside contributors
 

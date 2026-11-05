@@ -385,6 +385,15 @@ export type DefinedField<TName extends string, TField extends FieldInput> = Pret
     (TField extends { datasource: infer D } ? { datasource: SlugOf<D> } : unknown)
 >;
 
+// Legacy field types get `@deprecated` overloads of `defineField`: TypeScript
+// does not flag a deprecated property inside an object literal, only a call that
+// resolves to a deprecated signature. Overload order matters. The first
+// declaration decides whether the `defineField` import itself reads as
+// deprecated, and the last one supplies the error for a call no overload matches.
+type LegacyFieldType = "link" | "image" | "file" | "group";
+type LegacyFieldInput<TType extends LegacyFieldType> = Extract<FieldInput, { type: TType }>;
+type CurrentFieldInput = Exclude<FieldInput, { type: LegacyFieldType }>;
+
 /**
  * Returns a {@link Field} stamped with the given `name`, normalizing reference
  * keys to strings so everything downstream sees plain names/slugs. A thin,
@@ -407,6 +416,43 @@ export type DefinedField<TName extends string, TField extends FieldInput> = Pret
  * defineField('body', { type: 'bloks', deny: [legacyFolder] });
  * defineField('theme', { type: 'option', source: 'internal', datasource: colors });
  */
+export function defineField<const TName extends string, const TField extends CurrentFieldInput>(
+  name: TName,
+  field: CheckedField<TField>,
+): DefinedField<TName, TField>;
+/**
+ * @deprecated The `link` field type predates `multilink` and the editor no longer
+ * offers it. Use `{ type: 'multilink' }` instead.
+ */
+export function defineField<
+  const TName extends string,
+  const TField extends LegacyFieldInput<"link">,
+>(name: TName, field: CheckedField<TField>): DefinedField<TName, TField>;
+/**
+ * @deprecated The `image` field type predates `asset` and the editor no longer
+ * offers it. Use `{ type: 'asset', filetypes: ['images'] }` instead.
+ */
+export function defineField<
+  const TName extends string,
+  const TField extends LegacyFieldInput<"image">,
+>(name: TName, field: CheckedField<TField>): DefinedField<TName, TField>;
+/**
+ * @deprecated The `file` field type predates `asset` and the editor no longer
+ * offers it. Use `{ type: 'asset' }` instead.
+ */
+export function defineField<
+  const TName extends string,
+  const TField extends LegacyFieldInput<"file">,
+>(name: TName, field: CheckedField<TField>): DefinedField<TName, TField>;
+/**
+ * @deprecated The `group` field type predates the editor's current field groups,
+ * which nest fields under a `section`. Use `{ type: 'section' }` instead.
+ */
+export function defineField<
+  const TName extends string,
+  const TField extends LegacyFieldInput<"group">,
+>(name: TName, field: CheckedField<TField>): DefinedField<TName, TField>;
+/** Fallback that reports option errors for every field type, legacy ones included. */
 export function defineField<const TName extends string, const TField extends FieldInput>(
   name: TName,
   field: CheckedField<TField>,

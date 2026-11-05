@@ -12,9 +12,10 @@ only what is specific to this package.
 | Scenario       | `has-playground-content` in `test/scenarios` |
 | App under test | `playground/integration-tests`               |
 
-**Live editing works in both SSR and SSG.** The Visual Editor bridge drives DOM updates client-side
-regardless of Astro's rendering mode; only `getPayload`/`storyblokPreviewMiddleware` (used to read
-the Visual Editor's POST body during an SSR render) require `output: "server"`.
+**Live updates need on-demand rendering.** `<StoryblokPreview liveUpdate />` POSTs each edit back to
+the current route and morphs the DOM with the re-rendered HTML, so the route must not be
+prerendered; `getPayload`/`storyblokPreviewMiddleware` read that POST body during the render. On a
+prerendered (SSG) route, the Visual Editor only reloads the page on `change`/`published`.
 `playground/integration-tests` wires `storyblokPreviewMiddleware` via `src/middleware.ts` and
 renders `<StoryblokPreview liveUpdate />` in its layout; `playground/ssg` does not, so edits there
 reload on `change`/`published` only. `playground/ssr` is a separate, manual-testing-only app and is
@@ -40,7 +41,7 @@ Stop the server with `pnpm --filter @storyblok/playground-astro-integration-test
 
 ## Notes
 
-- `STORYBLOK_ACCESS_TOKEN` overrides the demo token committed in `playground/*/astro.config.mjs`.
+- `STORYBLOK_ACCESS_TOKEN` overrides the demo token committed in `playground/*/src/storyblok.ts`.
   Every playground reads it; without it they serve the shared demo space and every seeded-content
   assertion fails for a reason that looks like a bridge problem.
 - Blocks are addressed by the `_uid` the scenario seeded (`editor.block("teaser-home-1")`), not by a

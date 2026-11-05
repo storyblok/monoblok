@@ -38,7 +38,8 @@
 - Real-time Live Preview via `storyblokPreviewMiddleware`, `getPayload`, and `StoryblokPreview`
 - Render rich text content with the Storyblok Rich Text Renderer based on `@storyblok/richtext`
 - Built-in TypeScript support with comprehensive type definitions
-- SSR/SSG compatibility for Astro applications
+- SSR and SSG support (live updates in the Visual Editor need on-demand rendering; prerendered
+  routes reload on save)
 
 ## Usage
 

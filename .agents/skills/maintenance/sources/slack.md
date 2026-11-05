@@ -13,8 +13,8 @@ Judge from the end of the thread and take the first verdict that fits:
 
 1. `answered`: the thread has a done marker.
 2. `not-dx`: nothing for DX to do: not addressed to DX, an announcement or cc, a topic in
-   `notDxTopics` or one DX does not own, a DX reply that hands the question to another team, or a
-   wait on another team's change.
+   `notDxTopics` or one DX does not own, a DX reply that hands the whole question to another team,
+   or a wait on another team's change. When DX hands off only part of a thread, judge the rest.
 3. `promise`: DX made a promise or offer (a fix, an answer, a docs change) that is not done yet,
    even if thanks or follow-ups came after it. It is concrete when it names a ticket, PR or date
    ("known issue, tracked in DX-123"), vague otherwise ("we'll look into it soon"). A conditional

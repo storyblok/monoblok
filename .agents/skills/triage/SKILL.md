@@ -20,7 +20,10 @@ decide the next action.
 ### Step 1: Parse ticket references
 
 - Anything matching `DX-\d+` or a `linear.app` URL → **Linear**
-- Anything matching `#\d+`, a bare number, or a `github.com` URL → **GitHub**
+- Anything matching `#\d+`, a bare number, or a `github.com` URL → **GitHub**, in
+  `storyblok/monoblok` unless the reference names another repo: `<short>#N` for a repo in
+  `.agents/skills/maintenance/repos.json` (e.g. `kotlin#20`), `owner/repo#N`, or the URL's repo.
+  Below, `<repo>` is that repo. Refer to tickets outside monoblok as `<short>#N` everywhere.
 - `linear:triage` → fetch all Linear issues in Triage state (DX team)
 
 ### Step 2: Fetch tickets
@@ -28,7 +31,7 @@ decide the next action.
 **GitHub issues:**
 
 ```bash
-gh issue view <number> --repo storyblok/monoblok --json title,body,labels,state,comments,author,createdAt
+gh issue view <number> --repo <repo> --json title,body,labels,state,comments,author,createdAt
 ```
 
 **Linear:**
@@ -40,10 +43,10 @@ bash .agents/skills/triage/scripts/linear-fetch.sh triage
 
 Linear steps apply only to `DX-` tickets; skip them for GitHub-only runs.
 
-**Fix PRs:** `bash .agents/skills/triage/scripts/linked-prs.sh 866 DX-123` lists open PRs that close
-each ticket in `byIssue` (newest first, the first is the fix) and PRs that merely mention a GitHub
-issue in `related` (always empty for `DX-` ids). If none, one `gh pr list --search "<keywords>"` is
-enough.
+**Fix PRs:** `bash .agents/skills/triage/scripts/linked-prs.sh 866 DX-123` (add `--repo <repo>`
+before the ids outside monoblok) lists open PRs that close each ticket in `byIssue` (newest first,
+the first is the fix) and PRs that merely mention a GitHub issue in `related` (always empty for
+`DX-` ids). If none, one `gh pr list --search "<keywords>"` is enough.
 
 ### Step 3: Assess each ticket
 
@@ -120,7 +123,7 @@ Score impact and breadth only; whether it is a regression does not affect priori
 Search for duplicates on every ticket:
 
 - GitHub:
-  `gh issue list --repo storyblok/monoblok --search "<keywords>" --state open --limit 10 --json number,title,labels`
+  `gh issue list --repo <repo> --search "<keywords>" --state open --limit 10 --json number,title,labels`
 - Linear: check `relations` field from the fetch response
 
 If exact duplicate → mark as **duplicate** with link to original. If related but different → note
@@ -162,17 +165,18 @@ For **needs-info** tickets, include a draft reply asking for the missing informa
 
 ## Labels
 
-Suggest only labels that exist (`gh label list --repo storyblok/monoblok`); priority has no label.
-Package → label is `pkg: <folder>`, except `capi-client` → `pkg: api-client`, `mapi-client` →
-`pkg: management-api-client` and `js-client` → `pkg: storyblok-js-client`. Suggest none if no label
-fits (e.g. `schema`).
+Suggest only labels that exist in the ticket's repo (`gh label list --repo <repo>`); priority has no
+label. In monoblok, package → label is `pkg: <folder>`, except `capi-client` → `pkg: api-client`,
+`mapi-client` → `pkg: management-api-client` and `js-client` → `pkg: storyblok-js-client`. Suggest
+none if no label fits (e.g. `schema`).
 
 ## Output
 
-Write `claude-output/triage-<identifier>.md`, or `triage-<YYYY-MM-DD-HHMMSS>-batch.md` (UTC) for
-several issues, so a later batch never overwrites an earlier one. Every issue gets a `### #<number>`
-heading; for P3 the body is the one line below. Start with a "Needs attention" list: P0/P1, any
-regression, or P2 with no `OWNER`/`MEMBER`/`COLLABORATOR` comment in the last 14 days
+Write `claude-output/triage-<identifier>.md` (`<short>-<number>` outside monoblok, e.g.
+`triage-kotlin-20.md`), or `triage-<YYYY-MM-DD-HHMMSS>-batch.md` (UTC) for several issues, so a
+later batch never overwrites an earlier one. Every issue gets a `### <ref>` heading (`### #836`,
+`### kotlin#20`); for P3 the body is the one line below. Start with a "Needs attention" list: P0/P1,
+any regression, or P2 with no `OWNER`/`MEMBER`/`COLLABORATOR` comment in the last 14 days
 (`gh issue view --json comments` includes `authorAssociation`). Leave out any issue with an open fix
 PR or the verdict `fixed`, even a P0/P1 or a regression. Give every issue its scores, one line is
 enough for P3 (no summary or next step):

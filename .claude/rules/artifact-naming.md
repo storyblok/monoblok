@@ -13,7 +13,7 @@ claude-output/<type>-<identifier>-<subtype>.md
 
 | Command           | Pattern                           | Example                                           |
 | ----------------- | --------------------------------- | ------------------------------------------------- |
-| `/triage`         | `triage-<id>.md`                  | `triage-424.md`, `triage-DX-296.md`               |
+| `/triage`         | `triage-<id>.md`                  | `triage-424.md`, `triage-kotlin-20.md`            |
 | `/triage` (batch) | `triage-<UTC date-time>-batch.md` | `triage-2026-11-05-142236-batch.md`               |
 | `/maintenance`    | `maintenance-<UTC date-time>.md`  | `maintenance-2026-11-03-150042.md`                |
 | `/investigate`    | `investigate-<id>.md`             | `investigate-424.md`, `investigate-DX-296.md`     |

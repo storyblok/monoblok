@@ -4,5 +4,12 @@
   "slackChannelId": "<channel id, e.g. C0123456789>",
   "slackUserGroupId": "<DX user group id, e.g. S0123456789>",
   "dxTeamChannelId": "<channel whose members are the DX team, e.g. C0123456789>",
-  "notDxTopics": ["<topic another team owns, judged not-dx>"]
+  "notDxTopics": ["<topic another team owns, judged not-dx>"],
+  "extraRepos": [
+    {
+      "repo": "<owner/private-repo>",
+      "short": "<short name>",
+      "watch": true
+    }
+  ]
 }

@@ -21,3 +21,22 @@ warn_if_truncated() {
   [ "$1" -ge "$2" ] && echo "warning: $3 hit the limit of $2, results may be incomplete" >&2
   return 0
 }
+
+# repos_json: the repos the digest covers, as a JSON array of {repo, short, watch?}: the committed
+# repos.json plus `extraRepos` from the git-ignored config.local.json (for private repos, whose
+# names must not be committed).
+repos_json() {
+  local dir local_cfg
+  dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+  local_cfg="$dir/config.local.json"
+  if [ -f "$local_cfg" ]; then
+    jq -s '.[0] + (.[1].extraRepos // [])' "$dir/repos.json" "$local_cfg"
+  else
+    jq '.' "$dir/repos.json"
+  fi
+}
+
+# repo_list: one "<owner/repo> <short>" line per repo.
+repo_list() {
+  repos_json | jq -r '.[] | "\(.repo) \(.short)"'
+}

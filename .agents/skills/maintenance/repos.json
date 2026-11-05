@@ -1,0 +1,5 @@
+[
+  { "repo": "storyblok/monoblok", "short": "monoblok" },
+  { "repo": "storyblok/storyblok-swift", "short": "swift", "watch": true },
+  { "repo": "storyblok/storyblok-kotlin", "short": "kotlin", "watch": true }
+]

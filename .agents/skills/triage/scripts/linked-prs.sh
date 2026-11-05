@@ -5,17 +5,24 @@
 # says "fixes|closes|resolves #N", and to Linear ticket DX-N when the id appears in the branch name,
 # title or body. A PR that only mentions #N in its title or body is "related". Bot PRs are skipped.
 #
-# Usage: linked-prs.sh [issue-id...]   e.g. linked-prs.sh 866 DX-123
+# Usage: linked-prs.sh [--repo owner/name] [issue-id...]   e.g. linked-prs.sh 866 DX-123
+#   --repo defaults to storyblok/monoblok.
 # Output: { "byIssue": { "<id>": [PR numbers] }, "related": { "<id>": [PR numbers] },
 #           "unlinked": [non-draft PR numbers], "drafts": [PR numbers] }
 # byIssue is ordered newest first: a newer PR usually supersedes older ones.
 
 set -euo pipefail
 
+repo="storyblok/monoblok"
+if [ "${1:-}" = "--repo" ]; then
+  repo="${2:?--repo needs owner/name}"
+  shift 2
+fi
+
 limit=200
 prs=""
 for attempt in 1 2 3; do
-  prs="$(gh pr list --repo storyblok/monoblok --state open --limit "$limit" \
+  prs="$(gh pr list --repo "$repo" --state open --limit "$limit" \
     --json number,title,body,headRefName,author,isDraft,closingIssuesReferences)" && [ -n "$prs" ] && break
   prs=""
   [ "$attempt" -lt 3 ] && { echo "gh pr list failed (attempt $attempt), retrying" >&2; sleep 3; }

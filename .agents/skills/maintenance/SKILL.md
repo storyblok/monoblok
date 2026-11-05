@@ -30,6 +30,10 @@ skill.
 Scripts in `.agents/skills/maintenance/scripts/` do the deterministic filtering; run them instead of
 re-deriving their logic.
 
+- **Repos:** the digest covers the repos in `.agents/skills/maintenance/repos.json` plus
+  `extraRepos` from `config.local.json` (same shape; for private repos, whose names must not be
+  committed). The scripts loop over them; `short` names the repo in references (`kotlin#20`), and
+  monoblok references stay `#N`.
 - **Window:** `bash .agents/skills/maintenance/scripts/window.sh` prints 00:00 UTC of the previous
   weekday (Friday on a Monday); `--epoch` prints it as Unix seconds. "New" in every source means
   created within the window.
@@ -46,7 +50,9 @@ here and in the section list under Output.
 
 1. `issues.md`: GitHub issues awaiting triage, triaged with the triage skill, and stale issues.
 2. `prs.md`: open PRs from outside contributors, and member PRs without a linked issue.
-3. `slack.md`: new posts, mentions of the DX team, and stale threads in the support channel.
+3. `watch.md`: an overview of everything open in low-traffic repos.
+4. `security.md`: Dependabot alerts that need a decision.
+5. `slack.md`: new posts, mentions of the DX team, and stale threads in the support channel.
 
 ## Output
 
@@ -55,10 +61,10 @@ print only the digest, not triage's own summary. Omit empty sections, Slack incl
 
 Render every issue, Linear and PR reference, including those copied from the triage report and in
 the terminal summary, as a markdown link so it is clickable:
-`[#836](https://github.com/storyblok/monoblok/issues/836)` for issues, `.../pull/<n>` for PRs. Use
-the `url` field when `gh` returns one. Show the Linear link next to every GitHub issue link, e.g.
-`[#836](gh-url) [DX-611](linear-url)`; omit it silently if there is no match. Write Slack permalinks
-as links too.
+`[#836](https://github.com/storyblok/monoblok/issues/836)` for issues, `.../pull/<n>` for PRs, with
+the item's `ref` as the link text. Use the `url` field when a script or `gh` returns one. Show the
+Linear link next to every GitHub issue link, e.g. `[#836](gh-url) [DX-611](linear-url)`; omit it
+silently if there is no match. Write Slack permalinks as links too.
 
 Sections, in this order, with the source file that defines each:
 
@@ -66,8 +72,10 @@ Sections, in this order, with the source file that defines each:
 2. Issues (N triaged) (`issues.md`)
 3. PRs from outside contributors (N) (`prs.md`)
 4. Member PRs without a linked issue (N, approved ones skipped) (`prs.md`)
-5. Slack (N new) (`slack.md`)
-6. Stale Slack threads (N) (`slack.md`)
-7. Stale (N) (`issues.md`)
+5. Watched repos (`watch.md`)
+6. Security (N to look at) (`security.md`)
+7. Slack (N new) (`slack.md`)
+8. Stale Slack threads (N) (`slack.md`)
+9. Stale (N) (`issues.md`)
 
 Start the file with `## Maintenance digest <YYYY-MM-DD>` and give each section a `###` heading.

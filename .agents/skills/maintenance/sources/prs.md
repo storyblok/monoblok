@@ -1,15 +1,16 @@
 # Source: GitHub PRs
 
-`bash .agents/skills/maintenance/scripts/prs.sh` returns `outside` and `members`; bots are already
-dropped. A maintainer whose org membership is private shows up in `outside`; skip their PRs.
+`bash .agents/skills/maintenance/scripts/prs.sh` returns `outside` and `members` across every repo
+in the digest; bots are already dropped. Each PR has a `repo` and a `ref` (`#909`, `kotlin#34`). A
+maintainer whose org membership is private shows up in `outside`; skip their PRs.
 
 ## Matching PRs to issues
 
-For both lists, match each PR's title and package by meaning against all open GitHub issues
-(`gh issue list --repo storyblok/monoblok --state open --limit 200 --json number,title,url`, fetched
-once; `issues.sh` only covers issues awaiting triage) and the Linear issues that are not completed
-or canceled. A PR named as the fix PR in a current triage report is a match too. Write "may solve
-[#N](url)" or "may solve [DX-N](url)" only for a clear match.
+For both lists, match each PR's title and package by meaning against all open GitHub issues of its
+repo (`gh issue list --repo <repo> --state open --limit 200 --json number,title,url`, fetched once
+per repo; `issues.sh` only covers issues awaiting triage) and the Linear issues that are not
+completed or canceled. A PR named as the fix PR in a current triage report is a match too. Write
+"may solve [#N](url)" or "may solve [DX-N](url)" only for a clear match.
 
 ## Outside contributors
 
@@ -35,6 +36,6 @@ found, link one", and "changes requested" when `review` is `CHANGES_REQUESTED`.
 
 ### Member PRs without a linked issue (N, approved ones skipped)
 
-- [#909](pr-url) <title>: may solve [#790](issue-url) | no issue found, link one[, changes
+- [<ref>](pr-url) <title>: may solve [<ref>](issue-url) | no issue found, link one[, changes
   requested]
 ```

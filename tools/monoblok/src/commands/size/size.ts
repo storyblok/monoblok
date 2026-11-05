@@ -3,6 +3,7 @@ import { builtinModules, createRequire } from "module";
 import path from "path";
 import { pathToFileURL } from "url";
 import zlib from "zlib";
+import { transform as transformAstro } from "@astrojs/compiler";
 import { build, type OutputChunk, type Plugin } from "rolldown";
 
 /** Packages that never reach a browser. Every other package under `packages/` is measured. */
@@ -15,7 +16,8 @@ export const IGNORED_PACKAGES: readonly string[] = [
 /**
  * Exports that only run at build time, so neither a browser nor a server bundle includes them.
  * Exports of `.astro` components are skipped too: Astro compiles them, not a bundler. The same goes
- * for `.astro` components an entry imports, which `bundleEntry` leaves out.
+ * for `.astro` components an entry imports, which `bundleEntry` leaves out. What an `.astro`
+ * component sends to the browser, its `<script>` tags, is measured by `astroScripts` instead.
  */
 export const IGNORED_EXPORTS: Readonly<Record<string, readonly string[]>> = {
   "@storyblok/nuxt": ["."],
@@ -59,7 +61,8 @@ export type PackageMeasurement = {
   dir: string;
   /**
    * What a consumer's browser downloads for each export: the export bundled with its dependencies,
-   * minified, without peer dependencies or lazily imported chunks. Keyed by subpath, e.g. `./ssr`.
+   * minified, without peer dependencies or lazily imported chunks. Keyed by subpath, e.g. `./ssr`,
+   * or for the `<script>` of an `.astro` component, e.g. `dist/Preview.astro <script>`.
    */
   entries: Record<string, EntryMeasurement>;
   /** Every published file in `dist` on its own, keyed by its path relative to the package. */
@@ -280,6 +283,31 @@ function svelteCompiler(packageDir: string): Plugin {
   };
 }
 
+export type BundleOptions = {
+  /**
+   * TypeScript source of the entry, for an entry that is not a file of its own, such as an
+   * `.astro` component's `<script>`. `file` then only names where it lives, to resolve its imports.
+   */
+  code?: string;
+  /** Global expressions to replace, as the consumer's bundler would. */
+  define?: Record<string, string>;
+  /** Extensions to try for an import without one, in order, as the consumer's bundler would. */
+  extensions?: string[];
+};
+
+/** Serves `code` as the module at `id`, so relative imports resolve from `id`'s directory. */
+function virtualEntry(id: string, code: string): Plugin {
+  return {
+    name: "monoblok-size-virtual-entry",
+    resolveId(source) {
+      return source === id ? id : null;
+    },
+    load(loadId) {
+      return loadId === id ? { code, moduleType: "ts" } : null;
+    },
+  };
+}
+
 /**
  * Bundles an entry the way a consumer's bundler would: dependencies, and theirs, are included and
  * minified. A dependency the importing package declares as a peer is left out, since the app
@@ -290,10 +318,12 @@ function svelteCompiler(packageDir: string): Plugin {
 export async function bundleEntry(
   packageDir: string,
   file: string,
+  options: BundleOptions = {},
 ): Promise<{ size: number; dependencies: string[] }> {
   const packageOf = createPackageLookup();
   const entry = path.join(packageDir, file);
   const measuredPkg = packageOf(entry);
+  const { code, define, extensions } = options;
 
   const { output } = await build({
     input: entry,
@@ -303,7 +333,12 @@ export async function bundleEntry(
     // A consumer's bundler never reads the package's tsconfig, which may also extend a file only
     // its build generates.
     tsconfig: false,
-    plugins: [svelteCompiler(packageDir)],
+    transform: define ? { define } : undefined,
+    resolve: extensions ? { extensions } : undefined,
+    plugins: [
+      svelteCompiler(packageDir),
+      ...(code === undefined ? [] : [virtualEntry(entry, code)]),
+    ],
     external: (id, importer) => {
       // Astro compiles `.astro` components when it builds the app; no bundler can parse them.
       if (id.startsWith("node:") || BUILTINS.has(id) || id.endsWith(".astro")) {
@@ -348,6 +383,45 @@ export async function bundleEntry(
     size: [...loaded].reduce((total, chunk) => total + gzipSize(chunk.code), 0),
     dependencies: [...dependencies].sort(),
   };
+}
+
+/**
+ * Astro bundles component scripts with Vite, so they are measured with what Vite does in a
+ * production build: replace the `import.meta.env` flags they commonly branch on, and resolve
+ * imports without an extension with Vite's default extensions.
+ */
+const ASTRO_SCRIPT_OPTIONS: BundleOptions = {
+  define: { "import.meta.env.DEV": "false", "import.meta.env.PROD": "true" },
+  extensions: [".mjs", ".js", ".mts", ".ts", ".jsx", ".tsx", ".json"],
+};
+
+export type AstroScript = {
+  /** Names the script in the report, e.g. `dist/Preview.astro <script>`. */
+  name: string;
+  /** The file to bundle, relative to the package, or where the inline `code` lives. */
+  file: string;
+  code?: string;
+};
+
+/**
+ * The `<script>` tags of an `.astro` component that Astro processes and bundles for the browser,
+ * as Astro's own compiler reports them. Tags Astro leaves as they are, such as `is:inline` or one
+ * with a `type`, are not included: they are part of the HTML, and remote `src` URLs are not
+ * the package's code.
+ */
+export async function astroScripts(packageDir: string, file: string): Promise<AstroScript[]> {
+  const filename = path.join(packageDir, file);
+  const { scripts } = await transformAstro(fs.readFileSync(filename, "utf8"), { filename });
+  const local = scripts.filter(
+    (script) => script.type === "inline" || !/^[a-z]+:/i.test(script.src),
+  );
+  return local.map((script, index) => {
+    const name = local.length > 1 ? `${file} <script> #${index + 1}` : `${file} <script>`;
+    return script.type === "inline"
+      ? // A sibling path, so the script's relative imports resolve as Astro resolves them.
+        { name, file: `${file}.script-${index}.ts`, code: script.code }
+      : { name, file: path.posix.join(path.posix.dirname(file), script.src) };
+  });
 }
 
 /** Rolldown's message lists every error under a count: keep the first error, without colors. */
@@ -401,6 +475,25 @@ export async function measurePackage(
     } catch (error) {
       const message = error instanceof Error ? firstError(error.message) : String(error);
       return { ...result, error: `Could not bundle \`${subpath}\` (${file}): ${message}` };
+    }
+  }
+
+  const astroFiles = fs
+    .globSync("dist/**/*.astro", { cwd: packageDir })
+    .map(toPosix)
+    .filter((file) => isPublished(file, pkg))
+    .sort();
+  for (const astroFile of astroFiles) {
+    try {
+      for (const script of await astroScripts(packageDir, astroFile)) {
+        result.entries[script.name] = await bundleEntry(packageDir, script.file, {
+          ...ASTRO_SCRIPT_OPTIONS,
+          code: script.code,
+        });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? firstError(error.message) : String(error);
+      return { ...result, error: `Could not bundle the scripts of ${astroFile}: ${message}` };
     }
   }
   return result;

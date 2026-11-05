@@ -17,6 +17,10 @@ import { defineStoryblokBlocks } from "./define-storyblok-blocks";
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
+const missingMessage = (type: string) =>
+  `[storyblok] No component registered for block type "${type}". ` +
+  "Register it in `defineStoryblokBlocks(() => ({ components }))` or provide a `fallback`.";
+
 function makeBlockData(overrides: { component: string } & Record<string, unknown>): BlockContent {
   return { _uid: "test-uid", ...overrides } as BlockContent;
 }
@@ -40,10 +44,9 @@ function Fallback({ block }: { block: BlockContent }) {
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
 describe("defineStoryblokBlocks", () => {
-  it("returns StoryblokBlock, StoryblokBlocks, and StoryblokRichText", () => {
-    const result = defineStoryblokBlocks({ components: {} });
+  it("should return StoryblokBlock and StoryblokRichText", () => {
+    const result = defineStoryblokBlocks(() => ({ components: {} }));
     expect(typeof result.StoryblokBlock).toBe("function");
-    expect(typeof result.StoryblokBlocks).toBe("function");
     expect(typeof result.StoryblokRichText).toBe("function");
   });
 
@@ -51,7 +54,7 @@ describe("defineStoryblokBlocks", () => {
 
   describe("StoryblokBlock — single block", () => {
     it("renders the component matching block.component", () => {
-      const { StoryblokBlock } = defineStoryblokBlocks({ components: { page: Page } });
+      const { StoryblokBlock } = defineStoryblokBlocks(() => ({ components: { page: Page } }));
       const { getByTestId } = render(<StoryblokBlock block={pageBlock} />);
       expect(getByTestId("page")).toHaveTextContent("uid-page");
     });
@@ -60,40 +63,41 @@ describe("defineStoryblokBlocks", () => {
       function WithExtra({ block: _block, extra }: { block: BlockContent; extra?: string }) {
         return <div data-testid="extra">{extra}</div>;
       }
-      const { StoryblokBlock } = defineStoryblokBlocks<{ extra?: string }>({
+      const { StoryblokBlock } = defineStoryblokBlocks<{ extra?: string }>(() => ({
         components: { widget: WithExtra },
-      });
+      }));
       const block = makeBlockData({ component: "widget" });
       const { getByTestId } = render(<StoryblokBlock block={block} extra="hello" />);
       expect(getByTestId("extra")).toHaveTextContent("hello");
     });
 
     it("renders the fallback component when the block type is not registered", () => {
-      const { StoryblokBlock } = defineStoryblokBlocks({
+      const { StoryblokBlock } = defineStoryblokBlocks(() => ({
         components: { page: Page },
         fallback: Fallback,
-      });
+      }));
       const { getByTestId } = render(<StoryblokBlock block={unknownBlock} />);
       expect(getByTestId("fallback")).toHaveTextContent("unknown");
     });
 
     it("returns null and logs a warning when no match and no fallback", () => {
       const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-      const { StoryblokBlock } = defineStoryblokBlocks({ components: {} });
+      const { StoryblokBlock } = defineStoryblokBlocks(() => ({ components: {} }));
       const { container } = render(<StoryblokBlock block={unknownBlock} />);
       expect(container.firstChild).toBeNull();
-      expect(consoleSpy).toHaveBeenCalledWith('[Storyblok] No component registered for "unknown".');
+      expect(consoleSpy).toHaveBeenCalledWith(missingMessage("unknown"));
       consoleSpy.mockRestore();
     });
 
-    it("returns null and logs an error when the block prop is missing", () => {
-      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-      const { StoryblokBlock } = defineStoryblokBlocks({ components: {} });
-      // @ts-expect-error — testing missing required prop
-      const { container } = render(<StoryblokBlock />);
+    it("should render nothing and warn when the block prop is undefined", () => {
+      const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const { StoryblokBlock } = defineStoryblokBlocks(() => ({ components: {} }));
+      const { container } = render(<StoryblokBlock block={undefined} />);
       expect(container.firstChild).toBeNull();
       expect(consoleSpy).toHaveBeenCalledWith(
-        "[Storyblok] StoryblokBlock: 'block' prop is required.",
+        expect.stringContaining(
+          "[storyblok] <StoryblokBlock /> received an undefined `block` prop",
+        ),
       );
       consoleSpy.mockRestore();
     });
@@ -105,7 +109,7 @@ describe("defineStoryblokBlocks", () => {
             setTimeout(() => resolve({ default: Page }), 10),
           ),
       );
-      const { StoryblokBlock } = defineStoryblokBlocks({
+      const { StoryblokBlock } = defineStoryblokBlocks(() => ({
         components: {
           page: {
             component: LazyPage,
@@ -113,7 +117,7 @@ describe("defineStoryblokBlocks", () => {
             suspense: true,
           },
         },
-      });
+      }));
 
       const { getByTestId } = render(<StoryblokBlock block={pageBlock} />);
       expect(getByTestId("skeleton")).toBeInTheDocument();
@@ -127,7 +131,7 @@ describe("defineStoryblokBlocks", () => {
             setTimeout(() => resolve({ default: Teaser }), 10),
           ),
       );
-      const { StoryblokBlock } = defineStoryblokBlocks({
+      const { StoryblokBlock } = defineStoryblokBlocks(() => ({
         components: {
           teaser: {
             component: LazyTeaser,
@@ -135,7 +139,7 @@ describe("defineStoryblokBlocks", () => {
             // suspense omitted — auto-detected via isLazyComponent()
           },
         },
-      });
+      }));
 
       const { getByTestId } = render(<StoryblokBlock block={teaserBlock} />);
       expect(getByTestId("skeleton")).toBeInTheDocument();
@@ -151,7 +155,7 @@ describe("defineStoryblokBlocks", () => {
             ),
         ),
       );
-      const { StoryblokBlock } = defineStoryblokBlocks({
+      const { StoryblokBlock } = defineStoryblokBlocks(() => ({
         components: {
           teaser: {
             component: LazyTeaser,
@@ -159,7 +163,7 @@ describe("defineStoryblokBlocks", () => {
             // suspense omitted — auto-detected via isLazyComponent() unwrapping memo()
           },
         },
-      });
+      }));
 
       const { getByTestId } = render(<StoryblokBlock block={teaserBlock} />);
       expect(getByTestId("skeleton")).toBeInTheDocument();
@@ -173,12 +177,12 @@ describe("defineStoryblokBlocks", () => {
             setTimeout(() => resolve({ default: Page }), 10),
           ),
       );
-      const { StoryblokBlock } = defineStoryblokBlocks({
+      const { StoryblokBlock } = defineStoryblokBlocks(() => ({
         components: {
           page: { component: LazyPage, suspense: true },
         },
         suspenseFallback: <div data-testid="global-skeleton">global</div>,
-      });
+      }));
 
       const { getByTestId } = render(<StoryblokBlock block={pageBlock} />);
       expect(getByTestId("global-skeleton")).toBeInTheDocument();
@@ -186,69 +190,16 @@ describe("defineStoryblokBlocks", () => {
     });
   });
 
-  // ─── StoryblokBlocks — array of blocks ─────────────────────────────────
-
-  describe("StoryblokBlocks — array of blocks", () => {
-    it("renders every block in the array", () => {
-      const { StoryblokBlocks } = defineStoryblokBlocks({
-        components: { page: Page, teaser: Teaser },
-      });
-      const { getByTestId } = render(<StoryblokBlocks blocks={[pageBlock, teaserBlock]} />);
-      expect(getByTestId("page")).toBeInTheDocument();
-      expect(getByTestId("teaser")).toBeInTheDocument();
-    });
-
-    it("keys each rendered block by block._uid", () => {
-      const { StoryblokBlocks } = defineStoryblokBlocks({ components: { page: Page } });
-      const blockA = makeBlockData({ component: "page", _uid: "uid-a" });
-      const blockB = makeBlockData({ component: "page", _uid: "uid-b" });
-      const { container } = render(<StoryblokBlocks blocks={[blockA, blockB]} />);
-      expect(container.querySelectorAll('[data-testid="page"]')).toHaveLength(2);
-    });
-
-    it("renders nothing for an empty array", () => {
-      const { StoryblokBlocks } = defineStoryblokBlocks({ components: {} });
-      const { container } = render(<StoryblokBlocks blocks={[]} />);
-      expect(container.firstChild).toBeNull();
-    });
-
-    it("forwards extra props to every rendered block", () => {
-      function WithExtra({ block, extra }: { block: BlockContent; extra?: string }) {
-        return <div data-testid={`extra-${block._uid}`}>{extra}</div>;
-      }
-      const { StoryblokBlocks } = defineStoryblokBlocks<{ extra?: string }>({
-        components: { widget: WithExtra },
-      });
-      const blockA = makeBlockData({ component: "widget", _uid: "uid-a" });
-      const blockB = makeBlockData({ component: "widget", _uid: "uid-b" });
-      const { getByTestId } = render(<StoryblokBlocks blocks={[blockA, blockB]} extra="hello" />);
-      expect(getByTestId("extra-uid-a")).toHaveTextContent("hello");
-      expect(getByTestId("extra-uid-b")).toHaveTextContent("hello");
-    });
-
-    it("returns null and logs an error when the blocks prop is missing", () => {
-      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-      const { StoryblokBlocks } = defineStoryblokBlocks({ components: {} });
-      // @ts-expect-error — testing missing required prop
-      const { container } = render(<StoryblokBlocks />);
-      expect(container.firstChild).toBeNull();
-      expect(consoleSpy).toHaveBeenCalledWith(
-        "[Storyblok] StoryblokBlocks: 'blocks' prop is required.",
-      );
-      consoleSpy.mockRestore();
-    });
-  });
-
   // ─── StoryblokRichText ─────────────────────────────────────────────────────
 
   describe("StoryblokRichText", () => {
     it("is a function (renderable component)", () => {
-      const { StoryblokRichText } = defineStoryblokBlocks({ components: {} });
+      const { StoryblokRichText } = defineStoryblokBlocks(() => ({ components: {} }));
       expect(typeof StoryblokRichText).toBe("function");
     });
 
     it("renders a simple rich-text document", () => {
-      const { StoryblokRichText } = defineStoryblokBlocks({ components: {} });
+      const { StoryblokRichText } = defineStoryblokBlocks(() => ({ components: {} }));
       const doc: StoryblokRichTextInput = {
         type: "doc",
         content: [{ type: "paragraph", content: [{ type: "text", text: "Hello" }] }],
@@ -258,7 +209,7 @@ describe("defineStoryblokBlocks", () => {
     });
 
     it("renders embedded blocks via the same component map's StoryblokBlock", () => {
-      const { StoryblokRichText } = defineStoryblokBlocks({ components: { page: Page } });
+      const { StoryblokRichText } = defineStoryblokBlocks(() => ({ components: { page: Page } }));
       const doc: StoryblokRichTextInput = {
         type: "doc",
         content: [
@@ -283,9 +234,9 @@ describe("defineStoryblokBlocks", () => {
           </div>
         );
       }
-      const { StoryblokRichText } = defineStoryblokBlocks({
+      const { StoryblokRichText } = defineStoryblokBlocks(() => ({
         components: { page: PageWithLocale },
-      });
+      }));
       const doc: StoryblokRichTextInput = {
         type: "doc",
         content: [
@@ -310,9 +261,9 @@ describe("defineStoryblokBlocks", () => {
           </div>
         );
       }
-      const { StoryblokRichText } = defineStoryblokBlocks({
+      const { StoryblokRichText } = defineStoryblokBlocks(() => ({
         components: { page: PageWithLocale },
-      });
+      }));
       const doc: StoryblokRichTextInput = {
         type: "doc",
         content: [
@@ -337,9 +288,9 @@ describe("defineStoryblokBlocks", () => {
           </div>
         );
       }
-      const { StoryblokRichText } = defineStoryblokBlocks({
+      const { StoryblokRichText } = defineStoryblokBlocks(() => ({
         components: { widget: Widget },
-      });
+      }));
       const doc: StoryblokRichTextInput = {
         type: "doc",
         content: [
@@ -357,9 +308,9 @@ describe("defineStoryblokBlocks", () => {
       function Widget({ block: _block, locale }: { block: BlockContent; locale?: string }) {
         return <div data-testid="widget">{locale}</div>;
       }
-      const { StoryblokRichText } = defineStoryblokBlocks({
+      const { StoryblokRichText } = defineStoryblokBlocks(() => ({
         components: { widget: Widget },
-      });
+      }));
       const doc: StoryblokRichTextInput = {
         type: "doc",
         content: [
@@ -375,7 +326,7 @@ describe("defineStoryblokBlocks", () => {
     });
 
     it("lets a `blok` entry passed in the `components` prop override the built-in embedded-block renderer", () => {
-      const { StoryblokRichText } = defineStoryblokBlocks({ components: { page: Page } });
+      const { StoryblokRichText } = defineStoryblokBlocks(() => ({ components: { page: Page } }));
       const doc: StoryblokRichTextInput = {
         type: "doc",
         content: [
@@ -437,9 +388,9 @@ describe("defineStoryblokBlocks", () => {
           </div>
         );
       }
-      const { StoryblokBlock } = defineStoryblokBlocks<LocaleProps>({
+      const { StoryblokBlock } = defineStoryblokBlocks<LocaleProps>(() => ({
         components: { branch: Branch, leaf: Leaf },
-      });
+      }));
       const root = makeBlockData({
         component: "branch",
         _uid: "uid-branch",
@@ -460,9 +411,9 @@ describe("defineStoryblokBlocks", () => {
           </div>
         );
       }
-      const { StoryblokBlock } = defineStoryblokBlocks<LocaleProps>({
+      const { StoryblokBlock } = defineStoryblokBlocks<LocaleProps>(() => ({
         components: { branch: Branch, leaf: Leaf },
-      });
+      }));
       const root = makeBlockData({
         component: "branch",
         _uid: "uid-branch",
@@ -493,9 +444,9 @@ describe("defineStoryblokBlocks", () => {
           </button>
         );
       }
-      const { StoryblokBlock } = defineStoryblokBlocks<ConfigProps>({
+      const { StoryblokBlock } = defineStoryblokBlocks<ConfigProps>(() => ({
         components: { widget: Widget },
-      });
+      }));
       const block = makeBlockData({ component: "widget" });
       const { getByTestId } = render(
         <StoryblokBlock block={block} config={{ theme: "dark", onSelect }} />,
@@ -510,9 +461,9 @@ describe("defineStoryblokBlocks", () => {
       function Widget({ block: _block, locale }: { block: BlockContent; locale?: string }) {
         return <div data-testid="widget">{locale}</div>;
       }
-      const { StoryblokBlock } = defineStoryblokBlocks<LocaleProps>({
+      const { StoryblokBlock } = defineStoryblokBlocks<LocaleProps>(() => ({
         components: { widget: Widget },
-      });
+      }));
       const block = makeBlockData({ component: "widget" });
       const { getByTestId, rerender } = render(<StoryblokBlock block={block} locale="en" />);
       expect(getByTestId("widget")).toHaveTextContent("en");
@@ -557,9 +508,9 @@ describe("defineStoryblokBlocks", () => {
       }
       const { StoryblokBlock, StoryblokRichText } = defineStoryblokBlocks<{
         locale?: string;
-      }>({
+      }>(() => ({
         components: { page: PageWithRichText },
-      });
+      }));
       const block = makeBlockData({ component: "page", richText: richTextDoc });
 
       render(<StoryblokBlock block={block} locale="de" />);
@@ -593,9 +544,9 @@ describe("defineStoryblokBlocks", () => {
       }
       const { StoryblokBlock, StoryblokRichText } = defineStoryblokBlocks<{
         locale?: string;
-      }>({
+      }>(() => ({
         components: { page: PageWithRichText },
-      });
+      }));
       const block = makeBlockData({ component: "page", richText: richTextDoc });
 
       render(<StoryblokBlock block={block} locale="de" />);
@@ -608,11 +559,11 @@ describe("defineStoryblokBlocks", () => {
   describe("isolation", () => {
     it("two calls do not share component maps", () => {
       const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-      const resultA = defineStoryblokBlocks({ components: { page: Page } });
-      const resultB = defineStoryblokBlocks({ components: { teaser: Teaser } });
+      const resultA = defineStoryblokBlocks(() => ({ components: { page: Page } }));
+      const resultB = defineStoryblokBlocks(() => ({ components: { teaser: Teaser } }));
 
       render(<resultA.StoryblokBlock block={teaserBlock} />);
-      expect(consoleSpy).toHaveBeenCalledWith('[Storyblok] No component registered for "teaser".');
+      expect(consoleSpy).toHaveBeenCalledWith(missingMessage("teaser"));
       consoleSpy.mockRestore();
 
       const { getByTestId } = render(<resultB.StoryblokBlock block={teaserBlock} />);
@@ -625,9 +576,9 @@ describe("defineStoryblokBlocks", () => {
   describe("memo() and forwardRef() components", () => {
     it("renders a component wrapped with React.memo()", () => {
       const MemoTeaser = memo(Teaser);
-      const { StoryblokBlock } = defineStoryblokBlocks({
+      const { StoryblokBlock } = defineStoryblokBlocks(() => ({
         components: { teaser: MemoTeaser },
-      });
+      }));
       const { getByTestId } = render(<StoryblokBlock block={teaserBlock} />);
       expect(getByTestId("teaser")).toHaveTextContent("Hello");
     });
@@ -636,9 +587,9 @@ describe("defineStoryblokBlocks", () => {
       const ForwardRefTeaser = forwardRef<HTMLSpanElement, { block: BlockContent }>(
         ({ block }, _ref) => <span data-testid="fwd-teaser">{(block as any).title}</span>,
       );
-      const { StoryblokBlock } = defineStoryblokBlocks({
+      const { StoryblokBlock } = defineStoryblokBlocks(() => ({
         components: { teaser: ForwardRefTeaser },
-      });
+      }));
       const { getByTestId } = render(<StoryblokBlock block={teaserBlock} />);
       expect(getByTestId("fwd-teaser")).toHaveTextContent("Hello");
     });
@@ -646,9 +597,9 @@ describe("defineStoryblokBlocks", () => {
     it("does not treat memo() as a config object (no undefined component crash)", () => {
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
       const MemoPage = memo(Page);
-      const { StoryblokBlock } = defineStoryblokBlocks({
+      const { StoryblokBlock } = defineStoryblokBlocks(() => ({
         components: { page: MemoPage },
-      });
+      }));
       // Should render without React error (would crash if normalizeEntry returned {component: undefined})
       const { getByTestId } = render(<StoryblokBlock block={pageBlock} />);
       expect(getByTestId("page")).toBeInTheDocument();
@@ -659,23 +610,36 @@ describe("defineStoryblokBlocks", () => {
 
   // ─── Registry validation ───────────────────────────────────────────────────
 
+  // Validation runs inside the factory, which is only called on first
+  // render (see "lazy factory resolution" below) — so these errors surface
+  // when the returned StoryblokBlock renders, not at defineStoryblokBlocks() call time.
+
   describe("registry validation", () => {
-    it("throws a clear error when components is missing", () => {
-      expect(() => defineStoryblokBlocks({} as any)).toThrow(
-        '[Storyblok] defineStoryblokBlocks: "components" is required.',
-      );
+    it("should treat omitted components as an empty registry", () => {
+      const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const { StoryblokBlock } = defineStoryblokBlocks(() => ({}));
+      const { container } = render(<StoryblokBlock block={pageBlock} />);
+      expect(container.firstChild).toBeNull();
+      expect(consoleSpy).toHaveBeenCalledWith(missingMessage("page"));
+      consoleSpy.mockRestore();
     });
 
     it("throws a clear error naming the block key when an entry is undefined", () => {
-      expect(() => defineStoryblokBlocks({ components: { teaser: undefined as any } })).toThrow(
-        '[Storyblok] defineStoryblokBlocks: components["teaser"] is undefined.',
+      const { StoryblokBlock } = defineStoryblokBlocks(() => ({
+        components: { teaser: undefined as any },
+      }));
+      expect(() => render(<StoryblokBlock block={teaserBlock} />)).toThrow(
+        '[storyblok] defineStoryblokBlocks: components["teaser"] is undefined.',
       );
     });
 
     it("throws a clear error naming the block key when a config entry is missing 'component'", () => {
-      expect(() =>
-        defineStoryblokBlocks({ components: { teaser: { suspense: true } as any } }),
-      ).toThrow('[Storyblok] defineStoryblokBlocks: components["teaser"] is missing "component".');
+      const { StoryblokBlock } = defineStoryblokBlocks(() => ({
+        components: { teaser: { suspense: true } as any },
+      }));
+      expect(() => render(<StoryblokBlock block={teaserBlock} />)).toThrow(
+        '[storyblok] defineStoryblokBlocks: components["teaser"] is missing "component".',
+      );
     });
   });
 
@@ -683,15 +647,15 @@ describe("defineStoryblokBlocks", () => {
 
   describe("StoryblokRichText stable reference", () => {
     it("returns the same StoryblokRichText reference on every property access", () => {
-      const result = defineStoryblokBlocks({ components: {} });
+      const result = defineStoryblokBlocks(() => ({ components: {} }));
       const first = result.StoryblokRichText;
       const second = result.StoryblokRichText;
       expect(first).toBe(second);
     });
 
     it("two different defineStoryblokBlocks calls produce different StoryblokRichText types", () => {
-      const resultA = defineStoryblokBlocks({ components: { page: Page } });
-      const resultB = defineStoryblokBlocks({ components: { teaser: Teaser } });
+      const resultA = defineStoryblokBlocks(() => ({ components: { page: Page } }));
+      const resultB = defineStoryblokBlocks(() => ({ components: { teaser: Teaser } }));
       // Each registry has its own pre-computed component — they must not be the same reference
       expect(resultA.StoryblokRichText).not.toBe(resultB.StoryblokRichText);
     });
@@ -802,7 +766,7 @@ describe("defineStoryblokBlocks", () => {
       const { importFn, resolve } = makeDeferred(Page);
       const DynamicPage = makeAppRouterDynamic(importFn);
 
-      const { StoryblokBlock } = defineStoryblokBlocks({
+      const { StoryblokBlock } = defineStoryblokBlocks(() => ({
         components: {
           page: {
             component: DynamicPage,
@@ -810,7 +774,7 @@ describe("defineStoryblokBlocks", () => {
             // suspense: true intentionally omitted
           },
         },
-      });
+      }));
 
       // Wrap in a Suspense so the suspending Lazy doesn't crash the test tree.
       const { queryByTestId } = render(
@@ -831,7 +795,7 @@ describe("defineStoryblokBlocks", () => {
       const { importFn, resolve } = makeDeferred(Page);
       const DynamicPage = makeAppRouterDynamic(importFn);
 
-      const { StoryblokBlock } = defineStoryblokBlocks({
+      const { StoryblokBlock } = defineStoryblokBlocks(() => ({
         components: {
           page: {
             component: DynamicPage,
@@ -839,7 +803,7 @@ describe("defineStoryblokBlocks", () => {
             suspense: true,
           },
         },
-      });
+      }));
 
       const { getByTestId } = render(<StoryblokBlock block={pageBlock} />);
 
@@ -855,7 +819,7 @@ describe("defineStoryblokBlocks", () => {
       const { importFn, resolve } = makeDeferred(Page);
       const DynamicPage = makePagesRouterDynamic(importFn);
 
-      const { StoryblokBlock } = defineStoryblokBlocks({
+      const { StoryblokBlock } = defineStoryblokBlocks(() => ({
         components: {
           page: {
             component: DynamicPage,
@@ -863,7 +827,7 @@ describe("defineStoryblokBlocks", () => {
             // suspense: true intentionally omitted
           },
         },
-      });
+      }));
 
       const { queryByTestId } = render(<StoryblokBlock block={pageBlock} />);
 
@@ -879,7 +843,7 @@ describe("defineStoryblokBlocks", () => {
       const { importFn, resolve } = makeDeferred(Page);
       const DynamicPage = makePagesRouterDynamic(importFn);
 
-      const { StoryblokBlock } = defineStoryblokBlocks({
+      const { StoryblokBlock } = defineStoryblokBlocks(() => ({
         components: {
           page: {
             component: DynamicPage,
@@ -887,7 +851,7 @@ describe("defineStoryblokBlocks", () => {
             suspense: true, // forced on — but forwardRef component never throws
           },
         },
-      });
+      }));
 
       const { queryByTestId } = render(<StoryblokBlock block={pageBlock} />);
 
@@ -908,7 +872,7 @@ describe("defineStoryblokBlocks", () => {
       // as a forwardRef and normalizeEntry wraps it as { component: DynamicPage }.
       // No fallback is extracted since there was none to begin with.
       expect(() => {
-        defineStoryblokBlocks({ components: { page: DynamicPage } });
+        defineStoryblokBlocks(() => ({ components: { page: DynamicPage } }));
       }).not.toThrow();
     });
   });
@@ -916,54 +880,73 @@ describe("defineStoryblokBlocks", () => {
 
 // ─── Registry pre-computation ─────────────────────────────────────────────────
 //
-// normalizeEntry, isLazyComponent, and fallback resolution all run once at
-// factory time and are stored in a Map. The render path is a single Map.get
-// plus a branch — nothing is recomputed per block per render.
+// normalizeEntry, isLazyComponent, and fallback resolution all run once, the
+// first time a block renders, and are cached in a Map from then on. The
+// factory is deferred (not called at defineStoryblokBlocks() time) so a
+// circular import between this module and a block component resolves
+// correctly — see "lazy factory resolution" below.
 
-describe("registry is pre-computed at factory time", () => {
-  it("adding a key to config.components after factory is not reflected", () => {
+describe("registry is pre-computed on first render, then cached", () => {
+  it("should pick up a components object mutated before the first render", () => {
+    const components: Record<string, typeof Page | typeof Teaser> = { page: Page };
+    const { StoryblokBlock } = defineStoryblokBlocks(() => ({ components }));
+
+    // mutate before anything renders — the factory hasn't run yet
+    components.teaser = Teaser;
+
+    const { getByTestId } = render(<StoryblokBlock block={teaserBlock} />);
+    expect(getByTestId("teaser")).toBeInTheDocument();
+  });
+
+  it("should not reflect a components object mutated after the first render", () => {
     const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     const components: Record<string, typeof Page> = { page: Page };
-    const { StoryblokBlock } = defineStoryblokBlocks({ components });
+    const { StoryblokBlock } = defineStoryblokBlocks(() => ({ components }));
 
-    // mutate after factory
+    // first render resolves and caches the registry
+    render(<StoryblokBlock block={pageBlock} />);
+
+    // mutate after the registry is cached
     components.teaser = Teaser;
 
     const { container } = render(<StoryblokBlock block={teaserBlock} />);
     expect(container.firstChild).toBeNull();
-    expect(consoleSpy).toHaveBeenCalledWith('[Storyblok] No component registered for "teaser".');
+    expect(consoleSpy).toHaveBeenCalledWith(missingMessage("teaser"));
     consoleSpy.mockRestore();
   });
 
-  it("removing a key from config.components after factory is not reflected", () => {
+  it("should not reflect a key removed from config.components after the first render", () => {
     const components: Record<string, typeof Page | typeof Teaser> = {
       page: Page,
       teaser: Teaser,
     };
-    const { StoryblokBlock } = defineStoryblokBlocks({ components });
+    const { StoryblokBlock } = defineStoryblokBlocks(() => ({ components }));
 
-    // mutate after factory
+    // first render resolves and caches the registry
+    render(<StoryblokBlock block={teaserBlock} />);
+
+    // mutate after the registry is cached
     delete components.page;
 
     const { getByTestId } = render(<StoryblokBlock block={pageBlock} />);
     expect(getByTestId("page")).toBeInTheDocument();
   });
 
-  it("lazy detection is resolved at factory time — Suspense present on every render, not just the first", async () => {
+  it("should resolve lazy detection on first render and keep Suspense on every render", async () => {
     const LazyPage = lazy(
       () =>
         new Promise<{ default: typeof Page }>((resolve) =>
           setTimeout(() => resolve({ default: Page }), 10),
         ),
     );
-    const { StoryblokBlock } = defineStoryblokBlocks({
+    const { StoryblokBlock } = defineStoryblokBlocks(() => ({
       components: {
         page: {
           component: LazyPage,
           fallback: <div data-testid="skeleton">loading</div>,
         },
       },
-    });
+    }));
 
     // First mount
     const { getByTestId, unmount } = render(<StoryblokBlock block={pageBlock} />);
@@ -975,7 +958,7 @@ describe("registry is pre-computed at factory time", () => {
     expect(get2("skeleton")).toBeInTheDocument();
   });
 
-  it("per-entry fallback is resolved at factory time and not re-evaluated per render", async () => {
+  it("should resolve a per-entry fallback once, on first render, not per render", async () => {
     let fallbackCallCount = 0;
     const LazyPage = lazy(
       () =>
@@ -990,15 +973,118 @@ describe("registry is pre-computed at factory time", () => {
       return <div data-testid="counted-skeleton">loading</div>;
     }
 
-    defineStoryblokBlocks({
+    const { StoryblokBlock } = defineStoryblokBlocks(() => ({
       components: {
         page: { component: LazyPage, fallback: makeFallback(), suspense: true },
       },
-    });
+    }));
 
-    // makeFallback() is called exactly once (at the call-site above, i.e. factory time).
-    // Rendering StoryblokBlock multiple times must not increment the count.
+    render(<StoryblokBlock block={pageBlock} />);
+    render(<StoryblokBlock block={pageBlock} />);
+
+    // makeFallback() is called exactly once (the first time a block renders).
+    // Rendering StoryblokBlock again must not increment the count.
     expect(fallbackCallCount).toBe(1);
+  });
+});
+
+// ─── Lazy factory resolution ───────────────────────────────────────────────
+//
+// defineStoryblokBlocks() takes a factory, not the options object directly.
+// Block components commonly import StoryblokBlock back from the same
+// registry module to recurse into `body` fields, making the module circular
+// with every block it registers. Reading `components` eagerly (at
+// defineStoryblokBlocks() call time) could capture a component binding
+// before its module finished initializing, depending on which module an app
+// happens to import first. Deferring the read to the first render closes
+// that hole — see circular-import-fixtures/circular-import.test.tsx for a
+// real (not simulated) repro of the cycle this guards against.
+
+describe("lazy factory resolution", () => {
+  it("should not call the factory until the first render", () => {
+    const factory = vi.fn(() => ({ components: { page: Page } }));
+    defineStoryblokBlocks(factory);
+    expect(factory).not.toHaveBeenCalled();
+  });
+
+  it("should call the factory exactly once across multiple renders", () => {
+    const factory = vi.fn(() => ({ components: { page: Page } }));
+    const { StoryblokBlock } = defineStoryblokBlocks(factory);
+
+    render(<StoryblokBlock block={pageBlock} />);
+    render(<StoryblokBlock block={pageBlock} />);
+
+    expect(factory).toHaveBeenCalledTimes(1);
+  });
+
+  it("should resolve a component binding that was still unset when defineStoryblokBlocks() was called", () => {
+    // Mirrors the shape of the import-cycle hazard: the component a factory
+    // closes over isn't assigned yet at the time defineStoryblokBlocks()
+    // runs, only by the time a block first renders.
+    let LazyPage: typeof Page | undefined;
+    const { StoryblokBlock } = defineStoryblokBlocks(() => ({
+      components: { page: LazyPage! },
+    }));
+    LazyPage = Page;
+
+    const { getByTestId } = render(<StoryblokBlock block={pageBlock} />);
+    expect(getByTestId("page")).toBeInTheDocument();
+  });
+
+  it("should retry a factory that threw on an earlier render", () => {
+    let ready = false;
+    const factory = vi.fn(() => {
+      if (!ready) {
+        throw new Error("not ready");
+      }
+      return { components: { page: Page } };
+    });
+    const { StoryblokBlock } = defineStoryblokBlocks(factory);
+
+    expect(() => render(<StoryblokBlock block={pageBlock} />)).toThrow("not ready");
+
+    ready = true;
+    const { getByTestId } = render(<StoryblokBlock block={pageBlock} />);
+    expect(getByTestId("page")).toBeInTheDocument();
+    // Cached once a call succeeds. (React may retry a throwing render, so the
+    // count before this point isn't fixed.)
+    const callsAfterSuccess = factory.mock.calls.length;
+    render(<StoryblokBlock block={pageBlock} />);
+    expect(factory).toHaveBeenCalledTimes(callsAfterSuccess);
+  });
+
+  it("should retry an entry that was invalid on an earlier render", () => {
+    let LatePage: typeof Page | undefined;
+    const { StoryblokBlock } = defineStoryblokBlocks(() => ({
+      components: { page: LatePage! },
+    }));
+
+    expect(() => render(<StoryblokBlock block={pageBlock} />)).toThrow(
+      '[storyblok] defineStoryblokBlocks: components["page"] is undefined.',
+    );
+
+    LatePage = Page;
+    const { getByTestId } = render(<StoryblokBlock block={pageBlock} />);
+    expect(getByTestId("page")).toBeInTheDocument();
+  });
+
+  it("should render nothing for an undefined block even when a registry entry is invalid", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    // `console.warn` is a shared mock (see test-setup.ts): drop earlier calls.
+    warnSpy.mockClear();
+    const { StoryblokBlock } = defineStoryblokBlocks(() => ({
+      components: { teaser: undefined as any },
+    }));
+
+    const { container } = render(<StoryblokBlock />);
+    expect(container.firstChild).toBeNull();
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+
+    // The invalid entry still surfaces once a block needs the registry.
+    expect(() => render(<StoryblokBlock block={teaserBlock} />)).toThrow(
+      '[storyblok] defineStoryblokBlocks: components["teaser"] is undefined.',
+    );
+    warnSpy.mockRestore();
   });
 });
 
@@ -1021,7 +1107,7 @@ describe("StoryblokBlock — editable injection", () => {
       received = editable;
       return <div data-testid="widget" />;
     }
-    const { StoryblokBlock } = defineStoryblokBlocks({ components: { widget: Widget } });
+    const { StoryblokBlock } = defineStoryblokBlocks(() => ({ components: { widget: Widget } }));
     const block = makeBlockData({ component: "widget" });
     render(<StoryblokBlock block={block} />);
     expect(received).toEqual({});
@@ -1033,7 +1119,7 @@ describe("StoryblokBlock — editable injection", () => {
       received = editable as Record<string, string>;
       return <div data-testid="widget" />;
     }
-    const { StoryblokBlock } = defineStoryblokBlocks({ components: { widget: Widget } });
+    const { StoryblokBlock } = defineStoryblokBlocks(() => ({ components: { widget: Widget } }));
     const block = makeBlockData({
       component: "widget",
       _editable: editableComment("story-1", "uid-abc"),
@@ -1057,10 +1143,10 @@ describe("StoryblokBlock — editable injection", () => {
       received = editable;
       return <div data-testid="fallback" />;
     }
-    const { StoryblokBlock } = defineStoryblokBlocks({
+    const { StoryblokBlock } = defineStoryblokBlocks(() => ({
       components: {},
       fallback: FallbackWithEditable,
-    });
+    }));
     const block = makeBlockData({
       component: "missing",
       _editable: editableComment("s1", "u1"),
@@ -1081,11 +1167,11 @@ describe("StoryblokBlock — editable injection", () => {
           setTimeout(() => resolve({ default: SlowWidget }), 10),
         ),
     );
-    const { StoryblokBlock } = defineStoryblokBlocks({
+    const { StoryblokBlock } = defineStoryblokBlocks(() => ({
       components: {
         widget: { component: LazyWidget, fallback: <div>loading</div>, suspense: true },
       },
-    });
+    }));
     const block = makeBlockData({
       component: "widget",
       _editable: editableComment("s2", "u2"),
@@ -1133,19 +1219,14 @@ describe("StoryblokBlockComponentProps — type", () => {
     expectTypeOf<keyof Props>().toEqualTypeOf<"block" | "editable">();
   });
 
-  it("with TExtraProps, adds its keys typed as optional (Partial<TExtraProps>)", () => {
-    type Props = StoryblokBlockComponentProps<{ title: string }, { locale: string }>;
-    expectTypeOf<keyof Props>().toEqualTypeOf<"block" | "editable" | "locale">();
-    expectTypeOf<Props["locale"]>().toEqualTypeOf<string | undefined>();
-  });
-
-  it("omitting a TExtraProps field compiles (it's optional, not required)", () => {
-    type Props = StoryblokBlockComponentProps<{ title: string }, { locale: string }>;
-    // Should compile even though `locale` is part of TExtraProps: forcing it to
-    // be required here would make this component unassignable to the
-    // registry in defineStoryblokBlocks (see that function's docs).
-    const _p: Props = { block: { ...pageBlock, title: "hello" } };
-    void _p;
+  it("should keep the optionality declared in TExtraProps", () => {
+    type Props = StoryblokBlockComponentProps<
+      { title: string },
+      { locale: string; count?: number }
+    >;
+    expectTypeOf<keyof Props>().toEqualTypeOf<"block" | "editable" | "locale" | "count">();
+    expectTypeOf<Props["locale"]>().toEqualTypeOf<string>();
+    expectTypeOf<Props["count"]>().toEqualTypeOf<number | undefined>();
   });
 
   it("a component typed with TExtraProps registers against and receives props from the matching defineStoryblokBlocks<TExtraProps>", () => {
@@ -1158,9 +1239,9 @@ describe("StoryblokBlockComponentProps — type", () => {
       );
     }
 
-    const { StoryblokBlock } = defineStoryblokBlocks<{ locale: string }>({
+    const { StoryblokBlock } = defineStoryblokBlocks<{ locale: string }>(() => ({
       components: { teaser: TypedTeaser },
-    });
+    }));
 
     const { getByTestId } = render(<StoryblokBlock block={teaserBlock} locale="de" />);
     expect(getByTestId("typed-teaser")).toHaveAttribute("data-locale", "de");
@@ -1170,11 +1251,11 @@ describe("StoryblokBlockComponentProps — type", () => {
 // ─── Type safety ─────────────────────────────────────────────────────────────
 
 describe("StoryblokBlock — type safety", () => {
-  const { StoryblokBlock } = defineStoryblokBlocks({ components: {} });
+  const { StoryblokBlock } = defineStoryblokBlocks(() => ({ components: {} }));
 
-  it("requires the block prop", () => {
-    // @ts-expect-error — block is required
+  it("should accept an omitted block, so `story?.content` can be passed", () => {
     void (<StoryblokBlock />);
+    void (<StoryblokBlock block={undefined} />);
   });
 
   it("accepts a single BlockContent", () => {
@@ -1182,7 +1263,7 @@ describe("StoryblokBlock — type safety", () => {
   });
 
   it("rejects an array of BlockContent", () => {
-    // @ts-expect-error — StoryblokBlock accepts one block at a time, use StoryblokBlocks for arrays
+    // @ts-expect-error — StoryblokBlock accepts one block at a time; map over an array and render one per block
     void (<StoryblokBlock block={[pageBlock]} />);
   });
 
@@ -1218,35 +1299,6 @@ describe("StoryblokBlock — type safety", () => {
   });
 });
 
-// ─── Type safety — StoryblokBlocks ──────────────────────────────────────────
-
-describe("StoryblokBlocks — type safety", () => {
-  const { StoryblokBlocks } = defineStoryblokBlocks({ components: {} });
-
-  it("requires the blocks prop", () => {
-    // @ts-expect-error — blocks is required
-    void (<StoryblokBlocks />);
-  });
-
-  it("accepts an array of BlockContent", () => {
-    void (<StoryblokBlocks blocks={[pageBlock]} />);
-  });
-
-  it("rejects a single BlockContent (not wrapped in an array)", () => {
-    // @ts-expect-error — StoryblokBlocks accepts an array, use StoryblokBlock for a single block
-    void (<StoryblokBlocks blocks={pageBlock} />);
-  });
-
-  it("without a TExtraProps type argument, rejects any extra prop", () => {
-    // @ts-expect-error — TExtraProps defaults to {}, so `locale` is excess and unknown
-    void (<StoryblokBlocks blocks={[pageBlock]} locale="en" />);
-  });
-
-  it("returns ReactNode", () => {
-    expectTypeOf<ReturnType<typeof StoryblokBlocks>>().toEqualTypeOf<ReactNode>();
-  });
-});
-
 // ─── Type safety — TExtraProps as an explicit type argument ─────────────────
 //
 // TExtraProps is now a type argument to `defineStoryblokBlocks`, fixed for
@@ -1256,9 +1308,9 @@ describe("StoryblokBlocks — type safety", () => {
 // new inferred type.
 
 describe("StoryblokBlock — type safety with TExtraProps", () => {
-  const { StoryblokBlock } = defineStoryblokBlocks<{ locale: string }>({
+  const { StoryblokBlock } = defineStoryblokBlocks<{ locale: string }>(() => ({
     components: {},
-  });
+  }));
 
   it("accepts a prop declared in TExtraProps", () => {
     void (<StoryblokBlock block={pageBlock} locale="en" />);
@@ -1273,5 +1325,150 @@ describe("StoryblokBlock — type safety with TExtraProps", () => {
   it("still requires the declared prop's type", () => {
     // @ts-expect-error — locale must be a string
     void (<StoryblokBlock block={pageBlock} locale={123} />);
+  });
+});
+
+// ─── Alignment with the Svelte and Astro SDKs ───────────────────────────────
+
+describe("warnings", () => {
+  it("should print each warning once per registry", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    // `console.warn` is a shared mock (see test-setup.ts): drop earlier calls.
+    warnSpy.mockClear();
+    const { StoryblokBlock } = defineStoryblokBlocks(() => ({ components: {} }));
+    render(<StoryblokBlock block={unknownBlock} />);
+    render(<StoryblokBlock block={unknownBlock} />);
+    render(<StoryblokBlock />);
+    render(<StoryblokBlock />);
+    expect(warnSpy).toHaveBeenCalledTimes(2);
+    expect(warnSpy).toHaveBeenCalledWith(missingMessage("unknown"));
+
+    // A second registry warns on its own.
+    const other = defineStoryblokBlocks(() => ({ components: {} }));
+    render(<other.StoryblokBlock block={unknownBlock} />);
+    expect(warnSpy).toHaveBeenCalledTimes(3);
+    warnSpy.mockRestore();
+  });
+
+  it("should not warn when the registry is defined with warnings: false", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    // `console.warn` is a shared mock (see test-setup.ts): drop earlier calls.
+    warnSpy.mockClear();
+    const { StoryblokBlock } = defineStoryblokBlocks(() => ({ components: {}, warnings: false }));
+    render(<StoryblokBlock block={unknownBlock} />);
+    render(<StoryblokBlock />);
+    expect(warnSpy).not.toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
+
+  it("should not warn about an undefined block inside the Visual Editor", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    // `console.warn` is a shared mock (see test-setup.ts): drop earlier calls.
+    warnSpy.mockClear();
+    const original = window.location.href;
+    // `window.location` is a plain stub (see test-setup.ts), so `href` is set directly.
+    window.location.href =
+      "http://localhost:3000/?_storyblok=1&_storyblok_c=page&_storyblok_tk[space_id]=1";
+    try {
+      const { StoryblokBlock } = defineStoryblokBlocks(() => ({ components: {} }));
+      render(<StoryblokBlock />);
+      expect(warnSpy).not.toHaveBeenCalled();
+    } finally {
+      window.location.href = original;
+      warnSpy.mockRestore();
+    }
+  });
+
+  it("should silence embedded block warnings when StoryblokRichText has warnings={false}", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    // `console.warn` is a shared mock (see test-setup.ts): drop earlier calls.
+    warnSpy.mockClear();
+    const { StoryblokRichText } = defineStoryblokBlocks(() => ({ components: {} }));
+    const doc: StoryblokRichTextInput = {
+      type: "doc",
+      content: [{ type: "blok", attrs: { id: "b1", body: [{ component: "ghost", _uid: "g" }] } }],
+    };
+    render(<StoryblokRichText document={doc} warnings={false} />);
+    expect(warnSpy).not.toHaveBeenCalled();
+    render(<StoryblokRichText document={doc} />);
+    expect(warnSpy).toHaveBeenCalledWith(missingMessage("ghost"));
+    warnSpy.mockRestore();
+  });
+});
+
+describe("injected props", () => {
+  function Echo({ block, editable }: { block: BlockContent; editable?: StoryblokEditableProps }) {
+    return (
+      <span
+        data-testid="echo"
+        data-uid={block._uid}
+        data-editable={String(editable !== undefined)}
+      />
+    );
+  }
+
+  it("should not let an extra prop replace the injected block or editable", () => {
+    const { StoryblokBlock } = defineStoryblokBlocks(() => ({ components: { page: Echo } }));
+    const extra: Record<string, unknown> = { block: teaserBlock, editable: undefined };
+    // Untyped extra props, as rich text `data` would pass them.
+    const Untyped: ComponentType<Record<string, unknown>> = StoryblokBlock;
+    const { getByTestId } = render(<Untyped {...extra} block={pageBlock} />);
+    expect(getByTestId("echo")).toHaveAttribute("data-uid", "uid-page");
+    expect(getByTestId("echo")).toHaveAttribute("data-editable", "true");
+  });
+
+  it("should not let rich text data replace an embedded block", () => {
+    const { StoryblokRichText } = defineStoryblokBlocks(() => ({ components: { page: Echo } }));
+    const doc: StoryblokRichTextInput = {
+      type: "doc",
+      content: [{ type: "blok", attrs: { id: "b1", body: [pageBlock] } }],
+    };
+    const { getByTestId } = render(
+      <StoryblokRichText document={doc} data={{ block: teaserBlock }} />,
+    );
+    expect(getByTestId("echo")).toHaveAttribute("data-uid", "uid-page");
+  });
+
+  it("should render an embedded blok without a _uid", () => {
+    const { StoryblokRichText } = defineStoryblokBlocks(() => ({ components: { page: Page } }));
+    const doc: StoryblokRichTextInput = {
+      type: "doc",
+      content: [{ type: "blok", attrs: { id: "b1", body: [{ component: "page" }] } }],
+    };
+    const { getByTestId } = render(<StoryblokRichText document={doc} />);
+    expect(getByTestId("page")).toBeInTheDocument();
+  });
+
+  it("should not forward an array data as extra props", () => {
+    let received: Record<string, unknown> | undefined;
+    function Spy(props: { block: BlockContent }) {
+      received = props;
+      return null;
+    }
+    const { StoryblokRichText } = defineStoryblokBlocks(() => ({ components: { page: Spy } }));
+    const doc: StoryblokRichTextInput = {
+      type: "doc",
+      content: [{ type: "blok", attrs: { id: "b1", body: [pageBlock] } }],
+    };
+    render(<StoryblokRichText document={doc} data={["a", "b"]} />);
+    expect(received).not.toHaveProperty("0");
+  });
+});
+
+describe("reserved and declared extra props — type safety", () => {
+  it("should reject block or editable as extra props", () => {
+    // @ts-expect-error — `block` is reserved
+    defineStoryblokBlocks<{ block: string }>(() => ({ components: {} }));
+    // @ts-expect-error — `editable` is reserved
+    defineStoryblokBlocks<{ editable: boolean }>(() => ({ components: {} }));
+  });
+
+  it("should reject a component that requires an undeclared extra prop", () => {
+    function NeedsLocale({ locale }: { block: BlockContent; locale: string }) {
+      return <span>{locale}</span>;
+    }
+    // @ts-expect-error — `locale` isn't declared in TExtraProps
+    defineStoryblokBlocks(() => ({ components: { teaser: NeedsLocale } }));
+    defineStoryblokBlocks<{ locale: string }>(() => ({ components: { teaser: NeedsLocale } }));
   });
 });

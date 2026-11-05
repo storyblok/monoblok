@@ -11,7 +11,7 @@ export const apiClient = createApiClient({
   accessToken: import.meta.env.VITE_STORYBLOK_ACCESS_TOKEN ?? "OurklwV5XsDJTIE1NJaD2wtt",
 });
 
-export const { StoryblokBlock, StoryblokRichText } = defineStoryblokBlocks({
+export const { StoryblokBlock, StoryblokRichText } = defineStoryblokBlocks(() => ({
   components: {
     page: Page,
     teaser: Teaser,
@@ -19,4 +19,4 @@ export const { StoryblokBlock, StoryblokRichText } = defineStoryblokBlocks({
     feature: Feature,
     "emoji-randomizer": EmojiRandomizer,
   },
-});
+}));

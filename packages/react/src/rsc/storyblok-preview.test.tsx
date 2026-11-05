@@ -381,7 +381,7 @@ describe("StoryblokPreview (server mode)", () => {
     expect(getByTestId("initial")).toBeInTheDocument();
     expect(queryByTestId("recovered")).toBeNull();
     expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining("[Storyblok]"),
+      expect.stringContaining("[storyblok]"),
       expect.any(Error),
     );
 

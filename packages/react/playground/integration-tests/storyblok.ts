@@ -12,7 +12,7 @@ export const apiClient = createApiClient({
   inlineRelations: true,
 }).withTypes<Schema>();
 
-export const { StoryblokBlock, StoryblokRichText } = defineStoryblokBlocks({
+export const { StoryblokBlock, StoryblokRichText } = defineStoryblokBlocks(() => ({
   components: {
     page: Page,
     teaser: Teaser,
@@ -20,4 +20,4 @@ export const { StoryblokBlock, StoryblokRichText } = defineStoryblokBlocks({
     feature: Feature,
     "featured-articles": FeaturedArticles,
   },
-});
+}));

@@ -51,6 +51,14 @@ export interface StoryblokReactRichTextRenderContext {
   optimizeImage?: boolean | StoryblokRichTextImageOptions;
   components?: StoryblokReactRichTextComponentMap;
   data?: unknown;
+  /**
+   * Set to `false` to silence the warning for a `blok` node without a
+   * renderer, and, in the `StoryblokRichText` returned by
+   * `defineStoryblokBlocks()`, the registry's warnings for embedded blocks.
+   *
+   * @default true
+   */
+  warnings?: boolean;
 }
 
 /** Props for the `<StoryblokRichText>` React component. */
@@ -67,6 +75,26 @@ function resolveComponent<K extends StoryblokRichTextElement>(
   components?: StoryblokReactRichTextComponentMap,
 ): ComponentType<StoryblokReactRichTextProps<K>> | undefined {
   return components?.[type] as ComponentType<StoryblokReactRichTextProps<K>> | undefined;
+}
+
+// Module-level so the warning prints once per environment, not once per
+// render. Only set when the warning prints, so a renderer with
+// `warnings: false` doesn't silence the others.
+let warnedMissingBlok = false;
+
+/**
+ * Without a renderer a `blok` node's content silently goes missing, so this
+ * warns by default.
+ */
+function warnMissingBlokOnce(warnings: boolean | undefined): void {
+  if (warnings === false || warnedMissingBlok) {
+    return;
+  }
+  warnedMissingBlok = true;
+  console.warn(
+    '[storyblok] "blok" nodes require a custom renderer passed through `components.blok`, ' +
+      "or use the `StoryblokRichText` returned by `defineStoryblokBlocks()`.",
+  );
 }
 
 /**
@@ -177,11 +205,7 @@ function renderNode(
   const tag = resolveTag(node);
   if (!tag) {
     if (node.type === "blok") {
-      console.warn(
-        '[Storyblok] A richtext document contains a "blok" node but no "blok" component is ' +
-          "registered. Use defineStoryblokBlocks() to render embedded blocks, or pass a " +
-          '"blok" key in the components prop.',
-      );
+      warnMissingBlokOnce(options.warnings);
     }
     return node.content ? renderChildren(node.content, options) : null;
   }

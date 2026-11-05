@@ -33,6 +33,7 @@ jobs:
       pull-requests: read
     outputs:
       code: ${{ steps.filter.outputs.code }}
+      library-docs: ${{ steps.filter.outputs.library-docs }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -47,6 +48,9 @@ jobs:
               - "**"
               - "!**/*.md"
               - "!docs/**"
+            # One pattern, because predicate-quantifier "every" ANDs a filter's patterns.
+            library-docs:
+              - "{packages/*/docs/**,tools/docs-check.mjs,.github/workflows/ci.yaml}"
 
   # User-facing docs are drafted in a `DOCS.md` while a PR is open and must move
   # to the docs platform before merge. See `docs/docs-platform.md`.
@@ -65,6 +69,55 @@ jobs:
             echo "::error file=$file::Open a docs platform PR from $file, then delete it before merging."
           done
           exit 1
+
+  # Package docs (packages/*/docs) render on the docs platform as is, so they
+  # follow its template and style rules. See `docs/docs-platform.md`.
+  library-docs:
+    needs: changes
+    if: needs.changes.outputs.library-docs == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # vale-action reports through a check run.
+      checks: write
+    env:
+      # Empty on forks and Dependabot, which can't read the docs platform.
+      HAS_VALE_CONFIG: ${{ secrets.DOCS_PLATFORM_READ_TOKEN != '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Check the template
+        run: node tools/docs-check.mjs
+
+      # The Vale config and styles live in the docs platform repo, so both
+      # repos lint with the same rules.
+      - name: Fetch the docs platform's Vale config
+        if: env.HAS_VALE_CONFIG == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: storyblok/storyblok-docs-platform
+          token: ${{ secrets.DOCS_PLATFORM_READ_TOKEN }}
+          path: .docs-platform
+          sparse-checkout: editorial/configs/vale
+          persist-credentials: false
+
+      # Same action, version, and alert level as the docs platform's PR linter.
+      - name: Run Vale
+        if: env.HAS_VALE_CONFIG == 'true'
+        uses: vale-cli/vale-action@518a9136acc6e6668ce7c00d367051e0941e87ff # v3.0.0
+        with:
+          min_alert_level: warning
+          files: packages
+          config: .docs-platform/editorial/configs/vale/vale.ini
+          # Vale matches the glob against the path below `files`.
+          glob: "**/docs/**/*.md"
+          fail_on_error: true
+
+      - name: Skip Vale
+        if: env.HAS_VALE_CONFIG != 'true'
+        run: echo "::warning::DOCS_PLATFORM_READ_TOKEN isn't available, so Vale didn't run."
 
   build:
     name: build (${{ matrix.name }})

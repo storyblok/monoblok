@@ -57,3 +57,6 @@ docs/superpowers
 
 # Saved app session for Visual Editor QA
 /.storyblok-qa/
+
+# local skill config (internal identifiers)
+.agents/skills/*/*.local.*

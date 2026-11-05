@@ -11,15 +11,17 @@ All generated artifacts go into `claude-output/` (gitignored). Every file follow
 claude-output/<type>-<identifier>-<subtype>.md
 ```
 
-| Command           | Pattern               | Example                                           |
-| ----------------- | --------------------- | ------------------------------------------------- |
-| `/triage`         | `triage-<id>.md`      | `triage-424.md`, `triage-DX-296.md`               |
-| `/investigate`    | `investigate-<id>.md` | `investigate-424.md`, `investigate-DX-296.md`     |
-| `/plan`           | `plan-<id>.md`        | `plan-424.md`, `plan-DX-296.md`                   |
-| `/review-and-qa`  | `review-<id>.md`      | `review-pr-435.md`, `review-login-flow.md`        |
-| `/spec` (project) | `spec-<id>.md`        | `spec-dx-310.md`, `spec-asset-optimization.md`    |
-| `/spec` (ticket)  | `ticket-<id>.md`      | `ticket-dx-237.md`, `ticket-add-logout-button.md` |
-| PR description    | `pr-<id>-summary.md`  | `pr-435-summary.md`, `pr-DX-308-summary.md`       |
+| Command           | Pattern                           | Example                                           |
+| ----------------- | --------------------------------- | ------------------------------------------------- |
+| `/triage`         | `triage-<id>.md`                  | `triage-424.md`, `triage-DX-296.md`               |
+| `/triage` (batch) | `triage-<UTC date-time>-batch.md` | `triage-2026-11-05-142236-batch.md`               |
+| `/maintenance`    | `maintenance-<UTC date-time>.md`  | `maintenance-2026-11-03-150042.md`                |
+| `/investigate`    | `investigate-<id>.md`             | `investigate-424.md`, `investigate-DX-296.md`     |
+| `/plan`           | `plan-<id>.md`                    | `plan-424.md`, `plan-DX-296.md`                   |
+| `/review-and-qa`  | `review-<id>.md`                  | `review-pr-435.md`, `review-login-flow.md`        |
+| `/spec` (project) | `spec-<id>.md`                    | `spec-dx-310.md`, `spec-asset-optimization.md`    |
+| `/spec` (ticket)  | `ticket-<id>.md`                  | `ticket-dx-237.md`, `ticket-add-logout-button.md` |
+| PR description    | `pr-<id>-summary.md`              | `pr-435-summary.md`, `pr-DX-308-summary.md`       |
 
 ## Identifier extraction
 

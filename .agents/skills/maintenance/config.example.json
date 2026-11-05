@@ -1,0 +1,6 @@
+{
+  "slackWorkspaceUrl": "https://<workspace>.slack.com",
+  "slackChannelName": "<channel name without #>",
+  "slackChannelId": "<channel id, e.g. C0123456789>",
+  "slackUserGroupId": "<DX user group id, e.g. S0123456789>"
+}

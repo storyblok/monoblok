@@ -44,7 +44,7 @@ function Fallback({ block }: { block: BlockContent }) {
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
 describe("defineStoryblokBlocks", () => {
-  it("returns StoryblokBlock and StoryblokRichText", () => {
+  it("should return StoryblokBlock and StoryblokRichText", () => {
     const result = defineStoryblokBlocks(() => ({ components: {} }));
     expect(typeof result.StoryblokBlock).toBe("function");
     expect(typeof result.StoryblokRichText).toBe("function");
@@ -887,7 +887,7 @@ describe("defineStoryblokBlocks", () => {
 // correctly — see "lazy factory resolution" below.
 
 describe("registry is pre-computed on first render, then cached", () => {
-  it("a components object mutated before the first render is picked up", () => {
+  it("should pick up a components object mutated before the first render", () => {
     const components: Record<string, typeof Page | typeof Teaser> = { page: Page };
     const { StoryblokBlock } = defineStoryblokBlocks(() => ({ components }));
 
@@ -898,7 +898,7 @@ describe("registry is pre-computed on first render, then cached", () => {
     expect(getByTestId("teaser")).toBeInTheDocument();
   });
 
-  it("a components object mutated after the first render is not reflected", () => {
+  it("should not reflect a components object mutated after the first render", () => {
     const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     const components: Record<string, typeof Page> = { page: Page };
     const { StoryblokBlock } = defineStoryblokBlocks(() => ({ components }));
@@ -915,7 +915,7 @@ describe("registry is pre-computed on first render, then cached", () => {
     consoleSpy.mockRestore();
   });
 
-  it("removing a key from config.components after the first render is not reflected", () => {
+  it("should not reflect a key removed from config.components after the first render", () => {
     const components: Record<string, typeof Page | typeof Teaser> = {
       page: Page,
       teaser: Teaser,
@@ -932,7 +932,7 @@ describe("registry is pre-computed on first render, then cached", () => {
     expect(getByTestId("page")).toBeInTheDocument();
   });
 
-  it("lazy detection is resolved on first render — Suspense present on every render, not just the first", async () => {
+  it("should resolve lazy detection on first render and keep Suspense on every render", async () => {
     const LazyPage = lazy(
       () =>
         new Promise<{ default: typeof Page }>((resolve) =>
@@ -958,7 +958,7 @@ describe("registry is pre-computed on first render, then cached", () => {
     expect(get2("skeleton")).toBeInTheDocument();
   });
 
-  it("per-entry fallback is resolved once, on first render, and not re-evaluated per render", async () => {
+  it("should resolve a per-entry fallback once, on first render, not per render", async () => {
     let fallbackCallCount = 0;
     const LazyPage = lazy(
       () =>
@@ -1001,13 +1001,13 @@ describe("registry is pre-computed on first render, then cached", () => {
 // real (not simulated) repro of the cycle this guards against.
 
 describe("lazy factory resolution", () => {
-  it("does not call the factory until the first render", () => {
+  it("should not call the factory until the first render", () => {
     const factory = vi.fn(() => ({ components: { page: Page } }));
     defineStoryblokBlocks(factory);
     expect(factory).not.toHaveBeenCalled();
   });
 
-  it("calls the factory exactly once across multiple renders", () => {
+  it("should call the factory exactly once across multiple renders", () => {
     const factory = vi.fn(() => ({ components: { page: Page } }));
     const { StoryblokBlock } = defineStoryblokBlocks(factory);
 
@@ -1017,7 +1017,7 @@ describe("lazy factory resolution", () => {
     expect(factory).toHaveBeenCalledTimes(1);
   });
 
-  it("resolves a component binding that was still unset when defineStoryblokBlocks() was called", () => {
+  it("should resolve a component binding that was still unset when defineStoryblokBlocks() was called", () => {
     // Mirrors the shape of the import-cycle hazard: the component a factory
     // closes over isn't assigned yet at the time defineStoryblokBlocks()
     // runs, only by the time a block first renders.

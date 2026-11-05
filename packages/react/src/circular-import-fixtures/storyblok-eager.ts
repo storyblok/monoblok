@@ -8,5 +8,6 @@ export const { StoryblokBlock } = defineStoryblokBlocks(() => ({
 // Misuse: calling StoryblokBlock as a plain function at module-evaluation
 // time instead of letting React render it. This forces resolveRegistry() to
 // run right now, mid-cycle — before page-eager.tsx's `Page` binding has
-// initialized — so it throws the same way the old eager API always did.
+// initialized — so it fails the same way the old eager API always did
+// (see eager-call.test.tsx for which error each module loader throws).
 StoryblokBlock({ block: { _uid: "root", component: "page" } } as any);

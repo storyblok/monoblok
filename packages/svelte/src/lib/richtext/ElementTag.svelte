@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { buildSvelteAttrs } from '../richtext-helpers';
-  import { isSelfClosing, resolveTag, type StoryblokRichTextMark, type StoryblokRichTextNode } from '@storyblok/richtext';
+  import { buildRenderAttrs, isSelfClosing, resolveTag, type StoryblokRichTextMark, type StoryblokRichTextNode } from '@storyblok/richtext';
   import type { Snippet } from 'svelte';
 
   type Props = {
@@ -10,7 +9,7 @@
 
   const { node, children }: Props = $props();
   const Tag = $derived(resolveTag(node));
-  const processedAttrs = $derived(buildSvelteAttrs(node.type, 'attrs' in node ? (node.attrs ?? {}) : {}));
+  const processedAttrs = $derived(buildRenderAttrs(node.type, 'attrs' in node ? (node.attrs ?? {}) : {}));
   const selfClosing = $derived(Tag && isSelfClosing(Tag));
 </script>
 

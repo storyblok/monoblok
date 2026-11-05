@@ -1,6 +1,7 @@
 import { MARK_RENDER_MAP, NODE_RENDER_MAP } from "../generated/render-map.generated";
 import type { RichTextMark, RichTextNode } from "../generated/overlay/types.gen";
 import { escapeAttr } from "./attribute";
+import type { StoryblokRichTextElement } from "./types";
 
 const SELF_CLOSING_TAGS = [
   "area",
@@ -98,4 +99,28 @@ export function hasContent<T extends RichTextNode>(
   node: T,
 ): node is T & { content: RichTextNode[] } {
   return "content" in node && Array.isArray(node.content);
+}
+
+/**
+ * Returns the render context for a custom component that replaces the `type`
+ * element, with that component's own override removed. A custom component
+ * that renders nested rich text with this context falls back to the default
+ * rendering for its own type instead of recursing into itself.
+ *
+ * @param context - The render context holding the `components` overrides
+ * @param type - The element type the custom component replaces
+ * @returns The same context if it has no override for `type`, otherwise a copy without it
+ * @example
+ * const context = { components: { paragraph: MyParagraph } };
+ * excludeComponentFromContext(context, "paragraph");
+ * // { components: { paragraph: undefined } }
+ */
+export function excludeComponentFromContext<
+  TContext extends { components?: Partial<Record<StoryblokRichTextElement, unknown>> },
+>(context: TContext, type: StoryblokRichTextElement): TContext {
+  if (!context.components?.[type]) {
+    return context;
+  }
+
+  return { ...context, components: { ...context.components, [type]: undefined } };
 }

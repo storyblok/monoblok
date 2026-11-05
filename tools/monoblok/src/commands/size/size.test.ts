@@ -334,7 +334,7 @@ describe("measure", () => {
       { name: "@storyblok/pkg", type: "module", exports: { ".": "./dist/index.mjs" } },
       {
         "dist/index.mjs": "export {};\n",
-        "dist/Data.astro": `<script is:inline id="data" type="application/json" set:html={"{}"} />\n<script type="module">console.log("module");</script>\n<script src="https://example.com/remote.js"></script>\n`,
+        "dist/Data.astro": `<script is:inline id="data" type="application/json" set:html={"{}"} />\n<script type="module">console.log("module");</script>\n<script src="https://example.com/remote.js"></script>\n<script src="//cdn.example.com/cdn.js"></script>\n<script src="/public.js"></script>\n`,
       },
     );
 

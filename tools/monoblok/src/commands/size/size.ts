@@ -406,14 +406,15 @@ export type AstroScript = {
 /**
  * The `<script>` tags of an `.astro` component that Astro processes and bundles for the browser,
  * as Astro's own compiler reports them. Tags Astro leaves as they are, such as `is:inline` or one
- * with a `type`, are not included: they are part of the HTML, and remote `src` URLs are not
- * the package's code.
+ * with a `type`, are not included: they are part of the HTML. Neither is a `src` that is a URL
+ * (`https://…`, `//…`) or root-relative (`/…`, served from the app's `public/`): it is not the
+ * package's code.
  */
 export async function astroScripts(packageDir: string, file: string): Promise<AstroScript[]> {
   const filename = path.join(packageDir, file);
   const { scripts } = await transformAstro(fs.readFileSync(filename, "utf8"), { filename });
   const local = scripts.filter(
-    (script) => script.type === "inline" || !/^[a-z]+:/i.test(script.src),
+    (script) => script.type === "inline" || !/^([a-z][a-z\d+.-]*:|\/)/i.test(script.src),
   );
   return local.map((script, index) => {
     const name = local.length > 1 ? `${file} <script> #${index + 1}` : `${file} <script>`;

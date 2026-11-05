@@ -152,9 +152,10 @@ flowchart LR
 
 ### 5. Operate it
 
-- **Manual, from `main` only.** `publish.yaml` chains the sync after a publish on `main`. Other
-  branches publish prereleases, which a template must never point at, so the workflow fails on any
-  other ref.
+- **Manual, from `main` only.** `publish.yaml` starts the sync after a publish on `main` by
+  dispatching the workflow, not by calling it: when it was called, `push` got an empty App key.
+  Other branches publish prereleases, which a template must never point at, so the workflow fails on
+  any other ref.
 - **One sync at a time.** Concurrency is scoped by ref and never cancels a running sync. A run
   waiting behind it is replaced by a newer one.
 
@@ -206,7 +207,7 @@ flowchart LR
   them.
 - The sync is live when `publish.yaml` merges: it asks for an approval after every publish on
   `main`, and has no off-switch. The first sync after the merge is run by hand: reject the first
-  chained approval.
+  approval that a publish starts.
 
 **Known gaps**
 

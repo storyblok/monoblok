@@ -47,10 +47,9 @@ export class CatchAllComponent implements OnInit {
   readonly bridgeConfig: BridgeParams = {};
 
   ngOnInit(): void {
-    void this.livePreview.connect(
-      (updatedStory) => this.story.set(updatedStory),
-      this.destroyRef,
-      this.bridgeConfig,
-    );
+    void this.livePreview.listen((updatedStory) => this.story.set(updatedStory), {
+      ...this.bridgeConfig,
+      destroyRef: this.destroyRef,
+    });
   }
 }

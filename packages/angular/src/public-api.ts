@@ -12,6 +12,7 @@ export { withStoryblokComponents, type StoryblokComponentsMap } from "./lib/comp
 export {
   LivePreviewService,
   type LivePreviewCallback,
+  type LivePreviewListenOptions,
 } from "./lib/livepreview/livepreview.service";
 export { withLivePreview } from "./lib/livepreview/livepreview.feature";
 export { type BridgeParams } from "@storyblok/live-preview";

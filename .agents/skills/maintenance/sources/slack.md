@@ -1,7 +1,7 @@
 # Source: Slack
 
-Channel, DX user group and workspace come from the local config (see Config in `SKILL.md`).
-Read-only tools only; load them with ToolSearch. Private channels and DMs
+Channel, DX user group, DX team channel, topics and workspace come from the local config (see Config
+in `SKILL.md`). Read-only tools only; load them with ToolSearch. Private channels and DMs
 (`slack_search_public_and_private`) need the user's consent.
 
 ## Verdicts
@@ -18,12 +18,14 @@ Judge from the end of the thread and take the first verdict that fits:
 3. `open`: the last ask to DX has no DX reply after it. A follow-up such as "that didn't work" or
    "any update?" is a new ask. A "+1" or "same here" from someone else is not an answer.
 4. `not-dx`: nothing for DX to do: not addressed to DX, an announcement or cc, a topic the DX team
-   does not own, or a wait on another team's change.
+   does not own (including every topic in `notDxTopics`), or a wait on another team's change.
 5. `answered`: everything else, e.g. DX or someone else answered the ask in substance, or the thread
    ends in thanks for an answer.
 
-A DX member is anyone who answers as the DX team in the channel; the user group has no read-only
-member lookup. When unsure whether a substantive answer came from DX, treat it as an answer.
+A DX member is a member of the `dxTeamChannelId` channel. List them once per run with
+`slack_list_channel_members` (`response_format: "ids_only"`; listing this configured channel needs
+no further consent) and match the user ID that each message shows in parentheses. Only their replies
+count as DX answers or DX promises.
 
 **Done marker**: a check-style reaction (`white_check_mark` ✅, `heavy_check_mark`,
 `ballot_box_with_check`, `done`, `resolved`) on the parent post or on any reply (the thread read

@@ -17,7 +17,7 @@
 
 set -euo pipefail
 verdicts='["answered","not-dx","open","promise"]'
-rules=2
+rules=3
 usage() {
   echo "usage: slack-cache.sh get <ts> <fingerprint> | put <ts> <fingerprint> <answered|not-dx|open|promise> <note> | list" >&2
   exit 2

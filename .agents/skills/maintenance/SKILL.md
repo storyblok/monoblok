@@ -20,9 +20,10 @@ command.
 
 Slack identifiers are internal, so they live in the git-ignored
 `.agents/skills/maintenance/config.local.json`, never in this public repo. Its shape is
-`config.example.json`. If the file is missing, ask the user once for the four values, write the
-file, and continue. Do this in the main session before starting subagents; subagents read the file
-and never ask. Never print the values into commits, PR text or the committed skill.
+`config.example.json`. If the file is missing, ask the user once for the values, write the file, and
+continue. `notDxTopics` may be empty. Do this in the main session before starting subagents;
+subagents read the file and never ask. Never print the values into commits, PR text or the committed
+skill.
 
 ## Shared inputs
 

@@ -16,8 +16,8 @@ import RenderTable from "./components/richtext/RenderTable.astro";
  * at every hop whose own module doesn't import it.
  *
  * `defineStoryblokBlocks()` flags its own wrappers; these are the rich text
- * hops between its `StoryblokRichText` and an embedded block, flagged here
- * since `.astro` components can't declare it themselves.
+ * hops between its `StoryblokRichText` and an embedded block. `.astro`
+ * components can't declare it themselves.
  */
 const RICH_TEXT_HOPS = [
   RawStoryblokRichText,
@@ -28,8 +28,15 @@ const RICH_TEXT_HOPS = [
   RenderTable,
 ];
 
-for (const component of RICH_TEXT_HOPS) {
-  Reflect.set(component, "propagation", "in-tree");
+/**
+ * Flags the rich text hops `in-tree`. A function rather than a module-level
+ * statement: this module isn't in `sideEffects`, so bundlers (this package's
+ * and the consumer's) may drop top-level statements that export nothing.
+ */
+export function propagateThroughRichText(): void {
+  for (const component of RICH_TEXT_HOPS) {
+    Object.assign(component, { propagation: "in-tree" });
+  }
 }
 
 export { RawStoryblokRichText };

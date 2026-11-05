@@ -1,7 +1,7 @@
 import { createComponent, render, renderComponent } from "astro/compiler-runtime";
 import { isInEditor, storyblokEditable } from "@storyblok/live-preview";
 import { createBlockRegistry, type StoryblokBlockRegistry } from "./block-registry";
-import { RawStoryblokRichText } from "./head-propagation";
+import { propagateThroughRichText, RawStoryblokRichText } from "./head-propagation";
 import type { StoryblokAstroRichTextProps } from "./richtext-helpers";
 import type {
   DefineStoryblokBlocksOptions,
@@ -67,6 +67,7 @@ export function defineStoryblokBlocks<TExtraProps extends StoryblokExtraProps = 
   factory: () => DefineStoryblokBlocksOptions<NoInfer<TExtraProps>>,
 ): DefineStoryblokBlocksResult<TExtraProps> {
   const registry = createBlockRegistry(factory);
+  propagateThroughRichText();
 
   // `.astro` components can't be parameterized by calling them directly, so
   // these are built with Astro's own low-level render primitives, closing

@@ -9,6 +9,7 @@ import FeaturedArticles from "./blocks/FeaturedArticles.astro";
 import RichText from "./blocks/RichText.astro";
 import EmbeddedBlok from "./blocks/EmbeddedBlok.astro";
 import CustomFallback from "./blocks/CustomFallback.astro";
+import MdxNote from "./blocks/MdxNote.astro";
 
 export const client = createApiClient({
   accessToken: "hjfIuqpPLxaJIYlgCAylKgtt",
@@ -24,6 +25,7 @@ export const { StoryblokBlock, StoryblokRichText } = defineStoryblokBlocks(() =>
     "featured-articles": FeaturedArticles,
     richtext: RichText,
     embedded_blok: EmbeddedBlok,
+    mdx_note: MdxNote,
   },
   fallback: CustomFallback,
 }));

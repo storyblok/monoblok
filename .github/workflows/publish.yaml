@@ -92,13 +92,26 @@ jobs:
           fi
         shell: bash
 
-  # Syncs the blueprints to their template repos once the packages are on npm, so the sync resolves
-  # `latest` to what was just published. Every publish on main asks for it, including one that had
-  # nothing new to publish: the approval is where a run is rejected. See blueprints/README.md.
+  # Starts the blueprint sync once the packages are on npm, so the sync resolves `latest` to what
+  # was just published. Every publish on main starts one, including a publish that had nothing new:
+  # the approval is where a run is rejected. See blueprints/README.md.
+  #
+  # The sync is dispatched as a run of its own, not called with `uses:`. When it was called, `push`
+  # got an empty App key (the environment variable arrived, the environment secret did not).
+  # Dispatching with GITHUB_TOKEN is allowed; it is the one event type that starts a new run.
   sync-blueprints:
-    name: Sync blueprints
+    name: Start blueprint sync
     needs: publish
     if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
     permissions:
-      contents: read
-    uses: ./.github/workflows/sync-blueprints.yaml
+      actions: write
+    timeout-minutes: 5
+    steps:
+      - name: Dispatch the sync
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REF: ${{ github.ref_name }}
+        run: |
+          gh workflow run sync-blueprints.yaml --repo "$GITHUB_REPOSITORY" --ref "$REF" -f blueprints=all
+          echo "Started the **Sync blueprints** workflow on \`$REF\`. It waits for approval in the Actions tab: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/workflows/sync-blueprints.yaml" >> "$GITHUB_STEP_SUMMARY"

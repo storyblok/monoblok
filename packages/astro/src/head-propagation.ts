@@ -1,9 +1,11 @@
 import RawStoryblokRichText from "./components/StoryblokRichText.astro";
 import RenderChildren from "./components/richtext/RenderChildren.astro";
 import RenderLinkGroup from "./components/richtext/RenderLinkGroup.astro";
+import RenderLinkInner from "./components/richtext/RenderLinkInner.astro";
 import RenderNode from "./components/richtext/RenderNode.astro";
 import RenderStaticChildren from "./components/richtext/RenderStaticChildren.astro";
 import RenderTable from "./components/richtext/RenderTable.astro";
+import RenderTextNodeWithMarks from "./components/richtext/RenderTextNodeWithMarks.astro";
 
 /**
  * Head propagation: Astro renders a component's head content (e.g. the scoped
@@ -16,16 +18,24 @@ import RenderTable from "./components/richtext/RenderTable.astro";
  * at every hop whose own module doesn't import it.
  *
  * `defineStoryblokBlocks()` flags its own wrappers; these are the rich text
- * hops between its `StoryblokRichText` and an embedded block. `.astro`
- * components can't declare it themselves.
+ * hops between its `StoryblokRichText` and an embedded block or a custom
+ * node or mark component. `.astro` components can't declare it themselves.
+ * `ElementTag` and `RenderStaticStructure` only pass content through
+ * `<slot />`, which Astro evaluates eagerly, so they need no flag.
+ *
+ * The flag is set on the shared components, so once any
+ * `defineStoryblokBlocks()` has run, the plain `StoryblokRichText` export
+ * propagates head content of custom components too.
  */
 const RICH_TEXT_HOPS = [
   RawStoryblokRichText,
   RenderChildren,
   RenderLinkGroup,
+  RenderLinkInner,
   RenderNode,
   RenderStaticChildren,
   RenderTable,
+  RenderTextNodeWithMarks,
 ];
 
 /**

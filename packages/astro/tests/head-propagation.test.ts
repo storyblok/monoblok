@@ -68,6 +68,31 @@ describe("head propagation through the block registry", () => {
     expect(headOf(html)).toContain('data-test="propagated-style"');
   });
 
+  it("should hoist a custom mark component's head content into <head>", async () => {
+    const { StoryblokRichText } = defineStoryblokBlocks(() => ({ components: {} }));
+    const container = await AstroContainer.create();
+
+    const html = await container.renderToString(Page, {
+      partial: false,
+      props: {
+        Component: StoryblokRichText,
+        components: { bold: PropagatingBlock },
+        document: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "Bold", marks: [{ type: "bold" }] }],
+            },
+          ],
+        },
+      },
+    });
+
+    expect(html).toContain('data-test="propagated-content"');
+    expect(headOf(html)).toContain('data-test="propagated-style"');
+  });
+
   it("should hoist head content for a block imported directly (control)", async () => {
     const container = await AstroContainer.create();
 

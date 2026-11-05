@@ -71,10 +71,13 @@ function resolveEntry(
   if (entry == null) {
     // The factory defers reading `components` to first render, which
     // closes the ordinary import-cycle hazard (see
-    // circular-import-fixtures/circular-import.test.tsx). This still
-    // fires for a genuine typo, or if something calls StoryblokBlock as
-    // a plain function during module evaluation instead of through
-    // React's render — see circular-import-fixtures/eager-call.test.tsx.
+    // circular-import-fixtures/circular-import.test.tsx). This fires for a
+    // genuine typo or an explicit `undefined`. A registry resolved
+    // mid-cycle (StoryblokBlock called as a plain function during module
+    // evaluation, see circular-import-fixtures/eager-call.test.tsx) only
+    // lands here when a bundler or test transform rewrote the import into a
+    // property read; native ESM throws a `ReferenceError` inside the
+    // factory first, because the binding is still in the temporal dead zone.
     throw new Error(
       `[storyblok] defineStoryblokBlocks: components["${type}"] is undefined. Check for ` +
         "a typo, or a circular import that hasn't finished initializing yet.",
@@ -172,12 +175,26 @@ export function defineStoryblokBlocks<TExtraProps extends StoryblokExtraProps = 
   }
 
   /** Logs `message` once per `key`, unless the registry was defined with `warnings: false`. */
-  function warn(key: string, message: string): void {
-    if (!resolveRegistry().warnings || warned.has(key)) {
+  function warn(key: string, message: string, warnings: boolean): void {
+    if (!warnings || warned.has(key)) {
       return;
     }
     warned.add(key);
     console.warn(message);
+  }
+
+  /**
+   * Reads the `warnings` option for a render that returns `null` regardless.
+   * An invalid registry must not turn that render into a throw: the error
+   * isn't cached, so it still surfaces on the next render that needs a
+   * component. Until then, warn, as the default does.
+   */
+  function warningsEnabled(): boolean {
+    try {
+      return resolveRegistry().warnings;
+    } catch {
+      return true;
+    }
   }
 
   function renderBlock({ block, ...rest }: RuntimeBlockProps, silent: boolean): ReactNode {
@@ -185,18 +202,19 @@ export function defineStoryblokBlocks<TExtraProps extends StoryblokExtraProps = 
       // Skipped in the Visual Editor, where the bridge sends a story without
       // `content` while the editor shows a previous version (visual history).
       const inEditor = typeof window !== "undefined" && isInEditor(new URL(window.location.href));
-      if (!silent && !inEditor) {
+      if (!silent && !inEditor && !warned.has("undefined-block")) {
         warn(
           "undefined-block",
           "[storyblok] <StoryblokBlock /> received an undefined `block` prop and rendered nothing. " +
             "Check that the value you're passing in exists, e.g. `story?.content` when the fetch " +
             "may have failed, or a typo in the prop name (`block`, not `blok`).",
+          warningsEnabled(),
         );
       }
       return null;
     }
 
-    const { entries, fallback } = resolveRegistry();
+    const { entries, fallback, warnings } = resolveRegistry();
     const resolvedEntry = entries.get(block.component);
     const editable = storyblokEditable(block);
 
@@ -214,6 +232,7 @@ export function defineStoryblokBlocks<TExtraProps extends StoryblokExtraProps = 
           `missing:${block.component}`,
           `[storyblok] No component registered for block type "${block.component}". ` +
             "Register it in `defineStoryblokBlocks(() => ({ components }))` or provide a `fallback`.",
+          warnings,
         );
       }
       return null;

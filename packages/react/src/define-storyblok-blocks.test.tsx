@@ -1030,6 +1030,62 @@ describe("lazy factory resolution", () => {
     const { getByTestId } = render(<StoryblokBlock block={pageBlock} />);
     expect(getByTestId("page")).toBeInTheDocument();
   });
+
+  it("should retry a factory that threw on an earlier render", () => {
+    let ready = false;
+    const factory = vi.fn(() => {
+      if (!ready) {
+        throw new Error("not ready");
+      }
+      return { components: { page: Page } };
+    });
+    const { StoryblokBlock } = defineStoryblokBlocks(factory);
+
+    expect(() => render(<StoryblokBlock block={pageBlock} />)).toThrow("not ready");
+
+    ready = true;
+    const { getByTestId } = render(<StoryblokBlock block={pageBlock} />);
+    expect(getByTestId("page")).toBeInTheDocument();
+    // Cached once a call succeeds. (React may retry a throwing render, so the
+    // count before this point isn't fixed.)
+    const callsAfterSuccess = factory.mock.calls.length;
+    render(<StoryblokBlock block={pageBlock} />);
+    expect(factory).toHaveBeenCalledTimes(callsAfterSuccess);
+  });
+
+  it("should retry an entry that was invalid on an earlier render", () => {
+    let LatePage: typeof Page | undefined;
+    const { StoryblokBlock } = defineStoryblokBlocks(() => ({
+      components: { page: LatePage! },
+    }));
+
+    expect(() => render(<StoryblokBlock block={pageBlock} />)).toThrow(
+      '[storyblok] defineStoryblokBlocks: components["page"] is undefined.',
+    );
+
+    LatePage = Page;
+    const { getByTestId } = render(<StoryblokBlock block={pageBlock} />);
+    expect(getByTestId("page")).toBeInTheDocument();
+  });
+
+  it("should render nothing for an undefined block even when a registry entry is invalid", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    // `console.warn` is a shared mock (see test-setup.ts): drop earlier calls.
+    warnSpy.mockClear();
+    const { StoryblokBlock } = defineStoryblokBlocks(() => ({
+      components: { teaser: undefined as any },
+    }));
+
+    const { container } = render(<StoryblokBlock />);
+    expect(container.firstChild).toBeNull();
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+
+    // The invalid entry still surfaces once a block needs the registry.
+    expect(() => render(<StoryblokBlock block={teaserBlock} />)).toThrow(
+      '[storyblok] defineStoryblokBlocks: components["teaser"] is undefined.',
+    );
+    warnSpy.mockRestore();
+  });
 });
 
 // ─── editable injection ───────────────────────────────────────────────────────

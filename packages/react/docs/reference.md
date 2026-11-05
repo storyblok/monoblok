@@ -5,7 +5,7 @@ description: "@storyblok/react is Storyblok’s official SDK for React applicati
 
 # @storyblok/react
 
-[@storyblok/react](https://github.com/storyblok/monoblok/tree/main/packages/react) is Storyblok’s official SDK for React applications.
+[@storyblok/react](https://github.com/storyblok/monoblok/tree/rc/packages/react) is Storyblok’s official SDK for React applications.
 
 Version 8.x separates rendering from data fetching. Fetch content with [`@storyblok/api-client`](https://www.storyblok.com/docs/libraries/js/content-delivery-api-client), and render it with the components returned by [`defineStoryblokBlocks`](#definestoryblokblocks).
 
@@ -192,7 +192,7 @@ export default async function Home() {
 }
 ```
 
-`StoryblokPreview` renders the initial content on the server. In the Visual Editor, the component calls the Server Action on every change and streams the result in, keeping the current content on screen until the update arrives. If the Server Action fails, `StoryblokPreview` logs the error and keeps the initially rendered content visible.
+`StoryblokPreview` renders the initial content on the server. In the Visual Editor, the component calls the Server Action on every change and streams the result in, keeping the current content on screen until the update arrives. If the Server Action fails, `StoryblokPreview` logs the error and keeps the last successfully rendered content visible.
 
 ### Rich text
 
@@ -208,7 +208,7 @@ The component accepts the following optional props:
 
 - `components` sets custom React components for supported rich text nodes and marks.
 - `optimizeImage` sets [image optimization](https://www.storyblok.com/docs/api/image-service) options for image nodes.
-- `data` shares custom data with all custom rich text components. Each component receives the data as `context.data`.
+- `data` shares custom data with all custom rich text components. Each component receives the data as `context.data`. When `data` is an object, its properties are also passed as props to every embedded block.
 
 To render rich text without the component map, use the standalone [`createRichTextRenderer`](#createrichtextrenderer) function. The function renders embedded blocks only when its `components` option includes a custom component for the `blok` node, the rich text node that holds embedded blocks.
 
@@ -325,14 +325,14 @@ To narrow `story.content` to the blocks of a project, use the `withTypes()` meth
 
 `@storyblok/react` exports the following functions and components.
 
-| Export                                                | Description                                                                                                                                 | Import from                                |
-| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| [`defineStoryblokBlocks`](#definestoryblokblocks)     | Maps Storyblok block types to React components and returns pre-wired `StoryblokBlock`, `StoryblokBlocks`, and `StoryblokRichText`.          | `@storyblok/react`                         |
-| [`StoryblokPreview`](#storyblokpreview-client)        | Client component that subscribes to Storyblok Visual Editor events and re-renders its content with the latest story on every editor update. | `@storyblok/react`, `@storyblok/react/rsc` |
-| [`useStoryblokState`](#usestoryblokstate)             | Subscribes to Storyblok Visual Editor events and returns the latest story.                                                                  | `@storyblok/react`                         |
-| [`useStoryblokEditorEvent`](#usestoryblokeditorevent) | Subscribes to Storyblok Visual Editor events and calls `callback` with the updated story.                                                   | `@storyblok/react`                         |
-| [`storyblokEditable`](#storyblokeditable)             | Returns the attributes that make an element editable in the Visual Editor.                                                                  | `@storyblok/react`                         |
-| [`createRichTextRenderer`](#createrichtextrenderer)   | Returns a render function for a Storyblok rich text document.                                                                               | `@storyblok/react`                         |
+| Export                                                | Description                                                                                                                                         | Import from                                |
+| ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| [`defineStoryblokBlocks`](#definestoryblokblocks)     | Maps Storyblok block types to React components and returns pre-wired `StoryblokBlock`, `StoryblokBlocks`, and `StoryblokRichText`.                  | `@storyblok/react`                         |
+| [`StoryblokPreview`](#storyblokpreview-client)        | Re-renders its content with the latest story on every Visual Editor update. A client component in `@storyblok/react`, a Server Component in `/rsc`. | `@storyblok/react`, `@storyblok/react/rsc` |
+| [`useStoryblokState`](#usestoryblokstate)             | Subscribes to Storyblok Visual Editor events and returns the latest story.                                                                          | `@storyblok/react`                         |
+| [`useStoryblokEditorEvent`](#usestoryblokeditorevent) | Subscribes to Storyblok Visual Editor events and calls `callback` with the updated story.                                                           | `@storyblok/react`                         |
+| [`storyblokEditable`](#storyblokeditable)             | Returns the attributes that make an element editable in the Visual Editor.                                                                          | `@storyblok/react`                         |
+| [`createRichTextRenderer`](#createrichtextrenderer)   | Returns a render function for a Storyblok rich text document.                                                                                       | `@storyblok/react`                         |
 
 ## Blocks
 
@@ -359,16 +359,16 @@ function defineStoryblokBlocks(config: StoryblokBlocksOptions): StoryblokBlocksR
 | Key                | Description                                                                                                                                                                                              | Type                                  |
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
 | `components`       | Maps the technical names of Storyblok blocks to React components or to a component configuration. Each component receives a `block` prop with the content of the block and an `editable` prop. Required. | `Record<string, StoryblokBlockEntry>` |
-| `fallback`         | Fallback component when a block type isn’t found                                                                                                                                                         | `AnyBlockComponent`                   |
+| `fallback`         | React component to render when a block type isn’t in the map                                                                                                                                             | React component                       |
 | `suspenseFallback` | Default Suspense fallback for async components (`<GlobalSkeleton />`).                                                                                                                                   | `ReactNode`                           |
 
 `defineStoryblokBlocks()` returns `StoryblokBlocksResult<TExtraProps>`, an object with the following properties:
 
-| Key                 | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | Type                                                                   |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `StoryblokBlock`    | Renders a single block by looking up `block.component` in the map. `TExtraProps` comes from the type argument passed to [`defineStoryblokBlocks`](#definestoryblokblocks), not from this call site, so it forwards extra props to every rendered block component with real excess-property checking: a misspelled prop (`titlee="typo"`) is a compile error instead of silently forwarding. Without a type argument, `TExtraProps` defaults to `{}` and `StoryblokBlock` only accepts `block`. Required. | `(props: { block: StoryblokBlockData } & TExtraProps) => ReactNode`    |
-| `StoryblokBlocks`   | Renders an array of blocks, delegating each entry to `StoryblokBlock`. Convenience over mapping manually: `key` is derived from `block._uid` and every entry receives the same `TExtraProps`. Required.                                                                                                                                                                                                                                                                                                  | `(props: { blocks: StoryblokBlockData[] } & TExtraProps) => ReactNode` |
-| `StoryblokRichText` | Renders a rich text document, resolving embedded blocks via the same component map. Required.                                                                                                                                                                                                                                                                                                                                                                                                            | `(options: StoryblokReactRichTextComponentProps) => ReactNode`         |
+| Key                 | Description                                                                                                                                                                                             | Type                                                                   |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `StoryblokBlock`    | Renders one block by looking up `block.component` in the map. Extra props are forwarded to the block component and type-checked against the type argument of `defineStoryblokBlocks`. Required.         | `(props: { block: StoryblokBlockData } & TExtraProps) => ReactNode`    |
+| `StoryblokBlocks`   | Renders an array of blocks, delegating each entry to `StoryblokBlock`. Convenience over mapping manually: `key` is derived from `block._uid` and every entry receives the same `TExtraProps`. Required. | `(props: { blocks: StoryblokBlockData[] } & TExtraProps) => ReactNode` |
+| `StoryblokRichText` | Renders a rich text document, resolving embedded blocks via the same component map. Required.                                                                                                           | `(options: StoryblokReactRichTextComponentProps) => ReactNode`         |
 
 #### Example
 
@@ -423,12 +423,12 @@ function StoryblokPreview(options: StoryblokPreviewProps<TStory>): ReactNode;
 
 #### Props
 
-| Key             | Description                                                                                                                                     | Type                                                                                             |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `story`         | Initial story fetched by the application. Required.                                                                                             | `TStory`                                                                                         |
-| `renderContent` | Render function that receives the latest story on every Visual Editor update and returns the UI for it. Required.                               | `(story: { id: TStory["id"]; uuid?: TStory["uuid"]; content?: TStory["content"] }) => ReactNode` |
-| `debounceMs`    | Milliseconds to wait after the last editor event before invoking the callback. When omitted the callback is invoked immediately on every event. | `number`                                                                                         |
-| `bridgeOptions` | Configuration forwarded to the Preview Bridge constructor. Captured at mount time—changes after mount have no effect.                           | `BridgeParams`                                                                                   |
+| Key             | Description                                                                                                             | Type                                                                                             |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `story`         | Initial story fetched by the application. Required.                                                                     | `TStory`                                                                                         |
+| `renderContent` | Render function that receives the latest story on every Visual Editor update and returns the UI for it. Required.       | `(story: { id: TStory["id"]; uuid?: TStory["uuid"]; content?: TStory["content"] }) => ReactNode` |
+| `debounceMs`    | Milliseconds to wait after the last editor event before re-rendering. When omitted, the content updates on every event. | `number`                                                                                         |
+| `bridgeOptions` | Configuration forwarded to the Preview Bridge constructor. Captured at mount time—changes after mount have no effect.   | `BridgeParams`                                                                                   |
 
 #### Example
 
@@ -537,10 +537,6 @@ Both `callback` and `options.debounceMs` are tracked via refs so the
 subscription is established once on mount and never torn down/re-created
 unless the component is removed.
 
-Each call establishes its own bridge subscription. Sharing one bridge per
-options key across instances is tracked in
-https://github.com/storyblok/monoblok/pull/794.
-
 Import from `@storyblok/react`.
 
 ```tsx
@@ -573,9 +569,12 @@ The `options` object accepts the following properties:
 ```tsx
 "use client";
 function Page({ story }: { story: Story }) {
-  const [current, setCurrent] = useState(story);
-  useStoryblokEditorEvent((updated) => setCurrent(updated));
-  return <StoryblokBlock block={current.content} />;
+  const [content, setContent] = useState(story.content);
+  useStoryblokEditorEvent((updated) => {
+    // Editor events aren't scoped to one story.
+    if (updated.id === story.id && updated.content) setContent(updated.content);
+  });
+  return <StoryblokBlock block={content} />;
 }
 ```
 
@@ -647,11 +646,11 @@ function createRichTextRenderer(
 
 `createRichTextRenderer()` accepts an `options` object with the following properties:
 
-| Key             | Description                                                                                                                | Type                                       |
-| --------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| `optimizeImage` | [Image optimization](https://www.storyblok.com/docs/api/image-service) options for image nodes.                            | `boolean \| StoryblokRichTextImageOptions` |
-| `components`    | Custom React components for rich text nodes and marks. To render embedded blocks, include a component for the `blok` node. | `StoryblokReactRichTextComponentMap`       |
-| `data`          | Custom data shared with all custom rich text components. Each component receives it as `context.data`.                     | `unknown`                                  |
+| Key             | Description                                                                                                                                                    | Type                                       |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| `optimizeImage` | [Image optimization](https://www.storyblok.com/docs/api/image-service) options for image nodes.                                                                | `boolean \| StoryblokRichTextImageOptions` |
+| `components`    | Custom React components for rich text nodes and marks. To render embedded blocks, include a component for the `blok` node.                                     | `StoryblokReactRichTextComponentMap`       |
+| `data`          | Custom data shared with all custom rich text components. Each component receives it as `context.data`; an object is also spread onto embedded blocks as props. | `unknown`                                  |
 
 `createRichTextRenderer()` returns `(document: StoryblokRichTextInput) => ReactNode`.
 
@@ -690,6 +689,6 @@ Related types:
 - [@storyblok/richtext Package Reference](https://www.storyblok.com/docs/libraries/js/rich-text)—Find the supported rich text nodes, marks, and customization options in the @storyblok/richtext reference.
 - [@storyblok/schema Package Reference](https://www.storyblok.com/docs/libraries/js/schema)—Learn how to type the blocks of a project in the @storyblok/schema reference.
 - [Visual Editor](https://www.storyblok.com/docs/concepts/visual-editor)—Learn how live editing works in the Visual Editor concept.
-- [Repository Playground](https://github.com/storyblok/monoblok/tree/main/packages/react/playground)—Find additional examples in the repository playground.
+- [Repository Playground](https://github.com/storyblok/monoblok/tree/rc/packages/react/playground)—Find additional examples in the repository playground.
 - [React Guide](https://www.storyblok.com/docs/quickstarts/react)—Learn how to integrate Storyblok with React in the React guide.
 - [Next.js Guide](https://www.storyblok.com/docs/quickstarts/nextjs)—Learn how to integrate Storyblok with Next.js in the Next.js guide.

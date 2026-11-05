@@ -2,6 +2,7 @@
 
 import { existsSync, readdirSync, readFileSync } from "fs";
 import { join, relative } from "path";
+import { fileURLToPath } from "url";
 
 /**
  * Checks package docs against the library reference template, so a page
@@ -28,7 +29,8 @@ const LEADING = [
 const TRAILING = "Further resources";
 const ALERTS = new Set(["NOTE", "TIP", "IMPORTANT", "WARNING", "CAUTION"]);
 
-export function checkFile(path, text) {
+export function checkFile(path, raw) {
+  const text = raw.replace(/\r\n?/g, "\n");
   const errors = [];
   const error = (line, message) => errors.push({ line, message });
   const lines = text.split("\n");
@@ -57,7 +59,7 @@ export function checkFile(path, text) {
       meta[key] = m[2];
     }
     for (const k of Object.keys(meta)) {
-      meta[k] = meta[k].replace(/^"(.*)"$/, "$1");
+      meta[k] = meta[k].replace(/^"(.*)"$|^'(.*)'$/, "$1$2");
     }
     for (const field of ["title", "description"]) {
       if (!meta[field]) {
@@ -82,7 +84,10 @@ export function checkFile(path, text) {
       continue;
     }
     if (fence) {
-      if (line.trim().startsWith(fence)) {
+      // A closing fence uses the same character, is at least as long, and has
+      // nothing after it.
+      const close = /^\s*(```+|~~~+)\s*$/.exec(line);
+      if (close && close[1][0] === fence[0] && close[1].length >= fence.length) {
         fence = null;
       }
       continue;
@@ -221,7 +226,7 @@ function packageDocs(packagesDir = "packages") {
   return files;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const files = process.argv.length > 2 ? process.argv.slice(2) : packageDocs();
   let failed = 0;
   for (const file of files) {

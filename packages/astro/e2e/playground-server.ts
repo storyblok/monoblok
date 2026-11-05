@@ -26,7 +26,14 @@ export type AstroProcess = {
 export function runAstro(args: string[]): AstroProcess {
   const child = spawn(process.execPath, [ASTRO_CLI, ...args], {
     cwd: PLAYGROUND_DIR,
-    env: { ...process.env, ASTRO_DEV_BACKGROUND: "1", STORYBLOK_E2E: "1" },
+    // Under an AI agent, `astro dev`/`astro preview` otherwise hand themselves
+    // off to a background server and exit, which `stopAstro` can't reach.
+    env: {
+      ...process.env,
+      ASTRO_DEV_BACKGROUND: "1",
+      ASTRO_PREVIEW_BACKGROUND: "1",
+      STORYBLOK_E2E: "1",
+    },
     detached: true,
   });
   let output = "";

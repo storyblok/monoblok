@@ -3,6 +3,8 @@ import { experimental_AstroContainer as AstroContainer } from "astro/container";
 import { defineStoryblokBlocks } from "../src/define-storyblok-blocks";
 import Teaser from "./block-fixtures/Teaser.astro";
 import Fallback from "./block-fixtures/Fallback.astro";
+import Wrapper from "./block-fixtures/Wrapper.astro";
+import WithChildren from "./block-fixtures/WithChildren.astro";
 
 const EDITOR_URL =
   "https://example.com/?_storyblok=123&_storyblok_c=456&_storyblok_tk[space_id]=789";
@@ -217,5 +219,18 @@ describe("StoryblokBlock", () => {
     expect(result).toContain("Real");
     expect(result).toContain("real-uid");
     expect(result).not.toContain("fake-uid");
+  });
+
+  it("should render children passed to StoryblokBlock into the block's default slot", async () => {
+    const { StoryblokBlock } = defineStoryblokBlocks(() => ({ components: { wrapper: Wrapper } }));
+    const container = await AstroContainer.create();
+
+    const result = await container.renderToString(WithChildren, {
+      props: { Component: StoryblokBlock, block: { component: "wrapper" } },
+    });
+
+    expect(result).toMatch(
+      /<section data-test="wrapper"[^>]*><p data-test="child">Child<\/p><\/section>/,
+    );
   });
 });

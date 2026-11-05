@@ -17,10 +17,10 @@ const externalAstroComponents = {
 export default defineConfig({
   pack: {
     // `unbundle` mirrors `src/` into `dist/` one module at a time. The
-    // `.astro` components are copied as-is and import `../registry`,
+    // `.astro` components are copied as-is and import `../richtext-helpers`,
     // `../types`, etc. relatively, so those modules have to exist next to
-    // them as their own files. It also guarantees the block registry stays a
-    // single module instance instead of being inlined into `index.js`.
+    // them as their own files. It also keeps each `.astro` component a single
+    // module instance, which `head-propagation.ts` relies on to flag them.
     //
     // The bundler never parses `.astro` files (see `externalAstroComponents`
     // below), so a module reachable only from a component's own `<script>` -

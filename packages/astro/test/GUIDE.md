@@ -42,8 +42,9 @@ Stop the server with `pnpm --filter @storyblok/playground-astro-integration-test
 ## Notes
 
 - `STORYBLOK_ACCESS_TOKEN` overrides the demo token committed in `playground/*/src/storyblok.ts`.
-  Every playground reads it; without it they serve the shared demo space and every seeded-content
-  assertion fails for a reason that looks like a bridge problem.
+  Every playground except `playground/test` (the unit e2e app, with its own hard-coded token) reads
+  it; without it they serve the shared demo space and every seeded-content assertion fails for a
+  reason that looks like a bridge problem.
 - Blocks are addressed by the `_uid` the scenario seeded (`editor.block("teaser-home-1")`), not by a
   `data-test` attribute: the playground components carry almost none, and `storyblokEditable` emits
   `data-blok-uid="<storyId>-<uid>"` on every one of them anyway.

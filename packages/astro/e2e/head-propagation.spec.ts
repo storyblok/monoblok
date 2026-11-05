@@ -1,11 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import {
-  runAstro,
-  stopAstro,
-  waitForExit,
-  waitForServer,
-  type AstroProcess,
-} from "./playground-server";
+import { runAstro, stopAstro, waitForServer, type AstroProcess } from "./playground-server";
 
 /**
  * A block that renders an MDX content entry, which embeds a component with a
@@ -17,11 +11,13 @@ import {
  *
  * `direct` imports the block itself and is the control; the other pages
  * render it through `@storyblok/astro`. Runs against both the dev server and
- * a production build, which take different code paths for head content.
+ * a production build (built by `global-setup.ts`), which take different code
+ * paths for head content.
  */
 const PAGES = [
   ["imported directly", "/head-propagation/direct"],
   ["rendered by StoryblokBlock", "/head-propagation/block"],
+  ["nested in another registry block", "/head-propagation/nested-block"],
   ["embedded in StoryblokRichText", "/head-propagation/rich-text"],
   ["nested in a StoryblokRichText node", "/head-propagation/rich-text-nested"],
 ] as const;
@@ -49,8 +45,6 @@ test.describe("head propagation through the block registry (production build)", 
   let preview: AstroProcess | undefined;
 
   test.beforeAll(async () => {
-    test.setTimeout(180_000);
-    await waitForExit(runAstro(["build"]));
     preview = runAstro(["preview", "--port", String(PREVIEW_PORT)]);
     await waitForServer(PREVIEW_URL);
   });

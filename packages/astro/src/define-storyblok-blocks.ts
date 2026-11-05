@@ -94,14 +94,15 @@ export function defineStoryblokBlocks<TExtraProps extends StoryblokExtraProps = 
       )}`,
   );
 
-  // A caller's own `components.blok` replaces the registry-bound one.
+  // A caller's own `components.blok` replaces the registry-bound one; an
+  // explicit `undefined` (e.g. `blok: cond ? Custom : undefined`) keeps it.
   const StoryblokRichText = createComponent(
     (result, props, slots) =>
       render`${renderComponent(
         result,
         "StoryblokRichText",
         RawStoryblokRichText,
-        { ...props, components: { blok: Blok, ...props.components } },
+        { ...props, components: { ...props.components, blok: props.components?.blok ?? Blok } },
         slots,
       )}`,
   );

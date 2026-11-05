@@ -9,9 +9,8 @@ if (import.meta.env.DEV && liveUpdate && Astro.isPrerendered) {
   console.warn(
     "[storyblok] <StoryblokPreview liveUpdate /> is rendered on a prerendered route " +
       `(${Astro.url.pathname}). Its live-update morph needs an on-demand route to POST ` +
-      "re-renders to, which a prerendered route can't serve: remove " +
-      "`export const prerender = true` from this route, or set `output: 'server'`/use a " +
-      "hybrid output without prerendering it.",
+      "re-renders to, which a prerendered route can't serve: render it on demand " +
+      "(`export const prerender = false`) instead.",
   );
 }
 ---

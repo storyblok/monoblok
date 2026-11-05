@@ -35,7 +35,7 @@ export const storyblokPreviewMiddleware = defineMiddleware(async ({ locals, requ
           locals._storyblok_preview_data = requestBody;
         }
       } catch (error) {
-        console.error("Error reading request body:", error);
+        console.error("[storyblok] Error reading request body:", error);
       }
     }
   }

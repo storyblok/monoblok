@@ -92,6 +92,21 @@ describe("StoryblokRichText returned by defineStoryblokBlocks", () => {
     expect(result).not.toContain('data-test="teaser"');
   });
 
+  it("should keep the registry renderer when `components.blok` is explicitly undefined", async () => {
+    const { StoryblokRichText } = defineStoryblokBlocks(() => ({ components: { teaser: Teaser } }));
+    const container = await AstroContainer.create();
+
+    const result = await container.renderToString(StoryblokRichText, {
+      props: {
+        document: documentWith({ _uid: "1", component: "teaser", headline: "Embedded" }),
+        components: { blok: undefined },
+      },
+    });
+
+    expect(result).toContain('data-test="teaser"');
+    expect(result).toContain("Embedded");
+  });
+
   it("should warn for an unregistered embedded blok, unless `warnings={false}`", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const container = await AstroContainer.create();

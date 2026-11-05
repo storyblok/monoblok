@@ -32,9 +32,14 @@ export async function getNewHTMLBody(
   });
 
   if (!response.ok) {
+    // A prerendered route can't answer the POST, which surfaces as 404 or
+    // 405; anything else (e.g. a 500 from a throwing render) is unrelated.
+    const hint =
+      response.status === 404 || response.status === 405
+        ? " If this route is prerendered, `<StoryblokPreview liveUpdate />` needs it rendered on demand instead."
+        : "";
     throw new Error(
-      `Failed to fetch updated HTML: ${response.status} ${response.statusText}. ` +
-        "If this route is prerendered, `<StoryblokPreview liveUpdate />` needs it rendered on demand instead.",
+      `[storyblok] Failed to fetch updated HTML: ${response.status} ${response.statusText}.${hint}`,
     );
   }
 
@@ -60,7 +65,7 @@ function extractServerData(body: HTMLElement): unknown | null {
   try {
     return JSON.parse(serverDataElement.textContent);
   } catch (error) {
-    console.error("Failed to parse server data:", error);
+    console.error("[storyblok] Failed to parse server data:", error);
     return null;
   }
 }

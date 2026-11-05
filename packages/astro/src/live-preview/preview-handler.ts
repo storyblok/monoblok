@@ -29,7 +29,7 @@ export function createPreviewHandler(
       dispatchStoryblokEvent(LIVE_PREVIEW_UPDATED_EVENT, { story });
     },
     onError: (error) => {
-      console.error("Failed to update live preview:", error);
+      console.error("[storyblok] Failed to update live preview:", error);
     },
     onReload: () => {
       location.reload();

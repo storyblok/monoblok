@@ -22,12 +22,6 @@ export type StoryblokBlockRegistry = {
 };
 
 /**
- * Namespaced so it can't collide with a user-declared extra prop (see
- * `defineStoryblokBlocks<TExtraProps>()`).
- */
-export const REGISTRY_PROP = "__storyblokRegistry";
-
-/**
  * Creates the registry for one `defineStoryblokBlocks()` call. `factory` is
  * only called on the first `resolve`/`warn`, and only once.
  */

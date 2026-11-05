@@ -1,11 +1,12 @@
 import { createComponent, render, renderComponent } from "astro/compiler-runtime";
-import { createBlockRegistry, REGISTRY_PROP } from "./block-registry";
-import RawStoryblokBlock from "./components/StoryblokBlock.astro";
-import RawStoryblokRichText from "./components/StoryblokRichText.astro";
-import StoryblokRichTextBlok from "./components/StoryblokRichTextBlok.astro";
+import { isInEditor, storyblokEditable } from "@storyblok/live-preview";
+import { createBlockRegistry, type StoryblokBlockRegistry } from "./block-registry";
+import { RawStoryblokRichText } from "./head-propagation";
+import type { StoryblokAstroRichTextProps } from "./richtext-helpers";
 import type {
   DefineStoryblokBlocksOptions,
   DefineStoryblokBlocksResult,
+  StoryblokBlockData,
   StoryblokExtraProps,
 } from "./types";
 
@@ -68,36 +69,53 @@ export function defineStoryblokBlocks<TExtraProps extends StoryblokExtraProps = 
   const registry = createBlockRegistry(factory);
 
   // `.astro` components can't be parameterized by calling them directly, so
-  // these wrap them with Astro's own low-level render primitives, closing
+  // these are built with Astro's own low-level render primitives, closing
   // over this call's registry so multiple `defineStoryblokBlocks()` calls
   // never share state.
-  const StoryblokBlock = createComponent(
-    (result, props, slots) =>
-      render`${renderComponent(
-        result,
-        "StoryblokBlock",
-        RawStoryblokBlock,
-        { ...props, [REGISTRY_PROP]: registry },
-        slots,
-      )}`,
-  );
+  //
+  // Each is flagged `in-tree` and renders the resolved block itself, with no
+  // `.astro` hop in between, so a block's head content (e.g. the scoped
+  // styles of an MDX `<Content />` it renders) still reaches `<head>`. See
+  // `head-propagation.ts`.
+  const StoryblokBlock = createComponent({
+    factory: (result: any, props: Record<string, any>, slots: any) =>
+      render`${renderBlock(result, registry, props, slots)}`,
+    propagation: "in-tree",
+  });
 
   // Renders embedded rich text bloks through this registry.
-  const Blok = createComponent(
-    (result, props, slots) =>
-      render`${renderComponent(
-        result,
-        "StoryblokRichTextBlok",
-        StoryblokRichTextBlok,
-        { ...props, [REGISTRY_PROP]: registry },
-        slots,
-      )}`,
-  );
+  const Blok = createComponent({
+    factory: (result: any, props: StoryblokAstroRichTextProps<"blok">) => {
+      const { attrs, context } = props;
+      const blocks = (Array.isArray(attrs?.body) ? attrs.body : []).filter(
+        (block: unknown): block is StoryblokBlockData =>
+          typeof block === "object" &&
+          block !== null &&
+          typeof Reflect.get(block, "component") === "string",
+      );
+
+      // A plain-object `data` passed to `StoryblokRichText` is forwarded to
+      // every embedded block as extra props, like the extra props
+      // `StoryblokBlock` passes to a block it renders directly.
+      const data = context?.data;
+      const extraProps =
+        typeof data === "object" && data !== null && !Array.isArray(data) ? data : {};
+
+      // `warnings={false}` on `StoryblokRichText` also silences the
+      // registry's warnings for the embedded blocks it renders.
+      const blockRegistry = context?.warnings === false ? registry.withoutWarnings() : registry;
+
+      return render`${blocks.map((block) =>
+        renderBlock(result, blockRegistry, { ...extraProps, block }, {}),
+      )}`;
+    },
+    propagation: "in-tree",
+  });
 
   // A caller's own `components.blok` replaces the registry-bound one; an
   // explicit `undefined` (e.g. `blok: cond ? Custom : undefined`) keeps it.
-  const StoryblokRichText = createComponent(
-    (result, props, slots) =>
+  const StoryblokRichText = createComponent({
+    factory: (result: any, props: Record<string, any>, slots: any) =>
       render`${renderComponent(
         result,
         "StoryblokRichText",
@@ -105,7 +123,8 @@ export function defineStoryblokBlocks<TExtraProps extends StoryblokExtraProps = 
         { ...props, components: { ...props.components, blok: props.components?.blok ?? Blok } },
         slots,
       )}`,
-  );
+    propagation: "in-tree",
+  });
 
   // `createComponent` always returns the untyped `AstroComponentFactory`
   // shape, so the props each wrapper accepts are asserted here. The same
@@ -115,4 +134,41 @@ export function defineStoryblokBlocks<TExtraProps extends StoryblokExtraProps = 
     StoryblokRichText:
       StoryblokRichText as DefineStoryblokBlocksResult<TExtraProps>["StoryblokRichText"],
   };
+}
+
+/**
+ * Renders `props.block` with the component `registry` resolves for it,
+ * passing the remaining props through as extra props.
+ */
+function renderBlock(
+  result: any,
+  registry: StoryblokBlockRegistry,
+  props: Record<string, any>,
+  slots: any,
+): unknown {
+  const { block, ...rest } = props;
+
+  // Skipped in the Visual Editor, where the bridge sends a story without
+  // `content` while the editor shows a previous version (visual history).
+  if (!block && !isInEditor(new URL(result.request.url))) {
+    registry.warn(
+      "undefined-block",
+      "[storyblok] <StoryblokBlock /> received an undefined `block` prop and rendered nothing. " +
+        "Check that the value you're passing in exists, e.g. `story?.content` when the fetch " +
+        "may have failed, or a typo in the prop name (`block`, not `blok`).",
+    );
+  }
+
+  const Component = block ? registry.resolve(block.component) : undefined;
+  if (!Component) return "";
+
+  // `rest` first, so an untyped extra prop (e.g. from rich text `data`) can't
+  // replace the injected `block` or `editable`.
+  return renderComponent(
+    result,
+    "StoryblokBlock",
+    Component,
+    { ...rest, block, editable: storyblokEditable(block) },
+    slots,
+  );
 }

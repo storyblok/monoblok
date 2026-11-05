@@ -15,9 +15,10 @@ activity, with the `action` to show) and `active` (issues awaiting triage).
    Pass the issue numbers explicitly. Reading the skill file does not run its `` !`gh ...` ``
    context line or fill in `$ARGUMENTS`; skip the former, the numbers replace the latter.
 3. **Take only the per-issue assessment from the reports:** type, priority, verdict, regression,
-   package, suggested labels and fix PR, from the issue's detailed section when it disagrees with
-   the summary row. The title comes from `issues.sh`. Never copy a report's issue list or its "Needs
-   attention" list: closed issues, new fix PRs and the passing of time make them stale.
+   package, suggested labels and fix PR (used for PR matching), from the issue's detailed section
+   when it disagrees with the summary row. The title comes from `issues.sh`. Never copy a report's
+   issue list or its "Needs attention" list: closed issues, new fix PRs and the passing of time make
+   them stale.
 4. **Rebuild "Needs attention" every run** from the current `active` list with the triage skill's
    rule. Use `lastMaintainerComment` from `issues.sh` for the 14-day check (null means never), and
    one `bash .agents/skills/triage/scripts/linked-prs.sh <all active numbers>` call for open fix PRs

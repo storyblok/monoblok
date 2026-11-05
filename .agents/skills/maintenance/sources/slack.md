@@ -12,20 +12,22 @@ a cached one stays valid as days pass; age is applied when listing.
 Judge from the end of the thread and take the first verdict that fits:
 
 1. `answered`: the thread has a done marker.
-2. `promise`: DX made a promise or offer (a fix, an answer, a docs change) that is not done yet,
-   even if thanks or follow-ups came after it. It can be concrete ("I'll open a PR") or vague
-   ("we'll look into it soon").
-3. `open`: the last ask to DX has no DX reply after it. A follow-up such as "that didn't work" or
-   "any update?" is a new ask. A "+1" or "same here" from someone else is not an answer.
-4. `not-dx`: nothing for DX to do: not addressed to DX, an announcement or cc, a topic the DX team
-   does not own (including every topic in `notDxTopics`), or a wait on another team's change.
-5. `answered`: everything else, e.g. DX or someone else answered the ask in substance, or the thread
-   ends in thanks for an answer.
+2. `not-dx`: nothing for DX to do: not addressed to DX, an announcement or cc, a topic in
+   `notDxTopics` or one DX does not own, a DX reply that hands the question to another team, or a
+   wait on another team's change.
+3. `promise`: DX made a promise or offer (a fix, an answer, a docs change) that is not done yet,
+   even if thanks or follow-ups came after it. It is concrete when it names a ticket, PR or date
+   ("known issue, tracked in DX-123"), vague otherwise ("we'll look into it soon"). A conditional
+   offer ("let me know if it is a problem") is not a promise.
+4. `open`: the last ask has no answer in substance after it, from DX or anyone else. A follow-up
+   such as "that didn't work" or "any update?" is a new ask. A "+1" or "same here" is not an answer.
+5. `answered`: everything else, e.g. someone answered the last ask in substance, or the thread ends
+   in thanks for an answer.
 
 A DX member is a member of the `dxTeamChannelId` channel. List them once per run with
-`slack_list_channel_members` (`response_format: "ids_only"`; listing this configured channel needs
-no further consent) and match the user ID that each message shows in parentheses. Only their replies
-count as DX answers or DX promises.
+`slack_list_channel_members` (default `detailed` format, which drops bots and deactivated users and
+shows each user ID; listing this configured channel needs no further consent) and match the user ID
+that each message shows in parentheses. Only their replies count as DX answers or DX promises.
 
 **Done marker**: a check-style reaction (`white_check_mark` ✅, `heavy_check_mark`,
 `ballot_box_with_check`, `done`, `resolved`) on the parent post or on any reply (the thread read
@@ -61,9 +63,10 @@ note has the form `<parent date>; promise <YYYY-MM-DD> vague|concrete: <what was
 5. **Re-check what would be listed.** For an `open` or `promise` thread served from the cache,
    reactions on replies are not in the fingerprint, so read the thread once for a done marker. For
    every `promise`, cached or not, check whether it is done: a merged PR counts as done (search with
-   `gh pr list --state merged --search` for each promise); check other promises, such as archiving a
-   repo, with `gh` too. If `gh` cannot confirm it, keep `promise`; do not guess. When either check
-   finds it done, `put` the thread as `answered` with the same fingerprint.
+   `gh pr list --repo storyblok/<repo> --state merged --search` in the repo the promise concerns);
+   check other promises, such as archiving a repo, with `gh` too. If `gh` cannot confirm it, keep
+   `promise`; do not guess. When either check finds it done, `put` the thread as `answered` with the
+   same fingerprint.
 6. **Mentions.** Always run this; it never uses the cache. Call `slack_search_public` with `query`
    set to the bare user group ID (`S0123456789`, not `<!subteam^S0123456789>`, which matches
    unrelated messages) and `after` set to

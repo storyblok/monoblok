@@ -65,8 +65,9 @@ spaces hold keys the editor no longer offers.
 
 ### Prerequisites
 
-- Run all scripts from the repo root: they read `./.env.qa-engineer-manual` and `cleanup-local.sh`
-  deletes `./.storyblok/` relative to the working directory.
+- Run all scripts from the repo root: they read `./.env.qa-engineer-manual`, and `cleanup-local.sh`
+  deletes the configured spaces' pulled data under `./.storyblok/` relative to the working
+  directory.
 - `.env.qa-engineer-manual` in the repo root, created from `.env.qa-engineer-manual.template`.
   `STORYBLOK_TOKEN` and `STORYBLOK_SPACE_ID` are required.
 - Storyblok CLI built: `pnpm nx build storyblok`. The seed runs `packages/cli/dist/index.mjs` and
@@ -228,8 +229,8 @@ moving to the next.
 
 ## Helper scripts
 
-Scripts live in `.agents/skills/qa-engineer-manual/scripts/`; run them from the repo root. Scripts
-that call the API load `.env.qa-engineer-manual` themselves.
+Scripts live in `.agents/skills/qa-engineer-manual/scripts/`; run them from the repo root. Every
+script loads `.env.qa-engineer-manual` itself and requires `STORYBLOK_TOKEN`.
 
 | Script                       | Purpose                                                                                                                                                                                                                                                                                                                     |
 | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

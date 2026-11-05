@@ -823,3 +823,77 @@ describe("createApiClient with .withTypes() — field plugins", () => {
     }
   });
 });
+
+describe("stories pagination", () => {
+  it("should yield Story from stories.iterate()", async () => {
+    const client = createApiClient({ accessToken: "test-token" });
+    for await (const story of client.stories.iterate()) {
+      expectTypeOf(story).toEqualTypeOf<Story>();
+    }
+  });
+
+  it("should yield narrowed stories from stories.iterate() with .withTypes()", async () => {
+    const client = createApiClient({ accessToken: "test-token" }).withTypes<StoryblokTypes>();
+    for await (const story of client.stories.iterate()) {
+      expectTypeOf(story.content.component).toEqualTypeOf<"page" | "hero">();
+    }
+  });
+
+  it("should reject resolve_links in stories.iterate()", () => {
+    const client = createApiClient({ accessToken: "test-token" });
+    // @ts-expect-error: resolved links live in each page's `links`, which only pages() exposes
+    client.stories.iterate({ query: { resolve_links: "url" } });
+    client.stories.pages({ query: { resolve_links: "url" } });
+  });
+
+  it("should reject resolve_relations in stories.iterate() without inlineRelations", () => {
+    const client = createApiClient({ accessToken: "test-token" });
+    // @ts-expect-error: resolved relations live in each page's `rels`, which only pages() exposes
+    client.stories.iterate({ query: { resolve_relations: "page.author" } });
+    client.stories.pages({ query: { resolve_relations: "page.author" } });
+  });
+
+  it("should accept resolve_relations in stories.iterate() with inlineRelations", () => {
+    const client = createApiClient({ accessToken: "test-token", inlineRelations: true });
+    client.stories.iterate({ query: { resolve_relations: "page.author" } });
+  });
+
+  it("should yield envelopes with optional data from stories.pages()", async () => {
+    const client = createApiClient({ accessToken: "test-token" });
+    for await (const page of client.stories.pages()) {
+      expectTypeOf(page.page).toEqualTypeOf<number>();
+      expectTypeOf(page.total).toEqualTypeOf<number | undefined>();
+      expectTypeOf(page.data?.stories).toEqualTypeOf<Story[] | undefined>();
+    }
+  });
+
+  it("should narrow data once a stories.pages() envelope has no error", async () => {
+    const client = createApiClient({ accessToken: "test-token" });
+    for await (const page of client.stories.pages()) {
+      if (page.error) {
+        throw page.error;
+      }
+      expectTypeOf(page.data.stories).toEqualTypeOf<Story[]>();
+    }
+  });
+
+  it("should default pages() to the client's throwOnError on every paginated resource", async () => {
+    const client = createApiClient({ accessToken: "test-token", throwOnError: true });
+    for await (const page of client.links.pages()) {
+      expectTypeOf(page.data).not.toBeUndefined();
+    }
+    for await (const page of client.datasources.pages()) {
+      expectTypeOf(page.data).not.toBeUndefined();
+    }
+    for await (const page of client.datasourceEntries.pages()) {
+      expectTypeOf(page.data).not.toBeUndefined();
+    }
+  });
+
+  it("should yield envelopes with defined data from stories.pages() with throwOnError", async () => {
+    const client = createApiClient({ accessToken: "test-token", throwOnError: true });
+    for await (const page of client.stories.pages()) {
+      expectTypeOf(page.data.stories).toEqualTypeOf<Story[]>();
+    }
+  });
+});

@@ -23,6 +23,8 @@ import {
   resolveRelationMap,
 } from "../utils/inline-relations";
 import type { ApiResponse, FetchOptions, ResourceDeps } from "../client";
+import type { PageResult, PaginateConfig } from "../utils/paginate";
+import { paginateItems, paginatePages } from "../utils/paginate";
 import type {
   BlockFields,
   Block as Component,
@@ -373,9 +375,10 @@ export function createStoriesResource<
   InlineRelations extends boolean = false,
   DefaultThrowOnError extends boolean = false,
 >(deps: StoriesResourceDeps<DefaultThrowOnError>) {
-  const { client, requestWithCache, asApiResponse, inlineRelations, throttleManager } = deps;
+  const { client, requestWithCache, asApiResponse, inlineRelations, throttleManager, cvMode } =
+    deps;
 
-  return {
+  const resource = {
     get: async <
       ThrowOnError extends boolean = DefaultThrowOnError,
       const ResolveRelationsStr extends string | undefined = undefined,
@@ -546,6 +549,116 @@ export function createStoriesResource<
         },
         inlineRelations ? { cacheKeyPrefix: "inline" } : undefined,
       );
+    },
+  };
+
+  type ListOptions<
+    ThrowOnError extends boolean,
+    ResolveRelationsStr extends string | undefined,
+  > = NonNullable<Parameters<typeof resource.list<ThrowOnError, ResolveRelationsStr>>[0]>;
+
+  type IterateOptions<ResolveRelationsStr extends string | undefined> = Omit<
+    ListOptions<boolean, ResolveRelationsStr>,
+    "throwOnError" | "query"
+  > & {
+    query?: Omit<
+      NonNullable<ListOptions<boolean, ResolveRelationsStr>["query"]>,
+      "resolve_links" | (InlineRelations extends true ? never : "resolve_relations")
+    >;
+  };
+
+  const toPaginateConfig = <
+    ThrowOnError extends boolean,
+    const ResolveRelationsStr extends string | undefined,
+  >(
+    options: ListOptions<ThrowOnError, ResolveRelationsStr>,
+  ): PaginateConfig<
+    ListResponse<TComponents, InlineRelations, ResolveRelationsStr, TFieldPlugins>,
+    StoryResult<TComponents, InlineRelations, ResolveRelationsStr, TFieldPlugins>
+  > => ({
+    query: options.query,
+    signal: options.signal,
+    pinCv: cvMode !== "manual",
+    fetchPage: (pageQuery, signal) =>
+      resource.list<false, ResolveRelationsStr>({
+        ...options,
+        query: { ...options.query, ...pageQuery },
+        signal,
+        throwOnError: false,
+      }),
+    getItems: (data) => data.stories,
+  });
+
+  /** Relations and links resolved without inlining only reach each page's `rels` and `links`. */
+  const assertIterableQuery = (query: Record<string, unknown> | undefined) => {
+    if (query?.resolve_links !== undefined) {
+      throw new TypeError(
+        "stories.iterate() doesn't take `resolve_links`. Use stories.pages() to read each page's `links`.",
+      );
+    }
+    if (query?.resolve_relations !== undefined && !inlineRelations) {
+      throw new TypeError(
+        "stories.iterate() takes `resolve_relations` only with `inlineRelations: true`. " +
+          "Use stories.pages() to read each page's `rels`.",
+      );
+    }
+  };
+
+  return {
+    ...resource,
+
+    /**
+     * Walks every page of stories, yielding one `list()` response per page. A failed page
+     * is the last value yielded, so check `error` on each one. With `throwOnError`, it
+     * throws a `PaginationError` instead.
+     *
+     * Published pages are pinned to the `cv` of the first page, so the walk reads one
+     * consistent snapshot. If content changes mid-walk, the walk fails with a
+     * `PaginationError` whose `page` restarts it. Draft pages, and pages under
+     * `cache.cv: 'manual'`, are not pinned, so concurrent edits can shift offsets.
+     */
+    pages: <
+      ThrowOnError extends boolean = DefaultThrowOnError,
+      const ResolveRelationsStr extends string | undefined = undefined,
+    >(
+      options: ListOptions<ThrowOnError, ResolveRelationsStr> = {},
+    ): AsyncGenerator<
+      PageResult<
+        ListResponse<TComponents, InlineRelations, ResolveRelationsStr, TFieldPlugins>,
+        ThrowOnError
+      >,
+      void,
+      undefined
+    > =>
+      paginatePages(
+        toPaginateConfig(options),
+        options.throwOnError,
+        client.getConfig().throwOnError ?? false,
+      ),
+
+    /**
+     * Walks every story across all pages, fetching the next page while the current one is
+     * consumed. A failed page throws a `PaginationError`.
+     *
+     * Published pages are pinned to the `cv` of the first page, so the walk reads one
+     * consistent snapshot. If content changes mid-walk, the walk fails with a
+     * `PaginationError` whose `page` restarts it. Draft pages, and pages under
+     * `cache.cv: 'manual'`, are not pinned, so concurrent edits can shift offsets.
+     *
+     * Relations and links resolved via `resolve_relations` and `resolve_links` arrive in each
+     * page's `rels` and `links`, which only `pages()` exposes. So `iterate()` takes
+     * `resolve_relations` only with `inlineRelations`, and never `resolve_links`, and throws a
+     * `TypeError` otherwise.
+     */
+    iterate: <const ResolveRelationsStr extends string | undefined = undefined>(
+      options: IterateOptions<ResolveRelationsStr> = {},
+    ): AsyncGenerator<
+      StoryResult<TComponents, InlineRelations, ResolveRelationsStr, TFieldPlugins>,
+      void,
+      undefined
+    > => {
+      assertIterableQuery(options.query);
+      return paginateItems(toPaginateConfig(options));
     },
   };
 }

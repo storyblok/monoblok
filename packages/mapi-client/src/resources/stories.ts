@@ -20,6 +20,7 @@ import type {
 import type { Block as Component } from "../generated/types/block";
 import type { MapiStory, StoryCreate, StoryUpdate } from "../generated/types/mapi-story";
 import type { ApiResponse, FetchOptions, MapiResourceDeps } from "../client";
+import { createPaginationMethods } from "../utils/paginate";
 import { resolveSpaceId, type SpaceIdPathOverride } from "./shared";
 
 export type StoryListQuery = NonNullable<ListStoriesData["query"]>;
@@ -90,7 +91,7 @@ export function createStoriesResource<
   const { client, spaceId, wrapRequest } = deps;
   const getSpaceId = (path?: SpaceIdPathOverride["path"]) => resolveSpaceId(spaceId, path);
 
-  return {
+  const resource = {
     list<ThrowOnError extends boolean = DefaultThrowOnError>(
       options: {
         query?: ListStoriesData["query"];
@@ -301,5 +302,41 @@ export function createStoriesResource<
         throwOnError,
       );
     },
+  };
+
+  type ListOptions = Omit<NonNullable<Parameters<typeof resource.list>[0]>, "throwOnError">;
+
+  const { pages, iterate } = createPaginationMethods(deps, {
+    fetchPage: (options: ListOptions | undefined, pageQuery, signal) =>
+      resource.list({
+        ...options,
+        query: { ...options?.query, ...pageQuery },
+        signal,
+        throwOnError: false,
+      }),
+    getItems: (data) => data.stories,
+  });
+
+  return {
+    ...resource,
+
+    /**
+     * Walks every page of stories, yielding one `list()` response per page. A failed page is
+     * the last value yielded, so check `error` on each one. With `throwOnError`, it throws a
+     * `PaginationError` instead.
+     *
+     * Pages are offsets into live data, so stories created, deleted, or moved during the
+     * walk can be skipped or yielded twice.
+     */
+    pages,
+
+    /**
+     * Walks every story across all pages, fetching the next page while the current one is
+     * consumed. A failed page throws a `PaginationError`.
+     *
+     * Pages are offsets into live data, so stories created, deleted, or moved during the
+     * walk can be skipped or yielded twice.
+     */
+    iterate,
   };
 }

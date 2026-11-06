@@ -54,6 +54,10 @@ pnpm add @storyblok/astro
 For complete documentation, please visit the
 [package reference](https://www.storyblok.com/docs/libraries/js/astro-sdk).
 
+The API reference also ships with the package at
+`node_modules/@storyblok/astro/dist/docs/reference.md`, so coding agents can read it locally. The
+source is [`docs/reference.md`](./docs/reference.md).
+
 ## Contributing
 
 If you'd like to contribute, please refer to the [contributing guidelines](../../CONTRIBUTING.md).

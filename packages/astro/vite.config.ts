@@ -31,7 +31,12 @@ export default defineConfig({
     entry: ["src/index.ts", "src/live-preview/preview-handler.ts", "src/richtext-helpers.ts"],
     unbundle: true,
     format: ["esm"],
-    copy: [{ from: "src/**/*.astro", to: "dist", flatten: false }],
+    copy: [
+      { from: "src/**/*.astro", to: "dist", flatten: false },
+      // Ship the API reference in the tarball so coding agents can read it from
+      // node_modules/@storyblok/astro/dist/docs/.
+      { from: "docs", to: "dist", flatten: false },
+    ],
     plugins: [externalAstroComponents],
     dts: true,
     outDir: "./dist",

@@ -1,15 +1,19 @@
 import type { PageLoad } from "./$types";
+import { client } from "../../storyblok";
 
-export const load: PageLoad = async ({ parent, params }) => {
-  // Wait for the parent layout data
-  const { storyblokApi } = await parent();
-  let slug = params.slug && params.slug !== "" ? params.slug : "home";
+export const load: PageLoad = async ({ params }) => {
+  const slug = params.slug && params.slug !== "" ? params.slug : "home";
 
-  const data = await storyblokApi.get(`cdn/stories/${slug}`, {
-    version: "draft",
+  const { data, error } = await client.stories.get(slug, {
+    // Match the bridge options in `+page.svelte`, so editor updates keep the same shape.
+    query: { version: "draft", resolve_links: "url" },
   });
 
+  if (!data) {
+    throw error ?? new Error(`Story not found for slug "${slug}"`);
+  }
+
   return {
-    story: data.data.story,
+    story: data.story,
   };
 };

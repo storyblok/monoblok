@@ -1,62 +1,71 @@
-# @storyblok/live-preview API Reference
+---
+title: "@storyblok/live-preview"
+description:
+  "@storyblok/live-preview connects a frontend to Storyblok’s Visual Editor, delivering story
+  updates as editors type and morphing server-rendered HTML into the page."
+---
 
-`@storyblok/live-preview` connects a frontend to the Storyblok Visual Editor. It loads the Preview
-Bridge, delivers story updates as editors type, and morphs server-rendered HTML into the page.
+# @storyblok/live-preview
+
+[@storyblok/live-preview](https://github.com/storyblok/monoblok/tree/main/packages/live-preview)
+connects a frontend to the [Visual Editor](https://www.storyblok.com/docs/concepts/visual-editor).
+It loads the [Preview Bridge](https://www.storyblok.com/docs/libraries/js/preview-bridge), delivers
+story updates as editors type, and morphs server-rendered HTML into the page.
+
+## Requirements
+
+The Preview Bridge and the DOM morph run in the browser. `isInEditor()`, `storyblokEditable()`, and
+`editableField()` also run on the server.
+
+- **Evergreen web browser** (for example, Chrome, Firefox, Safari, or Edge)
+
+## Installation
+
+Add the package to a project by running this command in the terminal:
 
 ```bash
 npm install @storyblok/live-preview
 ```
 
-All exports are named exports from the package root:
+## Usage
 
-```ts
-import {
-  createLivePreviewHandler,
-  editableField,
-  isBrowser,
-  isInEditor,
-  loadStoryblokBridge,
-  morphStoryblokDom,
-  onStoryblokEditorEvent,
-  storyblokEditable,
-} from "@storyblok/live-preview";
-```
+Every app subscribes to Visual Editor updates with `onStoryblokEditorEvent()`. What the callback
+does with the updated story depends on who renders the page:
 
-| Export                     | Purpose                                                                 |
-| -------------------------- | ----------------------------------------------------------------------- |
-| `onStoryblokEditorEvent`   | Subscribe to story updates. For reactive frameworks.                    |
-| `createLivePreviewHandler` | Morph server-rendered updates into the page. For server-rendered apps.  |
-| `morphStoryblokDom`        | Morph a new server-rendered DOM tree into the current one.              |
-| `loadStoryblokBridge`      | Load the Preview Bridge and construct a new, unshared instance.         |
-| `storyblokEditable`        | Build the attributes that make a block selectable in the Visual Editor. |
-| `editableField`            | Build the attribute that makes a field selectable in the Visual Editor. |
-| `isInEditor`               | Check whether a URL is a Visual Editor request.                         |
-| `isBrowser`                | Check whether the code runs in a browser.                               |
+| App type                                                                                               | Callback                                        |
+| ------------------------------------------------------------------------------------------------------ | ----------------------------------------------- |
+| Reactive framework, including server-side rendering with hydration (Next.js, Nuxt, SvelteKit, Angular) | Store the story in component state.             |
+| Server-rendered HTML (Astro, server templates)                                                         | Pass the story to `createLivePreviewHandler()`. |
 
-## Choose an approach
-
-Every app subscribes with `onStoryblokEditorEvent()`. What its callback does with the updated story
-depends on who renders the page:
-
-| App type                                                                                               | Callback                                       |
-| ------------------------------------------------------------------------------------------------------ | ---------------------------------------------- |
-| Reactive framework, including server-side rendering with hydration (Next.js, Nuxt, SvelteKit, Angular) | Store the story in component state             |
-| Server-rendered HTML (Astro, server templates)                                                         | Pass the story to `createLivePreviewHandler()` |
-
-- **Reactive frameworks:** the framework re-renders from state. Don't use
-  `createLivePreviewHandler()` or `morphStoryblokDom()`: morphing the DOM fights the framework's own
-  rendering.
+- **Reactive frameworks:** the framework re-renders from state. Morphing the DOM conflicts with the
+  framework’s own rendering, so reactive frameworks use neither `createLivePreviewHandler()` nor
+  `morphStoryblokDom()`.
 - **Server-rendered apps:** the page has no client state to update. The handler asks your server to
-  render the updated story and morphs the returned HTML into the page. See
+  render the updated story and morphs the returned HTML into the page. Learn more in
   [Server-rendered setup](#server-rendered-setup).
 
-Use `morphStoryblokDom()` directly only when you need the morph without the handler's debouncing and
-cancellation. Use `loadStoryblokBridge()` directly only for custom event handling the shared bridge
-doesn't cover.
+Use `morphStoryblokDom()` directly only when you need the morph without the handler’s debouncing and
+cancellation. Use `loadStoryblokBridge()` directly only for custom event handling that the shared
+bridge doesn’t cover.
 
 `storyblokEditable()`, `editableField()`, and `isInEditor()` work with either approach.
 
-## `onStoryblokEditorEvent()`
+## API
+
+`@storyblok/live-preview` exports the following functions from the package root.
+
+| Export                                                  | Description                                                               |
+| ------------------------------------------------------- | ------------------------------------------------------------------------- |
+| [`onStoryblokEditorEvent`](#onstoryblokeditorevent)     | Subscribes to story updates. For reactive frameworks.                     |
+| [`createLivePreviewHandler`](#createlivepreviewhandler) | Morphs server-rendered updates into the page. For server-rendered apps.   |
+| [`morphStoryblokDom`](#morphstoryblokdom)               | Morphs a new server-rendered DOM tree into the current one.               |
+| [`loadStoryblokBridge`](#loadstoryblokbridge)           | Loads the Preview Bridge and constructs a new, unshared instance.         |
+| [`storyblokEditable`](#storyblokeditable)               | Returns the attributes that make a block selectable in the Visual Editor. |
+| [`editableField`](#editablefield)                       | Returns the attribute that makes a field selectable in the Visual Editor. |
+| [`isInEditor`](#isineditor)                             | Checks whether a URL is a Visual Editor request.                          |
+| [`isBrowser`](#isbrowser)                               | Checks whether the code runs in a browser.                                |
+
+### `onStoryblokEditorEvent()`
 
 Registers a callback for Visual Editor updates and returns its cleanup function synchronously.
 
@@ -79,7 +88,9 @@ stopListening();
 
 The subscription is active as soon as the call returns. The cleanup function works at any time,
 including while the Preview Bridge is still loading, so return it directly from a lifecycle API that
-expects a synchronous teardown:
+expects a synchronous teardown.
+
+Svelte example, returning the cleanup function from `$effect`:
 
 ```svelte
 <script lang="ts">
@@ -92,40 +103,41 @@ expects a synchronous teardown:
 </script>
 ```
 
+React example, returning the cleanup function from `useEffect`:
+
 ```tsx
 useEffect(() => onStoryblokEditorEvent(setStory, { resolveRelations: ["featured.articles"] }), []);
 ```
 
-The Svelte example assigns to `$derived` state, which requires Svelte 5.25 or later.
-
 Outside the Visual Editor or on the server, the call does nothing and returns a cleanup function
 that does nothing.
 
-### Events
+#### Events
 
-The Preview Bridge emits three events. Each one maps to a fixed behavior:
+The Preview Bridge emits three events, each with a fixed behavior:
 
-| Event       | Trigger                       | Behavior                                      |
-| ----------- | ----------------------------- | --------------------------------------------- |
-| `input`     | An editor changes a field     | Calls `callback` with the updated story       |
-| `change`    | An editor saves the story     | Reloads the page, or calls `options.onChange` |
-| `published` | An editor publishes the story | Reloads the page, or calls `options.onChange` |
+| Event       | Trigger                        | Behavior                                       |
+| ----------- | ------------------------------ | ---------------------------------------------- |
+| `input`     | An editor changes a field.     | Calls `callback` with the updated story.       |
+| `change`    | An editor saves the story.     | Reloads the page, or calls `options.onChange`. |
+| `published` | An editor publishes the story. | Reloads the page, or calls `options.onChange`. |
 
-### Options
+#### Options
 
-`LivePreviewOptions` extends the Preview Bridge options (`BridgeParams`) with two handlers:
+`LivePreviewOptions` extends the Preview Bridge options (`BridgeParams`) with two handlers. The
+`options` object accepts the following properties:
 
-| Option             | Type                                          | Description                                                                    |
-| ------------------ | --------------------------------------------- | ------------------------------------------------------------------------------ |
-| `resolveRelations` | `string[]`                                    | Relations to resolve in the story payload, for example `["featured.articles"]` |
-| `resolveLinks`     | `"url" \| "story" \| "0" \| "1"`              | Link resolution mode                                                           |
-| `customParent`     | `string`                                      | Origin of the Visual Editor, for a self-hosted or regional editor              |
-| `fallbackLang`     | `string`                                      | Fallback language for field-level translations                                 |
-| `preventClicks`    | `boolean`                                     | Block link navigation inside the Visual Editor                                 |
-| `onChange`         | `(event: StoryblokEditorChangeEvent) => void` | Called on `change` and `published` instead of reloading the page               |
-| `onError`          | `(error: unknown) => void`                    | Called when the Preview Bridge fails to load. Defaults to `console.error`      |
+| Key                | Description                                                                                                                           | Type                                          |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| `resolveRelations` | [Relations](https://www.storyblok.com/docs/concepts/references) to resolve in the story payload, for example `["featured.articles"]`. | `string[]`                                    |
+| `resolveLinks`     | Link resolution mode.                                                                                                                 | `"url" \| "story" \| "0" \| "1"`              |
+| `customParent`     | Origin of the Visual Editor, for a self-hosted or regional editor.                                                                    | `string`                                      |
+| `fallbackLang`     | Fallback language for field-level translations.                                                                                       | `string`                                      |
+| `preventClicks`    | Blocks link navigation inside the Visual Editor.                                                                                      | `boolean`                                     |
+| `onChange`         | Called on `change` and `published` instead of reloading the page.                                                                     | `(event: StoryblokEditorChangeEvent) => void` |
+| `onError`          | Called when the Preview Bridge fails to load. Defaults to `console.error`.                                                            | `(error: unknown) => void`                    |
 
-### Saved and published changes
+#### Saved and published changes
 
 By default, saving or publishing reloads the page. To refetch data without a full reload, pass
 `onChange`:
@@ -142,16 +154,16 @@ const stopListening = onStoryblokEditorEvent(
 );
 ```
 
-In Next.js, call `router.refresh()` instead. The page still reloads unless every active subscription
-passes `onChange`, because every subscription shares one bridge.
+In Next.js, call `router.refresh()` instead. Because every subscription shares one bridge, the page
+still reloads unless every active subscription passes `onChange`.
 
-### Errors
+#### Errors
 
 `onStoryblokEditorEvent()` never throws or rejects. A Preview Bridge load failure goes to `onError`,
 including a later rebuild of the shared bridge that leaves the subscription without one. The
-subscription is removed before `onError` runs, and `onError` isn't called for a subscription cleaned
-up while the bridge was still loading. Without `onError`, the error is logged with `console.error`
-once per failure, however many subscriptions it affects.
+function removes the subscription before `onError` runs, and skips `onError` for a subscription
+cleaned up while the bridge was still loading. Without `onError`, `console.error` logs each failure
+once, however many subscriptions it affects.
 
 ```ts
 const stopListening = onStoryblokEditorEvent(
@@ -162,10 +174,11 @@ const stopListening = onStoryblokEditorEvent(
 );
 ```
 
-### Shared bridge
+#### Shared bridge
 
 Every subscription on a page shares one Preview Bridge instance, because the Visual Editor supports
-only one bridge configuration per page. The options of all active subscriptions are merged:
+only one bridge configuration per page. The shared bridge merges the options of all active
+subscriptions with the following rules:
 
 - **Relations:** `resolveRelations` values are combined.
 - **Scalar options:** `customParent`, `resolveLinks`, and `fallbackLang` take the value of the
@@ -176,13 +189,13 @@ only one bridge configuration per page. The options of all active subscriptions 
 A subscribe or cleanup rebuilds the bridge only when it changes the merged options. Subscriptions
 made in the same synchronous tick, or while the bridge module is still loading, share one build. A
 later change tears down the bridge and builds a new one, which briefly leaves the page without a
-bridge. To avoid rebuilds, subscribe to all known options upfront, in the same tick.
+bridge. To avoid rebuilds, subscribe with all known options upfront, in the same tick.
 
-A cleanup removes the subscription's options from the merge right away. A cleanup followed by an
+A cleanup removes the subscription’s options from the merge right away. A cleanup followed by an
 immediate re-subscribe, such as React StrictMode or a Svelte `$effect` re-run, joins the build in
 progress instead of starting a second one.
 
-## `createLivePreviewHandler()`
+### `createLivePreviewHandler()`
 
 Updates a server-rendered page as editors type. You provide the `update` function that renders the
 story. The handler debounces updates, cancels stale ones, and morphs the result into the page.
@@ -214,9 +227,9 @@ handler.dispose();
 ```
 
 `onStoryblokEditorEvent()` calls back only for `input`. It handles saves and publishes itself, by
-reloading the page or calling `onChange`, so the handler's `onReload` doesn't run in this setup.
+reloading the page or calling `onChange`, so the handler’s `onReload` doesn’t run in this setup.
 
-### Server-rendered setup
+#### Server-rendered setup
 
 A complete setup has a client part and a server part.
 
@@ -263,7 +276,7 @@ const stopListening = onStoryblokEditorEvent((story) => {
 
 Create one handler per page. A second one doubles every request and morph.
 
-**Server:** the page's route renders the posted story instead of fetching it. Accept the `POST` only
+**Server:** the page’s route renders the posted story instead of fetching it. Accept the `POST` only
 from the Visual Editor:
 
 ```ts
@@ -281,42 +294,49 @@ function isPreviewRequest(request: Request): boolean {
 }
 ```
 
-- **Why these checks:** the `_storyblok` query parameters are public, so `isInEditor()` alone
-  doesn't prove the request's origin. Requiring `application/json` forces a CORS preflight for
-  cross-origin requests, and `Sec-Fetch-Site` rejects anything that isn't same-origin.
+The server-side rules for the preview route:
+
+- **Request checks:** the `_storyblok` query parameters are public, so `isInEditor()` alone doesn’t
+  prove the request’s origin. Requiring `application/json` forces a CORS preflight for cross-origin
+  requests, and `Sec-Fetch-Site` rejects anything that isn’t same-origin.
 - **Untrusted body:** anyone can send this request. Use the posted story only to render the preview,
   never for IDs, permissions, or anything else the server relies on.
-- **On-demand routes:** the route must render on request. A prerendered or static route can't answer
-  the `POST`, usually with a 404 or 405. Reloading on save and publish still works there.
+- **On-demand routes:** the route must render on request. A prerendered or static route can’t answer
+  the `POST`, and usually responds with a 404 or 405. Reloading on save and publish still works
+  there.
 - **Interactive islands:** mark the root of a client-rendered component with `data-preserve-state`,
   so the morph leaves it intact.
 
-### Options
+#### Options
 
-| Option           | Type                                               | Description                                                                                 |
-| ---------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `currentRoot`    | `() => Element`                                    | Required. Returns the element to update                                                     |
-| `update`         | `(context: { story, signal }) => Promise<Element>` | Required. Renders the story and returns the new root. Abort on `signal`                     |
-| `debounceMs`     | `number`                                           | Delay before an `input` event triggers `update`. Defaults to `500`                          |
-| `morph`          | `Omit<DomMorphOptions, "focusedElement">`          | Options passed to `morphStoryblokDom()`                                                     |
-| `onBeforeUpdate` | `(story) => boolean \| void`                       | Called before an update. Return `false` to skip it                                          |
-| `onUpdated`      | `(story) => void`                                  | Called after the morph                                                                      |
-| `onError`        | `(error: unknown, story) => void`                  | Called when `update` or the morph fails. Defaults to `console.error`. Not called for aborts |
-| `onReload`       | `(action: "change" \| "published") => void`        | Called on `change` and `published`. Defaults to `window.location.reload()`                  |
+`createLivePreviewHandler()` accepts the following options:
 
-On `change` or `published`, a pending `input` update is cancelled before `onReload` runs, so stale
-content can't overwrite the reload.
+| Key              | Description                                                                                  | Type                                               |
+| ---------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| `currentRoot`    | Returns the element to update. Required.                                                     | `() => Element`                                    |
+| `update`         | Renders the story and returns the new root. Abort on `signal`. Required.                     | `(context: { story, signal }) => Promise<Element>` |
+| `debounceMs`     | Delay before an `input` event triggers `update`. Defaults to `500`.                          | `number`                                           |
+| `morph`          | Options passed to `morphStoryblokDom()`.                                                     | `Omit<DomMorphOptions, "focusedElement">`          |
+| `onBeforeUpdate` | Called before an update. Return `false` to skip it.                                          | `(story) => boolean \| void`                       |
+| `onUpdated`      | Called after the morph.                                                                      | `(story) => void`                                  |
+| `onError`        | Called when `update` or the morph fails. Defaults to `console.error`. Not called for aborts. | `(error: unknown, story) => void`                  |
+| `onReload`       | Called on `change` and `published`. Defaults to `window.location.reload()`.                  | `(action: "change" \| "published") => void`        |
 
-### Return value
+On `change` or `published`, the handler cancels a pending `input` update before `onReload` runs, so
+stale content can’t overwrite the reload.
 
-| Member    | Type                       | Description                                                                   |
-| --------- | -------------------------- | ----------------------------------------------------------------------------- |
-| `handle`  | `(event) => Promise<void>` | Processes an event. Resolves once it's scheduled, not once the DOM is updated |
-| `dispose` | `() => void`               | Cancels any pending update. Call it on teardown                               |
+#### Return value
 
-## `morphStoryblokDom()`
+`createLivePreviewHandler()` returns an object with the following members:
 
-Morphs a new DOM tree into the current one. It doesn't fetch content or listen to Preview Bridge
+| Key       | Description                                                                             | Type                       |
+| --------- | --------------------------------------------------------------------------------------- | -------------------------- |
+| `handle`  | Processes an event. Resolves once the update is scheduled, not once the DOM is updated. | `(event) => Promise<void>` |
+| `dispose` | Cancels any pending update. Call it on teardown.                                        | `() => void`               |
+
+### `morphStoryblokDom()`
+
+Morphs a new DOM tree into the current one. It doesn’t fetch content or listen to Preview Bridge
 events.
 
 ```ts
@@ -335,29 +355,32 @@ morphStoryblokDom(document.body, nextBody, {
 });
 ```
 
-When the Visual Editor has a block focused, only that block is morphed. The rest of `currentRoot`
-stays as is until an update finds no focused block. Interactive form state (`value`, `checked`,
-`selected`) that the user changed is preserved.
+When the Visual Editor has a block focused, the function morphs only that block. The rest of
+`currentRoot` stays as is until an update finds no focused block. The function preserves interactive
+form state (`value`, `checked`, `selected`) that the user changed.
 
-`morphStoryblokDom()` mutates `nextRoot`. Don't reuse or cache `nextRoot` afterward.
+`morphStoryblokDom()` mutates `nextRoot`, so discard `nextRoot` after the call instead of reusing or
+caching it.
 
-### Options
+#### Options
 
-| Option                      | Type                                                  | Default                 | Description                                                                           |
-| --------------------------- | ----------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------- |
-| `focusedElement`            | `Element \| null`                                     | Auto-detected           | The focused block. Pass `null` to morph the full root                                 |
-| `keyAttribute`              | `string`                                              | `"data-blok-uid"`       | Attribute that matches the same block across both trees                               |
-| `focusedAttribute`          | `string`                                              | `"data-blok-focused"`   | Attribute that marks the focused block                                                |
-| `preserveStateAttribute`    | `string`                                              | `"data-preserve-state"` | Attribute that marks a subtree to skip entirely, for example a hydrated island        |
-| `preserveElementAttributes` | `boolean`                                             | `false`                 | Keep the current attributes of every matched element instead of applying new ones     |
-| `onBeforeElUpdated`         | `(fromEl: Element, toEl: Element) => boolean \| void` | —                       | Extra update policy, applied after the default one. Return `false` to skip an element |
+`morphStoryblokDom()` accepts the following options:
 
-### Return value
+| Key                         | Description                                                                                                          | Type                                                  |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `focusedElement`            | The focused block. Pass `null` to morph the full root. Detected automatically when omitted.                          | `Element \| null`                                     |
+| `keyAttribute`              | Attribute that matches the same block across both trees. Defaults to `"data-blok-uid"`.                              | `string`                                              |
+| `focusedAttribute`          | Attribute that marks the focused block. Defaults to `"data-blok-focused"`.                                           | `string`                                              |
+| `preserveStateAttribute`    | Attribute that marks a subtree to skip entirely, for example a hydrated island. Defaults to `"data-preserve-state"`. | `string`                                              |
+| `preserveElementAttributes` | Keeps the current attributes of every matched element instead of applying new ones. Defaults to `false`.             | `boolean`                                             |
+| `onBeforeElUpdated`         | Extra update policy, applied after the default one. Return `false` to skip an element.                               | `(fromEl: Element, toEl: Element) => boolean \| void` |
 
-`DomMorphResult` has one field, `scope`: `"focused"` when only the focused block was morphed, or
-`"root"` when the full root was.
+#### Return value
 
-## `loadStoryblokBridge()`
+`morphStoryblokDom()` returns a `DomMorphResult` with one field, `scope`: `"focused"` when the
+function morphed only the focused block, or `"root"` when it morphed the full root.
+
+### `loadStoryblokBridge()`
 
 Loads the Preview Bridge and returns a new instance. Each call returns a new, unshared instance. To
 share one bridge across components, use `onStoryblokEditorEvent()` instead.
@@ -376,10 +399,10 @@ bridge.on(["input", "change", "published"], (event) => {
 });
 ```
 
-## `storyblokEditable()`
+### `storyblokEditable()`
 
 Returns the attributes that make a block selectable in the Visual Editor. Spread them onto the
-block's root element.
+block’s root element.
 
 ```ts
 function storyblokEditable(block?: { _editable?: string }): Record<string, string>;
@@ -391,10 +414,10 @@ import { storyblokEditable } from "@storyblok/live-preview";
 <section {...storyblokEditable(blok)}>{/* ... */}</section>;
 ```
 
-It returns `{}` when the block has no valid `_editable` value, for example outside the Visual
-Editor.
+`storyblokEditable()` returns `{}` when the block has no valid `_editable` value, for example
+outside the Visual Editor.
 
-## `editableField()`
+### `editableField()`
 
 Returns the attribute that makes a single field selectable in the Visual Editor.
 
@@ -408,12 +431,12 @@ import { editableField } from "@storyblok/live-preview";
 <h1 {...editableField("headline")}>{blok.headline}</h1>;
 ```
 
-It returns `{}` for an empty field name.
+`editableField()` returns `{}` for an empty field name.
 
-## `isInEditor()`
+### `isInEditor()`
 
-Checks whether a URL is a Visual Editor request. It requires the `_storyblok`, `_storyblok_c`, and
-`_storyblok_tk[space_id]` query parameters.
+Checks whether a URL is a Visual Editor request. The URL must include the `_storyblok`,
+`_storyblok_c`, and `_storyblok_tk[space_id]` query parameters.
 
 ```ts
 function isInEditor(url: URL, options?: { spaceId?: string }): boolean;
@@ -429,7 +452,7 @@ if (isInEditor(new URL(request.url), { spaceId: "123456" })) {
 
 Pass `spaceId` to also require the request to come from that space.
 
-## `isBrowser()`
+### `isBrowser()`
 
 Returns `true` when the code runs in a browser.
 
@@ -439,16 +462,27 @@ function isBrowser(): boolean;
 
 ## Types
 
-| Type                             | Description                                                                               |
-| -------------------------------- | ----------------------------------------------------------------------------------------- |
-| `LivePreviewOptions`             | Options for `onStoryblokEditorEvent()`                                                    |
-| `LivePreviewStory<TStory>`       | Story payload from the Visual Editor. `id` is required; `uuid` and `content` are optional |
-| `StoryblokEditorChangeEvent`     | The `change` or `published` event passed to `onChange`                                    |
-| `LivePreviewHandler`             | Return value of `createLivePreviewHandler()`                                              |
-| `LivePreviewHandlerOptions`      | Options for `createLivePreviewHandler()`                                                  |
-| `LivePreviewEvent`               | Preview Bridge event accepted by `handler.handle()`                                       |
-| `LivePreviewUpdateContext`       | Argument of the `update` option: `{ story, signal }`                                      |
-| `DomMorphOptions`                | Options for `morphStoryblokDom()`                                                         |
-| `DomMorphResult`                 | Return value of `morphStoryblokDom()`                                                     |
-| `BridgeParams`                   | Preview Bridge options, re-exported from `@storyblok/preview-bridge`                      |
-| `Story`, `Block`, `BlockContent` | Content Delivery API story and block types                                                |
+`@storyblok/live-preview` exports the following types.
+
+| Type                             | Description                                                                                    |
+| -------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `LivePreviewOptions`             | Options for `onStoryblokEditorEvent()`.                                                        |
+| `LivePreviewStory<TStory>`       | Story payload from the Visual Editor. `id` is required, and `uuid` and `content` are optional. |
+| `StoryblokEditorChangeEvent`     | The `change` or `published` event passed to `onChange`.                                        |
+| `LivePreviewHandler`             | Return value of `createLivePreviewHandler()`.                                                  |
+| `LivePreviewHandlerOptions`      | Options for `createLivePreviewHandler()`.                                                      |
+| `LivePreviewEvent`               | Preview Bridge event accepted by `handler.handle()`.                                           |
+| `LivePreviewUpdateContext`       | Argument of the `update` option: `{ story, signal }`.                                          |
+| `DomMorphOptions`                | Options for `morphStoryblokDom()`.                                                             |
+| `DomMorphResult`                 | Return value of `morphStoryblokDom()`.                                                         |
+| `BridgeParams`                   | Preview Bridge options, re-exported from `@storyblok/preview-bridge`.                          |
+| `Story`, `Block`, `BlockContent` | Content Delivery API story and block types.                                                    |
+
+## Further resources
+
+- [Visual Editor](https://www.storyblok.com/docs/concepts/visual-editor)—Learn how live editing
+  works in the Visual Editor concept.
+- [@storyblok/preview-bridge Package Reference](https://www.storyblok.com/docs/libraries/js/preview-bridge)—Find
+  the Preview Bridge options and events in the @storyblok/preview-bridge reference.
+- [@storyblok/api-client Package Reference](https://www.storyblok.com/docs/libraries/js/content-delivery-api-client)—Learn
+  how to fetch content from the Content Delivery API in the @storyblok/api-client reference.

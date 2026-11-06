@@ -29,17 +29,13 @@
 
 ## Features
 
-`onStoryblokEditorEvent()` delivers the updated story as editors change content in the Visual
-Editor. What happens next depends on who renders the page:
-
-- **Reactive frameworks**: store the story in component state, and the framework re-renders. The
-  function returns a synchronous cleanup function for component teardown.
-- **Server-rendered apps**: pass the story to `createLivePreviewHandler()`. It asks your server to
-  render the story and morphs the returned HTML into the page, preserving form state and
-  client-owned subtrees. Reactive frameworks re-render on their own and don't need it.
-
-On save or publish, the page reloads by default, or your app refetches data instead. Helpers for
-Visual Editor attributes make blocks and fields selectable.
+- **Visual Editor Events**: `onStoryblokEditorEvent()` delivers the updated story as editors change
+  content. In reactive frameworks, store it in component state and the framework re-renders. It
+  returns a synchronous cleanup function for component teardown.
+- **Server-Rendered Apps**: `createLivePreviewHandler()` asks your server to render the updated
+  story and morphs the returned HTML into the page, preserving form state and client-owned subtrees.
+- **Save and Publish Handling**: The page reloads by default, or your app refetches data instead.
+- **Visual Editor Attributes**: Helpers make blocks and fields selectable in the Visual Editor.
 
 ## Documentation
 

@@ -140,6 +140,15 @@ export class LivePreviewService {
    * so it can be tied to a `DestroyRef` without awaiting the bridge.
    */
   private subscribe(callback: LivePreviewCallback, options?: LivePreviewListenOptions): () => void {
+    // Check before touching the DestroyRef, so a missing withLivePreview() is
+    // reported in dev mode even when the DestroyRef is already destroyed.
+    if (!this.enabledFlag) {
+      if (typeof ngDevMode === "undefined" || ngDevMode) {
+        throw new LivePreviewNotEnabledError();
+      }
+      return () => {};
+    }
+
     const { destroyRef, onChange, onError, ...bridgeOptions } = options ?? {};
     let cleanup: (() => void) | undefined;
 
@@ -155,12 +164,8 @@ export class LivePreviewService {
       }
     }
 
-    try {
-      cleanup = this.subscribeToEditor(callback, bridgeOptions, onChange, onError);
-    } catch (error) {
-      unregister?.();
-      throw error;
-    }
+    // onStoryblokEditorEvent never throws: failures go to onError.
+    cleanup = this.subscribeToEditor(callback, bridgeOptions, onChange, onError);
 
     return () => {
       unregister?.();
@@ -174,13 +179,6 @@ export class LivePreviewService {
     onChange: LivePreviewOptions["onChange"],
     onError: LivePreviewOptions["onError"],
   ): () => void {
-    if (!this.enabledFlag) {
-      if (typeof ngDevMode === "undefined" || ngDevMode) {
-        throw new LivePreviewNotEnabledError();
-      }
-      return () => {};
-    }
-
     const config: LivePreviewOptions = { ...this.baseConfig, ...bridgeOptions };
     // Only pass handlers that were given: without `onChange` the page reloads,
     // and without `onError` the failure is logged.

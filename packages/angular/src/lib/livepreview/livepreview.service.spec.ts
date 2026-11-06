@@ -53,6 +53,39 @@ describe("LivePreviewService", () => {
       await expect(service.listen(() => {})).rejects.toThrow(LivePreviewNotEnabledError);
     });
 
+    it("should throw LivePreviewNotEnabledError in dev mode even when the DestroyRef is already destroyed", async () => {
+      const destroyedRef = {
+        onDestroy: () => {
+          throw new Error("NG0911: destroyRef is not in a valid state");
+        },
+      } as unknown as DestroyRef;
+      await expect(service.listen(() => {}, { destroyRef: destroyedRef })).rejects.toThrow(
+        LivePreviewNotEnabledError,
+      );
+    });
+
+    it("should not register a destroy hook when not enabled", async () => {
+      const ref = { onDestroy: vi.fn() } as unknown as DestroyRef;
+      await expect(service.listen(() => {}, { destroyRef: ref })).rejects.toThrow(
+        LivePreviewNotEnabledError,
+      );
+      expect(ref.onDestroy).not.toHaveBeenCalled();
+    });
+
+    it("should log and resolve connect() to a no-op cleanup when not enabled", async () => {
+      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const ref = { onDestroy: vi.fn() } as unknown as DestroyRef;
+      const cleanup = await service.connect(() => {}, ref);
+
+      expect(() => cleanup()).not.toThrow();
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "[Storyblok] connect() failed to subscribe to live preview updates:",
+        expect.any(LivePreviewNotEnabledError),
+      );
+      expect(ref.onDestroy).not.toHaveBeenCalled();
+      consoleErrorSpy.mockRestore();
+    });
+
     it("does not call onStoryblokEditorEvent when not enabled", async () => {
       try {
         await service.listen(() => {});
@@ -228,30 +261,6 @@ describe("LivePreviewService", () => {
         expect.any(Function),
         expect.objectContaining({ resolveRelations: ["a.b"] }),
       );
-    });
-
-    it("resolves to a no-op cleanup and logs when subscribing throws", async () => {
-      const subscribeError = new Error("subscribe failed");
-      onStoryblokEditorEventMock.mockImplementation(() => {
-        throw subscribeError;
-      });
-      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
-      const unregister = vi.fn();
-      const ref = { onDestroy: vi.fn().mockReturnValue(unregister) } as unknown as DestroyRef;
-      const cleanup = await service.connect(() => {}, ref);
-
-      expect(cleanup).toEqual(expect.any(Function));
-      expect(() => cleanup()).not.toThrow();
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        "[Storyblok] connect() failed to subscribe to live preview updates:",
-        subscribeError,
-      );
-      // The onDestroy hook registered before the subscribe attempt must not
-      // linger once it has failed — otherwise it fires again, harmlessly but
-      // needlessly, whenever the component is later destroyed.
-      expect(unregister).toHaveBeenCalledOnce();
-      consoleErrorSpy.mockRestore();
     });
 
     it("treats context as already destroyed and never touches the shared bridge when DestroyRef.onDestroy() throws (NG0911)", async () => {

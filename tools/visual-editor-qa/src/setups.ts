@@ -6,20 +6,35 @@ const REGENERATE = "node .agents/skills/qa-engineer-manual/scripts/save-storyblo
 
 /** Registers the session check. Call it from the package's `auth.setup.ts`. */
 export const registerAuthSetup = (config: QaConfig): void => {
-  setup("a valid app session exists", async ({ page }) => {
+  setup("a valid app session exists", async ({ browser }) => {
     expect(
       existsSync(config.storageStatePath),
       `No saved session at ${config.storageStatePath}. Create one with: ${REGENERATE}`,
     ).toBe(true);
 
-    // A saved-but-expired session redirects to the login screen. Assert we
-    // reached the app, not that no error was thrown.
-    await page.goto(`${config.appBaseUrl}/#/me/spaces/${config.spaceId}/stories`, {
-      waitUntil: "domcontentloaded",
-    });
-    await expect(page, `Session expired. Refresh it with: ${REGENERATE}`).not.toHaveURL(
-      /#!?\/login/,
-    );
+    // The setup projects run without `storageState`, so load the saved session
+    // here. Without it this check would test a logged-out browser.
+    const context = await browser.newContext({ storageState: config.storageStatePath });
+    const page = await context.newPage();
+    try {
+      // A saved-but-expired session redirects to the login screen. A negative
+      // check passes before that redirect happens, so wait for one of the two
+      // screens, then assert it is the stories list.
+      await page.goto(`${config.appBaseUrl}/#/me/spaces/${config.spaceId}/stories/0/0/index/0`);
+      const storiesList = page.getByTestId("list-stories-table");
+      const loginForm = page.getByTestId("login-email");
+      await expect(
+        storiesList.or(loginForm),
+        "The Storyblok app rendered neither the stories list nor the login screen. " +
+          "Its selectors may have changed; update them in setups.ts.",
+      ).toBeVisible({ timeout: 60_000 });
+      // One of the two is already visible, so check the current state without waiting.
+      expect(await storiesList.isVisible(), `Session expired. Refresh it with: ${REGENERATE}`).toBe(
+        true,
+      );
+    } finally {
+      await context.close();
+    }
   });
 };
 

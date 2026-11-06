@@ -78,3 +78,79 @@ export type {
 export type { ValidationIssue, ValidationResult, ValidationSeverity } from "./validators/types";
 export { validateSchema } from "./validators/validate-schema";
 export { validateStory } from "./validators/validate-story";
+// Content migrations
+export { defineMigration } from "./migrations/define-migration";
+export type {
+  CompiledMigration,
+  MigrationDefinition,
+  MigrationOps,
+} from "./migrations/define-migration";
+
+export {
+  addField,
+  alterBlock,
+  alterField,
+  coerceField,
+  expandBlock,
+  mergeFields,
+  moveField,
+  removeField,
+  renameBlock,
+  renameField,
+  reorderField,
+  splitField,
+  unwrapChildren,
+  wrapChildren,
+} from "./migrations/ops";
+export type {
+  AddFieldOp,
+  AlterFieldContext,
+  AnyChild,
+  CoercionTarget,
+  ExpandBlockOp,
+  MergeFieldsOp,
+  MigrationOp,
+  MigrationOpOf,
+  RenameBlockOp,
+  ReorderContext,
+  SplitFieldOp,
+  UnderOf,
+  UnwrapChildrenOp,
+  WrapChildrenOp,
+} from "./migrations/ops";
+
+export type { AnyBlock, BlockPatch, BlockPatchOp } from "./migrations/patch";
+
+export { deriveInverse } from "./migrations/derive-inverse";
+export type { DerivedInverse, UnderivableOp } from "./migrations/derive-inverse";
+
+export { validateMigration } from "./migrations/validate-migration";
+export type { MigrationIssue, ValidateMigrationOptions } from "./migrations/validate-migration";
+
+export { runId } from "./migrations/journal";
+export type { Journal, MigrationRun, PublishState, StoryInverse } from "./migrations/journal";
+
+export { applyMigration } from "./migrations/apply-migration";
+export type {
+  ApplyMigrationInput,
+  ApplyMigrationOutcome,
+  MigrationWrite,
+  PublishMode,
+  StoryForMigration,
+} from "./migrations/apply-migration";
+
+export { MigrationError } from "./migrations/migration-error";
+export { planUndo, undoStories } from "./migrations/undo-run";
+export type { UndoOutcome, UndoPlan, UndoStoriesInput, UndoWrite } from "./migrations/undo-run";
+
+export { checkPendingReleases } from "./migrations/releases";
+export type { PendingReleasesCheck, ReleaseForMigration } from "./migrations/releases";
+
+export {
+  discoverMigrations,
+  loadMigrations,
+  selectMigrationFiles,
+} from "./migrations/load-migrations";
+export type { ImportDefault, LoadedMigration, MigrationFile } from "./migrations/load-migrations";
+
+export { JOURNAL_DIRECTORY, localJournal, resolveJournal } from "./migrations/local-journal";

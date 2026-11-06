@@ -1,13 +1,11 @@
 <script>
-	import { StoryblokComponent, storyblokEditable } from '@storyblok/svelte';
+	import { StoryblokBlock } from '$lib/storyblok';
 
-	export let blok;
+	let { block, editable } = $props();
 </script>
 
-{#key blok}
-	<main class="page" use:storyblokEditable={blok}>
-		{#each blok.body as blok}
-			<StoryblokComponent {blok} />
-		{/each}
-	</main>
-{/key}
+<main class="page" {...editable}>
+	{#each block.body as nestedBlock (nestedBlock._uid)}
+		<StoryblokBlock block={nestedBlock} />
+	{/each}
+</main>

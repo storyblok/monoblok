@@ -1,0 +1,30 @@
+---
+import { getPayload, StoryblokPreview, type StoryblokBlockData } from "@storyblok/astro";
+import { client, StoryblokBlock } from "../storyblok";
+import BaseLayout from "../components/BaseLayout.astro";
+
+// A dedicated static route (Astro resolves it ahead of `[...slug].astro`) for
+// the "reload on save, but no live DOM morphing" scenario: `<StoryblokPreview />`
+// rendered without `liveUpdate`. The bridge stays attached, so `change`/
+// `published` still reload the page, but `input` never morphs the DOM.
+interface MyStory {
+  content: StoryblokBlockData;
+}
+
+const payload = await getPayload<object, MyStory>({ locals: Astro.locals });
+
+const response = payload?.story
+  ? undefined
+  : await client.stories.get("about-us", { query: { version: "draft" } });
+
+const story = payload?.story ?? response?.data?.story;
+
+if (!story) {
+  throw new Error('Story not found for slug "about-us"');
+}
+---
+
+<BaseLayout>
+  <StoryblokBlock block={story.content} />
+  <StoryblokPreview />
+</BaseLayout>

@@ -1,13 +1,19 @@
 ---
-import StoryblokComponent from '@storyblok/astro/StoryblokComponent.astro';
-import { storyblokEditable } from '@storyblok/astro';
-const { blok } = Astro.props;
+import type {
+	StoryblokBlockComponentProps,
+	StoryblokBlockData,
+} from '@storyblok/astro';
+import { StoryblokBlock } from '../storyblok';
+
+type Props = StoryblokBlockComponentProps<{ columns?: StoryblokBlockData[] }>;
+
+const { block, editable } = Astro.props;
 ---
 
-<div class="grid" {...storyblokEditable(blok)}>
+<div class="grid" {...editable}>
 	{
-		blok.columns?.map((nestedBlok) => {
-			return <StoryblokComponent blok={nestedBlok} />;
+		block.columns?.map((nestedBlock) => {
+			return <StoryblokBlock block={nestedBlock} />;
 		})
 	}
 </div>

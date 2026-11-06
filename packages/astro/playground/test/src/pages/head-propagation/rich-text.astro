@@ -1,0 +1,19 @@
+---
+import BaseLayout from "../../components/BaseLayout.astro";
+import { StoryblokRichText } from "../../storyblok";
+
+// Fixture for e2e/head-propagation.spec.ts: the block embedded in rich text.
+const document = {
+  type: "doc",
+  content: [
+    {
+      type: "blok",
+      attrs: { id: "mdx", body: [{ _uid: "mdx-note", component: "mdx_note" }] },
+    },
+  ],
+};
+---
+
+<BaseLayout>
+  <StoryblokRichText document={document} />
+</BaseLayout>

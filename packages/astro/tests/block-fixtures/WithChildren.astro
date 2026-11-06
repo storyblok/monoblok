@@ -1,0 +1,6 @@
+---
+// Passes children to `Component` the way a page would.
+const { Component, ...props } = Astro.props;
+---
+
+<Component {...props}><p data-test="child">Child</p></Component>

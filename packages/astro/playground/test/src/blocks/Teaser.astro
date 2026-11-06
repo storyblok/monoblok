@@ -1,0 +1,22 @@
+---
+import { StoryblokRichText } from "../storyblok";
+import Heading from "./richtext/Heading.astro";
+import Bold from "./richtext/Bold.astro";
+
+const { block, editable } = Astro.props;
+---
+
+<div {...editable}>
+  <h2 class="heading">
+    {block.headline}
+  </h2>
+  <StoryblokRichText document={block?.text} components={{ heading: Heading, bold: Bold }} />
+</div>
+<style>
+  .heading {
+    text-align: center;
+    font: 700 2.25rem/2.5rem sans-serif;
+    color: var(--color-primary);
+    padding: 3rem 0;
+  }
+</style>

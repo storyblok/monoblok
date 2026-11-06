@@ -231,6 +231,134 @@ describe("measure", () => {
     expect(pkg.entries["."].size).toBeGreaterThan(0);
   });
 
+  it("should leave out `.astro` components an entry imports", async () => {
+    writePackage(
+      "pkg",
+      { name: "@storyblok/pkg", type: "module", exports: { ".": "./dist/index.mjs" } },
+      {
+        "dist/index.mjs": `import Block from "./components/Block.astro";\nexport { Block };\n`,
+        "dist/components/Block.astro": `---\nconst { block } = Astro.props;\n---\n\n<div>{block}</div>\n`,
+      },
+    );
+
+    const pkg = (await measure(root)).packages["@storyblok/pkg"];
+
+    expect(pkg.error).toBeUndefined();
+    expect(pkg.entries["."].size).toBeGreaterThan(0);
+  });
+
+  it("should measure an `.astro` component's script with its dependencies", async () => {
+    writePackage(
+      "pkg",
+      { name: "@storyblok/pkg", type: "module", exports: { ".": "./dist/index.mjs" } },
+      {
+        "dist/index.mjs": code("index"),
+        "dist/components/Preview.astro": `---\nconst { id } = Astro.props;\n---\n\n<div>{id}</div>\n<script>\n  import { dep } from "dep";\n  import { local } from "../local";\n  const typed: string[] = [...dep, ...local];\n  console.log(typed);\n</script>\n`,
+        "dist/local.mjs": code("local"),
+        ...dependency("dep", { "index.js": code("dep") }),
+      },
+    );
+
+    const pkg = (await measure(root)).packages["@storyblok/pkg"];
+
+    expect(pkg.error).toBeUndefined();
+    const script = pkg.entries["dist/components/Preview.astro <script>"];
+    expect(script.dependencies).toEqual(["dep"]);
+    // Both the dependency and the extensionless local import are bundled.
+    expect(script.size).toBeGreaterThan(pkg.entries["."].size);
+  });
+
+  it("should count what an `.astro` script imports statically, not what it imports lazily", async () => {
+    const preview = (load: string) => `<script>\n  ${load}\n</script>\n`;
+    writePackage(
+      "pkg",
+      { name: "@storyblok/pkg", type: "module", exports: { ".": "./dist/index.mjs" } },
+      {
+        "dist/index.mjs": "export {};\n",
+        "dist/Static.astro": preview(
+          `import { handler } from "./handler";\n  console.log(handler);`,
+        ),
+        "dist/Lazy.astro": preview(
+          `import("./handler").then(({ handler }) => console.log(handler));`,
+        ),
+        "dist/handler.mjs": code("handler"),
+      },
+    );
+
+    const { entries } = (await measure(root)).packages["@storyblok/pkg"];
+
+    expect(entries["dist/Static.astro <script>"].size).toBeGreaterThan(500);
+    expect(entries["dist/Lazy.astro <script>"].size).toBeLessThan(200);
+  });
+
+  it("should drop an `.astro` script's dev-only code, as Vite does in a production build", async () => {
+    writePackage(
+      "pkg",
+      { name: "@storyblok/pkg", type: "module", exports: { ".": "./dist/index.mjs" } },
+      {
+        "dist/index.mjs": "export {};\n",
+        "dist/Preview.astro": `<script>\n  import { debug } from "./debug";\n  if (import.meta.env.DEV) console.log(debug);\n</script>\n`,
+        "dist/debug.mjs": code("debug"),
+      },
+    );
+
+    const { entries } = (await measure(root)).packages["@storyblok/pkg"];
+
+    expect(entries["dist/Preview.astro <script>"].size).toBeLessThan(200);
+  });
+
+  it("should measure a local `src` script, and every processed script of a component", async () => {
+    writePackage(
+      "pkg",
+      { name: "@storyblok/pkg", type: "module", exports: { ".": "./dist/index.mjs" } },
+      {
+        "dist/index.mjs": "export {};\n",
+        "dist/Preview.astro": `<script>console.log("first");</script>\n<script src="./client.mjs"></script>\n`,
+        "dist/client.mjs": code("client"),
+      },
+    );
+
+    const { entries } = (await measure(root)).packages["@storyblok/pkg"];
+
+    expect(Object.keys(entries).sort()).toEqual([
+      ".",
+      "dist/Preview.astro <script> #1",
+      "dist/Preview.astro <script> #2",
+    ]);
+    expect(entries["dist/Preview.astro <script> #2"].size).toBeGreaterThan(500);
+  });
+
+  it("should skip `.astro` scripts that Astro leaves as they are", async () => {
+    writePackage(
+      "pkg",
+      { name: "@storyblok/pkg", type: "module", exports: { ".": "./dist/index.mjs" } },
+      {
+        "dist/index.mjs": "export {};\n",
+        "dist/Data.astro": `<script is:inline id="data" type="application/json" set:html={"{}"} />\n<script type="module">console.log("module");</script>\n<script src="https://example.com/remote.js"></script>\n<script src="//cdn.example.com/cdn.js"></script>\n<script src="/public.js"></script>\n`,
+      },
+    );
+
+    const pkg = (await measure(root)).packages["@storyblok/pkg"];
+
+    expect(pkg.error).toBeUndefined();
+    expect(Object.keys(pkg.entries)).toEqual(["."]);
+  });
+
+  it("should report an `.astro` script that cannot be bundled", async () => {
+    writePackage(
+      "pkg",
+      { name: "@storyblok/pkg", type: "module", exports: { ".": "./dist/index.mjs" } },
+      {
+        "dist/index.mjs": "export {};\n",
+        "dist/Preview.astro": `<script>\n  import { missing } from "./missing";\n  console.log(missing);\n</script>\n`,
+      },
+    );
+
+    const pkg = (await measure(root)).packages["@storyblok/pkg"];
+
+    expect(pkg.error).toContain("dist/Preview.astro");
+  });
+
   it("should measure only ES modules, skipping CommonJS, UMD, and CSS", async () => {
     writePackage(
       "pkg",

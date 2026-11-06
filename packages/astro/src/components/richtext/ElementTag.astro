@@ -1,12 +1,12 @@
 ---
 import {
   attrsToHtmlString,
-  buildAstroAttrs,
   resolveTag,
   isSelfClosing,
   type StoryblokRichTextMark,
   type StoryblokRichTextNode,
-} from '../../';
+} from '@storyblok/richtext';
+import { buildAstroAttrs } from '../../richtext-helpers';
 interface Props {
   node:
     Exclude<StoryblokRichTextNode, { type: 'text' }> | StoryblokRichTextMark;

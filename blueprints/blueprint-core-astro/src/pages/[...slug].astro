@@ -1,18 +1,19 @@
 ---
-import { useStoryblokApi } from '@storyblok/astro';
-import StoryblokComponent from '@storyblok/astro/StoryblokComponent.astro';
+import { StoryblokPreview } from '@storyblok/astro';
 import Layout from '../layouts/Layout.astro';
+import { storyblokClient, StoryblokBlock } from '../storyblok';
 
 const { slug } = Astro.params;
 
-const storyblokApi = useStoryblokApi();
-const { data } = await storyblokApi.get(`cdn/stories/${slug || 'home'}`, {
-	version: 'draft'
+const { data } = await storyblokClient.stories.get(slug || 'home', {
+	query: { version: 'draft' },
+	throwOnError: true,
 });
 
 const story = data.story;
 ---
 
 <Layout>
-	<StoryblokComponent blok={story.content} />
+	<StoryblokBlock block={story.content} />
+	<StoryblokPreview />
 </Layout>

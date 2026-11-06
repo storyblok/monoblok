@@ -117,8 +117,13 @@ gets:
 
 `IGNORED_EXPORTS` skips exports that never reach a browser, such as the Nuxt module or the richtext
 HTML and Markdown parsers, and `EXTRA_ENTRIES` adds browser entries that `exports` does not list,
-such as the Nuxt runtime plugin. Svelte components are compiled with the package's own Svelte; Astro
-components are skipped, since Astro compiles them.
+such as the Nuxt runtime plugin. Svelte components are compiled with the package's own Svelte. Astro
+components are not bundled, since Astro compiles them, but every `<script>` that Astro processes in
+a published `.astro` file is measured as an entry of its own, named after the file
+(`dist/components/StoryblokPreview.astro <script>`). Astro's compiler decides which scripts that is,
+so `is:inline` scripts and the other ones Astro leaves as they are don't count. The scripts are
+measured as Vite builds them for production: `import.meta.env.DEV` is `false`, and imports without
+an extension resolve with Vite's default extensions.
 
 An entry or a file fails the check when it grows by more than 5% and more than 100 B gzipped. Files
 are not minified, so without the byte threshold a comment added to a small file would fail. A

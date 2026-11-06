@@ -42,7 +42,7 @@ Covers the most common live preview use cases with minimal setup.
 ```ts
 import { onStoryblokEditorEvent } from "@storyblok/live-preview";
 
-const stopListening = await onStoryblokEditorEvent((story) => {
+const stopListening = onStoryblokEditorEvent((story) => {
   // update local state
 });
 
@@ -53,20 +53,78 @@ stopListening();
 Every call on a page shares one bridge instance: relation options are unioned, and scalar options
 (`customParent`, `resolveLinks`, `fallbackLang`) use first-wins semantics among the subscribers
 currently active. `preventClicks` is the one exception: any active subscriber requesting `true` wins
-regardless of subscribe order. Outside the Visual Editor, the call is a no-op and resolves to a
-cleanup function that does nothing.
+regardless of subscribe order. Outside the Visual Editor, the call is a no-op and returns a cleanup
+function that does nothing.
 
 A subscribe or unsubscribe only rebuilds the shared bridge when the merged options actually change —
 an already-covered relation, or an empty `{}`, does not. Calls made synchronously in the same tick
 (or that arrive while the bridge module is still loading) share a single build; a call that lands
 after that window triggers a full teardown and rebuild of the shared bridge instead, briefly leaving
-the page with no attached bridge. Prefer batching known subscriptions upfront (e.g. with
-`Promise.all`) when possible.
+the page with no attached bridge. Prefer making known subscriptions upfront, in the same tick, when
+possible.
 
 Cleaning up a subscription immediately stops its own options from being merged in, and — if other
 subscriptions remain and the retraction changes the merge — rebuilds the live bridge to reflect it,
 so a departed subscriber's `preventClicks`/relation/scalar contribution stops applying right away
 rather than lingering until some unrelated future subscribe/unsubscribe.
+
+### Saved and published changes
+
+When the story is saved or published in the Visual Editor, the page reloads by default so it shows
+the new content. To refetch data without a full reload, pass `onChange`:
+
+```ts
+import { invalidateAll } from "$app/navigation";
+
+const stopListening = onStoryblokEditorEvent(
+  (story) => {
+    // update local state
+  },
+  { onChange: () => invalidateAll() },
+);
+```
+
+`onChange` receives the bridge's `change` or `published` event. Because every subscription on a page
+shares one bridge, the page still reloads unless every active subscription passes `onChange`.
+
+### Framework lifecycles
+
+The cleanup function is returned synchronously and works at any time, including while the Preview
+Bridge is still loading. Return it directly from a lifecycle API that expects a synchronous
+teardown.
+
+```svelte
+<script lang="ts">
+  import { onStoryblokEditorEvent } from "@storyblok/live-preview";
+
+  let { data } = $props();
+  let story = $derived(data.story);
+
+  $effect(() => onStoryblokEditorEvent((newStory) => (story = newStory)));
+</script>
+```
+
+```tsx
+useEffect(() => onStoryblokEditorEvent(setStory, { resolveRelations: ["featured.articles"] }), []);
+```
+
+The Svelte example assigns to `$derived` state, which requires Svelte 5.25 or later.
+
+### Errors
+
+A Preview Bridge load failure is reported through the `onError` option, not thrown. That includes a
+later rebuild of the shared bridge that leaves the subscription without a bridge. The subscription
+is removed before `onError` runs. Without `onError`, the error is logged with `console.error`, once
+per failure.
+
+```ts
+const stopListening = onStoryblokEditorEvent(
+  (story) => {
+    // update local state
+  },
+  { onError: (error) => reportToMonitoring(error) },
+);
+```
 
 ### Low-level Preview Bridge access
 

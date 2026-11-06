@@ -1,4 +1,4 @@
-import type { MarkSpec, NodeSpec } from "prosemirror-model";
+import type { MarkSpec, NodeSpec } from "@tiptap/pm/model";
 import type { RichTextMark, RichTextNode } from "../generated/overlay/types.gen";
 
 type Extension = RichTextNode | RichTextMark;

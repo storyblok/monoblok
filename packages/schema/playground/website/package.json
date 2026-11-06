@@ -1,0 +1,19 @@
+{
+  "name": "@storyblok/playground-schema-website",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "storyblok": "storyblok",
+    "schema:diff": "storyblok schema push src/schema/schema.ts --delete --dry-run",
+    "schema:push": "storyblok schema push src/schema/schema.ts --delete --typed",
+    "migrations:apply": "storyblok migrations apply",
+    "migrations:list": "storyblok migrations list",
+    "test:types": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@storyblok/schema": "workspace:*",
+    "storyblok": "workspace:*",
+    "typescript": "catalog:"
+  }
+}

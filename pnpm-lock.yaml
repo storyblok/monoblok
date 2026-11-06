@@ -1657,6 +1657,18 @@ importers:
         specifier: 'catalog:'
         version: 4.21.0
 
+  packages/schema/playground/website:
+    devDependencies:
+      '@storyblok/schema':
+        specifier: workspace:*
+        version: link:../..
+      storyblok:
+        specifier: workspace:*
+        version: file:packages/cli(@types/node@25.6.0)(magicast@0.5.5)
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+
   packages/svelte:
     dependencies:
       '@storyblok/js':

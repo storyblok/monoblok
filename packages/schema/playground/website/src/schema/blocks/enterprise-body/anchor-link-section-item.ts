@@ -1,0 +1,55 @@
+import { defineBlock, defineField } from "@storyblok/schema";
+
+import { enterpriseBodyFolder } from "../../folders";
+
+export const anchorLinkSectionItemBlock = defineBlock({
+  name: "anchor_link_section_item",
+  display_name: "Anchor Link Section Item (deprecated)",
+  is_root: false,
+  is_nestable: true,
+  folder: enterpriseBodyFolder,
+  color: "var(--sb-color-accent-background-lumber)",
+  icon: "lock-open",
+  image: "https://example.com/component-screenshots/anchor_link_section_item.png",
+  fields: [
+    defineField("title", {
+      required: true,
+      type: "text",
+    }),
+    defineField("description", {
+      customize_toolbar: true,
+      required: true,
+      toolbar: [
+        "ai-spelling",
+        "bold",
+        "list",
+        "inlinecode",
+        "color",
+        "copy",
+        "cut",
+        "emoji",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "highlight",
+        "unset",
+        "hrule",
+        "image",
+        "italic",
+        "link",
+        "anchor",
+        "olist",
+        "paragraph",
+        "paste-action",
+        "paste",
+        "quote",
+        "redo",
+        "strike",
+        "underline",
+        "undo",
+      ],
+      type: "richtext",
+    }),
+  ],
+});

@@ -80,10 +80,10 @@ export interface SchemaFieldLike {
   minimum_entries?: number;
   /** `multiasset`: maximum number of assets. */
   maximum_entries?: number;
-  /** `options`: minimum number of selected options (stored as a string). */
-  min_options?: string;
-  /** `options`: maximum number of selected options (stored as a string). */
-  max_options?: string;
+  /** `options`: minimum number of selected options (older spaces store a numeric string). */
+  min_options?: number | string;
+  /** `options`: maximum number of selected options (older spaces store a numeric string). */
+  max_options?: number | string;
 }
 
 /** A block definition (`defineBlock` result). */

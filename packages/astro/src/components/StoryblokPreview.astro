@@ -41,7 +41,7 @@ if (import.meta.env.DEV && liveUpdate && Astro.isPrerendered) {
   let hasWarnedDuplicate = false;
 
   class StoryblokPreviewElement extends HTMLElement {
-    #cleanup?: Promise<() => void>;
+    #cleanup?: () => void;
     #previewHandler?: Promise<LivePreviewHandler<Story>>;
     #isActiveInstance = false;
 
@@ -75,24 +75,22 @@ if (import.meta.env.DEV && liveUpdate && Astro.isPrerendered) {
             )
           : undefined;
 
-      // `onStoryblokEditorEvent` only calls back for `input`; it reloads the
-      // page itself for `change`/`published` regardless of what this
-      // callback does.
+      // `onStoryblokEditorEvent` only calls back for `input`; without an
+      // `onChange` it reloads the page itself for `change`/`published`.
+      // Preview Bridge load failures are logged by its default `onError`.
       this.#cleanup = onStoryblokEditorEvent((story) => {
         this.#previewHandler?.then((previewHandler) =>
           previewHandler.handle({ action: 'input', story }),
         );
-      }, bridgeOptions).catch((error: unknown) => {
-        console.error('[storyblok] Failed to attach the Preview Bridge:', error);
-        return () => {};
-      });
+      }, bridgeOptions);
     }
 
     disconnectedCallback(): void {
       if (!this.#isActiveInstance) {
         return;
       }
-      this.#cleanup?.then((off) => off());
+      this.#cleanup?.();
+      this.#cleanup = undefined;
       this.#previewHandler?.then((previewHandler) => previewHandler.dispose());
       hasActiveInstance = false;
       this.#isActiveInstance = false;

@@ -12,6 +12,9 @@ export default defineConfig({
     unbundle: true,
     attw: true,
     publint: true,
+    // Ship the API reference in the tarball so coding agents can read it from
+    // node_modules/@storyblok/live-preview/dist/docs/.
+    copy: [{ from: "docs", to: "dist", flatten: false }],
   },
   test: {
     environment: "jsdom",

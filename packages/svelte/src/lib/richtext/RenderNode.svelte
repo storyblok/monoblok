@@ -7,8 +7,7 @@
   import RenderTable from './RenderTable.svelte';
   import RenderStaticChildren from './RenderStaticChildren.svelte';
   import ElementTag from './ElementTag.svelte';
-  import StoryblokComponent from '../StoryblokComponent.svelte';
-  import type { SbBlokData } from '../types';
+  import WarnMissingBlok from './WarnMissingBlok.svelte';
 
   type Props = {
     node: StoryblokRichTextNodeWithKey;
@@ -28,7 +27,6 @@
       : options,
   );
 </script>
-
 {#if CustomComponent}
   <CustomComponent {...node} context={contextForCustom}>
     {#if hasContent(node)}
@@ -39,16 +37,12 @@
   <RenderTextNodeWithMarks {node} marks={node.marks} {options} />
 {:else if node.type === 'image'}
   <RenderImage {node} {options} />
-{:else if node.type === 'blok'}
-  {#if Array.isArray(node.attrs?.body)}
-    {#each node.attrs.body as blok (blok._uid)}
-      <StoryblokComponent blok={blok as SbBlokData} />
-    {/each}
-  {/if}
 {:else if node.type === 'table'}
   <RenderTable {node} {options} />
 {:else if node.type === 'emoji'}
   <ElementTag {node}>{node.attrs.emoji}</ElementTag>
+{:else if node.type === 'blok'}
+  <WarnMissingBlok warnings={options.warnings ?? true} />
 {:else if getStaticChildren(node)}
   <RenderStaticChildren {node} {options} />
 {:else}

@@ -1,5 +1,5 @@
 A SvelteKit app that renders Storyblok stories with `@storyblok/svelte`
-(https://www.storyblok.com/docs/packages/storyblok-svelte). `src/routes/[...slug]` fetches the story for the path, `home` for `/`. Register every new block in `src/routes/+layout.js`.
+(https://www.storyblok.com/docs/packages/storyblok-svelte). `src/routes/[...slug]` fetches the story for the path, `home` for `/`. Register every new block in `src/lib/storyblok.js`.
 
 - Svelte and SvelteKit: https://svelte.dev/llms.txt
 

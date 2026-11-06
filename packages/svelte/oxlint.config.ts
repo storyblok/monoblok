@@ -8,7 +8,8 @@ export default defineConfig({
     "node_modules/",
     "coverage/",
     "playground/",
-    "cypress/",
+    "test-results/",
+    "playwright-report/",
     ".svelte-kit/",
   ],
 });

@@ -23,7 +23,7 @@
 		"vite-plugin-mkcert": "^2.1.0"
 	},
 	"dependencies": {
-		"@storyblok/js": "workspace:^",
+		"@storyblok/api-client": "workspace:^",
 		"@storyblok/svelte": "workspace:^"
 	},
 	"overrides": {

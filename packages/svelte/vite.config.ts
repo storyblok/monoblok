@@ -8,7 +8,7 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     include: ["./src/tests/**/*", "./src/**/*.spec.ts"],
-    exclude: ["./src/tests/richtext/**/*"],
+    exclude: ["./src/tests/richtext/**/*", "./src/tests/blocks/**/*", "./src/tests/types/**/*"],
   },
   resolve: process.env.VITEST
     ? {

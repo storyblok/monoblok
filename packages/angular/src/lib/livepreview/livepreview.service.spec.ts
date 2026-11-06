@@ -1,5 +1,5 @@
 import { TestBed } from "@angular/core/testing";
-import { DestroyRef } from "@angular/core";
+import { DestroyRef, NgZone } from "@angular/core";
 import { vi, describe, it, expect, beforeEach } from "vitest";
 import {
   LivePreviewService,
@@ -53,6 +53,39 @@ describe("LivePreviewService", () => {
       await expect(service.listen(() => {})).rejects.toThrow(LivePreviewNotEnabledError);
     });
 
+    it("should throw LivePreviewNotEnabledError in dev mode even when the DestroyRef is already destroyed", async () => {
+      const destroyedRef = {
+        onDestroy: () => {
+          throw new Error("NG0911: destroyRef is not in a valid state");
+        },
+      } as unknown as DestroyRef;
+      await expect(service.listen(() => {}, { destroyRef: destroyedRef })).rejects.toThrow(
+        LivePreviewNotEnabledError,
+      );
+    });
+
+    it("should not register a destroy hook when not enabled", async () => {
+      const ref = { onDestroy: vi.fn() } as unknown as DestroyRef;
+      await expect(service.listen(() => {}, { destroyRef: ref })).rejects.toThrow(
+        LivePreviewNotEnabledError,
+      );
+      expect(ref.onDestroy).not.toHaveBeenCalled();
+    });
+
+    it("should log and resolve connect() to a no-op cleanup when not enabled", async () => {
+      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const ref = { onDestroy: vi.fn() } as unknown as DestroyRef;
+      const cleanup = await service.connect(() => {}, ref);
+
+      expect(() => cleanup()).not.toThrow();
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "[Storyblok] connect() failed to subscribe to live preview updates:",
+        expect.any(LivePreviewNotEnabledError),
+      );
+      expect(ref.onDestroy).not.toHaveBeenCalled();
+      consoleErrorSpy.mockRestore();
+    });
+
     it("does not call onStoryblokEditorEvent when not enabled", async () => {
       try {
         await service.listen(() => {});
@@ -83,7 +116,7 @@ describe("LivePreviewService", () => {
 
     beforeEach(() => {
       vi.clearAllMocks();
-      onStoryblokEditorEventMock.mockResolvedValue(cleanupMock);
+      onStoryblokEditorEventMock.mockReturnValue(cleanupMock);
 
       TestBed.configureTestingModule({
         providers: [
@@ -106,7 +139,7 @@ describe("LivePreviewService", () => {
 
     it("passes merged config (base + per-call) to onStoryblokEditorEvent", async () => {
       TestBed.resetTestingModule();
-      onStoryblokEditorEventMock.mockResolvedValue(cleanupMock);
+      onStoryblokEditorEventMock.mockReturnValue(cleanupMock);
 
       TestBed.configureTestingModule({
         providers: [
@@ -127,7 +160,7 @@ describe("LivePreviewService", () => {
 
     it("per-call options override base config", async () => {
       TestBed.resetTestingModule();
-      onStoryblokEditorEventMock.mockResolvedValue(cleanupMock);
+      onStoryblokEditorEventMock.mockReturnValue(cleanupMock);
 
       TestBed.configureTestingModule({
         providers: [
@@ -145,9 +178,11 @@ describe("LivePreviewService", () => {
       });
     });
 
-    it("returns the cleanup function from onStoryblokEditorEvent", async () => {
+    it("returns a cleanup function that removes the subscription", async () => {
       const cleanup = await service.listen(() => {});
-      expect(cleanup).toBe(cleanupMock);
+      expect(cleanupMock).not.toHaveBeenCalled();
+      cleanup();
+      expect(cleanupMock).toHaveBeenCalledOnce();
     });
 
     it("invoking the returned cleanup calls the underlying bridge destroy", async () => {
@@ -181,7 +216,7 @@ describe("LivePreviewService", () => {
 
     beforeEach(() => {
       vi.clearAllMocks();
-      onStoryblokEditorEventMock.mockResolvedValue(cleanupMock);
+      onStoryblokEditorEventMock.mockReturnValue(cleanupMock);
 
       TestBed.configureTestingModule({
         providers: [
@@ -208,27 +243,15 @@ describe("LivePreviewService", () => {
       expect(cleanupMock).toHaveBeenCalledOnce();
     });
 
-    it("calls the bridge cleanup when DestroyRef fires before bridge loads (race condition)", async () => {
-      let resolveBridge!: (fn: () => void) => void;
-      onStoryblokEditorEventMock.mockReturnValue(
-        new Promise<() => void>((resolve) => {
-          resolveBridge = resolve;
-        }),
-      );
-
+    it("calls the bridge cleanup when DestroyRef fires before the bridge loads", () => {
       const { ref, destroy } = makeDestroyRef();
-      const connection = service.connect(() => {}, ref);
+      void service.connect(() => {}, ref);
 
-      // Component destroyed before bridge finishes loading
+      // The subscription and its cleanup exist synchronously, so destroying
+      // the component mid-load tears it down right away.
       destroy();
-      expect(cleanupMock).not.toHaveBeenCalled(); // not loaded yet
 
-      // Bridge finishes loading after destruction
-      resolveBridge(cleanupMock);
-      await connection;
-      await flush();
-
-      expect(cleanupMock).toHaveBeenCalledOnce(); // torn down immediately
+      expect(cleanupMock).toHaveBeenCalledOnce();
     });
 
     it("forwards options to listen()", async () => {
@@ -238,27 +261,6 @@ describe("LivePreviewService", () => {
         expect.any(Function),
         expect.objectContaining({ resolveRelations: ["a.b"] }),
       );
-    });
-
-    it("resolves to a no-op cleanup and logs when listen() rejects", async () => {
-      const bridgeError = new Error("bridge failed");
-      onStoryblokEditorEventMock.mockRejectedValue(bridgeError);
-      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
-      const unregister = vi.fn();
-      const ref = { onDestroy: vi.fn().mockReturnValue(unregister) } as unknown as DestroyRef;
-      const cleanup = await service.connect(() => {}, ref);
-
-      expect(cleanup).toEqual(expect.any(Function));
-      expect(() => cleanup()).not.toThrow();
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        "[Storyblok] connect() failed to subscribe to live preview updates:",
-        bridgeError,
-      );
-      // The onDestroy hook registered before the subscribe attempt must not
-      // linger once it has failed — otherwise it fires again, harmlessly but
-      // needlessly, whenever the component is later destroyed.
-      expect(unregister).toHaveBeenCalledOnce();
     });
 
     it("treats context as already destroyed and never touches the shared bridge when DestroyRef.onDestroy() throws (NG0911)", async () => {
@@ -287,6 +289,96 @@ describe("LivePreviewService", () => {
 
       expect(unregister).toHaveBeenCalledOnce();
       expect(cleanupMock).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe("listen() options", () => {
+    let service: LivePreviewService;
+    const cleanupMock = vi.fn();
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+      onStoryblokEditorEventMock.mockReset();
+      onStoryblokEditorEventMock.mockReturnValue(cleanupMock);
+
+      TestBed.configureTestingModule({
+        providers: [
+          LivePreviewService,
+          { provide: LIVE_PREVIEW_ENABLED, useValue: true },
+          { provide: LIVE_PREVIEW_CONFIG, useValue: {} },
+        ],
+      });
+      service = TestBed.inject(LivePreviewService);
+    });
+
+    function passedOptions(): Record<string, unknown> {
+      return onStoryblokEditorEventMock.mock.calls[0][1];
+    }
+
+    it("should remove the subscription when the DestroyRef fires", () => {
+      const { ref, destroy } = makeDestroyRef();
+      void service.listen(() => {}, { destroyRef: ref });
+
+      destroy();
+
+      expect(cleanupMock).toHaveBeenCalledOnce();
+    });
+
+    it("should not subscribe when the DestroyRef is already destroyed (NG0911)", async () => {
+      const throwingRef = {
+        onDestroy: () => {
+          throw new Error("NG0911: destroyRef is not in a valid state");
+        },
+      } as unknown as DestroyRef;
+
+      const cleanup = await service.listen(() => {}, { destroyRef: throwingRef });
+
+      expect(onStoryblokEditorEventMock).not.toHaveBeenCalled();
+      expect(() => cleanup()).not.toThrow();
+    });
+
+    it("should detach the onDestroy hook when the returned cleanup is called", async () => {
+      const unregister = vi.fn();
+      const ref = { onDestroy: vi.fn().mockReturnValue(unregister) } as unknown as DestroyRef;
+
+      const cleanup = await service.listen(() => {}, { destroyRef: ref });
+      cleanup();
+
+      expect(unregister).toHaveBeenCalledOnce();
+      expect(cleanupMock).toHaveBeenCalledOnce();
+    });
+
+    it("should not forward destroyRef to the Preview Bridge", async () => {
+      const { ref } = makeDestroyRef();
+      await service.listen(() => {}, { destroyRef: ref, resolveRelations: ["a.b"] });
+
+      expect(passedOptions()).toEqual({ resolveRelations: ["a.b"] });
+    });
+
+    it("should forward onChange and onError and run them inside NgZone", async () => {
+      const ngZone = TestBed.inject(NgZone);
+      const runSpy = vi.spyOn(ngZone, "run");
+      const onChange = vi.fn();
+      const onError = vi.fn();
+
+      await service.listen(() => {}, { onChange, onError });
+      const options = passedOptions() as {
+        onChange: (event: unknown) => void;
+        onError: (error: unknown) => void;
+      };
+      options.onChange({ action: "published" });
+      options.onError(new Error("bridge failed"));
+
+      expect(onChange).toHaveBeenCalledExactlyOnceWith({ action: "published" });
+      expect(onError).toHaveBeenCalledExactlyOnceWith(new Error("bridge failed"));
+      expect(runSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it("should leave onChange and onError unset when not given, so the defaults apply", async () => {
+      await service.listen(() => {});
+
+      expect(passedOptions()).not.toHaveProperty("onChange");
+      expect(passedOptions()).not.toHaveProperty("onError");
     });
   });
 });

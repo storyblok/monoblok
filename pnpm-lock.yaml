@@ -1875,9 +1875,9 @@ importers:
 
   packages/svelte:
     dependencies:
-      '@storyblok/js':
+      '@storyblok/live-preview':
         specifier: workspace:^
-        version: link:../js
+        version: link:../live-preview
       '@storyblok/richtext':
         specifier: workspace:^
         version: link:../richtext

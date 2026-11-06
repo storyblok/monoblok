@@ -1,8 +1,8 @@
 <script lang="ts">
-  import type { SbSvelteRichTextProps } from '$lib/richtext-helpers';
+  import type { StoryblokSvelteRichTextProps } from '$lib/richtext-helpers';
   /* eslint-disable svelte/no-navigation-without-resolve */
 
-  const { attrs, children }: SbSvelteRichTextProps<'link'> = $props();
+  const { attrs, children }: StoryblokSvelteRichTextProps<'link'> = $props();
   const href = $derived(attrs?.anchor ? `${attrs?.href}#${attrs.anchor}` : attrs?.href);
 </script>
 

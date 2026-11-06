@@ -59,7 +59,7 @@
     "test:coverage": "vp test run --coverage"
   },
   "dependencies": {
-    "@storyblok/js": "workspace:^",
+    "@storyblok/live-preview": "workspace:^",
     "@storyblok/richtext": "workspace:^"
   },
   "devDependencies": {
@@ -84,7 +84,7 @@
     "vitest": "catalog:"
   },
   "peerDependencies": {
-    "svelte": "^5.0.0"
+    "svelte": "^5.25.0"
   },
   "release": {
     "branches": [
@@ -93,7 +93,8 @@
   },
   "nx": {
     "implicitDependencies": [
-      "!@storyblok/playground-*"
+      "!@storyblok/playground-*",
+      "@storyblok/api-client"
     ]
   }
 }

@@ -358,9 +358,9 @@ importers:
 
   blueprints/blueprint-core-svelte:
     dependencies:
-      '@storyblok/js':
+      '@storyblok/api-client':
         specifier: workspace:^
-        version: link:../../packages/js
+        version: link:../../packages/capi-client
       '@storyblok/svelte':
         specifier: workspace:^
         version: link:../../packages/svelte

@@ -1,11 +1,11 @@
 <script>
-  import { StoryblokComponent, storyblokEditable } from "@storyblok/svelte";
+	import { StoryblokBlock } from '$lib/storyblok';
 
-  export let blok;
+	let { block, editable } = $props();
 </script>
 
-<div class="grid" use:storyblokEditable={blok}>
-  {#each blok.columns as column}
-    <StoryblokComponent blok={column} />
-  {/each}
+<div class="grid" {...editable}>
+	{#each block.columns as column (column._uid)}
+		<StoryblokBlock block={column} />
+	{/each}
 </div>

@@ -1,4 +1,4 @@
-# ADR-0024: Drop Astro 4.x from `@storyblok/astro`'s Peer Range
+# ADR-0025: Drop Astro 4.x from `@storyblok/astro`'s Peer Range
 
 **Status:** Accepted **Date:** 2026-10-13
 

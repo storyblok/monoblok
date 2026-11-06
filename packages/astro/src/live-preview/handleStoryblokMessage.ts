@@ -102,14 +102,16 @@ async function updateLivePreview(story: ISbStoryData): Promise<void> {
  * Preserves interactive state attributes from current element to new element
  * Only preserves state if content is similar (same component, just edited)
  */
-function preserveElementAttributes(fromEl: Element, toEl: Element) {
+export function preserveElementAttributes(fromEl: Element, toEl: Element) {
   const fromUid = fromEl.attributes.getNamedItem(STORYBLOK_UID_ATTRIBUTE)?.value;
   const toUid = toEl.attributes.getNamedItem(STORYBLOK_UID_ATTRIBUTE)?.value;
 
   // Same content - copy all attributes from current element to new element
   // This preserves interactive state like 'open', 'checked', 'value', etc.
-  // Only preserve if both have the same UID or both lack UIDs
-  if (fromUid !== toUid) {
+  // Only preserve when both sides carry a real, matching UID - elements without
+  // a UID (e.g. plain children below the nearest storyblokEditable wrapper) must
+  // not have their attributes force-copied, or CMS-driven class/attr changes get reverted.
+  if (!fromUid || !toUid || fromUid !== toUid) {
     return;
   }
 

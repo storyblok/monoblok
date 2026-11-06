@@ -43,16 +43,14 @@ For complete documentation, please visit the
 
 ## Contributing
 
-If you're interested in contributing, please read our
-[contributing docs](https://github.com/storyblok/.github/blob/main/contributing.md) before
-submitting a pull request.
+If you'd like to contribute, please refer to the [contributing guidelines](../../CONTRIBUTING.md).
 
 ## Community
 
 For help, discussion about best practices, or any other conversation that would benefit from being
 searchable:
 
-- [Discuss Storyblok on Github Discussions](https://github.com/storyblok/monoblok/discussions)
+- [Discuss Storyblok on GitHub Discussions](https://github.com/storyblok/monoblok/discussions)
 
 For community support, chatting with other users, please visit:
 
@@ -71,9 +69,9 @@ For bugs or feature requests, please
 
 We understand that you might not be able to share your company's project code. Please provide a
 minimal reproducible example that demonstrates the issue by using tools like
-[Stackblitz](https://stackblitz.com) or a link to a Github Repo lease make sure you include a README
-file with the instructions to build and run the project, important not to include any access token,
-password or personal information of any kind.
+[Stackblitz](https://stackblitz.com) or a link to a GitHub repo. Please make sure you include a
+README file with the instructions to build and run the project, important not to include any access
+token, password or personal information of any kind.
 
 ### Feedback
 
@@ -82,4 +80,4 @@ If you have a question, please ask in the
 
 ## License
 
-[License](/LICENSE)
+[License](./LICENSE)

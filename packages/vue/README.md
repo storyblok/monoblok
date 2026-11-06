@@ -4,7 +4,7 @@
 
 <h1 align="center">@storyblok/vue</h1>
  <p>
-     The Vue SDK to interact with <a href="http://www.storyblok.com?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-vue" target="_blank">Storyblok API</a> and enable the <a href="https://www.storyblok.com/docs/guide/essentials/visual-editor?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-vue" target="_blank">Real-time Visual Editing Experience</a>.
+     The Vue SDK to interact with <a href="http://www.storyblok.com?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-vue" target="_blank">Storyblok API</a> and enable the <a href="https://www.storyblok.com/docs/concepts/visual-editor?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-vue" target="_blank">Real-time Visual Editing Experience</a>.
   </p>
   <br />
 </div>
@@ -39,12 +39,12 @@
 
 ## Documentation
 
-For complete documentation, please visit
-[package reference](https://www.storyblok.com/docs/packages/storyblok-vue)
+For complete documentation, please visit the
+[package reference](https://www.storyblok.com/docs/libraries/js/vue-sdk).
 
 ## Contributing
 
-If you'd like to contribute, please refer to the [contributing guidelines](CONTRIBUTING.md).
+If you'd like to contribute, please refer to the [contributing guidelines](../../CONTRIBUTING.md).
 
 ## Community
 
@@ -81,4 +81,4 @@ If you have a question, please ask in the
 
 ## License
 
-[License](/LICENSE)
+[License](./LICENSE)

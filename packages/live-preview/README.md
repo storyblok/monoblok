@@ -151,4 +151,4 @@ For bugs or feature requests, please
 
 ## License
 
-[MIT](/LICENSE)
+[MIT](./LICENSE)

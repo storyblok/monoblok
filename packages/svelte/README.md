@@ -4,7 +4,7 @@
 
 <h1 align="center">@storyblok/svelte</h1>
  <p>
-     The Svelte SDK to interact with <a href="http://www.storyblok.com?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-svelte" target="_blank">Storyblok API</a> and enable the <a href="https://www.storyblok.com/docs/guide/essentials/visual-editor?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-svelte" target="_blank">Real-time Visual Editing Experience</a>.
+     The Svelte SDK to interact with <a href="http://www.storyblok.com?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-svelte" target="_blank">Storyblok API</a> and enable the <a href="https://www.storyblok.com/docs/concepts/visual-editor?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-svelte" target="_blank">Real-time Visual Editing Experience</a>.
   </p>
   <br />
 </div>
@@ -37,16 +37,16 @@
 - Svelte 5 compatibility with modern syntax and runes
 - Built-in TypeScript support with comprehensive type definitions
 - SSR/SSG compatibility for SvelteKit applications
-- Rich text rendering with custom schema and component resolvers
+- Custom rich text rendering by passing Svelte components to `StoryblokRichText`
 
 ## Documentation
 
-For complete documentation, please visit
-[package reference](https://www.storyblok.com/docs/packages/storyblok-svelte)
+For complete documentation, please visit the
+[package reference](https://www.storyblok.com/docs/libraries/js/svelte-sdk).
 
 ## Contributing
 
-If you'd like to contribute, please refer to the [contributing guidelines](CONTRIBUTING.md).
+If you'd like to contribute, please refer to the [contributing guidelines](../../CONTRIBUTING.md).
 
 ## Community
 
@@ -83,4 +83,4 @@ If you have a question, please ask in the
 
 ## License
 
-[License](/LICENSE)
+[License](./LICENSE)

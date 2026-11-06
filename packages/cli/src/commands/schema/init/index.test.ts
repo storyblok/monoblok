@@ -21,6 +21,7 @@ interface MockComponent {
   is_root?: boolean;
   is_nestable?: boolean;
   internal_tag_ids?: string[];
+  component_group_uuid?: string;
 }
 
 interface MockFolder {
@@ -673,6 +674,108 @@ describe("schema init command", () => {
       const { schema } = await loadSchemaModule(join(diskDir, "schema.ts"));
       expect(schema).not.toHaveProperty("fieldPlugins");
       expect(warnings()).not.toContain("placeholder field plugins");
+    });
+  });
+
+  describe("pushing the initialized schema back", () => {
+    let diskDir: string | undefined;
+
+    afterEach(async () => {
+      if (diskDir) {
+        await fs.rm(diskDir, { recursive: true, force: true });
+        diskDir = undefined;
+      }
+    });
+
+    it("should report nothing to push for the state the space holds", async () => {
+      const layout = makeMockFolder({ name: "Layout" });
+      const page = makeMockComponent({
+        name: "page",
+        is_root: true,
+        is_nestable: false,
+        component_group_uuid: layout.uuid,
+        schema: {
+          // The editor stores the tab's own key as its name and renumbers only the
+          // tabs, leaving gaps and duplicates in the other fields' `pos`.
+          "tab-content": {
+            type: "tab",
+            name: "tab-content",
+            display_name: "Content",
+            keys: ["title", "body"],
+            pos: 0,
+          },
+          "tab-empty": { type: "tab", name: "tab-empty", display_name: "Empty", keys: [], pos: 1 },
+          // Legacy options: a `key`, and a toolbar left from when this was a
+          // `richtext` field.
+          title: {
+            type: "text",
+            pos: 1,
+            key: "title",
+            conditional_settings: [],
+            customize_toolbar: true,
+            toolbar: ["bold"],
+          },
+          subtitle: { type: "text", pos: 5 },
+          image: { type: "asset", pos: 5, filetypes: [], asset_folder_id: null },
+          body: {
+            type: "bloks",
+            pos: 9,
+            // The editor's number inputs used to store their raw string.
+            maximum: "2",
+            minimum: "",
+            restrict_components: true,
+            restrict_type: "tags",
+            component_tag_whitelist: [1],
+            component_tag_denylist: [],
+            // Left behind from restricting by folder; the editor reads a folder
+            // whitelist only while `restrict_type` is `groups`.
+            component_group_whitelist: [layout.uuid],
+            component_denylist: [],
+          },
+          text: {
+            type: "richtext",
+            pos: 10,
+            restrict_components: false,
+            component_whitelist: ["teaser"],
+            toolbar: [],
+            style_options: [],
+          },
+          theme: {
+            type: "option",
+            pos: 11,
+            options: [],
+            // Kept from before the field's type was changed; inert on `option`.
+            restrict_components: true,
+            restrict_type: "",
+          },
+          color: { type: "custom", field_type: "acme-color", options: [], pos: 12 },
+        },
+      });
+      // A block whose fields never had a `pos`.
+      const teaser = makeMockComponent({
+        name: "teaser",
+        is_root: false,
+        is_nestable: true,
+        internal_tag_ids: ["1"],
+        schema: { headline: { type: "text" }, link: { type: "multilink" } },
+      });
+      preconditions.hasRemoteSchema({
+        components: [page, teaser],
+        folders: [layout],
+        internalTags: [{ id: 1, name: "Content" }],
+      });
+      diskDir = await initToDisk();
+
+      await schemaCommand.parseAsync([
+        "node",
+        "test",
+        "push",
+        join(diskDir, "schema.ts"),
+        "--space",
+        DEFAULT_SPACE,
+      ]);
+
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining("nothing to push"));
     });
   });
 });

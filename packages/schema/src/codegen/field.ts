@@ -432,12 +432,17 @@ export function generateFieldCode(
     stripKeys(fieldData, FIELD_STRIP_KEYS),
   );
   const { out, unchecked } = toDslField(known, folderVarByUuid, tagNameById);
-  const config = formatFieldConfig(
-    omitEmptyArrays(out),
+  const config = omitEmptyArrays(out);
+  // A field plugin rejects a schema whose `options` is not a list, so an empty
+  // one on a `custom` field is real state, not noise.
+  if (out.type === "custom" && Array.isArray(out.options)) {
+    config.options = out.options;
+  }
+  return `defineField(${quoteString(fieldName)}, ${formatFieldConfig(
+    config,
     omitEmptyArrays({ ...uncheckedOptions, ...unchecked }),
     depth,
-  );
-  return `defineField(${quoteString(fieldName)}, ${config})`;
+  )})`;
 }
 
 /**
@@ -467,15 +472,18 @@ export function collectRestrictionFolderVars(
   return [...vars].sort();
 }
 
-/** Sorts schema fields by `pos` for stable ordering. */
+/**
+ * Sorts schema fields by `pos` in the order the editor shows them: a field
+ * without a `pos` counts as `0`, and ties keep their stored order.
+ */
 export function sortSchemaByPos<TField extends Record<string, unknown>>(
   schema: Record<string, TField>,
 ): [string, TField][] {
   return Object.entries(schema)
     .filter(([key]) => key !== "_uid" && key !== "component")
     .sort(([, a], [, b]) => {
-      const posA = typeof a.pos === "number" ? a.pos : Infinity;
-      const posB = typeof b.pos === "number" ? b.pos : Infinity;
+      const posA = typeof a.pos === "number" ? a.pos : 0;
+      const posB = typeof b.pos === "number" ? b.pos : 0;
       return posA - posB;
     });
 }

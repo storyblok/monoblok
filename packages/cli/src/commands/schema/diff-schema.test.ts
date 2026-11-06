@@ -713,13 +713,20 @@ describe("diffSchema", () => {
 
   it("should translate component_group_whitelist uuids to slug paths before comparing", () => {
     const remoteComp = makeComponent("page", {
-      body: { type: "bloks", pos: 0, restrict_components: true, component_group_whitelist: ["u1"] },
+      body: {
+        type: "bloks",
+        pos: 0,
+        restrict_components: true,
+        restrict_type: "groups",
+        component_group_whitelist: ["u1"],
+      },
     });
     const localComp = makeComponent("page", {
       body: {
         type: "bloks",
         pos: 0,
         restrict_components: true,
+        restrict_type: "groups",
         component_group_whitelist: ["layout"],
       },
     });
@@ -760,6 +767,7 @@ describe("diffSchema", () => {
       type: "bloks",
       pos: 0,
       restrict_components: true,
+      restrict_type: "groups",
       component_group_whitelist: ["u1"],
     };
 
@@ -787,6 +795,7 @@ describe("diffSchema", () => {
               type: "bloks",
               pos: 0,
               restrict_components: true,
+              restrict_type: "groups",
               component_group_whitelist: ["a-uuid"],
             },
           }),
@@ -803,6 +812,7 @@ describe("diffSchema", () => {
               type: "bloks",
               pos: 0,
               restrict_components: true,
+              restrict_type: "groups",
               component_group_whitelist: ["b-uuid"],
             },
           }),
@@ -940,5 +950,201 @@ describe("diffSchema", () => {
     const to = normalized([makeComponent("hero", {})]);
 
     expect(diffSchema(from, to).unmanagedFolders).toEqual(["hero"]);
+  });
+});
+
+describe("diffSchema field equivalence", () => {
+  /** The diff of one `page` block from a space holding `remote` to a schema defining `local`. */
+  function diffPage(remote: Record<string, unknown>, local: Record<string, unknown>) {
+    const result = diffSchema(
+      normalized([makeComponent("page", remote)]),
+      normalized([makeComponent("page", local)]),
+    );
+    return result.diffs.find((d) => d.name === "page");
+  }
+
+  it("should compare field order rather than raw pos values", () => {
+    const remote = {
+      tab: { type: "tab", display_name: "Tab", pos: 0 },
+      title: { type: "text", pos: 0 },
+      body: { type: "bloks", pos: 7 },
+    };
+    const local = {
+      tab: { type: "tab", display_name: "Tab", pos: 0 },
+      title: { type: "text", pos: 1 },
+      body: { type: "bloks", pos: 2 },
+    };
+
+    expect(diffPage(remote, local)?.action).toBe("unchanged");
+  });
+
+  it("should order fields without a pos the way the editor shows them", () => {
+    const remote = { title: { type: "text" }, body: { type: "bloks" } };
+    const local = { title: { type: "text", pos: 0 }, body: { type: "bloks", pos: 1 } };
+
+    expect(diffPage(remote, local)?.action).toBe("unchanged");
+  });
+
+  it("should report reordered fields", () => {
+    const remote = { title: { type: "text", pos: 0 }, body: { type: "bloks", pos: 5 } };
+    const local = { body: { type: "bloks", pos: 0 }, title: { type: "text", pos: 1 } };
+
+    const diff = diffPage(remote, local);
+
+    expect(diff?.action).toBe("update");
+    expect(diff?.changes).toEqual([
+      { field: "schema.body.pos", change: "modified", before: 1, after: 0 },
+      { field: "schema.title.pos", change: "modified", before: 0, after: 1 },
+    ]);
+  });
+
+  it("should ignore a field name that repeats its schema key", () => {
+    const remote = { "tab-1": { type: "tab", name: "tab-1", display_name: "Tab", pos: 0 } };
+    const local = { "tab-1": { type: "tab", display_name: "Tab", pos: 0 } };
+
+    expect(diffPage(remote, local)?.action).toBe("unchanged");
+  });
+
+  it("should treat empty lists and null values as omitted", () => {
+    const remote = {
+      title: { type: "textarea", pos: 0, conditional_settings: [], toolbar: [] },
+      image: { type: "asset", pos: 1, filetypes: [], asset_folder_id: null },
+      theme: { type: "option", pos: 2, options: [] },
+      tab: { type: "tab", display_name: "Tab", keys: [], pos: 3 },
+    };
+    const local = {
+      title: { type: "textarea", pos: 0 },
+      image: { type: "asset", pos: 1 },
+      theme: { type: "option", pos: 2 },
+      tab: { type: "tab", display_name: "Tab", pos: 3 },
+    };
+
+    const diff = diffPage(remote, local);
+
+    expect(diff?.action).toBe("unchanged");
+  });
+
+  it("should report a custom field that drops its empty options list", () => {
+    const remote = { color: { type: "custom", field_type: "acme", options: [], pos: 0 } };
+    const local = { color: { type: "custom", field_type: "acme", pos: 0 } };
+
+    const diff = diffPage(remote, local);
+
+    expect(diff?.changes).toEqual([
+      { field: "schema.color.options", change: "removed", before: [] },
+    ]);
+  });
+
+  it("should ignore a folder whitelist while the field restricts by tag", () => {
+    const restriction = {
+      type: "bloks",
+      pos: 0,
+      restrict_components: true,
+      restrict_type: "tags",
+      component_tag_whitelist: ["Content"],
+    };
+    const remote = { body: { ...restriction, component_group_whitelist: ["layout"] } };
+    const local = { body: restriction };
+
+    expect(diffPage(remote, local)?.action).toBe("unchanged");
+  });
+
+  it("should report a folder whitelist removed while the field restricts by folder", () => {
+    const restriction = { type: "bloks", pos: 0, restrict_components: true };
+    const remote = {
+      body: { ...restriction, restrict_type: "groups", component_group_whitelist: ["layout"] },
+    };
+    const local = { body: restriction };
+
+    const diff = diffPage(remote, local);
+
+    expect(diff?.changes).toEqual([
+      {
+        field: "schema.body.component_group_whitelist",
+        change: "removed",
+        before: ["layout"],
+      },
+      { field: "schema.body.restrict_type", change: "removed", before: "groups" },
+    ]);
+  });
+
+  it("should report a folder denylist whichever dimension the field restricts by", () => {
+    const restriction = {
+      type: "bloks",
+      pos: 0,
+      restrict_components: true,
+      restrict_type: "tags",
+      component_tag_whitelist: ["Content"],
+    };
+    const remote = { body: { ...restriction, component_group_denylist: ["layout"] } };
+    const local = { body: restriction };
+
+    expect(diffPage(remote, local)?.action).toBe("update");
+  });
+
+  it("should ignore restriction lists while the restriction is switched off", () => {
+    const remote = {
+      text: { type: "richtext", pos: 0, restrict_components: false, component_whitelist: ["a"] },
+    };
+    const local = { text: { type: "richtext", pos: 0, restrict_components: false } };
+
+    expect(diffPage(remote, local)?.action).toBe("unchanged");
+  });
+
+  it("should report switching a restriction on", () => {
+    const remote = {
+      text: { type: "richtext", pos: 0, restrict_components: false, component_whitelist: ["a"] },
+    };
+    const local = {
+      text: { type: "richtext", pos: 0, restrict_components: true, component_whitelist: ["a"] },
+    };
+
+    const diff = diffPage(remote, local);
+
+    expect(diff?.changes).toEqual([
+      {
+        field: "schema.text.component_whitelist",
+        change: "added",
+        after: ["a"],
+      },
+      { field: "schema.text.restrict_components", change: "modified", before: false, after: true },
+    ]);
+  });
+
+  it("should ignore block restriction settings on a field type without block restrictions", () => {
+    const remote = {
+      theme: { type: "option", pos: 0, restrict_components: true, restrict_type: "tags" },
+    };
+    const local = { theme: { type: "option", pos: 0 } };
+
+    expect(diffPage(remote, local)?.action).toBe("unchanged");
+  });
+
+  it("should ignore options the field type does not read", () => {
+    const remote = {
+      title: { type: "text", pos: 0, key: "title", toolbar: [], customize_toolbar: true },
+      body: { type: "bloks", pos: 1, filetypes: ["images"], maximum: "" },
+    };
+    const local = { title: { type: "text", pos: 0 }, body: { type: "bloks", pos: 1 } };
+
+    expect(diffPage(remote, local)?.action).toBe("unchanged");
+  });
+
+  it("should compare a legacy numeric string as the number it holds", () => {
+    const remote = { body: { type: "bloks", pos: 0, maximum: "2" } };
+
+    expect(diffPage(remote, { body: { type: "bloks", pos: 0, maximum: 2 } })?.action).toBe(
+      "unchanged",
+    );
+    expect(diffPage(remote, { body: { type: "bloks", pos: 0, maximum: 3 } })?.changes).toEqual([
+      { field: "schema.body.maximum", change: "modified", before: 2, after: 3 },
+    ]);
+  });
+
+  it("should report a story content type filter removed from a link field", () => {
+    const remote = { link: { type: "multilink", pos: 0, component_whitelist: ["article"] } };
+    const local = { link: { type: "multilink", pos: 0 } };
+
+    expect(diffPage(remote, local)?.action).toBe("update");
   });
 });

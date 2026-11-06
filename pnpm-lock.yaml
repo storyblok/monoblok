@@ -248,7 +248,7 @@ importers:
         version: link:../../packages/capi-client
       '@storyblok/astro':
         specifier: workspace:^
-        version: file:packages/astro(astro@7.4.1(@netlify/blobs@11.1.5)(@types/node@25.6.0)(@vercel/functions@3.9.7(ws@8.21.3))(db0@0.3.4(@electric-sql/pglite@0.3.16))(esbuild@0.28.1)(ioredis@6.0.0)(jiti@2.7.0)(less@4.6.4)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))
+        version: file:packages/astro(astro@7.4.1(@types/node@25.6.0)(@vercel/functions@3.9.7(ws@8.21.3))(db0@0.3.4(@electric-sql/pglite@0.3.16))(esbuild@0.28.1)(ioredis@6.0.0)(jiti@2.7.0)(less@4.6.4)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))
       astro:
         specifier: ^7.3.3
         version: 7.4.1(@netlify/blobs@11.1.5)(@types/node@25.6.0)(@vercel/functions@3.9.7(ws@8.21.3))(db0@0.3.4(@electric-sql/pglite@0.3.16))(esbuild@0.28.1)(ioredis@6.0.0)(jiti@2.7.0)(less@4.6.4)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1)
@@ -621,7 +621,7 @@ importers:
         version: link:../../../capi-client
       '@storyblok/astro':
         specifier: workspace:*
-        version: file:packages/astro(astro@7.4.1(@netlify/blobs@11.1.5)(@types/node@25.6.0)(@vercel/functions@3.9.7(ws@8.21.3))(db0@0.3.4(@electric-sql/pglite@0.3.16))(esbuild@0.28.1)(ioredis@6.0.0)(jiti@2.7.0)(less@4.6.4)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))
+        version: file:packages/astro(astro@7.4.1(@types/node@25.6.0)(@vercel/functions@3.9.7(ws@8.21.3))(db0@0.3.4(@electric-sql/pglite@0.3.16))(esbuild@0.28.1)(ioredis@6.0.0)(jiti@2.7.0)(less@4.6.4)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))
       astro:
         specifier: ^7.2.8
         version: 7.4.1(@netlify/blobs@11.1.5)(@types/node@25.6.0)(@vercel/functions@3.9.7(ws@8.21.3))(db0@0.3.4(@electric-sql/pglite@0.3.16))(esbuild@0.28.1)(ioredis@6.0.0)(jiti@2.7.0)(less@4.6.4)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1)
@@ -1942,6 +1942,9 @@ importers:
 
   packages/svelte/playground/sveltekit:
     dependencies:
+      '@storyblok/api-client':
+        specifier: workspace:*
+        version: link:../../../capi-client
       '@storyblok/svelte':
         specifier: workspace:*
         version: link:../..
@@ -1956,8 +1959,8 @@ importers:
         specifier: ^5.0.3
         version: 5.1.1(svelte@5.57.0(@typescript-eslint/types@8.72.0))(vite@6.4.3(@types/node@25.6.0)(jiti@2.7.0)(less@4.6.4)(lightningcss@1.33.0)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))
       '@vitejs/plugin-basic-ssl':
-        specifier: ^2.0.0
-        version: 2.1.4(vite@6.4.3(@types/node@25.6.0)(jiti@2.7.0)(less@4.6.4)(lightningcss@1.33.0)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))
+        specifier: ^2.3.0
+        version: 2.3.0(vite@6.4.3(@types/node@25.6.0)(jiti@2.7.0)(less@4.6.4)(lightningcss@1.33.0)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))
       svelte:
         specifier: ^5.55.7
         version: 5.57.0(@typescript-eslint/types@8.72.0)
@@ -25741,7 +25744,7 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
-  '@storyblok/astro@file:packages/astro(astro@7.4.1(@netlify/blobs@11.1.5)(@types/node@25.6.0)(@vercel/functions@3.9.7(ws@8.21.3))(db0@0.3.4(@electric-sql/pglite@0.3.16))(esbuild@0.28.1)(ioredis@6.0.0)(jiti@2.7.0)(less@4.6.4)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))':
+  '@storyblok/astro@file:packages/astro(astro@7.4.1(@types/node@25.6.0)(@vercel/functions@3.9.7(ws@8.21.3))(db0@0.3.4(@electric-sql/pglite@0.3.16))(esbuild@0.28.1)(ioredis@6.0.0)(jiti@2.7.0)(less@4.6.4)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))':
     dependencies:
       '@storyblok/live-preview': file:packages/live-preview
       '@storyblok/richtext': file:packages/richtext(@floating-ui/dom@1.8.0)
@@ -27269,13 +27272,13 @@ snapshots:
     dependencies:
       vite: 6.4.3(@types/node@24.11.0)(jiti@2.7.0)(less@4.6.4)(lightningcss@1.33.0)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1)
 
-  '@vitejs/plugin-basic-ssl@2.1.4(vite@6.4.3(@types/node@25.6.0)(jiti@2.7.0)(less@4.6.4)(lightningcss@1.33.0)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))':
-    dependencies:
-      vite: 6.4.3(@types/node@25.6.0)(jiti@2.7.0)(less@4.6.4)(lightningcss@1.33.0)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1)
-
   '@vitejs/plugin-basic-ssl@2.1.4(vite@7.3.6(@types/node@20.19.43)(jiti@2.7.0)(less@4.6.4)(lightningcss@1.33.0)(sass@1.97.3)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))':
     dependencies:
       vite: 7.3.6(@types/node@20.19.43)(jiti@2.7.0)(less@4.6.4)(lightningcss@1.33.0)(sass@1.97.3)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1)
+
+  '@vitejs/plugin-basic-ssl@2.3.0(vite@6.4.3(@types/node@25.6.0)(jiti@2.7.0)(less@4.6.4)(lightningcss@1.33.0)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))':
+    dependencies:
+      vite: 6.4.3(@types/node@25.6.0)(jiti@2.7.0)(less@4.6.4)(lightningcss@1.33.0)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1)
 
   '@vitejs/plugin-basic-ssl@2.3.0(vite@7.3.5(@types/node@24.11.0)(jiti@2.7.0)(less@4.6.4)(lightningcss@1.33.0)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))':
     dependencies:

@@ -16,6 +16,7 @@ export type {
   ManagementApiClientConfig,
   MapiResourceDeps,
   RequestConfigOverrides,
+  TokenProvider,
 } from "./client";
 export { ClientError } from "./error";
 export type { ApiErrorBody } from "./error";

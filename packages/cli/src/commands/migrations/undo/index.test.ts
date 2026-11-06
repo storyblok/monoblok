@@ -235,6 +235,7 @@ describe("migrations undo command", () => {
     expect(info.mock.calls.map(([message]) => message)).toEqual([
       expect.stringMatching(/0001-rename-card-title .*\(undone /),
       expect.stringMatching(/0002-rename-card-to-teaser .*\(undone /),
+      "Pending on this machine: 0001-rename-card-title, 0002-rename-card-to-teaser",
     ]);
 
     await run("undo");
@@ -291,7 +292,7 @@ describe("migrations undo command", () => {
     info.mockClear();
     await run("list");
 
-    expect(info).toHaveBeenLastCalledWith(expect.stringMatching(/ {2}\(undone [^)]+\)$/));
+    expect(info).toHaveBeenCalledWith(expect.stringMatching(/ {2}\(undone [^)]+\)$/));
   });
 
   it("should fail, count the story as failed, and keep the run open when a write fails", async () => {

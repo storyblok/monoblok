@@ -350,6 +350,44 @@ describe("migrations run command", () => {
     expect(updateStory).not.toHaveBeenCalled();
   });
 
+  it("should fail when the only migrations are content migrations", async () => {
+    vol.fromJSON({ "./.storyblok/migrations/12345/20261016090503-update-hero.ts": "" });
+    process.exitCode = undefined;
+
+    await migrationsCommand.parseAsync(["node", "test", "run", "--space", "12345"]);
+
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'Nothing to run: the migrations in space "12345" are content migrations. Apply them with "storyblok migrations apply --space 12345".',
+      ),
+    );
+    expect(process.exitCode).not.toBe(0);
+    expect(process.exitCode).toBeDefined();
+    process.exitCode = undefined;
+  });
+
+  it("should not fail when a block name or filter excludes every .js migration", async () => {
+    vol.fromJSON({
+      "./.storyblok/migrations/12345/hero.js": "",
+      "./.storyblok/migrations/12345/20261016090503-update-hero.ts": "",
+    });
+    process.exitCode = undefined;
+
+    await migrationsCommand.parseAsync(["node", "test", "run", "teaser", "--space", "12345"]);
+    await migrationsCommand.parseAsync([
+      "node",
+      "test",
+      "run",
+      "--space",
+      "12345",
+      "--filter",
+      "nomatch",
+    ]);
+
+    expect(console.error).not.toHaveBeenCalledWith(expect.stringContaining("Nothing to run"));
+    expect(process.exitCode).toBeUndefined();
+  });
+
   it("should run migrations successfully", async () => {
     preconditions.canMigrate();
 

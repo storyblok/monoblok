@@ -24,6 +24,12 @@
     "*": {
       "field-plugins": [
         "./dist/field-plugins/index.d.cts"
+      ],
+      "codegen": [
+        "./dist/codegen/index.d.cts"
+      ],
+      "internal/codegen": [
+        "./dist/internal/codegen.d.cts"
       ]
     }
   },
@@ -32,9 +38,17 @@
       "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
     },
+    "./codegen": {
+      "import": "./dist/codegen/index.mjs",
+      "require": "./dist/codegen/index.cjs"
+    },
     "./field-plugins": {
       "import": "./dist/field-plugins/index.mjs",
       "require": "./dist/field-plugins/index.cjs"
+    },
+    "./internal/codegen": {
+      "import": "./dist/internal/codegen.mjs",
+      "require": "./dist/internal/codegen.cjs"
     },
     "./package.json": "./package.json"
   },

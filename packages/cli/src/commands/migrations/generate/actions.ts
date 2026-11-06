@@ -3,6 +3,7 @@ import type { Component } from "../../components/constants";
 import { join } from "pathe";
 import { handleFileSystemError } from "../../../utils";
 import { buildMigrationFilename } from "../migration-filename";
+import { listChangesets, loadChangeset } from "../../schema/rollback/actions";
 
 const getMigrationTemplate = () => {
   return `export default function (block) {
@@ -37,3 +38,31 @@ export const generateMigration = async (
 
   return migrationPath;
 };
+
+/**
+ * The pre-push space state of the latest `schema push` to `space` that changed
+ * `block`, and the name `block` had before it. A push that renamed the block
+ * records it under its new name, so either name finds it.
+ */
+export async function latestPushChanging(
+  path: string | undefined,
+  space: string,
+  block: string,
+): Promise<{ timestamp: string; components: Component[]; blockBefore: string } | undefined> {
+  for (const file of await listChangesets(resolvePath(path, ""))) {
+    const changeset = await loadChangeset(file);
+    if (String(changeset.spaceId) !== space) continue;
+    for (const change of changeset.changes) {
+      if (change.type !== "component") continue;
+      const nameBefore = typeof change.before?.name === "string" ? change.before.name : change.name;
+      if (change.name === block || nameBefore === block) {
+        return {
+          timestamp: changeset.timestamp,
+          components: changeset.remote.components,
+          blockBefore: nameBefore,
+        };
+      }
+    }
+  }
+  return undefined;
+}

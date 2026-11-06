@@ -65,9 +65,35 @@ export const schema = defineSchema({ blocks: { authorBlock, mvpBlock } });
 export type Before = Schema<typeof schema>;
 ```
 
-Keep the snapshot unchanged once the migration ships, so the names the migration reads stay typed.
-The names it writes are typed against `Schema`, so a later rename or removal of such a field is a
-type error in the migration. Once every space has applied the migration, delete it and its snapshot.
+[`schema push --typed`](/docs/tooling/cli/schema/push#typed-content-migrations) and
+[`migrations generate --schema`](/docs/tooling/cli/migrations/generate#typed-content-migrations)
+write both files from the blocks in the space. Keep the snapshot unchanged once the migration ships,
+so the names the migration reads stay typed. The names it writes are typed against `Schema`, so a
+later rename or removal of such a field is a type error in the migration. Once every space has
+applied the migration, delete it and its snapshot.
+
+### Write rerunnable ops
+
+`migrations apply` runs every migration in the directory on each run, so a second pass of an op must
+change nothing. The ops take care of this, and callbacks have to as well. Return `undefined` to
+leave a value unchanged, and check a value’s shape before you convert it, since it can already hold
+the converted value:
+
+```ts
+const trimmed = (value: string | null | undefined) => {
+  const result = value?.trim();
+  return result === value ? undefined : result;
+};
+
+export default defineMigration<Schema, Before>([
+  alterField({ block: "new_quote", field: "full_name" }, trimmed),
+  alterField({ block: "new_quote", field: "role" }, trimmed),
+]);
+```
+
+The experimental `@storyblok/schema/codegen` subpath exports `generateSnapshot()` and
+`generateMigrationSource()`, which return these files as source strings. Their output can change in
+any release.
 
 ### Schema types
 

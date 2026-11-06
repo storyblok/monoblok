@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { vol } from "memfs";
 
-import { renderMigrationCode, writeMigrationFile } from "./generate";
+import { renderMigrationCode, toMigrationOps, writeMigrationFile } from "./generate";
 import type { BreakingChange } from "./types";
 
 describe("renderMigrationCode", () => {
@@ -14,6 +14,17 @@ describe("renderMigrationCode", () => {
     expect(code).toContain("delete block.author_name");
     expect(code).toContain("export default function");
     expect(code).toContain("return block");
+  });
+
+  it("should comment a mapping for each option value the field no longer offers", () => {
+    const code = renderMigrationCode([
+      { kind: "options_removed", field: "size", values: [" "], multiple: false },
+      { kind: "options_removed", field: "tags", values: ["old"], multiple: true },
+    ]);
+    expect(code).toContain('// if (block.size === " ") block.size = <value>;');
+    expect(code).toContain(
+      '// block.tags = block.tags?.map((value) => (value === "old" ? <value> : value));',
+    );
   });
 
   it("should generate removal code", () => {
@@ -95,7 +106,7 @@ describe("renderMigrationCode", () => {
 
   it("should generate rename hint comment for declined renames", () => {
     const changes: BreakingChange[] = [
-      { kind: "removed", field: "author_name", renameHint: { newField: "author" } },
+      { kind: "removed", field: "author_name", renameHint: { newFields: ["author"] } },
     ];
     const code = renderMigrationCode(changes);
     expect(code).toContain("// If 'author_name' was renamed to 'author', uncomment:");
@@ -182,5 +193,90 @@ describe("writeMigrationFile", () => {
     });
 
     expect(path).toContain("custom/path/migrations/12345/hero.20260410120000.js");
+  });
+});
+
+describe("toMigrationOps", () => {
+  it("should leave boolean and number conversions to the author", () => {
+    expect(
+      toMigrationOps("hero", [
+        { kind: "type_changed", field: "featured", oldType: "boolean", newType: "number" },
+        { kind: "type_changed", field: "rank", oldType: "number", newType: "boolean" },
+      ]),
+    ).toEqual([
+      expect.objectContaining({ kind: "alterField", field: "featured" }),
+      expect.objectContaining({ kind: "alterField", field: "rank" }),
+    ]);
+  });
+
+  it("should coerce between scalar types and leave other conversions to the author", () => {
+    expect(
+      toMigrationOps("hero", [
+        { kind: "type_changed", field: "rating", oldType: "text", newType: "number" },
+        { kind: "type_changed", field: "body", oldType: "richtext", newType: "markdown" },
+      ]),
+    ).toEqual([
+      { kind: "coerceField", block: "hero", field: "rating", from: "string", to: "number" },
+      {
+        kind: "alterField",
+        block: "hero",
+        field: "body",
+        todo: [
+          "TODO: convert 'body' from richtext to markdown. A rerun passes already-converted values.",
+        ],
+      },
+    ]);
+  });
+
+  it("should backfill new required fields and fill existing ones that became required", () => {
+    expect(
+      toMigrationOps("hero", [
+        { kind: "required_added", field: "featured", fieldType: "boolean" },
+        { kind: "required_changed", field: "image", fieldType: "asset" },
+      ]),
+    ).toEqual([
+      expect.objectContaining({ kind: "addField", field: "featured", value: false }),
+      expect.objectContaining({
+        kind: "fillField",
+        field: "image",
+        value: undefined,
+        fillEmptyString: false,
+        todo: ["TODO: provide a default for the required asset field 'image'."],
+      }),
+    ]);
+  });
+
+  it("should leave the default of a required text or number field to the author", () => {
+    expect(
+      toMigrationOps("hero", [
+        { kind: "required_added", field: "cta", fieldType: "text" },
+        { kind: "required_changed", field: "count", fieldType: "number" },
+      ]),
+    ).toEqual([
+      expect.objectContaining({ kind: "addField", field: "cta", value: undefined }),
+      expect.objectContaining({
+        kind: "fillField",
+        field: "count",
+        value: undefined,
+        fillEmptyString: true,
+      }),
+    ]);
+  });
+
+  it("should point a removal with a rename hint at renameField", () => {
+    expect(
+      toMigrationOps("hero", [
+        { kind: "removed", field: "author_name", renameHint: { newFields: ["author", "byline"] } },
+      ]),
+    ).toEqual([
+      {
+        kind: "removeField",
+        block: "hero",
+        field: "author_name",
+        todo: [
+          "TODO: if 'author_name' was renamed to 'author' or 'byline', replace removeField with renameField, or the content of 'author_name' is lost.",
+        ],
+      },
+    ]);
   });
 });

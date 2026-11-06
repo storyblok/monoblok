@@ -276,13 +276,32 @@ interface ValueOpSpec<
   under?: UnderOf<TBefore>;
 }
 
-/** The pre-migration value type of `<block>.<field>`, or `unknown` when unknowable. */
-type SourceValue<TBefore extends SchemaShape, TBlock extends string, TField> =
-  TBlock extends BlockNameOf<TBefore>
-    ? TField extends keyof ContentOf<TBefore, TBlock>
-      ? ContentOf<TBefore, TBlock>[TField]
+/** The value type of `<block>.<field>` in `TSchema`, or `unknown` when unknowable. */
+type FieldValue<TSchema extends SchemaShape, TBlock extends string, TField> =
+  TBlock extends BlockNameOf<TSchema>
+    ? TField extends keyof ContentOf<TSchema, TBlock>
+      ? ContentOf<TSchema, TBlock>[TField]
       : unknown
     : unknown;
+
+/**
+ * What a callback may write to `<block>.<field>`. A schema without literal block
+ * and field names (the bare `SchemaShape` interface) resolves every field to
+ * `never`, which would reject any write, so that widens to `unknown`.
+ */
+type WritableValue<TSchema extends SchemaShape, TBlock extends string, TField> = [
+  FieldValue<TSchema, TBlock, TField>,
+] extends [never]
+  ? unknown
+  : FieldValue<TSchema, TBlock, TField>;
+
+/**
+ * Constraint for a `const` type parameter that captures what a callback returns.
+ * The schema parameters are still being inferred when the callback is checked, so
+ * a return typed only as `WritableValue` widens `linktype: "url"` to `string`;
+ * the `const` capture keeps the literals, and `unknown[]` keeps arrays mutable.
+ */
+type WriteCandidate = unknown[] | {} | null | undefined;
 
 /**
  * A key op never honors `under`, but it carries one through when a caller
@@ -379,15 +398,20 @@ export function reorderField<
 /**
  * Rewrites one field's value, translations included: the callback is invoked
  * once per key in the field's `__i18n__` family, with the language it belongs to.
+ * Returning `undefined` leaves that key as it is; `removeField` removes a field.
  */
 export function alterField<
   TAfter extends SchemaShape,
   TBefore extends SchemaShape,
   const TBlock extends SourceBlockName<TAfter, TBefore>,
   const TField extends SourceFieldName<TAfter, TBefore, TBlock>,
+  const TValue extends WriteCandidate = WritableValue<TAfter, TBlock, TField> | undefined,
 >(
   spec: { block: TBlock; field: TField; under?: UnderOf<TBefore> },
-  fn: (value: SourceValue<TBefore, TBlock, TField>, context: AlterFieldContext) => unknown,
+  fn: (
+    value: FieldValue<TBefore, TBlock, TField>,
+    context: AlterFieldContext,
+  ) => TValue & (WritableValue<TAfter, TBlock, TField> | undefined),
 ): AlterFieldOp<TAfter, TBefore> {
   return {
     kind: "alterField",
@@ -472,13 +496,16 @@ export function addField<
   TAfter extends SchemaShape,
   TBefore extends SchemaShape,
   const TBlock extends SourceBlockName<TAfter, TBefore>,
+  // Defaulted for the same reason as on `splitField`.
+  const TField extends TargetFieldName<TAfter, TBlock> = TargetFieldName<TAfter, TBlock>,
+  const TValue extends WriteCandidate = WritableValue<TAfter, TBlock, TField> | undefined,
 >(
-  spec: { block: TBlock; field: TargetFieldName<TAfter, TBlock>; under?: KeyOpUnder },
+  spec: { block: TBlock; field: TField; under?: KeyOpUnder },
   fn: (
     block: TBlock extends BlockNameOf<TBefore>
       ? ContentOf<TBefore, TBlock>
       : Record<string, unknown>,
-  ) => unknown,
+  ) => TValue & (WritableValue<TAfter, TBlock, TField> | undefined),
 ): AddFieldOp<TAfter, TBefore> {
   return {
     kind: "addField",
@@ -518,10 +545,10 @@ export function splitField<
     block: TBlock;
     field: TField;
     into: readonly TargetFieldName<TAfter, TBlock>[];
-    merge?: (values: readonly unknown[]) => unknown;
+    merge?: (values: readonly unknown[]) => WritableValue<TBefore, TBlock, TField>;
     under?: KeyOpUnder;
   },
-  split: (value: SourceValue<TBefore, TBlock, TField>) => readonly unknown[],
+  split: (value: FieldValue<TBefore, TBlock, TField>) => readonly unknown[],
 ): SplitFieldOp<TAfter, TBefore> {
   return {
     kind: "splitField",
@@ -542,15 +569,18 @@ export function mergeFields<
   TAfter extends SchemaShape,
   TBefore extends SchemaShape,
   const TBlock extends SourceBlockName<TAfter, TBefore>,
+  // Defaulted for the same reason as on `splitField`.
+  const TInto extends TargetFieldName<TAfter, TBlock> = TargetFieldName<TAfter, TBlock>,
+  const TValue extends WriteCandidate = WritableValue<TAfter, TBlock, TInto>,
 >(
   spec: {
     block: TBlock;
     fields: readonly SourceFieldName<TAfter, TBefore, TBlock>[];
-    into: TargetFieldName<TAfter, TBlock>;
+    into: TInto;
     split?: (value: never) => readonly unknown[];
     under?: KeyOpUnder;
   },
-  merge: (values: readonly unknown[]) => unknown,
+  merge: (values: readonly unknown[]) => TValue & WritableValue<TAfter, TBlock, TInto>,
 ): MergeFieldsOp<TAfter, TBefore> {
   return {
     kind: "mergeFields",

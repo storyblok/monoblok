@@ -1,5 +1,5 @@
 import { storyblokEditable } from "@storyblok/live-preview";
-import type { BridgeParams, Story } from "@storyblok/live-preview";
+import type { BridgeParams, LivePreviewStory } from "@storyblok/live-preview";
 import type { StoryblokRichTextComponentProps } from "./richtext-helpers";
 
 /**
@@ -187,8 +187,8 @@ declare global {
      * Dispatched by `<StoryblokPreview liveUpdate />` before a live update is
      * applied. Cancelable: call `event.preventDefault()` to skip the update.
      */
-    "storyblok-live-preview-updating": CustomEvent<{ story: Story }>;
+    "storyblok-live-preview-updating": CustomEvent<{ story: LivePreviewStory }>;
     /** Dispatched by `<StoryblokPreview liveUpdate />` after a live update is applied. */
-    "storyblok-live-preview-updated": CustomEvent<{ story: Story }>;
+    "storyblok-live-preview-updated": CustomEvent<{ story: LivePreviewStory }>;
   }
 }

@@ -1,5 +1,5 @@
 import { describe, expectTypeOf, it } from "vitest";
-import type { Story } from "@storyblok/live-preview";
+import type { LivePreviewStory } from "@storyblok/live-preview";
 import { getPayload } from "../src/get-payload";
 
 describe("getPayload typing", () => {
@@ -14,7 +14,7 @@ describe("getPayload typing", () => {
 
     const payload = await getPayload({ locals });
 
-    expectTypeOf(payload.story).toEqualTypeOf<Story | undefined>();
+    expectTypeOf(payload.story).toEqualTypeOf<LivePreviewStory | undefined>();
   });
 
   it("should default the story type to a usable shape instead of `unknown`", async () => {

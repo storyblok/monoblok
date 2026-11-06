@@ -4,15 +4,14 @@
 
 <h1 align="center">@storyblok/live-preview</h1>
  <p>
-   Lightweight helpers to enable Storyblok Live Preview and Visual Editor
-   updates across client-side and SSR frameworks.
- </p>
- <br />
+    Lightweight helpers to enable Storyblok Live Preview and Visual Editor updates across client-side and SSR frameworks
+  </p>
+  <br />
 </div>
 
 <p align="center">
   <a href="https://npmjs.com/package/@storyblok/live-preview">
-    <img src="https://img.shields.io/npm/v/@storyblok/live-preview/latest.svg?style=flat-square&color=8d60ff" alt="Storyblok Live Preview" />
+    <img src="https://img.shields.io/npm/v/@storyblok/live-preview/latest.svg?style=flat-square&color=8d60ff" alt="@storyblok/live-preview" />
   </a>
   <a href="https://npmjs.com/package/@storyblok/live-preview" rel="nofollow">
     <img src="https://img.shields.io/npm/dt/@storyblok/live-preview.svg?style=appveyor&color=8d60ff" alt="npm">
@@ -22,190 +21,68 @@
    </a>
   <a href="https://twitter.com/intent/follow?screen_name=storyblok">
     <img src="https://img.shields.io/badge/Follow-%40storyblok-8d60ff?style=appveyor&logo=twitter" alt="Follow @Storyblok" />
+  </a><br/>
+  <a href="https://app.storyblok.com/#!/signup?utm_source=github.com&utm_medium=readme&utm_campaign=@storyblok/live-preview">
+    <img src="https://img.shields.io/badge/Try%20Storyblok-Free-8d60ff?style=appveyor&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAAeCAYAAAA7MK6iAAAABGdBTUEAALGPC/xhBQAAADhlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAAqACAAQAAAABAAAAHqADAAQAAAABAAAAHgAAAADpiRU/AAACRElEQVRIDWNgGGmAEd3D3Js3LPrP8D8WXZwSPiMjw6qvPoHhyGYwIXNAbGpbCjbzP0MYuj0YFqMroBV/wCxmIeSju64eDNzMBJUxvP/9i2Hnq5cM1devMnz984eQsQwETeRhYWHgIcJiXqC6VHlFBjUeXgav40cIWkz1oLYXFmGwFBImaDFBHyObcOzdW4aSq5eRhRiE2dgYlpuYoYSKJi8vw3GgWnyAJIs/AuPu4scPGObd/fqVQZ+PHy7+6udPOBsXgySLDfn5GRYYmaKYJcXBgWLpsx8/GPa8foWiBhuHJIsl2DkYQqWksZkDFgP5PObcKYYff//iVAOTIDlx/QPqRMb/YSYBaWlOToZIaVkGZmAZSQiQ5OPtwHwacuo4iplMQEu6tXUZMhSUGDiYmBjylFQYvv/7x9B04xqKOnQOyT5GN+Df//8M59ASXKyMHLoyDD5JPtbj42OYrm+EYgg70JfuYuIoYmLs7AwMjIzA+uY/zjAnyWJpDk6GOFnCvrn86SOwmsNtKciVFAc1ileBHFDC67lzG10Yg0+SjzF0ownsf/OaofvOLYaDQJoQIGix94ljv1gIZI8Pv38zPvj2lQWYf3HGKbpDCFp85v07NnRN1OBTPY6JdRSGxcCw2k6sZuLVMZ5AV4s1TozPnGGFKbz+/PE7IJsHmC//MDMyhXBw8e6FyRFLv3Z0/IKuFqvFyIqAzd1PwBzJw8jAGPfVx38JshwlbIygxmYY43/GQmpais0ODDHuzevLMARHBcgIAQAbOJHZW0/EyQAAAABJRU5ErkJggg==" alt="Follow @Storyblok" />
   </a>
 </p>
 
-## Installation
+## Features
 
-```bash
-npm install @storyblok/live-preview
-# or
-yarn add @storyblok/live-preview
-```
+`onStoryblokEditorEvent()` delivers the updated story as editors change content in the Visual
+Editor. What happens next depends on who renders the page:
 
-## Usage
+- **Reactive frameworks**: store the story in component state, and the framework re-renders. The
+  function returns a synchronous cleanup function for component teardown.
+- **Server-rendered apps**: pass the story to `createLivePreviewHandler()`. It asks your server to
+  render the story and morphs the returned HTML into the page, preserving form state and
+  client-owned subtrees. Reactive frameworks re-render on their own and don't need it.
 
-### Live preview
-
-Covers the most common live preview use cases with minimal setup.
-
-```ts
-import { onStoryblokEditorEvent } from "@storyblok/live-preview";
-
-const stopListening = onStoryblokEditorEvent((story) => {
-  // update local state
-});
-
-// later — e.g. on component teardown
-stopListening();
-```
-
-Every call on a page shares one bridge instance: relation options are unioned, and scalar options
-(`customParent`, `resolveLinks`, `fallbackLang`) use first-wins semantics among the subscribers
-currently active. `preventClicks` is the one exception: any active subscriber requesting `true` wins
-regardless of subscribe order. Outside the Visual Editor, the call is a no-op and returns a cleanup
-function that does nothing.
-
-A subscribe or unsubscribe only rebuilds the shared bridge when the merged options actually change —
-an already-covered relation, or an empty `{}`, does not. Calls made synchronously in the same tick
-(or that arrive while the bridge module is still loading) share a single build; a call that lands
-after that window triggers a full teardown and rebuild of the shared bridge instead, briefly leaving
-the page with no attached bridge. Prefer making known subscriptions upfront, in the same tick, when
-possible.
-
-Cleaning up a subscription immediately stops its own options from being merged in, and — if other
-subscriptions remain and the retraction changes the merge — rebuilds the live bridge to reflect it,
-so a departed subscriber's `preventClicks`/relation/scalar contribution stops applying right away
-rather than lingering until some unrelated future subscribe/unsubscribe.
-
-### Saved and published changes
-
-When the story is saved or published in the Visual Editor, the page reloads by default so it shows
-the new content. To refetch data without a full reload, pass `onChange`:
-
-```ts
-import { invalidateAll } from "$app/navigation";
-
-const stopListening = onStoryblokEditorEvent(
-  (story) => {
-    // update local state
-  },
-  { onChange: () => invalidateAll() },
-);
-```
-
-`onChange` receives the bridge's `change` or `published` event. Because every subscription on a page
-shares one bridge, the page still reloads unless every active subscription passes `onChange`.
-
-### Framework lifecycles
-
-The cleanup function is returned synchronously and works at any time, including while the Preview
-Bridge is still loading. Return it directly from a lifecycle API that expects a synchronous
-teardown.
-
-```svelte
-<script lang="ts">
-  import { onStoryblokEditorEvent } from "@storyblok/live-preview";
-
-  let { data } = $props();
-  let story = $derived(data.story);
-
-  $effect(() => onStoryblokEditorEvent((newStory) => (story = newStory)));
-</script>
-```
-
-```tsx
-useEffect(() => onStoryblokEditorEvent(setStory, { resolveRelations: ["featured.articles"] }), []);
-```
-
-The Svelte example assigns to `$derived` state, which requires Svelte 5.25 or later.
-
-### Errors
-
-A Preview Bridge load failure is reported through the `onError` option, not thrown. That includes a
-later rebuild of the shared bridge that leaves the subscription without a bridge. The subscription
-is removed before `onError` runs. Without `onError`, the error is logged with `console.error`, once
-per failure.
-
-```ts
-const stopListening = onStoryblokEditorEvent(
-  (story) => {
-    // update local state
-  },
-  { onError: (error) => reportToMonitoring(error) },
-);
-```
-
-### Low-level Preview Bridge access
-
-For advanced use cases where full control is needed, the Preview Bridge can be accessed directly.
-
-```ts
-import { loadStoryblokBridge } from "@storyblok/live-preview";
-
-const bridge = await loadStoryblokBridge(bridgeOptions);
-
-bridge.on(["input", "change", "published"], (event) => {
-  // custom preview handling
-});
-```
-
-### Live preview handler
-
-For framework integrations or custom renderers, use `createLivePreviewHandler` to provide the
-content update strategy while the package handles debouncing, cancellation, and DOM updates.
-
-```ts
-import { createLivePreviewHandler } from "@storyblok/live-preview";
-
-const handler = createLivePreviewHandler({
-  currentRoot: () => document.body,
-  update: async ({ story, signal }) => {
-    const response = await fetch("/preview", {
-      method: "POST",
-      body: JSON.stringify({ story }),
-      signal,
-    });
-    return new DOMParser().parseFromString(await response.text(), "text/html").body;
-  },
-});
-
-storyblokInstance.on(["published", "change", "input"], handler.handle);
-```
-
-Failures from `update` or the morph are logged with `console.error` unless an `onError` callback is
-provided. `change` and `published` events reload the page (`window.location.reload()`) unless an
-`onReload` callback is provided; either way, a pending debounced `input` update is cancelled first
-so it can't overwrite the reload with stale content.
-
-For lower-level control, `morphStoryblokDom` only handles DOM transformation. It does not fetch
-content or listen to Preview Bridge events.
-
-```ts
-import { morphStoryblokDom } from "@storyblok/live-preview";
-
-morphStoryblokDom(document.body, nextBody, {
-  focusedElement: document.querySelector('[data-blok-focused="true"]'),
-});
-```
-
-When a focused block is found, only that subtree is morphed; everything else in `currentRoot` is
-left untouched until an update finds no focused block, or the caller reloads. Attribute changes from
-the server (new `src`, `href`, `class`, …) are applied by default; pass
-`preserveElementAttributes: true` to keep the current tree's attributes instead. Interactive form
-state (`value`, `checked`, `selected`) that the user has changed is preserved automatically;
-elements nobody has touched still pick up a new server-rendered default. To protect a subtree a
-framework owns (e.g. a hydrated island) from being touched at all — attributes and children — mark
-its root with `data-preserve-state` (configurable via `preserveStateAttribute`); the morph skips it
-entirely. `morphStoryblokDom` mutates `nextRoot`, so don't reuse or cache it after calling this
-function.
+On save or publish, the page reloads by default, or your app refetches data instead. Helpers for
+Visual Editor attributes make blocks and fields selectable.
 
 ## Documentation
 
-This package is intentionally minimal. More helpers and examples will be added over time as usage
-expands.
+The API reference ships with the package at
+`node_modules/@storyblok/live-preview/dist/docs/reference.md`, so coding agents can read it locally.
+The source is [`docs/reference.md`](./docs/reference.md).
+
+## Contributing
+
+If you'd like to contribute, please refer to the [contributing guidelines](../../CONTRIBUTING.md).
 
 ## Community
 
-For help, best practices, or discussions:
+For help, discussion about best practices, or any other conversation that would benefit from being
+searchable:
 
-- [Storyblok GitHub Discussions](https://github.com/storyblok/monoblok/discussions)
-- [Join the Storyblok Discord](https://storyblok.com/join-discord)
+- [Discuss Storyblok on GitHub Discussions](https://github.com/storyblok/monoblok/discussions)
+
+For community support, chatting with other users, please visit:
+
+- [Discuss Storyblok on Discord](https://storyblok.com/join-discord)
 
 ## Support
 
 For bugs or feature requests, please
 [submit an issue](https://github.com/storyblok/monoblok/issues/new/choose).
+
+> [!IMPORTANT] Please search existing issues before submitting a new one. Issues without a minimal
+> reproducible example will be closed.
+> [Why reproductions are Required](https://antfu.me/posts/why-reproductions-are-required).
+
+### I can't share my company project code
+
+We understand that you might not be able to share your company's project code. Please provide a
+minimal reproducible example that demonstrates the issue by using tools like
+[Stackblitz](https://stackblitz.com) or a link to a GitHub repo. Please make sure you include a
+README file with the instructions to build and run the project, important not to include any access
+token, password or personal information of any kind.
+
+### Feedback
+
+If you have a question, please ask in the
+[Discuss Storyblok on Discord](https://storyblok.com/join-discord) channel.
 
 ## License
 

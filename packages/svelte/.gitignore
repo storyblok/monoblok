@@ -23,7 +23,6 @@ Thumbs.db
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
-# Cypress
-cypress/screenshots/
-cypress/videos
-cypress/downloads
+# Playwright
+test-results/
+playwright-report/

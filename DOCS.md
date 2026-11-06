@@ -406,7 +406,39 @@ store a string.
 
 By default, the command writes one `.js` migration per changed block for
 [`migrations run`](/docs/tooling/cli/migrations/run). With `--dry-run`, it prints the breaking
-changes and detected renames without writing migration files.
+changes and detected renames, and the flags that answer each question, without writing migration
+files.
+
+### Renames and splits
+
+The command asks about each detected field rename by block and field. A removed field with several
+new fields of the same type named about as closely, such as `full_name` with `given_name` and
+`family_name`, counts as a possible split instead: the typed migration holds a `splitField` op that
+throws until you write the split.
+
+### Running without a terminal
+
+When stdin isn’t a terminal, for example in CI, the command doesn’t prompt. Before it changes
+anything, it fails with every question it would ask and the flags that answer each one:
+
+```text
+▲ error schema push needs answers to 2 questions, but stdin is not a terminal:
+  - Rename block new_quote → quote (714 stories)? Otherwise quote is created as a new block. Pass --yes or --rename-block new_quote:quote to rename it, or --no-renames to create quote as a new block.
+  - Generate migration files for breaking changes? Pass --migrations to generate them, which also takes detected field renames as given, or --no-migrations to skip them.
+```
+
+These flags answer the questions:
+
+- `--migrations` or `--no-migrations` answers whether to generate migrations.
+- `--yes` accepts every detected block and field rename.
+- `--rename <block>.<field>:<new-field>` declares a field rename, which replaces what rename
+  detection made of that field.
+- `--rename-block <block>:<new-block>` declares a block rename.
+- `--no-renames` treats every detected rename as a removal plus a new block or field.
+
+```bash
+storyblok schema push src/schema/schema.ts --typed --migrations --rename-block new_quote:quote
+```
 
 ### Typed content migrations
 
@@ -442,7 +474,8 @@ export default defineMigration<Schema, Before>([
 
 The migration handles these changes:
 
-- Renames and removes fields.
+- Renames and removes fields, and marks a possible split of a field with a `splitField` op to
+  complete.
 - Converts values between text, textarea, markdown, and number fields, and between those string
   fields and boolean fields.
 - Fills required boolean fields with `false` where the value is missing. For a required field of
@@ -484,9 +517,13 @@ migration files and leaves them in place.
 
 <!-- target: src/content/docs/docs/tooling/cli/schema/push.mdx#flags (replace the `--migrations` row, then add the rows after it) -->
 
-| Flag           | Type    | Description                                                                                                                                            |
-| -------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `--migrations` | boolean | _Optional._ Generate migration files for breaking changes without asking, taking detected field renames as given. Pass `--no-migrations` to skip them. |
-| `--typed`      | boolean | _Optional._ Generate one typed content migration for `migrations apply` instead of one `.js` migration per block.                                      |
-| `--no-before`  | boolean | _Optional._ With `--typed`, skip the schema snapshot.                                                                                                  |
-| `--force`      | boolean | _Optional._ With `--delete`, delete blocks that stories still use.                                                                                     |
+| Flag             | Type    | Description                                                                                                                                            |
+| ---------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `--migrations`   | boolean | _Optional._ Generate migration files for breaking changes without asking, taking detected field renames as given. Pass `--no-migrations` to skip them. |
+| `--typed`        | boolean | _Optional._ Generate one typed content migration for `migrations apply` instead of one `.js` migration per block.                                      |
+| `--no-before`    | boolean | _Optional._ With `--typed`, skip the schema snapshot.                                                                                                  |
+| `--force`        | boolean | _Optional._ With `--delete`, delete blocks that stories still use.                                                                                     |
+| `--yes`, `-y`    | boolean | _Optional._ Accept every block and field rename the command detects without asking.                                                                    |
+| `--rename`       | string  | _Optional._ Declare a field rename as `<block>.<field>:<new-field>`. Repeatable.                                                                       |
+| `--rename-block` | string  | _Optional._ Declare a block rename as `<block>:<new-block>`. Repeatable.                                                                               |
+| `--no-renames`   | boolean | _Optional._ Treat detected renames as removals plus new blocks or fields.                                                                              |

@@ -47,6 +47,13 @@ describe("storyblokInit", () => {
     storyblokInit(pluginOptions);
     expect(getCustomFallbackComponent()).toBeDefined();
   });
+
+  it("should re-register components when called again with an existing instance", () => {
+    storyblokInit(pluginOptions);
+    const updatedComponent = () => null;
+    storyblokInit({ ...pluginOptions, components: { testComponent: updatedComponent } });
+    expect(getComponent("testComponent")).toBe(updatedComponent);
+  });
 });
 
 describe("setComponents", () => {

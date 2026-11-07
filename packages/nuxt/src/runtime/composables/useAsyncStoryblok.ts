@@ -1,5 +1,5 @@
 import type { AsyncData, AsyncDataOptions, NuxtError } from "#app";
-import { useAsyncData, useRuntimeConfig } from "#app";
+import { onNuxtReady, useAsyncData, useRuntimeConfig } from "#app";
 import {
   type ISbStoriesParams,
   type ISbStory,
@@ -172,21 +172,27 @@ export async function useAsyncStoryblok<T = any>(
           return;
         }
         registeredId = storyId;
-        useStoryblokBridge(
-          storyId,
-          (evStory) => {
-            // In Nuxt 4, data is a shallowRef - we must replace the entire object
-            // to trigger reactivity instead of mutating nested properties
-            if (!result.data.value) {
-              return;
-            }
-            result.data.value = {
-              ...result.data.value,
-              data: { ...result.data.value.data, story: evStory },
-            };
-          },
-          bridgeOptions,
-        );
+        // Defer until the app is ready: on prerendered pages with a query string, Nuxt
+        // hydrates on the bare path and only restores the real URL on `app:suspense:resolve`.
+        // The Storyblok bridge checks `location.search` when registering, so registering
+        // earlier silently drops the `_storyblok` params and live edits never arrive.
+        onNuxtReady(() => {
+          useStoryblokBridge(
+            storyId,
+            (evStory) => {
+              // In Nuxt 4, data is a shallowRef - we must replace the entire object
+              // to trigger reactivity instead of mutating nested properties
+              if (!result.data.value) {
+                return;
+              }
+              result.data.value = {
+                ...result.data.value,
+                data: { ...result.data.value.data, story: evStory },
+              };
+            },
+            bridgeOptions,
+          );
+        });
       },
       { immediate: true },
     );

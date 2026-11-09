@@ -372,6 +372,7 @@ const makeRemoteStory = ({
 }): Story => ({
   id,
   uuid,
+  assigned_users_per_language: {},
   name: name ?? "",
   slug: slug ?? "",
   parent_id: null,

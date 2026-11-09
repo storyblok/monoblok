@@ -234,7 +234,7 @@ export type AiConfigurationRequest = {
         /**
          * AI provider name
          */
-        provider_name: 'openai' | 'google_gemini' | 'azure_openai';
+        provider_name: 'openai' | 'google_gemini' | 'anthropic' | 'azure_openai';
         /**
          * API key for the provider
          */
@@ -244,7 +244,15 @@ export type AiConfigurationRequest = {
          */
         model_identifier: string;
         /**
-         * Provider-specific settings
+         * Azure OpenAI endpoint. Required when provider_name is azure_openai, ignored for other providers. Accepts https://{resource}.openai.azure.com or https://{resource}.services.ai.azure.com, optionally followed by /openai/v1
+         */
+        base_url?: string | null;
+        /**
+         * Azure OpenAI deployment name. Required when provider_name is azure_openai, ignored for other providers
+         */
+        provider_model_id?: string | null;
+        /**
+         * Provider-specific settings. For azure_openai, only the keys that GET /v1/ai_configurations/providers lists for the model are accepted, with values between their min and max; anything else returns 422. A listed key that is missing or null uses its default.
          */
         settings?: {
             temperature?: number | null;
@@ -282,13 +290,17 @@ export type AiCreditsStatisticsResponse = {
      */
     ai_credits_used: number;
     /**
-     * Yearly AI credits limit
+     * Yearly AI credits limit of the org
      */
     yearly_ai_credits_limit?: number;
     /**
-     * Yearly AI credits used
+     * AI credits used by all spaces of the org within `usage_period`
      */
     yearly_ai_credits_used?: number;
+    /**
+     * The period that the yearly limits and usage refer to
+     */
+    usage_period?: UsagePeriod;
     /**
      * Per-space usage data grouped by date
      */
@@ -434,6 +446,33 @@ export type AiLogUserEntry = {
 export type AiLogsIndexResponse = Array<AiLogProviderEntry | AiLogFeatureEntry | AiLogUserEntry | AiLogSpaceEntry>;
 
 /**
+ * Space AI usage logs grouped by the specified dimension
+ */
+export type AiLogsSpaceIndexResponse = Array<AiLogProviderEntry | AiLogFeatureEntry | AiLogUserEntry>;
+
+/**
+ * A param a model accepts, with its default and its allowed range
+ */
+export type AiModelParameter = {
+    /**
+     * integer accepts whole numbers only
+     */
+    type: 'integer' | 'decimal';
+    /**
+     * Value sent when the setting is missing
+     */
+    default: number;
+    /**
+     * Lowest allowed value
+     */
+    min: number;
+    /**
+     * Highest allowed value
+     */
+    max: number;
+};
+
+/**
  * Request body for creating or updating an AI output rule.
  */
 export type AiOutputRuleRequest = {
@@ -483,6 +522,12 @@ export type AiProviderModel = {
      * Model identifier
      */
     value: string;
+    /**
+     * The params the model accepts, keyed by settings key. Only on models with a param list (Azure OpenAI). An empty object means the model takes no params.
+     */
+    parameters?: {
+        [key: string]: AiModelParameter;
+    };
     /**
      * Translated caption for the model.
      */
@@ -604,6 +649,10 @@ export type AiTranslateJsonRequest = {
      * Boolean to add i18n suffix to the translated keys.
      */
     rename_keys: boolean;
+    /**
+     * Skip the cached result of an identical recent request and translate again. The new result replaces the cached one
+     */
+    regenerate?: boolean;
 };
 
 export type ApiKeyRequest = {
@@ -644,13 +693,21 @@ export type ApiTrafficStatisticsResponse = {
      */
     montly_traffic_limit: number;
     /**
-     * Yearly traffic limit (monthly limit * 12)
+     * Yearly traffic limit of the org in bytes
      */
     yearly_traffic_limit: number;
     /**
-     * Total traffic used this year
+     * Traffic used by all spaces of the org within `usage_period`, in bytes
      */
     traffic_used_this_year: number;
+    /**
+     * Same as `yearly_usage.period`; kept for existing readers
+     */
+    usage_period?: UsagePeriod;
+    /**
+     * The org's yearly quotas and their usage period. Replaces `yearly_traffic_limit`, `traffic_used_this_year` and `usage_period`
+     */
+    yearly_usage?: YearlyUsage;
     /**
      * Cumulated traffic usage with detailed breakdown
      */
@@ -1250,8 +1307,42 @@ export type ComponentGroupRequest = {
     };
 };
 
+/**
+ * Error returned by the component update when `enforce_version_validation` is true. Check `code` to detect the error type. Do not match on `message`: its wording can change.
+ */
+export type ComponentUpdateErrorResponse = {
+    error: {
+        /**
+         * Human-readable description of the error.
+         */
+        message: string;
+        /**
+         * `component_version_conflict` (409): the component was changed after `component.updated_at`, nothing was saved. `invalid_updated_at` (400): `component.updated_at` is missing or is not a valid ISO 8601 time.
+         */
+        code: 'component_version_conflict' | 'invalid_updated_at';
+        /**
+         * For `component_version_conflict`, the current `updated_at` of the component. `null` for `invalid_updated_at`.
+         */
+        details: {
+            updated_at?: string;
+        } | null;
+        /**
+         * When the error happened, in ISO 8601 format.
+         */
+        timestamp: string;
+    };
+};
+
 export type ComponentUpdateRequest = {
+    /**
+     * If true, the save is rejected with 409 when the component was changed after `component.updated_at`. Send `component.updated_at` with it. To save anyway, send the same request without this flag.
+     */
+    enforce_version_validation?: boolean;
     component: {
+        /**
+         * The `updated_at` value of the component when the client loaded it. Compared at millisecond precision. Required when `enforce_version_validation` is true, otherwise ignored.
+         */
+        updated_at?: string;
         /**
          * Name of the component
          */
@@ -2146,63 +2237,6 @@ export type CreateOauthClientRequest = {
     };
 };
 
-export type CreateOrgSubscriptionRequest = {
-    /**
-     * Plan identifier (e.g., basic_1_2_month_usd)
-     */
-    plan?: string;
-    /**
-     * Numeric ID of a custom plan (alternative to plan)
-     */
-    plan_id?: number;
-    /**
-     * Optional coupon code for discount
-     */
-    coupon?: string | null;
-    /**
-     * Stripe payment token details
-     */
-    stripe_token: {
-        /**
-         * Stripe token ID
-         */
-        id: string;
-        /**
-         * Billing email address
-         */
-        email: string;
-        /**
-         * Card billing details
-         */
-        card: {
-            /**
-             * Cardholder name
-             */
-            name: string;
-            /**
-             * Billing city
-             */
-            address_city: string;
-            /**
-             * Billing country name
-             */
-            address_country: string;
-            /**
-             * Billing address line 1
-             */
-            address_line1: string;
-            /**
-             * Billing postal code
-             */
-            address_zip: string;
-            /**
-             * Country ISO code
-             */
-            country: string;
-        };
-    };
-};
-
 export type CreateOrgUserRequest = {
     user: {
         /**
@@ -2815,7 +2849,7 @@ export type CreateStorySchedulingRequest = {
          */
         publish_at: string;
         /**
-         * Optional language code to publish a specific translation
+         * Language code of the translation to publish. Only used when Individual Translation Publishing (use_translated_stories) is on; otherwise it is ignored and the whole story is published. Send an empty string or [default], or leave it out, for the default language. A code that is not enabled on the space returns 422. A list or object returns 422.
          */
         language?: string;
         /**
@@ -3551,6 +3585,11 @@ export type InvoicesIndexResponse = {
     invoices: Array<Invoice>;
 };
 
+/**
+ * Array of message strings. Returned for an unknown path.
+ */
+export type LegacyArrayErrorResponse = Array<string>;
+
 export type LocalizedPath = {
     /**
      * The localized path
@@ -3623,6 +3662,102 @@ export type OrgActivitiesIndexResponse = {
 };
 
 /**
+ * Check `code` to detect the error type; do not match on `message`.
+ */
+export type OrgApiUsageErrorResponse = {
+    error: {
+        message: string;
+        /**
+         * `invalid_input`: a parameter is not valid. `too_large`: use a shorter range or a larger interval. `unavailable`: traffic data is not available right now (ClickHouse down, too slow or off).
+         */
+        code: 'invalid_input' | 'too_large' | 'unavailable';
+        details: {
+            [key: string]: unknown;
+        } | null;
+        timestamp: string;
+    };
+};
+
+/**
+ * A range of days, both included, with its totals
+ */
+export type OrgApiUsagePeriod = {
+    start_date: string;
+    /**
+     * The last day, included
+     */
+    end_date: string;
+    totals: OrgApiUsageTotals;
+};
+
+export type OrgApiUsagePoint = {
+    /**
+     * Start of the hour, day, week or month, UTC
+     */
+    time: string;
+    totals: OrgApiUsageTotals;
+};
+
+export type OrgApiUsageResponse = {
+    api_usage: {
+        totals: OrgApiUsageTotals;
+        /**
+         * The period just before start_date, as long as the part of the range that has passed. Null without with_previous=true, and when the range has not started
+         */
+        previous: OrgApiUsagePeriod | null;
+        series: OrgApiUsageSeries;
+        /**
+         * One row per space, API, endpoint group, endpoint or status code, most bytes sent first. The rows add up to the totals. Null without group_by
+         */
+        rows: Array<OrgApiUsageRow> | null;
+    };
+};
+
+/**
+ * The totals of the requests that share one value of group_by: one space, API, endpoint group, endpoint or status code. An aggregate, not the space or API record: it has only the id, and for spaces the name.
+ */
+export type OrgApiUsageRow = {
+    /**
+     * The space id or status code (integer), or the API id, endpoint group tag or endpoint operation id (string). __unmatched__ for the requests that match no known API, endpoint group or endpoint
+     */
+    id: number | string;
+    /**
+     * The space name on rows by space. Null on other rows, and for a space that is not in this region
+     */
+    name: string | null;
+    /**
+     * The API of an endpoint group or endpoint, because their ids repeat across APIs; null on other rows
+     */
+    endpoint_api: string | null;
+    totals: OrgApiUsageTotals;
+    series: OrgApiUsageSeries;
+};
+
+/**
+ * One point per hour, day, week (from Monday) or month that had traffic, oldest first. Periods without traffic have no point. A week or month can start before start_date. Empty without interval
+ */
+export type OrgApiUsageSeries = Array<OrgApiUsagePoint>;
+
+export type OrgApiUsageTotals = {
+    /**
+     * Number of API requests
+     */
+    requests: number;
+    /**
+     * Bytes sent in the responses
+     */
+    bytes_sent: number;
+    /**
+     * Requests with a 4xx status
+     */
+    client_errors: number;
+    /**
+     * Requests with a 5xx status
+     */
+    server_errors: number;
+};
+
+/**
  * Organization settings stored as JSONB. All keys are optional.
  */
 export type OrgSettings = {
@@ -3638,6 +3773,11 @@ export type OrgSettings = {
     allow_dynamic_registration?: boolean | null;
     allow_space_ai_styles?: boolean | null;
     azure_ad_custom_service?: boolean | null;
+    /**
+     * No longer read. Kept because orgs that had it set still store it.
+     *
+     * @deprecated
+     */
     case_insensitive_saml_email?: boolean | null;
     cdn_force_filter_from_releases?: boolean | null;
     concept_room_enabled?: boolean | null;
@@ -3724,21 +3864,6 @@ export type OrgSpace = {
      * Creation timestamp (format is ISO 8601 standard in UTC).
      */
     created_at: string;
-};
-
-export type OrgSubscriptionCreateResponse = {
-    /**
-     * Stripe payment intent client secret for client-side confirmation
-     */
-    payment_intent?: string | null;
-    /**
-     * Status of the payment intent
-     */
-    intent_status: string;
-};
-
-export type OrgSubscriptionUpdateResponse = {
-    org: Org;
 };
 
 export type OrgUserCreateResponse = {
@@ -3903,6 +4028,46 @@ export type PresetFiltersIndexResponse = {
      * List of preset filters
      */
     preset_filters: Array<PresetFilter>;
+};
+
+/**
+ * Check `code` to detect the error type. Do not match on `message`: its wording can change.
+ */
+export type PublicationErrorResponse = {
+    error: {
+        message: string;
+        /**
+         * `publication_in_progress`: the space already has a running publication; only one runs per space at a time. `invalid_parameters`: `details` lists the messages per field. `publish_limit_reached`: the space is in development mode and has used its publishes for today.
+         */
+        code: 'invalid_parameters' | 'publication_in_progress' | 'publish_limit_reached';
+        details: {
+            [key: string]: Array<string>;
+        } | null;
+        timestamp: string;
+    };
+};
+
+export type PublicationRequest = {
+    publication: {
+        /**
+         * IDs of the selected stories and folders, at most 1000. A folder includes its stories (and its subfolders when `options.recursive` is true).
+         */
+        story_ids: Array<number>;
+        options?: {
+            /**
+             * Include the stories in subfolders of the selected folders.
+             */
+            recursive?: boolean;
+            /**
+             * Include stories that are in a release or have scheduled publishing.
+             */
+            include_scheduled?: boolean;
+            /**
+             * Languages to publish. Use `[default]` for the default language. Languages the user cannot publish are left out.
+             */
+            languages?: Array<string>;
+        };
+    };
 };
 
 export type PushExperimentResultsRequest = {
@@ -4297,10 +4462,6 @@ export type SsoConnection = {
      * OIDC connections only, read-only. Whether a client secret is stored. The secret itself is never returned.
      */
     readonly client_secret_set?: boolean;
-    /**
-     * Read-only, org-sourced. Whether email matching is case-insensitive.
-     */
-    readonly case_insensitive_email_match?: boolean;
     attribute_mappings?: SsoConnectionAttributeMappings;
     /**
      * SAML only. Whether the AuthnRequest is signed. Surfaced from the connection config.
@@ -4514,13 +4675,17 @@ export type StatisticsAllCreditsResponse = {
      */
     total_usage_per_time_period: number;
     /**
-     * Yearly AI credits limit (SLG org spaces only)
+     * Yearly AI credits limit of the org. Only for spaces in an org
      */
     yearly_ai_credits_limit?: number | null;
     /**
-     * Yearly AI credits used (SLG org spaces only)
+     * AI credits used by all spaces of the org within `usage_period`. Only for spaces in an org
      */
     yearly_ai_credits_used?: number | null;
+    /**
+     * The period that the yearly limits and usage refer to. Null for a space that is not in an org
+     */
+    usage_period?: UsagePeriod | null;
     /**
      * Credits usage grouped by time period
      */
@@ -4564,6 +4729,22 @@ export type StatisticsAllTrafficResponse = {
      * Total API requests in the period
      */
     total_requests_per_time_period: number;
+    /**
+     * Yearly traffic limit of the org in bytes. Only for spaces in an org
+     */
+    yearly_traffic_limit?: number;
+    /**
+     * Traffic used by all spaces of the org within `usage_period`, in bytes. Only for spaces in an org
+     */
+    traffic_used_this_year?: number;
+    /**
+     * Same as `yearly_usage.period`; kept for existing readers. Null for a space that is not in an org
+     */
+    usage_period?: UsagePeriod | null;
+    /**
+     * The org's yearly quotas and their usage period. Null for a space that is not in an org. Replaces `yearly_traffic_limit`, `traffic_used_this_year` and `usage_period`
+     */
+    yearly_usage?: YearlyUsage | null;
     /**
      * Traffic data grouped by time period
      */
@@ -4847,20 +5028,20 @@ export type StorySchedulingBulkUpsertErrorResponse = {
          */
         message: string;
         /**
-         * `languages_not_schedulable`: one or more languages cannot be scheduled; `details` maps each failed language to a reason. `invalid_parameters`: the request itself is not valid (for example, `publish_at` is in the past or `languages` is empty); `details` maps each field to a list of messages. `translated_stories_disabled`: the space does not have translated stories enabled, so multiple languages cannot be scheduled at once. `feature_not_available` (403): the endpoint is not enabled for this space. `not_found` (404): the story is not in the space. `forbidden` (403): the user cannot publish the story. `story_locked`: the story is in a workflow stage that locks editing. `taxonomy_required`: a required taxonomy is not filled. `feature_limit_reached`: the plan limit for scheduled stories is reached. `conflict` (409): a parallel request changed the same schedules; send the request again. For all codes except `languages_not_schedulable` and `invalid_parameters`, `details` is `null`.
+         * Error type. `details` is set only for `languages_not_schedulable` (a reason per language) and `invalid_parameters` (messages per field); otherwise it is `null`. `conflict` (409): a parallel request changed the same schedules; send the request again.
          */
         code: 'languages_not_schedulable' | 'invalid_parameters' | 'translated_stories_disabled' | 'feature_not_available' | 'not_found' | 'forbidden' | 'story_locked' | 'taxonomy_required' | 'feature_limit_reached' | 'conflict';
         /**
-         * For `languages_not_schedulable`: an object keyed by language code. Every failed language is listed, so the client can fix all of them in one pass. For `invalid_parameters`: an object keyed by field name, each value a list of messages. For other codes: `null`.
+         * For `languages_not_schedulable`: an object keyed by language code, each value a readable reason to show to the user (do not match on its wording). Every failed language is listed, so the client can fix all of them in one pass. For `invalid_parameters`: an object keyed by field name, each value a list of messages. For other codes: `null`.
          */
         details: {
-            [key: string]: 'not_publishable' | 'language_not_enabled' | 'language_not_accessible' | Array<string>;
+            [key: string]: string | Array<string>;
         } | null;
     };
 };
 
 /**
- * Error shape used by the management Strata endpoints and the CDN v2 Strata search endpoint. Check `code` to detect the error type. Do not match on `message`: its wording can change.
+ * Error shape used by every Strata endpoint: management, CDN v1 and CDN v2. Check `code` to detect the error type. Do not match on `message`: its wording can change.
  */
 export type StrataErrorResponse = {
     error: {
@@ -4869,9 +5050,9 @@ export type StrataErrorResponse = {
          */
         message: string;
         /**
-         * A fixed error code for this failure.
+         * A fixed error code for this failure. `credits_exceeded` is reserved and no v1 endpoint returns it. `strata_space_limit_reached` means the organization is at its maximum number of Strata-enabled spaces. `writes_disabled` means writes are off for maintenance. `api_limit_exceeded` means the space is over its monthly API request limit. `org_inactive` means the organization is disabled. `insufficient_scope` means the token lacks a required scope. `invalid_json` means the request body is not valid JSON. `invalid_request` means the database rejected the query.
          */
-        code: 'invalid_argument' | 'not_found' | 'feature_disabled' | 'ai_disabled' | 'forbidden' | 'blocked' | 'credits_exceeded' | 'already_running' | 'not_running' | 'rate_limited' | 'error' | 'unauthorized';
+        code: 'invalid_argument' | 'not_found' | 'feature_disabled' | 'ai_disabled' | 'forbidden' | 'blocked' | 'credits_exceeded' | 'strata_space_limit_reached' | 'already_running' | 'not_running' | 'rate_limited' | 'bad_request' | 'error' | 'unauthorized' | 'writes_disabled' | 'api_limit_exceeded' | 'org_inactive' | 'insufficient_scope' | 'invalid_json' | 'invalid_request';
         /**
          * Extra structured data about the error.
          */
@@ -5644,30 +5825,6 @@ export type UpdateOauthClientRequest = {
     };
 };
 
-export type UpdateOrgSubscriptionRequest = {
-    /**
-     * Plan identifier (e.g., basic_1_2_month_usd)
-     */
-    plan?: string;
-    /**
-     * Numeric ID of a custom plan (alternative to plan)
-     */
-    plan_id?: number;
-    /**
-     * Stripe payment token to update payment method (omit to change plan instead)
-     */
-    stripe_token?: {
-        /**
-         * Stripe token ID
-         */
-        id?: string;
-        /**
-         * Billing email address
-         */
-        email?: string;
-    } | null;
-};
-
 export type UpdateOrgUserRequest = {
     user: {
         /**
@@ -6146,6 +6303,10 @@ export type UpdateSpaceRequest = {
             code: string;
             name: string;
             ai_translation_code?: string | null;
+            /**
+             * Code of another language of the space whose values this language shows when it has no own value. The fallback language can't have a fallback itself.
+             */
+            fallback_lang?: string | null;
         }>;
         /**
          * Custom routes configuration
@@ -6162,7 +6323,9 @@ export type UpdateSpaceRequest = {
             location: string;
         }>;
         /**
-         * Web crawling configuration
+         * Web crawling configuration. This field is deprecated and will be removed in a future release.
+         *
+         * @deprecated
          */
         crawl_config?: {
             base_url?: string;
@@ -6418,7 +6581,7 @@ export type UpdateStorySchedulingRequest = {
          */
         publish_at: string;
         /**
-         * Language code to publish a specific translation
+         * Language code of the translation to publish. Ignored when Individual Translation Publishing (use_translated_stories) is off. An empty string or [default] means the default language. A list or object returns 422.
          */
         language?: string;
         /**
@@ -6429,21 +6592,13 @@ export type UpdateStorySchedulingRequest = {
 };
 
 /**
- * Request body for updating a subscription. Use price_id for the new pricing flow or plan for the legacy flow.
+ * Request body for updating a subscription. price_id is required: a request without it gets 422.
  */
 export type UpdateSubscriptionRequest = {
     /**
-     * Stripe price ID for the new plan (new pricing flow)
+     * Stripe price ID for the new plan
      */
-    price_id?: string | null;
-    /**
-     * Legacy plan name (old pricing flow)
-     */
-    plan?: string | null;
-    /**
-     * Stripe token for payment source update
-     */
-    stripe_token?: string | null;
+    price_id: string;
     /**
      * Collaborator IDs to remove after plan change to meet new plan limits
      */
@@ -6533,6 +6688,48 @@ export type UploadImageResponse = {
      * Public URL for the uploaded image
      */
     public_url: string;
+};
+
+/**
+ * The org's current usage period: its contract year, or the calendar year when it has no contract. The yearly limits and usage refer to it.
+ */
+export type UsagePeriod = {
+    /**
+     * First day of the period (UTC)
+     */
+    starts_on: string;
+    /**
+     * First day of the next period (UTC), when the yearly usage resets
+     */
+    resets_on: string;
+};
+
+/**
+ * A yearly limit and the usage against it
+ */
+export type UsageQuota = {
+    /**
+     * Yearly limit: the org's monthly limit × 12. Null when the org has no limit or is unlimited
+     */
+    limit: number | null;
+    /**
+     * Usage within the period
+     */
+    used: number;
+};
+
+/**
+ * The yearly quotas within the period
+ */
+export type UsageQuotas = {
+    /**
+     * Traffic, in bytes
+     */
+    traffic: UsageQuota;
+    /**
+     * API requests
+     */
+    api_requests: UsageQuota;
 };
 
 export type UserAvatarUploadRequest = {
@@ -6808,6 +7005,14 @@ export type WorkflowStageAttributes = {
      * IDs of allowed next workflow stages
      */
     workflow_stage_ids?: Array<number>;
+};
+
+/**
+ * The org's yearly quotas and the usage period they are measured in. Usage counts the org's spaces in this region; deleted spaces are not counted. Can be up to one hour old.
+ */
+export type YearlyUsage = {
+    period: UsagePeriod;
+    quotas: UsageQuotas;
 };
 
 /**
@@ -7490,40 +7695,6 @@ export type Template = {
     deleted_at?: string | null;
 };
 
-/**
- * Full token object returned on creation with complete key
- */
-export type TokenDetail = {
-    /**
-     * Unique identifier of the token
-     */
-    id: number;
-    /**
-     * Creation timestamp (format is ISO 8601 standard in UTC).
-     */
-    created_at: string;
-    /**
-     * Latest update timestamp (format is ISO 8601 standard in UTC).
-     */
-    updated_at: string;
-    /**
-     * Full token key (only visible on creation)
-     */
-    key: string;
-    /**
-     * Expiration timestamp of the token
-     */
-    expire: string;
-    /**
-     * Optional name/label for the token
-     */
-    name?: string | null;
-    /**
-     * ID of the user who owns the token
-     */
-    user_id: number;
-};
-
 export type UnauthorizedError = {
     /**
      * Unauthorized error message.
@@ -8163,7 +8334,7 @@ export type AiConfiguration = {
     /**
      * AI provider name.
      */
-    provider_name: 'openai' | 'google_gemini' | 'azure_openai';
+    provider_name: 'openai' | 'google_gemini' | 'anthropic' | 'azure_openai';
     /**
      * Model identifier for the provider.
      */
@@ -8186,6 +8357,14 @@ export type AiConfiguration = {
      * Whether the configuration is custom
      */
     custom: boolean;
+    /**
+     * Azure OpenAI endpoint in its /openai/v1 form, null for other providers
+     */
+    base_url: string | null;
+    /**
+     * Azure OpenAI deployment name, null for other providers
+     */
+    provider_model_id: string | null;
 };
 
 /**
@@ -10396,6 +10575,10 @@ export type MemberRoleOrg = {
      */
     restricted_regions: Array<string>;
     /**
+     * Effective AI kill switch. Only Storyblok Support can change it.
+     */
+    ai_features_disabled: boolean;
+    /**
      * Whether AI text generator is disabled
      */
     ai_text_generator_disabled: boolean;
@@ -10648,6 +10831,10 @@ export type Org = {
     sso_alt_email?: string | null;
     strong_auth?: boolean | null;
     restricted_regions: Array<string>;
+    /**
+     * Effective AI kill switch. Only Storyblok Support can change it.
+     */
+    ai_features_disabled: boolean;
     ai_text_generator_disabled: boolean;
     ai_text_generator_feature_disabled: boolean;
     ai_credits_used?: number;
@@ -10657,6 +10844,10 @@ export type Org = {
     ai_translation_enabled: boolean;
     storyblok_agents_enabled?: boolean;
     strata_available?: boolean;
+    /**
+     * The organization's own Strata switch. Only has an effect when strata_available is true
+     */
+    strata_enabled?: boolean;
     token_timeout_in?: number | null;
     disable_private_spaces?: boolean | null;
     enable_content_distributions_ai_translation?: boolean;
@@ -10715,6 +10906,18 @@ export type Org = {
      * Organization status
      */
     status?: string | null;
+    /**
+     * Yearly AI credits limit of the org
+     */
+    yearly_ai_credits_limit: number;
+    /**
+     * AI credits used by all spaces of the org within `usage_period`
+     */
+    yearly_ai_credits_used: number;
+    /**
+     * The period that the yearly limits and usage refer to
+     */
+    usage_period?: UsagePeriod;
     [key: string]: unknown;
 };
 
@@ -11170,6 +11373,185 @@ export type PresetFilter = {
 };
 
 /**
+ * A bulk publication. Counts are per story and language pair, leave out folders, and include only pairs the author may publish.
+ */
+export type Publication = {
+    id: number;
+    /**
+     * `draft`: items are being created. `enqueued`: waiting for a worker. `running`: stories are being published. `closing`: every story is done. The folders are being published, then the final status is set and the webhook and email are sent. `success`: every item was processed, even if some failed or were skipped. Check `has_issues` to show a warning. `failure`: the publication stopped before every item was processed, for example after a system error. `success` and `failure` are final.
+     */
+    status: 'draft' | 'enqueued' | 'running' | 'closing' | 'success' | 'failure';
+    author: {
+        id: number;
+        /**
+         * Null when the author was deleted.
+         */
+        friendly_name: string | null;
+        /**
+         * Storage path of the author's avatar, not an absolute URL. Prepend the asset host to render it. Null when the author has no avatar or was deleted.
+         */
+        avatar: string | null;
+    };
+    options: PublicationOptions;
+    /**
+     * The stories and folders the user selected, in the order of `story_ids`.
+     */
+    roots: Array<PublicationRoot>;
+    stories: PublicationStoryCounts;
+    /**
+     * Counts per story and language pair. Folders are not counted.
+     */
+    counts: {
+        pending: number;
+        success: number;
+        failure: number;
+        skipped: number;
+    };
+    /**
+     * True when any item of the publication, folder or story, failed or was skipped. Use it to show a warning, for every status.
+     */
+    has_issues: boolean;
+    /**
+     * Creation timestamp (format is ISO 8601 standard in UTC).
+     */
+    created_at: string;
+    finished_at: string | null;
+};
+
+/**
+ * One story or folder in one language. A story published in two languages has two items.
+ */
+export type PublicationItem = {
+    id: number;
+    story_id: number;
+    /**
+     * Current name of the story.
+     */
+    name: string;
+    /**
+     * Current full slug of the story. Use it to build the folder tree.
+     */
+    full_slug: string;
+    /**
+     * true if the instance constitutes a folder.
+     */
+    is_folder: boolean;
+    /**
+     * True when the story was deleted after the publication started. The item stays in the list.
+     */
+    deleted: boolean;
+    /**
+     * The language code for this translation.
+     */
+    lang: string | null;
+    /**
+     * `pending`: not done yet. `success`: published. `failure`: publishing failed. `skipped`: left out on purpose (for example, not allowed or scheduled).
+     */
+    status: 'pending' | 'success' | 'failure' | 'skipped';
+    /**
+     * Empty unless `status` is `failure` or `skipped`. One item can have several reasons.
+     */
+    failure_reasons: Array<PublicationItemFailureReason>;
+    /**
+     * Current publish state of the story in the default language, as in the stories list.
+     */
+    published: boolean;
+    /**
+     * True when the story has changes in the default language that are not published yet.
+     */
+    unpublished_changes: boolean | null;
+    /**
+     * Publish date of the story's oldest pending schedule, for any language, as in the stories list. Null when the story is not scheduled.
+     */
+    scheduled_dates: string | null;
+};
+
+/**
+ * Why an item failed or was skipped. Show a text by `code`; use `message` (English) only for a `code` the client does not know yet.
+ */
+export type PublicationItemFailureReason = {
+    /**
+     * `required_field_blank`: a required field is empty (`field`, `params.field_name`). `not_allowed`: the author may not publish this story or folder. `language_not_allowed`: the author may not publish this language. `workflow_stage`: the workflow stage does not allow publishing. `story_locked`: someone else is editing the story (`params.user_name`). `story_deleted`: the story was deleted before it was published. `scheduled`: the story is in a release or scheduled, and `options.include_scheduled` was false. `timeout`: publishing took too long. New codes can be added.
+     */
+    code: 'required_field_blank' | 'not_allowed' | 'language_not_allowed' | 'workflow_stage' | 'story_locked' | 'story_deleted' | 'scheduled' | 'timeout';
+    /**
+     * Key of the field the reason is about, or null.
+     */
+    field: string | null;
+    /**
+     * Values used in the message, per code.
+     */
+    params: {
+        [key: string]: string;
+    };
+    /**
+     * English text. Its wording can change; do not match on it.
+     */
+    message: string;
+};
+
+export type PublicationOptions = {
+    recursive: boolean;
+    include_scheduled: boolean;
+    languages: Array<string>;
+};
+
+/**
+ * What a publication with the same body would publish. Nothing is saved. Counts include only stories the user may publish.
+ */
+export type PublicationPreview = {
+    this_folder_only: PublicationScopeCounts;
+    with_subfolders: PublicationScopeCounts;
+    /**
+     * Stories left out by default because they are scheduled. They are included when `options.include_scheduled` is true.
+     */
+    scheduled: {
+        in_releases: number;
+        scheduled_publishing: number;
+    };
+};
+
+/**
+ * A story or folder the user selected.
+ */
+export type PublicationRoot = {
+    id: number;
+    name: string;
+    full_slug: string;
+    /**
+     * true if the instance constitutes a folder.
+     */
+    is_folder: boolean;
+    /**
+     * Stories in the folder that the publication includes. It follows `options.recursive`. Null for a story, and for a folder while the publication is `draft`.
+     */
+    stories: number | null;
+    /**
+     * Subfolders that the publication includes. It follows `options.recursive`. Null for a story, and for a folder while the publication is `draft`.
+     */
+    subfolders: number | null;
+    /**
+     * True when an item under this root failed or was skipped.
+     */
+    has_issues: boolean;
+};
+
+export type PublicationScopeCounts = {
+    stories: number;
+    folders: number;
+};
+
+/**
+ * Counts per story. A story is `pending` while any of its languages is pending, `with_issues` when any language failed or was skipped, and `published` when all its languages succeeded. Folders are not counted.
+ */
+export type PublicationStoryCounts = {
+    total: number;
+    published: number;
+    with_issues: number;
+    pending: number;
+};
+
+/**
  * Published version of a story, represents the live content
  */
 export type PublishedStory = {
@@ -11594,6 +11976,10 @@ export type Space = {
      */
     blocked_at?: string | null;
     /**
+     * Why the space is blocked. If this list is not empty, the space is blocked. Some blocks do not set blocked_at (unpaid subscription before escalation, unpaid boost, UI and organization blocks), so do not use blocked_at alone. A block written outside the suspension flow (admin, legacy data) can carry no cause, so an empty list with blocked_at or unpaid_at set means the cause is unknown. Causes from one event can stack: an unpaid subscription invoice records subscription_unpaid first and adds payment_overdue on escalation. Group causes by kind instead of counting them. Billing: subscription_unpaid, payment_overdue, invoice_unfinalized, boost_unpaid, traffic_boost_unpaid, limit_boost_unpaid. Usage: traffic_warning, traffic_overage, joyride_traffic_overage, api_request_overage. Organization: org_deactivation, org_disable. unknown: blocked before reasons were recorded.
+     */
+    suspension_causes: Array<SpaceSuspensionCause>;
+    /**
      * Whether the space is in development mode
      */
     development_mode: boolean;
@@ -11789,6 +12175,10 @@ export type SpaceDetail = {
      */
     traffic_limit: number;
     /**
+     * Effective AI kill switch: true when it is on for the space or for its org. Only Storyblok Support can change it.
+     */
+    ai_features_disabled: boolean;
+    /**
      * Whether AI text generation is disabled
      */
     ai_text_generator_disabled: boolean;
@@ -11817,6 +12207,10 @@ export type SpaceDetail = {
      */
     has_pending_tasks: boolean;
     /**
+     * The organization ID if space belongs to an organization
+     */
+    org_id?: number | null;
+    /**
      * Whether Storyblok granted this space access to Strata (semantic index & search) — via its org's access, or a direct grant for org-less spaces. Distinct from options.strata_enabled, the space admin's own switch
      */
     org_strata_available?: boolean;
@@ -11843,7 +12237,9 @@ export type SpaceDetail = {
      */
     flag_icons_display_mode?: 'country' | 'language';
     /**
-     * Web crawling configuration
+     * Web crawling configuration. This field is deprecated and will be removed in a future release.
+     *
+     * @deprecated
      */
     crawl_config?: {
         base_url?: string;
@@ -11864,7 +12260,8 @@ export type SpaceDetail = {
      * Organization information if space belongs to an org
      */
     org?: {
-        name?: string;
+        id: number;
+        name: string;
         ai_text_generator_disabled_in_org?: boolean;
         custom_upload_limit_in_mb?: number | null;
     } | null;
@@ -11879,6 +12276,10 @@ export type SpaceDetail = {
         code?: string;
         name?: string;
         ai_translation_code?: string | null;
+        /**
+         * Code of the language this language falls back to
+         */
+        fallback_lang?: string | null;
     }>;
     /**
      * Space settings from associated settings records
@@ -11910,6 +12311,33 @@ export type SpaceDetail = {
      * The subscription status
      */
     subscription_status?: string | null;
+    /**
+     * Why the space is blocked. If this list is not empty, the space is blocked. Some blocks do not set blocked_at (unpaid subscription before escalation, unpaid boost, UI and organization blocks), so do not use blocked_at alone. A block written outside the suspension flow (admin, legacy data) can carry no cause, so an empty list with blocked_at or unpaid_at set means the cause is unknown. Causes from one event can stack: an unpaid subscription invoice records subscription_unpaid first and adds payment_overdue on escalation. Group causes by kind instead of counting them. Billing: subscription_unpaid, payment_overdue, invoice_unfinalized, boost_unpaid, traffic_boost_unpaid, limit_boost_unpaid. Usage: traffic_warning, traffic_overage, joyride_traffic_overage, api_request_overage. Organization: org_deactivation, org_disable. unknown: blocked before reasons were recorded.
+     */
+    suspension_causes: Array<SpaceSuspensionCause>;
+    /**
+     * What the suspension blocks right now, computed from the same rules the API enforces. Use this instead of deriving the state from suspension_causes, blocked_at or unpaid_at: the same cause blocks different areas on different plans, four blocks record no cause, and the organization status is enforced outside the causes.
+     */
+    suspension: {
+        /**
+         * The app and the Management API. blocked means writes are refused; the organization status is checked first, so a space in a disabled or deactivated organization is blocked even when no rule fires.
+         */
+        editor: {
+            state: 'blocked' | 'working';
+            reason: SpaceSuspensionReason;
+        };
+        /**
+         * Content delivery (CDN). blocked means delivery is refused, limited means it is slowed down to one request per second. The CDN ignores the organization status on purpose.
+         */
+        website: {
+            state: 'blocked' | 'limited' | 'working';
+            reason: SpaceSuspensionReason;
+        };
+        /**
+         * The recorded causes, the same list as suspension_causes.
+         */
+        causes: Array<SpaceSuspensionCause>;
+    };
     /**
      * Flags indicating which feature limits have been exceeded
      */
@@ -12214,13 +12642,17 @@ export type SpaceDetail = {
      */
     webhook_token?: string | null;
     /**
-     * Maximum yearly AI credits allowed, inherited from organization
+     * Yearly AI credits limit of the org. Null for a space that is not in an org
      */
     yearly_ai_credits_limit?: number | null;
     /**
-     * Number of yearly AI credits consumed, inherited from organization
+     * AI credits used by all spaces of the org within `usage_period`. Null for a space that is not in an org
      */
     yearly_ai_credits_used?: number | null;
+    /**
+     * The period that the yearly limits and usage refer to. Null for a space that is not in an org
+     */
+    usage_period?: UsagePeriod | null;
     [key: string]: unknown;
 };
 
@@ -12341,6 +12773,16 @@ export type SpaceRole = {
      */
     blocked_asset_folder_ids: Array<number>;
 };
+
+/**
+ * A recorded reason for a suspension. Billing: subscription_unpaid, payment_overdue, invoice_unfinalized, boost_unpaid, traffic_boost_unpaid, limit_boost_unpaid. Usage: traffic_warning, traffic_overage, joyride_traffic_overage, api_request_overage. Organization: org_deactivation, org_disable. unknown: blocked before reasons were recorded.
+ */
+export type SpaceSuspensionCause = 'subscription_unpaid' | 'payment_overdue' | 'invoice_unfinalized' | 'boost_unpaid' | 'traffic_boost_unpaid' | 'limit_boost_unpaid' | 'traffic_warning' | 'traffic_overage' | 'joyride_traffic_overage' | 'api_request_overage' | 'org_deactivation' | 'org_disable' | 'unknown';
+
+/**
+ * Why an area of the space is blocked or limited. Null when the area is working. A block that records no cause names its rule: trial_expired, pending_subscription, joyride_trial_expired or usage_exceeded. Otherwise it is the most severe recorded cause that affects the area. unknown means the area is blocked or limited but nothing recorded why. org_disable and org_deactivation are computed from the organization status and are only visible on this endpoint to the backend: the detail request itself returns 403 for a space in a disabled or deactivated organization, and 422 for usage_exceeded.
+ */
+export type SpaceSuspensionReason = 'subscription_unpaid' | 'payment_overdue' | 'invoice_unfinalized' | 'boost_unpaid' | 'traffic_boost_unpaid' | 'limit_boost_unpaid' | 'traffic_warning' | 'traffic_overage' | 'joyride_traffic_overage' | 'api_request_overage' | 'org_deactivation' | 'org_disable' | 'unknown' | 'trial_expired' | 'pending_subscription' | 'joyride_trial_expired' | 'usage_exceeded' | null;
 
 /**
  * The assignment of a taxonomy (root taxonomy term) to a space.
@@ -12469,6 +12911,10 @@ export type Stories = {
      */
     favourite_for_user_ids: Array<number>;
     scheduled_dates: string | null;
+    /**
+     * Number of pending schedulings of this story, one per scheduled language. 0 when the story is not scheduled.
+     */
+    story_schedulings_count: number;
 };
 
 export type Story = {
@@ -12589,6 +13035,12 @@ export type Story = {
      */
     user_ids: Array<number>;
     /**
+     * Assigned user IDs grouped by language code, keyed by "[default]" for the default language
+     */
+    assigned_users_per_language: {
+        [key: string]: Array<number>;
+    };
+    /**
      * Space role IDs (read-only, set automatically via workflow or workflow stage changes)
      */
     space_role_ids: Array<number>;
@@ -12671,6 +13123,10 @@ export type Story = {
      * IDs of experiments this story participates in (only included on show, not index).
      */
     experiment_ids?: Array<number>;
+    /**
+     * IDs of pending (not yet released) releases this story belongs to, limited to releases the user can access (included on show only)
+     */
+    release_ids?: Array<number>;
 };
 
 export type StoryScheduling = {
@@ -12701,7 +13157,7 @@ export type StoryScheduling = {
     /**
      * The current status of the scheduling
      */
-    status: 'scheduled' | 'schedule_published' | 'deleted' | 'published_before_schedule' | 'ignored_due_plan_limit' | 'invalid_story';
+    status: 'scheduled' | 'schedule_published' | 'deleted' | 'published_before_schedule' | 'ignored_due_plan_limit' | 'invalid_story' | 'deleted_by_individual_translation_publishing_disabled';
     /**
      * Timestamp when the scheduling was soft-deleted
      */
@@ -13216,6 +13672,10 @@ export type UserOrg = {
     id?: number;
     name?: string;
     status?: 'active' | 'disabled' | 'deactivated';
+    /**
+     * Effective AI kill switch. Only Storyblok Support can change it.
+     */
+    ai_features_disabled?: boolean;
     settings?: OrgSettings;
 };
 
@@ -13550,8 +14010,8 @@ export type ErrorsObject = {
     /**
      * Stable, machine-readable reason the request was denied. Present on role and plan/quota denials so clients can branch without matching on `error`. Absent on generic validation failures.
      */
-    error_code?: 'org_role_forbidden' | 'feature_not_available' | 'feature_limit_reached' | 'no_spaces_in_region';
-    [key: string]: Array<string> | string | ErrorsMap | 'org_role_forbidden' | 'feature_not_available' | 'feature_limit_reached' | 'no_spaces_in_region' | undefined;
+    error_code?: 'org_role_forbidden' | 'feature_not_available' | 'feature_limit_reached' | 'no_spaces_in_region' | 'legacy_token_deprecated' | 'preview_token_expired' | 'preview_token_no_access';
+    [key: string]: Array<string> | string | ErrorsMap | 'org_role_forbidden' | 'feature_not_available' | 'feature_limit_reached' | 'no_spaces_in_region' | 'legacy_token_deprecated' | 'preview_token_expired' | 'preview_token_no_access' | undefined;
 };
 
 export type CreateWebhookEndpointRequest = {
@@ -13592,10 +14052,6 @@ export type InvoicesIndexResponseWritable = {
      * List of invoices for the space
      */
     invoices: Array<InvoiceWritable>;
-};
-
-export type OrgSubscriptionUpdateResponseWritable = {
-    org: OrgWritable;
 };
 
 export type PartnerInvoicesIndexResponseWritable = {
@@ -14190,6 +14646,10 @@ export type OrgWritable = {
     sso_alt_email?: string | null;
     strong_auth?: boolean | null;
     restricted_regions: Array<string>;
+    /**
+     * Effective AI kill switch. Only Storyblok Support can change it.
+     */
+    ai_features_disabled: boolean;
     ai_text_generator_disabled: boolean;
     ai_text_generator_feature_disabled: boolean;
     ai_credits_used?: number;
@@ -14199,6 +14659,10 @@ export type OrgWritable = {
     ai_translation_enabled: boolean;
     storyblok_agents_enabled?: boolean;
     strata_available?: boolean;
+    /**
+     * The organization's own Strata switch. Only has an effect when strata_available is true
+     */
+    strata_enabled?: boolean;
     token_timeout_in?: number | null;
     disable_private_spaces?: boolean | null;
     enable_content_distributions_ai_translation?: boolean;
@@ -14257,6 +14721,18 @@ export type OrgWritable = {
      * Organization status
      */
     status?: string | null;
+    /**
+     * Yearly AI credits limit of the org
+     */
+    yearly_ai_credits_limit: number;
+    /**
+     * AI credits used by all spaces of the org within `usage_period`
+     */
+    yearly_ai_credits_used: number;
+    /**
+     * The period that the yearly limits and usage refer to
+     */
+    usage_period?: UsagePeriod;
     [key: string]: unknown;
 };
 
@@ -14453,6 +14929,10 @@ export type SpaceWritable = {
      */
     blocked_at?: string | null;
     /**
+     * Why the space is blocked. If this list is not empty, the space is blocked. Some blocks do not set blocked_at (unpaid subscription before escalation, unpaid boost, UI and organization blocks), so do not use blocked_at alone. A block written outside the suspension flow (admin, legacy data) can carry no cause, so an empty list with blocked_at or unpaid_at set means the cause is unknown. Causes from one event can stack: an unpaid subscription invoice records subscription_unpaid first and adds payment_overdue on escalation. Group causes by kind instead of counting them. Billing: subscription_unpaid, payment_overdue, invoice_unfinalized, boost_unpaid, traffic_boost_unpaid, limit_boost_unpaid. Usage: traffic_warning, traffic_overage, joyride_traffic_overage, api_request_overage. Organization: org_deactivation, org_disable. unknown: blocked before reasons were recorded.
+     */
+    suspension_causes: Array<SpaceSuspensionCause>;
+    /**
      * Whether the space is in development mode
      */
     development_mode: boolean;
@@ -14598,6 +15078,12 @@ export type StoryWritable = {
      */
     user_ids: Array<number>;
     /**
+     * Assigned user IDs grouped by language code, keyed by "[default]" for the default language
+     */
+    assigned_users_per_language: {
+        [key: string]: Array<number>;
+    };
+    /**
      * Space role IDs (read-only, set automatically via workflow or workflow stage changes)
      */
     space_role_ids: Array<number>;
@@ -14680,6 +15166,10 @@ export type StoryWritable = {
      * IDs of experiments this story participates in (only included on show, not index).
      */
     experiment_ids?: Array<number>;
+    /**
+     * IDs of pending (not yet released) releases this story belongs to, limited to releases the user can access (included on show only)
+     */
+    release_ids?: Array<number>;
 };
 
 export type UserWritable = {
@@ -15534,283 +16024,6 @@ export type UpdateAiBrandingRulesResponses = {
 
 export type UpdateAiBrandingRulesResponse = UpdateAiBrandingRulesResponses[keyof UpdateAiBrandingRulesResponses];
 
-export type ListAiConfigurationsData = {
-    body?: never;
-    path?: never;
-    query?: {
-        /**
-         * Space ID
-         */
-        space_id?: number;
-    };
-    url: '/v1/ai_configurations';
-};
-
-export type ListAiConfigurationsErrors = {
-    /**
-     * Unauthorized
-     */
-    401: UnauthorizedError;
-};
-
-export type ListAiConfigurationsError = ListAiConfigurationsErrors[keyof ListAiConfigurationsErrors];
-
-export type ListAiConfigurationsResponses = {
-    /**
-     * AI configurations returned.
-     */
-    200: {
-        ai_configurations: Array<AiConfiguration>;
-        meta?: {
-            default_ai_configuration_id?: number | null;
-            org_default_ai_configuration_id?: number | null;
-        };
-    };
-};
-
-export type ListAiConfigurationsResponse = ListAiConfigurationsResponses[keyof ListAiConfigurationsResponses];
-
-export type CreateAiConfigurationData = {
-    body: AiConfigurationRequest;
-    path?: never;
-    query?: {
-        /**
-         * Numeric ID of the space to include in the token payload.
-         */
-        space_id?: number;
-    };
-    url: '/v1/ai_configurations';
-};
-
-export type CreateAiConfigurationErrors = {
-    /**
-     * Unauthorized
-     */
-    401: UnauthorizedError;
-    /**
-     * Unable to remove space - user is not a space admin.
-     */
-    422: ErrorsObject;
-};
-
-export type CreateAiConfigurationError = CreateAiConfigurationErrors[keyof CreateAiConfigurationErrors];
-
-export type CreateAiConfigurationResponses = {
-    /**
-     * AI configuration created.
-     */
-    200: {
-        ai_configuration: AiConfiguration;
-    };
-};
-
-export type CreateAiConfigurationResponse = CreateAiConfigurationResponses[keyof CreateAiConfigurationResponses];
-
-export type DeleteAiConfigurationData = {
-    body?: never;
-    path: {
-        /**
-         * AI Configuration ID
-         */
-        id: number;
-    };
-    query?: {
-        /**
-         * Numeric ID of the space to include in the token payload.
-         */
-        space_id?: number;
-    };
-    url: '/v1/ai_configurations/{id}';
-};
-
-export type DeleteAiConfigurationErrors = {
-    /**
-     * Unauthorized
-     */
-    401: UnauthorizedError;
-    /**
-     * Invalid token or no custom complexity.
-     */
-    404: Array<string>;
-};
-
-export type DeleteAiConfigurationError = DeleteAiConfigurationErrors[keyof DeleteAiConfigurationErrors];
-
-export type DeleteAiConfigurationResponses = {
-    /**
-     * AI configuration deleted.
-     */
-    200: {
-        message: string;
-    };
-};
-
-export type DeleteAiConfigurationResponse = DeleteAiConfigurationResponses[keyof DeleteAiConfigurationResponses];
-
-export type GetAiConfigurationData = {
-    body?: never;
-    path: {
-        /**
-         * AI Configuration ID
-         */
-        id: number;
-    };
-    query?: {
-        /**
-         * Space ID
-         */
-        space_id?: number;
-    };
-    url: '/v1/ai_configurations/{id}';
-};
-
-export type GetAiConfigurationErrors = {
-    /**
-     * Unauthorized
-     */
-    401: UnauthorizedError;
-    /**
-     * Invalid token or no custom complexity.
-     */
-    404: Array<string>;
-};
-
-export type GetAiConfigurationError = GetAiConfigurationErrors[keyof GetAiConfigurationErrors];
-
-export type GetAiConfigurationResponses = {
-    /**
-     * AI configuration found.
-     */
-    200: {
-        ai_configuration: AiConfiguration;
-    };
-};
-
-export type GetAiConfigurationResponse = GetAiConfigurationResponses[keyof GetAiConfigurationResponses];
-
-export type UpdateAiConfigurationData = {
-    body: AiConfigurationRequest;
-    path: {
-        /**
-         * AI Configuration ID
-         */
-        id: number;
-    };
-    query?: {
-        /**
-         * Numeric ID of the space to include in the token payload.
-         */
-        space_id?: number;
-    };
-    url: '/v1/ai_configurations/{id}';
-};
-
-export type UpdateAiConfigurationErrors = {
-    /**
-     * Unauthorized
-     */
-    401: UnauthorizedError;
-    /**
-     * Invalid token or no custom complexity.
-     */
-    404: Array<string>;
-    /**
-     * Unable to remove space - user is not a space admin.
-     */
-    422: ErrorsObject;
-};
-
-export type UpdateAiConfigurationError = UpdateAiConfigurationErrors[keyof UpdateAiConfigurationErrors];
-
-export type UpdateAiConfigurationResponses = {
-    /**
-     * AI configuration updated.
-     */
-    200: {
-        ai_configuration: AiConfiguration;
-    };
-};
-
-export type UpdateAiConfigurationResponse = UpdateAiConfigurationResponses[keyof UpdateAiConfigurationResponses];
-
-export type SetDefaultAiConfigurationData = {
-    /**
-     * AI Configuration ID to set as default. Omit id to reset default.
-     */
-    body?: {
-        id?: number;
-    };
-    path?: never;
-    query?: {
-        /**
-         * Space ID
-         */
-        space_id?: number;
-    };
-    url: '/v1/ai_configurations/set_default';
-};
-
-export type SetDefaultAiConfigurationErrors = {
-    /**
-     * Unauthorized
-     */
-    401: UnauthorizedError;
-};
-
-export type SetDefaultAiConfigurationError = SetDefaultAiConfigurationErrors[keyof SetDefaultAiConfigurationErrors];
-
-export type SetDefaultAiConfigurationResponses = {
-    /**
-     * Default AI configuration set.
-     */
-    200: {
-        message: string;
-        default_ai_configuration_id: number | null;
-    };
-};
-
-export type SetDefaultAiConfigurationResponse = SetDefaultAiConfigurationResponses[keyof SetDefaultAiConfigurationResponses];
-
-export type ValidateAiConfigurationData = {
-    body: AiConfigurationRequest;
-    path?: never;
-    query?: {
-        /**
-         * Space ID
-         */
-        space_id?: number;
-    };
-    url: '/v1/ai_configurations/validate';
-};
-
-export type ValidateAiConfigurationErrors = {
-    /**
-     * Unauthorized
-     */
-    401: UnauthorizedError;
-    /**
-     * Unable to remove space - user is not a space admin.
-     */
-    422: {
-        validated: boolean;
-        error?: string;
-    };
-};
-
-export type ValidateAiConfigurationError = ValidateAiConfigurationErrors[keyof ValidateAiConfigurationErrors];
-
-export type ValidateAiConfigurationResponses = {
-    /**
-     * Configuration validated successfully.
-     */
-    200: {
-        validated: boolean;
-        message?: string;
-    };
-};
-
-export type ValidateAiConfigurationResponse = ValidateAiConfigurationResponses[keyof ValidateAiConfigurationResponses];
-
 export type ListAiCreditsBoostsData = {
     body?: never;
     path: {
@@ -15878,11 +16091,11 @@ export type ListSpaceAiLogsData = {
     };
     query?: {
         /**
-         * Start date for the query (ISO 8601 date)
+         * Start date for the query (ISO 8601 date). Defaults to the first day of the current month one year ago. Dates before 2025-11-24 (AI credits release) are moved to 2025-11-24.
          */
         start_date?: string;
         /**
-         * End date for the query (ISO 8601 date)
+         * End date for the query (ISO 8601 date), inclusive. Defaults to today. Must be at most 800 days after the start date, counted after the move to 2025-11-24.
          */
         end_date?: string;
         /**
@@ -15899,6 +16112,30 @@ export type ListSpaceAiLogsErrors = {
      */
     401: UnauthorizedError;
     /**
+     * Forbidden
+     */
+    403: {
+        /**
+         * Error message
+         */
+        error: string;
+    };
+    /**
+     * Invalid token or no custom complexity.
+     */
+    404: Array<string>;
+    /**
+     * Unable to remove space - user is not a space admin.
+     */
+    422: {
+        /**
+         * Error message
+         */
+        error: string;
+    } | {
+        errors: string;
+    };
+    /**
      * Rate limit reached
      */
     429: RateLimitError;
@@ -15910,7 +16147,7 @@ export type ListSpaceAiLogsResponses = {
     /**
      * AI logs returned.
      */
-    200: AiLogsIndexResponse;
+    200: AiLogsSpaceIndexResponse;
 };
 
 export type ListSpaceAiLogsResponse = ListSpaceAiLogsResponses[keyof ListSpaceAiLogsResponses];
@@ -15919,17 +16156,17 @@ export type ListOrgAiLogsData = {
     body?: never;
     path: {
         /**
-         * Use literal 'me' for the current user's organization
+         * Must be the literal `me` (the current user's organization). Any other value, including a real organization ID, returns 403.
          */
-        id: string;
+        id: 'me';
     };
     query?: {
         /**
-         * Start date for the query (ISO 8601 date)
+         * Start date for the query (ISO 8601 date). Defaults to the first day of the current month one year ago. Dates before 2025-11-24 (AI credits release) are moved to 2025-11-24.
          */
         start_date?: string;
         /**
-         * End date for the query (ISO 8601 date)
+         * End date for the query (ISO 8601 date), inclusive. Defaults to today. Must be at most 800 days after the start date, counted after the move to 2025-11-24.
          */
         end_date?: string;
         /**
@@ -15949,6 +16186,18 @@ export type ListOrgAiLogsErrors = {
      * Forbidden
      */
     403: {
+        /**
+         * Error message
+         */
+        error: string;
+    };
+    /**
+     * Unable to remove space - user is not a space admin.
+     */
+    422: {
+        /**
+         * Error message
+         */
         error: string;
     };
     /**
@@ -16355,40 +16604,6 @@ export type UpdateOrgAiOutputRuleResponses = {
 
 export type UpdateOrgAiOutputRuleResponse = UpdateOrgAiOutputRuleResponses[keyof UpdateOrgAiOutputRuleResponses];
 
-export type ListAiProvidersData = {
-    body?: never;
-    path?: never;
-    query?: {
-        /**
-         * Numeric ID of the space to include in the token payload.
-         */
-        space_id?: number;
-    };
-    url: '/v1/ai_configurations/providers';
-};
-
-export type ListAiProvidersErrors = {
-    /**
-     * Unauthorized
-     */
-    401: UnauthorizedError;
-    /**
-     * Rate limit reached
-     */
-    429: RateLimitError;
-};
-
-export type ListAiProvidersError = ListAiProvidersErrors[keyof ListAiProvidersErrors];
-
-export type ListAiProvidersResponses = {
-    /**
-     * AI providers returned.
-     */
-    200: AiProvidersIndexResponse;
-};
-
-export type ListAiProvidersResponse = ListAiProvidersResponses[keyof ListAiProvidersResponses];
-
 export type GenerateTextData = {
     body: AiGenerateTextRequest;
     path: {
@@ -16484,7 +16699,7 @@ export type ListAiLanguagesData = {
 
 export type ListAiLanguagesResponses = {
     /**
-     * Languages list returned.
+     * Languages list returned
      */
     200: {
         /**
@@ -17190,6 +17405,10 @@ export type DeleteAppProvisionErrors = {
      * Invalid token or no custom complexity.
      */
     404: unknown;
+    /**
+     * Unable to remove space - user is not a space admin.
+     */
+    422: unknown;
     /**
      * Rate limit reached
      */
@@ -18527,7 +18746,7 @@ export type ListAssetsData = {
          */
         in_folder?: number;
         /**
-         * If true, together with in_folder and a search or filter, also returns the assets of all subfolders of in_folder. Ignored for the trash (in_folder=-1).
+         * If true, together with in_folder, also returns the assets of all subfolders of in_folder. Ignored for the trash (in_folder=-1).
          */
         in_subfolders?: boolean;
         /**
@@ -18575,6 +18794,18 @@ export type ListAssetsData = {
          */
         by_title?: string;
         /**
+         * Filter by custom metadata values with `by_meta_data[<field_key>][<operator>]=<value>`. Operators: `is` (exact value), `in` (one of several values), `not_in` (none of the values), `like` (wildcard match, `*` is the wildcard) and `not_like` (does not match the wildcard). All operators ignore case. Several keys and operators are combined with AND. `is`, `in` and `like` do not return assets without a value for the key; `not_in` and `not_like` do. Any key is accepted. To search a translation use the key `<field_key>__i18n__<lang>`. `in` and `not_in` take comma separated values or an array (`by_meta_data[<field_key>][in][]=<value>`). Array items are not split, so use an array for values that contain a comma.
+         */
+        by_meta_data?: {
+            [key: string]: {
+                is?: string;
+                in?: string | Array<string>;
+                not_in?: string | Array<string>;
+                like?: string;
+                not_like?: string;
+            };
+        };
+        /**
          * Filter by ext_id of an asset.
          */
         ext_id?: string;
@@ -18619,6 +18850,12 @@ export type ListAssetsData = {
 };
 
 export type ListAssetsErrors = {
+    /**
+     * Bad Request
+     */
+    400: {
+        error: string;
+    };
     /**
      * Unauthorized
      */
@@ -19031,6 +19268,10 @@ export type FinishAssetUploadErrors = {
      */
     404: Array<string>;
     /**
+     * Unable to remove space - user is not a space admin.
+     */
+    422: ErrorsObject;
+    /**
      * Rate limit reached
      */
     429: RateLimitError;
@@ -19263,7 +19504,20 @@ export type BulkRestoreAssetsErrors = {
     /**
      * Unable to remove space - user is not a space admin.
      */
-    422: ErrorsObject;
+    422: {
+        /**
+         * Error message
+         */
+        error: string;
+        /**
+         * IDs of the assets that were restored. Present when the file of some assets could not be restored.
+         */
+        restored_ids?: Array<number>;
+        /**
+         * IDs of the assets whose file could not be restored. These assets stay deleted. Present when the file of some assets could not be restored.
+         */
+        failed_ids?: Array<number>;
+    };
     /**
      * Rate limit reached
      */
@@ -21365,9 +21619,17 @@ export type UpdateComponentData = {
 
 export type UpdateComponentErrors = {
     /**
+     * Bad Request
+     */
+    400: ComponentUpdateErrorResponse;
+    /**
      * Unauthorized
      */
     401: UnauthorizedError;
+    /**
+     * The component was changed after component.updated_at. Nothing was saved
+     */
+    409: ComponentUpdateErrorResponse;
     /**
      * Unable to remove space - user is not a space admin.
      */
@@ -21916,6 +22178,12 @@ export type ListCrawlConfigsResponse = ListCrawlConfigsResponses[keyof ListCrawl
 
 export type CreateCrawlConfigData = {
     body: CreateCrawlConfigRequest;
+    headers: {
+        /**
+         * App secure token in the form `Token token=<secure token>`
+         */
+        authorization: string;
+    };
     path?: never;
     query: {
         /**
@@ -28526,107 +28794,6 @@ export type DeleteOrgSpaceResponses = {
     200: unknown;
 };
 
-export type CreateOrgSubscriptionData = {
-    body: CreateOrgSubscriptionRequest;
-    path?: never;
-    query?: never;
-    url: '/v1/org_subscriptions';
-};
-
-export type CreateOrgSubscriptionErrors = {
-    /**
-     * Unauthorized
-     */
-    401: UnauthorizedError;
-    /**
-     * Unable to remove space - user is not a space admin.
-     */
-    422: ErrorsObject;
-    /**
-     * Rate limit reached
-     */
-    429: RateLimitError;
-};
-
-export type CreateOrgSubscriptionError = CreateOrgSubscriptionErrors[keyof CreateOrgSubscriptionErrors];
-
-export type CreateOrgSubscriptionResponses = {
-    /**
-     * Subscription created successfully.
-     */
-    200: OrgSubscriptionCreateResponse;
-};
-
-export type CreateOrgSubscriptionResponse = CreateOrgSubscriptionResponses[keyof CreateOrgSubscriptionResponses];
-
-export type PartialUpdateOrgSubscriptionData = {
-    body: UpdateOrgSubscriptionRequest;
-    path: {
-        /**
-         * Numeric ID of the organization subscription (typically the space ID)
-         */
-        id: number;
-    };
-    query?: never;
-    url: '/v1/org_subscriptions/{id}';
-};
-
-export type PartialUpdateOrgSubscriptionErrors = {
-    /**
-     * Unauthorized
-     */
-    401: UnauthorizedError;
-    /**
-     * Rate limit reached
-     */
-    429: RateLimitError;
-};
-
-export type PartialUpdateOrgSubscriptionError = PartialUpdateOrgSubscriptionErrors[keyof PartialUpdateOrgSubscriptionErrors];
-
-export type PartialUpdateOrgSubscriptionResponses = {
-    /**
-     * Subscription updated successfully.
-     */
-    200: OrgSubscriptionUpdateResponse;
-};
-
-export type PartialUpdateOrgSubscriptionResponse = PartialUpdateOrgSubscriptionResponses[keyof PartialUpdateOrgSubscriptionResponses];
-
-export type UpdateOrgSubscriptionData = {
-    body: UpdateOrgSubscriptionRequest;
-    path: {
-        /**
-         * Numeric ID of the organization subscription (typically the space ID)
-         */
-        id: number;
-    };
-    query?: never;
-    url: '/v1/org_subscriptions/{id}';
-};
-
-export type UpdateOrgSubscriptionErrors = {
-    /**
-     * Unauthorized
-     */
-    401: UnauthorizedError;
-    /**
-     * Rate limit reached
-     */
-    429: RateLimitError;
-};
-
-export type UpdateOrgSubscriptionError = UpdateOrgSubscriptionErrors[keyof UpdateOrgSubscriptionErrors];
-
-export type UpdateOrgSubscriptionResponses = {
-    /**
-     * Subscription updated successfully.
-     */
-    200: OrgSubscriptionUpdateResponse;
-};
-
-export type UpdateOrgSubscriptionResponse = UpdateOrgSubscriptionResponses[keyof UpdateOrgSubscriptionResponses];
-
 export type DeleteOrgUserData = {
     body?: never;
     path: {
@@ -30325,6 +30492,12 @@ export type CreatePresetErrors = {
      */
     401: UnauthorizedError;
     /**
+     * Forbidden
+     */
+    403: {
+        error?: string;
+    };
+    /**
      * Unable to remove space - user is not a space admin.
      */
     422: {
@@ -30371,6 +30544,12 @@ export type DeletePresetErrors = {
      * Unauthorized
      */
     401: UnauthorizedError;
+    /**
+     * Forbidden
+     */
+    403: {
+        error?: string;
+    };
     /**
      * Rate limit reached
      */
@@ -30451,6 +30630,12 @@ export type UpdatePresetErrors = {
      * Unauthorized
      */
     401: UnauthorizedError;
+    /**
+     * Forbidden
+     */
+    403: {
+        error?: string;
+    };
     /**
      * Unable to remove space - user is not a space admin.
      */
@@ -31035,6 +31220,19 @@ export type CreateScimTokenErrors = {
      * Unauthorized
      */
     401: UnauthorizedError;
+    /**
+     * Forbidden
+     */
+    403: {
+        /**
+         * Error message
+         */
+        error: string;
+        /**
+         * Machine-readable denial reason
+         */
+        error_code: 'feature_not_available';
+    };
     /**
      * Unable to remove space - user is not a space admin.
      */
@@ -31741,7 +31939,7 @@ export type ListOrgSharedAssetsData = {
          */
         in_folder?: number;
         /**
-         * If true, together with in_folder and a search or filter, also returns the assets of all subfolders of in_folder. Ignored for the trash (in_folder=-1) and for a library root folder, which already includes its subfolders.
+         * If true, together with in_folder, also returns the assets of all subfolders of in_folder. Ignored for the trash (in_folder=-1) and for a library root folder, which already includes its subfolders.
          */
         in_subfolders?: boolean;
         /**
@@ -31789,6 +31987,18 @@ export type ListOrgSharedAssetsData = {
          */
         by_title?: string;
         /**
+         * Filter by custom metadata values with `by_meta_data[<field_key>][<operator>]=<value>`. Operators: `is` (exact value), `in` (one of several values), `not_in` (none of the values), `like` (wildcard match, `*` is the wildcard) and `not_like` (does not match the wildcard). All operators ignore case. Several keys and operators are combined with AND. `is`, `in` and `like` do not return assets without a value for the key; `not_in` and `not_like` do. Any key is accepted. To search a translation use the key `<field_key>__i18n__<lang>`. `in` and `not_in` take comma separated values or an array (`by_meta_data[<field_key>][in][]=<value>`). Array items are not split, so use an array for values that contain a comma.
+         */
+        by_meta_data?: {
+            [key: string]: {
+                is?: string;
+                in?: string | Array<string>;
+                not_in?: string | Array<string>;
+                like?: string;
+                not_like?: string;
+            };
+        };
+        /**
          * Filter by specific tag(s). Multiple tags can be provided as a comma-separated string (treated like an OR operator).
          */
         with_tags?: string;
@@ -31829,6 +32039,12 @@ export type ListOrgSharedAssetsData = {
 };
 
 export type ListOrgSharedAssetsErrors = {
+    /**
+     * Bad Request
+     */
+    400: {
+        error: string;
+    };
     /**
      * Unauthorized
      */
@@ -32444,7 +32660,7 @@ export type ListSpaceSharedAssetsData = {
          */
         in_folder?: number;
         /**
-         * If true, together with in_folder and a search or filter, also returns the assets of all subfolders of in_folder. Ignored for the trash (in_folder=-1) and for a library root folder, which already includes its subfolders.
+         * If true, together with in_folder, also returns the assets of all subfolders of in_folder. Ignored for the trash (in_folder=-1) and for a library root folder, which already includes its subfolders.
          */
         in_subfolders?: boolean;
         /**
@@ -32492,6 +32708,18 @@ export type ListSpaceSharedAssetsData = {
          */
         by_title?: string;
         /**
+         * Filter by custom metadata values with `by_meta_data[<field_key>][<operator>]=<value>`. Operators: `is` (exact value), `in` (one of several values), `not_in` (none of the values), `like` (wildcard match, `*` is the wildcard) and `not_like` (does not match the wildcard). All operators ignore case. Several keys and operators are combined with AND. `is`, `in` and `like` do not return assets without a value for the key; `not_in` and `not_like` do. Any key is accepted. To search a translation use the key `<field_key>__i18n__<lang>`. `in` and `not_in` take comma separated values or an array (`by_meta_data[<field_key>][in][]=<value>`). Array items are not split, so use an array for values that contain a comma.
+         */
+        by_meta_data?: {
+            [key: string]: {
+                is?: string;
+                in?: string | Array<string>;
+                not_in?: string | Array<string>;
+                like?: string;
+                not_like?: string;
+            };
+        };
+        /**
          * Filter by specific tag(s). Multiple tags can be provided as a comma-separated string (treated like an OR operator).
          */
         with_tags?: string;
@@ -32532,6 +32760,12 @@ export type ListSpaceSharedAssetsData = {
 };
 
 export type ListSpaceSharedAssetsErrors = {
+    /**
+     * Bad Request
+     */
+    400: {
+        error: string;
+    };
     /**
      * Unauthorized
      */
@@ -35058,6 +35292,10 @@ export type ListStoriesData = {
                     lt_int?: number;
                     gt_float?: number;
                     lt_float?: number;
+                    gte_int?: number;
+                    lte_int?: number;
+                    gte_float?: number;
+                    lte_float?: number;
                     is?: 'empty' | 'not_empty' | 'empty_array' | 'not_empty_array' | 'null' | 'not_null' | 'true' | 'false';
                 };
             }>;
@@ -35086,6 +35324,10 @@ export type ListStoriesData = {
                     lt_int?: number;
                     gt_float?: number;
                     lt_float?: number;
+                    gte_int?: number;
+                    lte_int?: number;
+                    gte_float?: number;
+                    lte_float?: number;
                     is?: 'empty' | 'not_empty' | 'empty_array' | 'not_empty_array' | 'null' | 'not_null' | 'true' | 'false';
                 };
             };
@@ -35113,6 +35355,10 @@ export type ListStoriesData = {
                 lt_int?: number;
                 gt_float?: number;
                 lt_float?: number;
+                gte_int?: number;
+                lte_int?: number;
+                gte_float?: number;
+                lte_float?: number;
                 is?: 'empty' | 'not_empty' | 'empty_array' | 'not_empty_array' | 'null' | 'not_null' | 'true' | 'false';
             } | Array<{
                 [key: string]: {
@@ -35139,6 +35385,10 @@ export type ListStoriesData = {
                     lt_int?: number;
                     gt_float?: number;
                     lt_float?: number;
+                    gte_int?: number;
+                    lte_int?: number;
+                    gte_float?: number;
+                    lte_float?: number;
                     is?: 'empty' | 'not_empty' | 'empty_array' | 'not_empty_array' | 'null' | 'not_null' | 'true' | 'false';
                 };
             }> | {
@@ -35166,6 +35416,10 @@ export type ListStoriesData = {
                     lt_int?: number;
                     gt_float?: number;
                     lt_float?: number;
+                    gte_int?: number;
+                    lte_int?: number;
+                    gte_float?: number;
+                    lte_float?: number;
                     is?: 'empty' | 'not_empty' | 'empty_array' | 'not_empty_array' | 'null' | 'not_null' | 'true' | 'false';
                 };
             } | undefined;
@@ -35728,7 +35982,7 @@ export type GetStoryByIdResponses = {
      * Story Found with Stage Information.
      */
     200: {
-        story: Story;
+        story: Story & unknown;
     };
 };
 
@@ -36958,9 +37212,9 @@ export type CheckUnpublishedDependenciesResponses = {
                  */
                 path?: string;
                 /**
-                 * UUID of the containing block
+                 * UUID of the containing block, null when no parent block has a _uid
                  */
-                blok_uuid?: string;
+                blok_uuid?: string | null;
                 /**
                  * Name of the field
                  */
@@ -38100,6 +38354,12 @@ export type CreateTagErrors = {
      */
     401: UnauthorizedError;
     /**
+     * Forbidden
+     */
+    403: {
+        error?: string;
+    };
+    /**
      * Unable to remove space - user is not a space admin.
      */
     422: ErrorResponse;
@@ -38144,6 +38404,12 @@ export type DeleteTagErrors = {
      */
     401: UnauthorizedError;
     /**
+     * Forbidden
+     */
+    403: {
+        error?: string;
+    };
+    /**
      * Unable to remove space - user is not a space admin.
      */
     422: ErrorResponse;
@@ -38185,6 +38451,12 @@ export type UpdateTagErrors = {
      * Unauthorized
      */
     401: UnauthorizedError;
+    /**
+     * Forbidden
+     */
+    403: {
+        error?: string;
+    };
     /**
      * Unable to remove space - user is not a space admin.
      */
@@ -38567,6 +38839,66 @@ export type UpdateTaskResponses = {
 
 export type UpdateTaskResponse = UpdateTaskResponses[keyof UpdateTaskResponses];
 
+export type ListTaxonomyTermAssociatedContentData = {
+    body?: never;
+    path: {
+        /**
+         * Numeric ID of the space
+         */
+        space_id: number;
+        /**
+         * Snowflake ID of the term (root or nested)
+         */
+        taxonomy_term_id: string;
+    };
+    query?: {
+        /**
+         * The paginated page number.
+         */
+        page?: number;
+        /**
+         * Number of items per page.
+         */
+        per_page?: number;
+    };
+    url: '/v1/spaces/{space_id}/taxonomy_terms/{taxonomy_term_id}/associated_content';
+};
+
+export type ListTaxonomyTermAssociatedContentErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+    /**
+     * Invalid token or no custom complexity.
+     */
+    404: Array<string>;
+    /**
+     * Rate limit reached
+     */
+    429: RateLimitError;
+};
+
+export type ListTaxonomyTermAssociatedContentError = ListTaxonomyTermAssociatedContentErrors[keyof ListTaxonomyTermAssociatedContentErrors];
+
+export type ListTaxonomyTermAssociatedContentResponses = {
+    /**
+     * Associated content returned
+     */
+    200: {
+        associated_content: Array<{
+            id: string;
+            type: 'Story';
+            name: string;
+            full_slug?: string;
+            updated_at: string;
+        }>;
+        meta: PaginationMeta;
+    };
+};
+
+export type ListTaxonomyTermAssociatedContentResponse = ListTaxonomyTermAssociatedContentResponses[keyof ListTaxonomyTermAssociatedContentResponses];
+
 export type UnassignTaxonomyData = {
     body?: never;
     path: {
@@ -38782,12 +39114,6 @@ export type ListTaxonomyTermComponentsErrors = {
      * Unauthorized
      */
     401: UnauthorizedError;
-    /**
-     * Forbidden
-     */
-    403: {
-        error?: string;
-    };
     /**
      * Invalid token or no custom complexity.
      */
@@ -39337,7 +39663,7 @@ export type GetAiAuthError = GetAiAuthErrors[keyof GetAiAuthErrors];
 
 export type GetAiAuthResponses = {
     /**
-     * AI auth token retrieved successfully.
+     * AI auth token retrieved successfully
      */
     200: TiptapTokenResponse;
 };
@@ -39498,15 +39824,15 @@ export type ListPersonalAccessTokensResponse = ListPersonalAccessTokensResponses
 
 export type CreatePersonalAccessTokenData = {
     /**
-     * Token creation parameters
+     * Ignored. Kept for older clients.
      */
-    body: {
+    body?: {
         /**
-         * Expiration timestamp for the token
+         * Ignored
          */
-        expire: string;
+        expire?: string;
         /**
-         * Optional name/label for the token
+         * Ignored
          */
         name?: string;
     };
@@ -39521,30 +39847,12 @@ export type CreatePersonalAccessTokenErrors = {
      */
     401: UnauthorizedError;
     /**
-     * Forbidden
+     * Legacy token creation is deprecated
      */
-    403: {
-        /**
-         * Why the token was refused
-         */
-        error: string;
-        /**
-         * The account must confirm its email address before creating credentials
-         */
-        requires_confirmation: boolean;
-    };
+    410: ErrorResponse;
 };
 
 export type CreatePersonalAccessTokenError = CreatePersonalAccessTokenErrors[keyof CreatePersonalAccessTokenErrors];
-
-export type CreatePersonalAccessTokenResponses = {
-    /**
-     * Token created
-     */
-    201: TokenDetail;
-};
-
-export type CreatePersonalAccessTokenResponse = CreatePersonalAccessTokenResponses[keyof CreatePersonalAccessTokenResponses];
 
 export type DeletePersonalAccessTokenData = {
     body?: never;

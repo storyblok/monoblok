@@ -1,6 +1,14 @@
 # Migrations Run Command
 
-The `migrations run` command allows you to execute migrations on stories in your Storyblok space.
+The `migrations run` command allows you to execute migrations on stories in your Storyblok space. It
+runs two kinds of migration files from the same directory:
+
+- **Migration functions:** `.js` files that default-export a function called for each block of one
+  component.
+- **Content migrations:** `.ts`, `.js`, or `.mjs` files named `<number>-<name>` that default-export
+  `defineMigration()` from `@storyblok/schema`. A `.js` file is told apart by its default export.
+
+Migration functions run first, then content migrations in the order of their numeric prefix.
 
 > [!NOTE] Before running migrations, you must create them by running the `migrations generate`
 > command. See [migrations generate](./generate/README.md) for more details.
@@ -43,16 +51,19 @@ This will run migrations for the specified component:
 
 ## Options
 
-| Option                    | Description                                                                                                                                                                                     | Default                 |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
-| `-s, --space <space>`     | (Required) The ID of the space to run migrations on                                                                                                                                             | -                       |
-| `-f, --from <from>`       | Source space ID to read migration files from (useful for multi-space workflows where migrations are created in one space and applied to others)                                                 | Same as `--space`       |
-| `--fi, --filter <filter>` | Glob pattern to filter migrations by file name or component name (e.g., "hero*" will match all migrations for components starting with "hero")                                                  | -                       |
-| `-d, --dry-run`           | Preview changes without applying them to Storyblok                                                                                                                                              | `false`                 |
-| `-q, --query <query>`     | Filter stories by content attributes using Storyblok filter query syntax (e.g., `--query="[highlighted][in]=true"`)                                                                             | -                       |
-| `--starts-with <path>`    | Filter stories by path (e.g., `--starts-with="/en/blog/"`)                                                                                                                                      | -                       |
-| `--publish <publish>`     | Publication mode: `all` (publish all stories), `published` (only publish stories that were already published), or `published-with-changes` (only publish stories that have unpublished changes) | -                       |
-| `-p, --path <path>`       | Custom path to read migration files from                                                                                                                                                        | `.storyblok/migrations` |
+| Option                     | Description                                                                                                                                                                                     | Default                 |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| `-s, --space <space>`      | (Required) The ID of the space to run migrations on                                                                                                                                             | -                       |
+| `-f, --from <from>`        | Source space ID to read migration files from (useful for multi-space workflows where migrations are created in one space and applied to others)                                                 | Same as `--space`       |
+| `--fi, --filter <filter>`  | Glob pattern to filter migrations by file name or component name (e.g., "hero*" will match all migrations for components starting with "hero")                                                  | -                       |
+| `-d, --dry-run`            | Preview changes without applying them to Storyblok                                                                                                                                              | `false`                 |
+| `-q, --query <query>`      | Filter stories by content attributes using Storyblok filter query syntax (e.g., `--query="[highlighted][in]=true"`)                                                                             | -                       |
+| `--starts-with <path>`     | Filter stories by path (e.g., `--starts-with="/en/blog/"`)                                                                                                                                      | -                       |
+| `--schema <entry-file>`    | Check the named content migration against this schema entry file instead of its `.before.ts` snapshot                                                                                           | -                       |
+| `--no-validate`            | Skip checking content migrations against their `.before.ts` snapshots                                                                                                                           | -                       |
+| `--allow-pending-releases` | Run while releases are pending; the command refuses otherwise                                                                                                                                   | `false`                 |
+| `--publish <publish>`      | Publication mode: `all` (publish all stories), `published` (only publish stories that were already published), or `published-with-changes` (only publish stories that have unpublished changes) | -                       |
+| `-p, --path <path>`        | Custom path to read migration files from                                                                                                                                                        | `.storyblok/migrations` |
 
 ## Examples
 
@@ -165,3 +176,10 @@ They are still applied, and the command names them so you can regenerate them.
 - Use `--dry-run` to preview changes before applying them
 - Use `--publish` to control which stories are affected
 - Use `--starts-with` and `--query` to filter which stories are affected
+- The component argument also selects the content migration with that name, and `--filter` also
+  matches content migration names
+- A content migration run is recorded as block patches in
+  `.storyblok/migrations/{spaceId}/rollbacks`, so `migrations rollback` can restore the changed
+  blocks only
+- The command refuses to run while a release is pending, since deploying the release overwrites the
+  migrated stories

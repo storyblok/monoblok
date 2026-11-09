@@ -1,42 +1,226 @@
 import type { Command } from "commander";
 import chalk from "chalk";
-import { discoverMigrations } from "@storyblok/schema";
+import { basename } from "pathe";
+import { discoverMigrations, loadMigrations } from "@storyblok/schema";
+import type { LoadedMigration, PublishMode } from "@storyblok/schema";
 import { getUI } from "../../../lib/ui";
 import { getLogger } from "../../../lib/logger/logger";
 import { getReporter } from "../../../lib/reporter/reporter";
 import { colorPalette, commands } from "../../../constants";
 import { CommandError, handleError, requireAuthentication } from "../../../utils";
-import { resolvePath } from "../../../utils/filesystem";
+import { importModule } from "../../../utils/filesystem";
+import { createRegexFromGlob } from "../../../utils/format";
+import { importUserModuleDefault } from "../../../utils/user-module";
 import { session } from "../../../session";
-import type { MigrationsRunOptions } from "./constants";
+import type { MigrationFile, MigrationsRunOptions } from "./constants";
 import { migrationsCommand } from "../command";
 import { buildStoryScopeParams } from "../../stories/query-params";
+import type { StoryScopeParams } from "../../stories/query-params";
 import { createStoriesStream } from "./streams/stories-stream";
 import { readMigrationFiles } from "./actions";
 import { MigrationStream } from "./streams/migrations-transform";
 import { isLegacyMigrationFilename, migrationTargetsComponent } from "../migration-filename";
 import { UpdateStream } from "./streams/update-stream";
 import { pipeline } from "node:stream";
+import {
+  guardPendingReleases,
+  migrationsDirectory,
+  toMigrationCommandError,
+} from "../content-migrations";
+import {
+  applyContentMigrations,
+  assertContentMigrationsMatchSchema,
+} from "./apply-content-migrations";
+
+const PUBLISH_MODES: readonly PublishMode[] = ["all", "published", "published-with-changes"];
+/** Lets a content migration be named by its filename, as shell completion produces it. */
+const MIGRATION_EXTENSION = /\.(?:ts|js|mjs)$/;
+
+function isPublishMode(value: unknown): value is PublishMode {
+  return PUBLISH_MODES.some((mode) => mode === value);
+}
 
 /**
- * `run` loads only `.js` files, so content migrations in other formats would be
- * skipped without a word. A `.js` one is recognized by its export when loaded.
+ * Whether a `.js` file the engine discovers is a migration function rather
+ * than a content migration. A file that fails to load here is left to the
+ * content migration loader, which reports the failure.
  */
-async function pointToApplyForContentMigrations(space: string, path: string | undefined) {
-  const contentMigrations = await discoverMigrations(resolvePath(path, `migrations/${space}`))
-    .then((files) => files.filter(({ file }) => !file.endsWith(".js")))
-    .catch(() => []);
-  if (contentMigrations.length > 0) {
-    getUI().info(
-      `Content migrations are applied with "storyblok migrations apply", not run: ${contentMigrations.map(({ id }) => id).join(", ")}.`,
-    );
+async function exportsMigrationFunction(file: string): Promise<boolean> {
+  try {
+    const module = await importModule(file);
+    return typeof module.default === "function";
+  } catch {
+    return false;
   }
 }
 
+type SelectedMigrations = {
+  functions: MigrationFile[];
+  content: LoadedMigration[];
+};
+
+/**
+ * The migrations a run applies. Every `.js` file is a migration function, and
+ * every file the engine discovers is a content migration; a `.js` file that is
+ * both is told apart by its default export. `name` selects the migration
+ * functions of a component and the content migration with that id.
+ */
+async function selectMigrations(options: {
+  space: string;
+  path: string;
+  name: string | undefined;
+  filter: string | undefined;
+}): Promise<SelectedMigrations> {
+  const { space, path, name, filter } = options;
+  const directory = migrationsDirectory(path, space);
+  const jsFiles = await readMigrationFiles({ space, path, filter });
+
+  const contentFiles = new Set<string>();
+  for (const { file } of await discoverMigrations(directory)) {
+    if (!file.endsWith(".js") || !(await exportsMigrationFunction(file))) {
+      contentFiles.add(basename(file));
+    }
+  }
+
+  const functions = jsFiles.filter(
+    (file) => !contentFiles.has(file.name) && (!name || migrationTargetsComponent(file.name, name)),
+  );
+
+  const id = name?.replace(MIGRATION_EXTENSION, "");
+  const filterPattern = filter ? createRegexFromGlob(filter) : undefined;
+  const content = await loadMigrations(
+    directory,
+    (file) => importUserModuleDefault(file, "migration file"),
+    {
+      filter: (migration) =>
+        contentFiles.has(basename(migration.file)) &&
+        (!id || migration.id === id) &&
+        (!filterPattern || filterPattern.test(migration.id)),
+    },
+  );
+
+  return { functions, content };
+}
+
+async function runMigrationFunctions(options: {
+  migrationFiles: MigrationFile[];
+  space: string;
+  fromSpace: string;
+  path: string;
+  componentName: string | undefined;
+  scope: StoryScopeParams;
+  publish: PublishMode | undefined;
+  dryRun: boolean;
+}): Promise<void> {
+  const { migrationFiles, space, fromSpace, path, componentName, scope, publish, dryRun } = options;
+  const ui = getUI();
+  const logger = getLogger();
+  const reporter = getReporter();
+
+  const legacyMigrations = migrationFiles.filter((file) => isLegacyMigrationFilename(file.name));
+  if (legacyMigrations.length > 0) {
+    const names = legacyMigrations.map((file) => file.name).join(", ");
+    ui.warn(
+      `These migration files were generated by an older version and are still applied by their file name: ${names}. Regenerate them with "storyblok migrations generate <component-name>" so they keep working.`,
+    );
+    logger.warn("Applying migration files generated under legacy names", {
+      migrationNames: legacyMigrations.map((file) => file.name),
+    });
+  }
+  const storiesProgress = ui.createProgressBar({ title: "Fetching Stories...".padEnd(19) });
+  const migrationsProgress = ui.createProgressBar({ title: "Applying Migrations".padEnd(19) });
+  const updateProgress = ui.createProgressBar({ title: "Updating Stories...".padEnd(19) });
+
+  const storiesStream = await createStoriesStream({
+    spaceId: space,
+    params: {
+      componentName,
+      ...scope,
+    },
+    onTotal: (total) => {
+      storiesProgress.setTotal(total);
+      migrationsProgress.setTotal(total);
+    },
+    onProgress: () => {
+      storiesProgress.increment();
+    },
+  });
+
+  const migrationStream = new MigrationStream({
+    migrationFiles,
+    space,
+    sourceSpace: fromSpace,
+    path,
+    componentName,
+    onTotal: (total) => {
+      updateProgress.setTotal(total);
+    },
+    onProgress: () => {
+      migrationsProgress.increment();
+    },
+  });
+
+  const updateStream = new UpdateStream({
+    space,
+    publish,
+    dryRun,
+    onProgress: () => {
+      updateProgress.increment();
+    },
+  });
+
+  await new Promise<void>((resolve, reject) => {
+    pipeline(storiesStream, migrationStream, updateStream, (err) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      resolve();
+    });
+  });
+
+  ui.stopAllProgressBars();
+
+  // Show migration summary
+  const migrationSummary = migrationStream.getSummary();
+  ui.info(migrationSummary);
+
+  // Show update summary
+  const updateSummary = updateStream.getSummary();
+  ui.info(updateSummary);
+
+  const migrationStreamResults = migrationStream.getResults();
+  const migrationResults = {
+    total: migrationStreamResults.totalProcessed,
+    succeeded: migrationStreamResults.successful.length,
+    skipped: migrationStreamResults.skipped.length,
+    failed: migrationStreamResults.failed.length,
+  };
+  const updateStreamResults = updateStream.getResults();
+  const updateResults = {
+    total: updateStreamResults.totalProcessed,
+    succeeded: updateStreamResults.successful.length,
+    failed: updateStreamResults.failed.length,
+  };
+
+  logger.info("Migration finished", {
+    migrationResults,
+    updateResults,
+  });
+  reporter.addSummary("migrationResults", migrationResults);
+  reporter.addSummary("updateResults", updateResults);
+  reporter.finalize();
+}
+
 const runCmd = migrationsCommand
-  .command("run [componentName]")
-  .description("Run migrations")
-  .option("--fi, --filter <filter>", "glob filter to apply to the components before pushing")
+  .command("run [name]")
+  .description(
+    "Run migrations: the migration functions of a component and the content migration with that id, or all of them",
+  )
+  .option(
+    "--fi, --filter <filter>",
+    "glob filter on migration function file names and content migration ids",
+  )
   .option("-d, --dry-run", "Preview changes without applying them to Storyblok")
   .option(
     "-q, --query <query>",
@@ -47,175 +231,150 @@ const runCmd = migrationsCommand
     "--publish <publish>",
     "Options for publication mode: all | published | published-with-changes",
   )
+  .option(
+    "--schema <entry-file>",
+    "schema entry file, as it stood before the content migration, to check the migration's blocks and fields against",
+  )
+  .option(
+    "--no-validate",
+    "skip checking each content migration against its .before.ts schema snapshot",
+  )
+  .option(
+    "--allow-pending-releases",
+    "run although releases are pending; their content is not migrated",
+  )
   .option("-f, --from <from>", "source space id")
   .option("-s, --space <space>", "space ID");
 
-runCmd.action(
-  async (componentName: string | undefined, options: MigrationsRunOptions, command: Command) => {
-    const ui = getUI();
-    const logger = getLogger();
-    const reporter = getReporter();
+runCmd.action(async (name: string | undefined, options: MigrationsRunOptions, command: Command) => {
+  const ui = getUI();
+  const logger = getLogger();
 
-    ui.title(
-      `${commands.MIGRATIONS}`,
-      colorPalette.MIGRATIONS,
-      componentName
-        ? `Running migrations for component ${componentName}...`
-        : "Running migrations...",
+  ui.title(
+    `${commands.MIGRATIONS}`,
+    colorPalette.MIGRATIONS,
+    name ? `Running migrations for ${name}...` : "Running migrations...",
+  );
+  logger.info("Migration started");
+
+  if (options.dryRun) {
+    ui.warn(`DRY RUN MODE ENABLED: No changes will be made.\n`);
+    logger.warn("Dry run mode enabled");
+  }
+
+  const { space, path, verbose } = command.optsWithGlobals();
+  const { state } = session();
+
+  if (!requireAuthentication(state, verbose)) {
+    return;
+  }
+  if (!space) {
+    handleError(
+      new CommandError(`Please provide the space as argument --space YOUR_SPACE_ID.`),
+      verbose,
     );
-    logger.info("Migration started");
+    return;
+  }
 
-    if (options.dryRun) {
-      ui.warn(`DRY RUN MODE ENABLED: No changes will be made.\n`);
-      logger.warn("Dry run mode enabled");
+  const {
+    filter,
+    from,
+    dryRun = false,
+    query,
+    startsWith,
+    publish,
+    schema: schemaEntry,
+    validate,
+    allowPendingReleases,
+  } = options;
+  const fromSpace = from || space;
+
+  if (publish !== undefined && !isPublishMode(publish)) {
+    handleError(
+      new CommandError(`Invalid --publish "${publish}". Use one of: ${PUBLISH_MODES.join(", ")}.`),
+      verbose,
+    );
+    return;
+  }
+
+  if (from) {
+    ui.info(
+      `Running migrations ${chalk.bold("from")} space ${chalk.hex(colorPalette.MIGRATIONS)(fromSpace)} ${chalk.bold("on")} space ${chalk.hex(colorPalette.MIGRATIONS)(space)}`,
+    );
+    ui.br();
+  }
+
+  try {
+    const spinner = ui.createSpinner(`Fetching migration files and stories...`);
+
+    const selected = await selectMigrations({ space: fromSpace, path, name, filter });
+    const total = selected.functions.length + selected.content.length;
+
+    if (total === 0 && name) {
+      spinner.failed(`No migration found for "${name}".`);
+      const available = (await discoverMigrations(migrationsDirectory(path, fromSpace))).map(
+        (migration) => migration.id,
+      );
+      throw new CommandError(
+        `No migration functions for component "${name}" and no content migration "${name}" in space "${fromSpace}".${
+          available.length > 0 ? ` Available content migrations: ${available.join(", ")}.` : ""
+        }`,
+      );
     }
 
-    const { space, path, verbose } = command.optsWithGlobals();
-    const { state } = session();
-
-    if (!requireAuthentication(state, verbose)) {
+    if (total === 0) {
+      spinner.failed(
+        `No migration files found${name ? ` for "${name}"` : ""}${filter ? ` matching filter "${filter}"` : ""} in space "${fromSpace}".`,
+      );
+      logger.warn("No migration files found");
+      logger.info("Migration finished");
       return;
     }
-    if (!space) {
-      handleError(
-        new CommandError(`Please provide the space as argument --space YOUR_SPACE_ID.`),
-        verbose,
-      );
-      return;
+
+    // Spinner doesn't have update method, so we'll stop and start a new one
+    spinner.succeed(`Found ${total} migration files.`);
+
+    // Checked before any write, so a mismatch stops migration functions too.
+    if (selected.content.length > 0 || schemaEntry) {
+      await assertContentMigrationsMatchSchema({
+        migrations: selected.content,
+        schemaEntry,
+        validate,
+      });
     }
 
-    const { filter, from, dryRun = false, query, startsWith, publish } = options;
-    const fromSpace = from || space;
+    await guardPendingReleases(space, {
+      command: "run",
+      allow: allowPendingReleases,
+      warnOnly: dryRun,
+    });
 
-    if (from) {
-      ui.info(
-        `Running migrations ${chalk.bold("from")} space ${chalk.hex(colorPalette.MIGRATIONS)(fromSpace)} ${chalk.bold("on")} space ${chalk.hex(colorPalette.MIGRATIONS)(space)}`,
-      );
-      ui.br();
-    }
+    const scope = buildStoryScopeParams({ startsWith, query });
 
-    try {
-      const spinner = ui.createSpinner(`Fetching migration files and stories...`);
-
-      const migrationFiles = await readMigrationFiles({
-        space: fromSpace,
-        path,
-        filter,
-      });
-      await pointToApplyForContentMigrations(fromSpace, path);
-      const filteredMigrations = componentName
-        ? migrationFiles.filter((file) => migrationTargetsComponent(file.name, componentName))
-        : migrationFiles;
-
-      if (filteredMigrations.length === 0) {
-        spinner.failed(
-          `No migration files found${componentName ? ` for component "${componentName}"` : ""}${filter ? ` matching filter "${filter}"` : ""} in space "${fromSpace}".`,
-        );
-        logger.warn("No migration files found");
-        logger.info("Migration finished");
-        return;
-      }
-
-      // Spinner doesn't have update method, so we'll stop and start a new one
-      spinner.succeed(`Found ${filteredMigrations.length} migration files.`);
-
-      const legacyMigrations = filteredMigrations.filter((file) =>
-        isLegacyMigrationFilename(file.name),
-      );
-      if (legacyMigrations.length > 0) {
-        const names = legacyMigrations.map((file) => file.name).join(", ");
-        ui.warn(
-          `These migration files were generated by an older version and are still applied by their file name: ${names}. Regenerate them with "storyblok migrations generate <component-name>" so they keep working.`,
-        );
-        logger.warn("Applying migration files generated under legacy names", {
-          migrationNames: legacyMigrations.map((file) => file.name),
-        });
-      }
-      const storiesProgress = ui.createProgressBar({ title: "Fetching Stories...".padEnd(19) });
-      const migrationsProgress = ui.createProgressBar({ title: "Applying Migrations".padEnd(19) });
-      const updateProgress = ui.createProgressBar({ title: "Updating Stories...".padEnd(19) });
-
-      const storiesStream = await createStoriesStream({
-        spaceId: space,
-        params: {
-          componentName,
-          ...buildStoryScopeParams({ startsWith, query }),
-        },
-        onTotal: (total) => {
-          storiesProgress.setTotal(total);
-          migrationsProgress.setTotal(total);
-        },
-        onProgress: () => {
-          storiesProgress.increment();
-        },
-      });
-
-      const migrationStream = new MigrationStream({
-        migrationFiles: filteredMigrations,
+    if (selected.functions.length > 0) {
+      await runMigrationFunctions({
+        migrationFiles: selected.functions,
         space,
-        sourceSpace: fromSpace,
+        fromSpace,
         path,
-        componentName,
-        onTotal: (total) => {
-          updateProgress.setTotal(total);
-        },
-        onProgress: () => {
-          migrationsProgress.increment();
-        },
-      });
-
-      const updateStream = new UpdateStream({
-        space,
+        componentName: name,
+        scope,
         publish,
         dryRun,
-        onProgress: () => {
-          updateProgress.increment();
-        },
       });
-
-      await new Promise<void>((resolve, reject) => {
-        pipeline(storiesStream, migrationStream, updateStream, (err) => {
-          if (err) {
-            reject(err);
-            return;
-          }
-          resolve();
-        });
-      });
-
-      ui.stopAllProgressBars();
-
-      // Show migration summary
-      const migrationSummary = migrationStream.getSummary();
-      ui.info(migrationSummary);
-
-      // Show update summary
-      const updateSummary = updateStream.getSummary();
-      ui.info(updateSummary);
-
-      const migrationStreamResults = migrationStream.getResults();
-      const migrationResults = {
-        total: migrationStreamResults.totalProcessed,
-        succeeded: migrationStreamResults.successful.length,
-        skipped: migrationStreamResults.skipped.length,
-        failed: migrationStreamResults.failed.length,
-      };
-      const updateStreamResults = updateStream.getResults();
-      const updateResults = {
-        total: updateStreamResults.totalProcessed,
-        succeeded: updateStreamResults.successful.length,
-        failed: updateStreamResults.failed.length,
-      };
-
-      logger.info("Migration finished", {
-        migrationResults,
-        updateResults,
-      });
-      reporter.addSummary("migrationResults", migrationResults);
-      reporter.addSummary("updateResults", updateResults);
-      reporter.finalize();
-    } catch (error) {
-      handleError(error as Error, verbose);
     }
-  },
-);
+
+    if (selected.content.length > 0) {
+      await applyContentMigrations({
+        space,
+        path,
+        migrations: selected.content,
+        dryRun,
+        publish,
+        scope,
+      });
+    }
+  } catch (error) {
+    handleError(toMigrationCommandError(error), verbose);
+  }
+});

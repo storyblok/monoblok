@@ -1,11 +1,11 @@
 /**
- * What `apply`, `list`, and `undo` share: where a space's content migrations
- * and their journal live, the story fields the engine reads, and the guard
- * against pending releases.
+ * What `run`, `list`, and `rollback` share for content migrations: where a
+ * space's content migrations and their journal live, the story fields the
+ * engine reads, and the guard against pending releases.
  */
 import { isDeepStrictEqual } from "node:util";
 import chalk from "chalk";
-import { checkPendingReleases, MigrationError, resolveJournal } from "@storyblok/schema";
+import { checkPendingReleases, localJournal, MigrationError } from "@storyblok/schema";
 import type { Journal, StoryForMigration } from "@storyblok/schema";
 import { getMapiClient } from "../../api";
 import { getUI } from "../../lib/ui";
@@ -19,9 +19,9 @@ export function migrationsDirectory(path: string | undefined, space: string): st
   return resolvePath(path, `migrations/${space}`);
 }
 
-/** The journal sits beside the space directories, so one journal serves every space. */
+/** Runs are recorded in each space's `rollbacks` directory, beside the legacy rollback files. */
 export function contentJournal(path: string | undefined): Journal {
-  return resolveJournal(resolvePath(path, "migrations"));
+  return localJournal(resolvePath(path, "migrations"));
 }
 
 export function toStoryForMigration(story: Story): StoryForMigration {
@@ -117,8 +117,8 @@ async function fetchReleases(space: string) {
  * is a warning rather than a reason to stop.
  */
 const RELEASE_CONSEQUENCES = {
-  apply: { subject: "This run doesn't change", object: "the stories it writes" },
-  undo: { subject: "This undo doesn't restore", object: "the stories it restores" },
+  run: { subject: "This run doesn't change", object: "the stories it writes" },
+  rollback: { subject: "This rollback doesn't restore", object: "the stories it restores" },
 } as const;
 
 export async function guardPendingReleases(

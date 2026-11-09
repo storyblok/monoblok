@@ -7,15 +7,14 @@ updating component structures or content.
 ## Subcommands
 
 - [`generate`](./generate/README.md): Create a new migration file for a specific component.
-- [`run`](./run/README.md): Execute migrations on stories in your space.
-- [`rollback`](./rollback/README.md): Revert previously applied migrations.
+- [`run`](./run/README.md): Run migration functions and typed content migrations on the stories in
+  your space.
+- [`rollback`](./rollback/README.md): Revert a migration run.
+- `list`: List the migration runs that can be rolled back.
 
-Typed content migrations, written as `.ts`, `.js`, or `.mjs` files with `defineMigration()` from
-`@storyblok/schema`:
-
-- `apply`: Apply content migrations and record each run.
-- `list`: List the content migration runs recorded for a space.
-- `undo`: Revert a recorded content migration run block by block.
+Typed content migrations are `.ts`, `.js`, or `.mjs` files named `<number>-<name>` that
+default-export `defineMigration()` from `@storyblok/schema`. A `.js` file is told apart from a
+migration function by its default export.
 
 > See each subcommand for detailed usage, options, and examples.
 
@@ -25,7 +24,7 @@ Typed content migrations, written as `.ts`, `.js`, or `.mjs` files with `defineM
 2. **Run** the migration to apply changes to your stories
 3. If needed, **Rollback** the migration to revert changes
 
-For content migrations: **apply**, then **undo** if needed.
+Content migrations follow the same **run**, then **rollback** workflow.
 
 ## File Structure
 
@@ -41,7 +40,9 @@ All migration files are stored in:
         └── ...
 ```
 
-Content migration runs are recorded in `.storyblok/migrations/.journal/`.
+Each run is recorded in `.storyblok/migrations/YOUR_SPACE_ID/rollbacks/`: a `.jsonl` file of whole
+stories for migration functions, and git-ignored `.json` records of block patches for content
+migrations.
 
 ## Notes
 

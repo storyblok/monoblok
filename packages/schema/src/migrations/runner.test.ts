@@ -1463,7 +1463,9 @@ describe("splitField", () => {
       ],
     });
 
-    expect(result.translatedReshapes).toEqual([{ uid: "a", op: 0, field: "name" }]);
+    expect(result.translatedReshapes).toEqual([
+      { uid: "a", op: 0, field: "name", languages: ["de"] },
+    ]);
   });
 
   it("should report nothing for a source field that carries no translations", () => {
@@ -1493,7 +1495,9 @@ describe("splitField", () => {
       ],
     });
 
-    expect(result.translatedReshapes).toEqual([{ uid: "a", op: 0, field: "first_name" }]);
+    expect(result.translatedReshapes).toEqual([
+      { uid: "a", op: 0, field: "first_name", languages: ["de"] },
+    ]);
   });
 });
 
@@ -1592,7 +1596,9 @@ describe("mergeFields", () => {
       ],
     });
 
-    expect(result.translatedReshapes).toEqual([{ uid: "a", op: 0, field: "last_name" }]);
+    expect(result.translatedReshapes).toEqual([
+      { uid: "a", op: 0, field: "last_name", languages: ["de"] },
+    ]);
   });
 
   it("should report nothing for source fields that carry no translations", () => {
@@ -1620,7 +1626,9 @@ describe("mergeFields", () => {
       ],
     });
 
-    expect(result.translatedReshapes).toEqual([{ uid: "a", op: 0, field: "name" }]);
+    expect(result.translatedReshapes).toEqual([
+      { uid: "a", op: 0, field: "name", languages: ["de"] },
+    ]);
   });
 });
 

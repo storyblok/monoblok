@@ -117,6 +117,7 @@ fetch_triage() {
           assignee { name }
           creator { name }
           labels { nodes { name } }
+          comments { nodes { body user { name } createdAt } }
           createdAt
           updatedAt
           url

@@ -41,10 +41,10 @@ bash .agents/skills/triage/scripts/linear-fetch.sh triage
 
 Linear steps apply only to `DX-` tickets; skip them for GitHub-only runs.
 
-**Fix PRs:** a GitHub issue's open fix PRs are in `closedByPullRequestsReferences`; a Linear
-ticket's are the GitHub PR links in `attachments` that are still open
-(`gh pr view <n> --json state`). If several, the newest is the fix. If none, one
-`gh pr list --search "<keywords>"` is enough.
+**Fix PRs:** a GitHub issue's candidates are in `closedByPullRequestsReferences`, a Linear ticket's
+are the GitHub PR links in `attachments`. Both include merged and closed PRs, so keep only those
+where `gh pr view <url> --json state` says `OPEN`. If several, the newest is the fix. If none, one
+`gh pr list --repo storyblok/monoblok --search "<keywords>"` is enough.
 
 ### Step 3: Assess each ticket
 
@@ -82,8 +82,9 @@ ticket on these dimensions and derive an overall priority.
 - `degraded`: Works but with noticeable problems
 - `minor`: Cosmetic or negligible effect
 
-Feature requests and improvements are `minor` unless existing use is broken. Score fixed tickets as
-reported.
+Feature requests and improvements are `minor` unless existing use is broken. A performance or
+bundle-size problem in something that already ships is `degraded`, whatever the reporter's type.
+Score fixed tickets as reported.
 
 **Breadth:**
 
@@ -93,7 +94,8 @@ reported.
 - `edge-case`: Rare conditions or unusual usage
 
 Judge the reported scenario, not the install base: if it needs a specific option or input, it is
-`uncommon`.
+`uncommon`, unless most projects use that value or option (e.g. underscores in blok names,
+`livePreview`, static generation).
 
 **Regression:** `yes` when it worked in an earlier version and broke after an update, of our package
 or of a dependency, framework or runtime it supports (e.g. a Nuxt minor release). It needs evidence:
@@ -180,15 +182,16 @@ fits (e.g. `schema`).
 
 Write `claude-output/triage-<identifier>.md` (e.g. `triage-424.md`, `triage-DX-296.md`), or
 `triage-<YYYY-MM-DD-HHMMSS>-batch.md` (UTC) for several issues, so a later batch never overwrites an
-earlier one. Every issue gets a `### <ticket>` heading (`### #836`, `### DX-296`); for P3 the body
-is the one line below. Start with a "Needs attention" list: P0/P1, any regression, or P2 with no
-`OWNER`/`MEMBER`/`COLLABORATOR` comment in the last 14 days (`gh issue view --json comments`
-includes `authorAssociation`). Leave out any issue with an open fix PR or the verdict `fixed`, even
-a P0/P1 or a regression. Give every issue its scores, one line is enough for P3 (no summary or next
-step): `#123 P3 | minor / edge-case | verdict | pkg | fix PR or none`. Present the summary table,
-sorted by priority, then by ticket number from highest to lowest (newest first); in a mixed run,
-GitHub tickets come before Linear ones within the same priority. Sort the "Needs attention" list the
-same way, and write the detailed sections in table order.
+earlier one. Every issue gets a `### <ticket-id>: <title>` heading (`### #836: …`, `### DX-296: …`);
+for P3 the body is the one line below. Start with a "Needs attention" list: P0/P1, any regression,
+or P2 with no `OWNER`/`MEMBER`/`COLLABORATOR` comment in the last 14 days
+(`gh issue view --json comments` includes `authorAssociation`; for Linear, no comment at all in 14
+days). Only `actionable` and `needs-info` tickets without an open fix PR go on that list, whatever
+their priority; the rest still get their section below. Give every issue its scores, one line is
+enough for P3 (no summary or next step): `P3 | minor / edge-case | verdict | pkg | fix PR or none`.
+Present the summary table, sorted by priority, then by ticket number from highest to lowest (newest
+first); in a mixed run, GitHub tickets come before Linear ones within the same priority. Sort the
+"Needs attention" list the same way, and write the detailed sections in table order.
 
 ## Rules
 

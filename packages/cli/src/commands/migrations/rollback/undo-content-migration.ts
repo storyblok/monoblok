@@ -42,7 +42,7 @@ export async function rollbackContentMigrationRun({
   let id = requestedRun;
   if (!id) {
     const runs = await journal.list(space);
-    const latest = runs.findLast((run) => !run.undoneAt);
+    const latest = runs.findLast((run) => !run.undoneAt && run.stories > 0);
     if (!latest) {
       throw new CommandError(
         runs.length === 0
@@ -191,7 +191,12 @@ export async function rollbackContentMigrationRun({
   }
   // The space validates content against its current schema, which may no
   // longer accept the content as it was before the run.
+  const keptBlocks = force
+    ? 0
+    : outcome.conflicts.reduce((total, conflict) => total + conflict.blocks.length, 0);
   const problems = [
+    keptBlocks > 0 &&
+      `The run is only partly rolled back: ${plural(keptBlocks, "block was", "blocks were")} changed since the run and left as ${keptBlocks === 1 ? "it is" : "they are"}. Run "storyblok migrations rollback ${id} --force" to overwrite ${keptBlocks === 1 ? "it" : "them"}.`,
     failed > 0 &&
       `${plural(failed, "story", "stories")} could not be rolled back. See the warnings above. If the schema changed since the run, push the schema as it was before the run first, then run "storyblok migrations rollback ${id}" again.`,
     notPublished.length > 0 &&

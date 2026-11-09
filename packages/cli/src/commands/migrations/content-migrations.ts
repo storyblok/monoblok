@@ -21,7 +21,7 @@ import type { Journal, StoryForMigration } from "@storyblok/schema";
 import { getMapiClient } from "../../api";
 import { getUI } from "../../lib/ui";
 import { CommandError, toError } from "../../utils";
-import { handleAPIError } from "../../utils/error/api-error";
+import { APIError, handleAPIError } from "../../utils/error/api-error";
 import { fileExists, resolvePath, saveToFile } from "../../utils/filesystem";
 import { fetchStory, updateStory } from "../stories/actions";
 import type { Story } from "../stories/constants";
@@ -143,6 +143,24 @@ export function toStoryForMigration(story: Story): StoryForMigration {
  */
 export class DraftNotPublishedError extends Error {}
 
+/** Attempts after the first for a write that got no response, such as a timeout. */
+const WRITE_RETRIES = 2;
+
+/** Whether the API answered at all, as opposed to a timeout or a dropped connection. */
+function isAnswered(error: unknown): boolean {
+  return error instanceof APIError && Boolean(error.response?.status);
+}
+
+/** Whether a story holds what a write sent, published too when the write published. */
+function holdsWrite(
+  story: Story | undefined,
+  content: Record<string, unknown>,
+  publish: boolean,
+): boolean {
+  if (!story || !isDeepStrictEqual(story.content, content)) return false;
+  return !publish || (story.published === true && !story.unpublished_changes);
+}
+
 /**
  * Reads and writes the stories of one command run. A content write without the
  * story's name clears it, so each write carries the name its read returned.
@@ -157,39 +175,36 @@ export function storyAccess(space: string) {
     },
     /**
      * Throws {@link DraftNotPublishedError} when only the publish failed, since
-     * the API saves the draft before it validates the publish.
+     * the API saves the draft before it validates the publish. A write that
+     * gets no response may still have landed, so the story is read back before
+     * the write is repeated; writing the same content again is harmless.
      */
     async write(id: number, content: Record<string, unknown>, publish: boolean): Promise<void> {
-      try {
-        await updateStory(space, id, {
-          story: { content, name: names.get(id) },
-          force_update: "1",
-          ...(publish ? { publish: 1 } : {}),
-        });
-      } catch (maybeError) {
-        if (publish && (await draftHolds(space, id, content))) {
-          throw new DraftNotPublishedError(toError(maybeError).message);
+      for (let attempt = 0; ; attempt++) {
+        try {
+          await updateStory(space, id, {
+            story: { content, name: names.get(id) },
+            force_update: "1",
+            ...(publish ? { publish: 1 } : {}),
+          });
+          return;
+        } catch (maybeError) {
+          const story = await fetchStory(space, id).catch(() => undefined);
+          if (holdsWrite(story, content, publish)) return;
+          const draftSaved = holdsWrite(story, content, false);
+          if (isAnswered(maybeError) || attempt >= WRITE_RETRIES) {
+            if (publish && draftSaved) {
+              throw new DraftNotPublishedError(toError(maybeError).message);
+            }
+            throw maybeError;
+          }
         }
-        throw maybeError;
       }
     },
   };
 }
 
 export type StoryAccess = ReturnType<typeof storyAccess>;
-
-async function draftHolds(
-  space: string,
-  id: number,
-  content: Record<string, unknown>,
-): Promise<boolean> {
-  try {
-    const story = await fetchStory(space, id);
-    return isDeepStrictEqual(story?.content, content);
-  } catch {
-    return false;
-  }
-}
 
 /** The engine's errors are about the user's migrations or journal, not a CLI failure. */
 export function toMigrationCommandError(error: unknown): Error {

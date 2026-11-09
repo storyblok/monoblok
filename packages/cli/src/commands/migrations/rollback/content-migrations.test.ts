@@ -202,13 +202,18 @@ describe("migrations rollback command for content migration runs", () => {
     space.editsStory(1, editHeadline);
     space.editsStory(2, editHeadline);
 
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    process.exitCode = undefined;
     await run("rollback");
 
-    expect(info).toHaveBeenLastCalledWith(
+    expect(info).toHaveBeenCalledWith(
       expect.stringMatching(
         /^Rolled back 2 stories \(1 partly\) of run .*; 1 story left as changed since the run\.$/,
       ),
     );
+    expect(process.exitCode).toBe(2);
+    expect(error.mock.calls.flat().join("\n")).toContain("The run is only partly rolled back");
+    process.exitCode = undefined;
 
     await run("rollback", "--force");
 
@@ -431,6 +436,35 @@ describe("migrations rollback command for content migration runs", () => {
       expect(space.writes).toMatchObject([{ id: 1, publish: false }]);
       expect(warn).toHaveBeenCalledWith(expect.stringContaining("for the first time"));
     });
+  });
+});
+
+describe("migrations rollback command with runs that changed nothing", () => {
+  let space: ReturnType<typeof createRemoteSpace>;
+
+  beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
+  afterEach(() => {
+    server.resetHandlers();
+    vi.restoreAllMocks();
+  });
+  afterAll(() => server.close());
+
+  beforeEach(() => {
+    space = createRemoteSpace(server);
+    space.hasReleases();
+    space.canUpdateStories();
+  });
+
+  it("should roll back the latest run that changed stories, not a later run that changed nothing", async () => {
+    space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    space.hasStories(storyWithCard());
+    await run("run");
+    space.hasMigrations(["0002-rename-hero-subtitle", renameHeroSubtitle]);
+    await run("run");
+
+    await run("rollback");
+
+    expect(cardOf(space.story(1))).toEqual({ _uid: "card-1", component: "card", title: "Hi" });
   });
 });
 

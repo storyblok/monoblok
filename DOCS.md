@@ -95,8 +95,9 @@ block IDs, or when a second pass would change the story again:
 ⚠️  a/storyblok-vs-sitecore: op 0 (splitField) on block 6a7a6e9a-… was refused: the callback threw: metric value "CX " holds no amount
 ```
 
-The command exits with an error when a content migration skipped every story it matched, or when a
-story couldn’t be read or written.
+The command exits with an error when a content migration skipped every story that contains its
+blocks, or when a story couldn’t be read or written. When a write gets no response, the command
+reads the story back, and writes it again up to twice if the write didn’t land.
 
 Before the first write, the command records each content migration run in
 `.storyblok/migrations/<space-id>/rollbacks/`, so a run that stops partway can still be rolled back.
@@ -107,16 +108,19 @@ interrupted. The directory’s `.gitignore` keeps run records on the machine tha
 ### Reruns
 
 Every run applies every content migration again. A content migration that already applied changes
-nothing and records nothing. So that later schema changes don’t undo it, the command first compares
-each op with the blocks in the space. It skips and reports an op that writes a field the block no
-longer has, removes a field the block has again, or converts a field to a type it no longer has. So
-run each content migration before you push the next schema change:
+nothing and records nothing. Its first run is recorded even when it changes nothing, so it no longer
+shows as pending. So that later schema changes don’t undo it, the command first compares each op
+with the blocks in the space. It skips and reports an op that writes a field the block no longer
+has, removes a field the block has again, or converts a field to a type it no longer has. So run
+each content migration before you push the next schema change:
 
 - Push the schema before you run a content migration that writes new fields. `schema push --typed`
   does this, since it pushes before you run the migration it wrote.
 - The command skips an op on a field that a later push renamed or removed, even in stories that
   still hold the field.
 - The command skips a `renameField` while the block still has the field it renames.
+- The command skips a `renameBlock` while the space holds the block under its old name but not its
+  new one.
 
 Delete a content migration once every space it targets has applied it. A later rename, removal, or
 type change of a field it writes is a type error in that migration.
@@ -241,9 +245,9 @@ made since the run.
 
 The command marks a content migration run as rolled back once it restored every story, so the next
 `migrations rollback` moves on to the run before it. While blocks are left in place, the run stays
-open, so `migrations rollback --force` still reaches them, and `migrations list` shows it as partly
-rolled back. When a story can’t be read or written, the command exits with an error and the run
-stays open. Run the rollback again to retry.
+open, so `migrations rollback --force` still reaches them, `migrations list` shows it as partly
+rolled back, and the command exits with an error. When a story can’t be read or written, the command
+exits with an error and the run stays open. Run the rollback again to retry.
 
 The space checks content against its current schema, not the schema of the run. When a later push
 made a field required, the space can refuse the restored content. Push the schema as it was before

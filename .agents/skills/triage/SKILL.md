@@ -94,7 +94,10 @@ reported.
 Judge the reported scenario, not the install base: if it needs a specific option or input, it is
 `uncommon`.
 
-Score impact and breadth only; whether it is a regression does not affect priority.
+**Regression:** `yes` when it worked in an earlier version and broke after an update, of our package
+or of a dependency, framework or runtime it supports (e.g. a Nuxt minor release). It needs evidence:
+the report names a version where it worked, or the changelog or `git log` shows the change that
+broke it. "It used to work" alone is `no`, and so is a `regression` label without evidence.
 
 **Overall priority:**
 
@@ -104,6 +107,9 @@ Score impact and breadth only; whether it is a regression does not affect priori
 | **P1 — High**     | Critical + widespread/common, or blocker + uncommon/edge-case  |
 | **P2 — Medium**   | Degraded + widespread/common, or critical + uncommon/edge-case |
 | **P3 — Low**      | Minor impact, or degraded + uncommon/edge-case                 |
+
+A regression raises the priority one level (P3 → P2, P2 → P1, P1 → P0): people relied on it, and an
+update took it away.
 
 #### 3d. Verdict
 
@@ -150,7 +156,7 @@ the connection.
 
 - Impact: <level> (<reason>)
 - Breadth: <level> (<reason>)
-- Regression: <yes/no> (worked in an earlier release, per the report; evidence beats a label)
+- Regression: <no, or yes: worked in <version>, broke with <version or update>>
 - Related: <tickets> **Package:** <package> **Verdict:** <verdict>
 - Fix PR: <#number or none> **Labels:** <suggested labels>
 
@@ -186,6 +192,7 @@ same way, and write the detailed sections in table order.
 
 - **Read-only.** Never create, update, comment on, or close issues on GitHub or Linear.
 - **No code analysis.** Use `/investigate` for deep dives.
-- When unsure about type, lean toward **bug**; priority always follows the table.
+- When unsure about type, lean toward **bug**; priority always follows the table and the regression
+  step.
 - If the reporter's version is outdated, the next step is "retest on the latest version", unless the
   changelog or `git log` shows it is already fixed.

@@ -4,7 +4,7 @@
 
 <h1 align="center">@storyblok/angular</h1>
   <p align="center">
-    The Angular SDK to interact with <a href="http://www.storyblok.com?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-angular" target="_blank">Storyblok API</a> and enable the <a href="https://www.storyblok.com/docs/guide/essentials/visual-editor?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-angular" target="_blank">Real-time Visual Editing Experience</a>.
+    The Angular SDK to interact with <a href="http://www.storyblok.com?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-angular" target="_blank">Storyblok API</a> and enable the <a href="https://www.storyblok.com/docs/concepts/visual-editor?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-angular" target="_blank">Real-time Visual Editing Experience</a>.
   </p>
   <br />
 </div>
@@ -33,18 +33,18 @@
 - Dynamic component rendering with `SbBlokDirective`
 - Real-time Visual Editing with `LivePreviewService`
 - Rich text rendering with `SbRichTextComponent`
-- Full SSR support with Angular Universal
+- Server-side rendering support with `@angular/ssr`
 - Tree-shakeable features for optimal bundle size
 - Lazy loading support for Storyblok components
 
 ## Documentation
 
-For complete documentation, please visit
+For complete documentation, please visit the
 [package reference](https://www.storyblok.com/docs/libraries/js/angular-sdk).
 
 ## Contributing
 
-If you'd like to contribute, refer to the [contributing guidelines](../../CONTRIBUTING.md).
+If you'd like to contribute, please refer to the [contributing guidelines](../../CONTRIBUTING.md).
 
 ## Community
 
@@ -81,4 +81,4 @@ If you have a question, please ask in the
 
 ## License
 
-[License](/LICENSE)
+[License](./LICENSE)

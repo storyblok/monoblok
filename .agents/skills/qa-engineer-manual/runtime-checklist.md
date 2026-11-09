@@ -26,11 +26,10 @@ end to end.
       also touches globals or `globalThis` caches), and **snapshot the side effects at the moment
       the handler resolves** rather than awaiting them. Wait, then diff the snapshot: anything that
       arrives late is work a frozen instance drops. Run at least two requests against two separate
-      instances. Start from [examples/serverless-sim.mjs](./examples/serverless-sim.mjs) and adapt
-      the entry path, the happy path, and the side-effect probe. Instances are short-lived, share no
-      memory with each other, and freeze once the response is sent. Calling the same function twice
-      in one process tests none of this: the module cache hands both calls the same instance, and it
-      passes.
+      instances. Start from `examples/serverless-sim.mjs` and adapt the entry path, the happy path,
+      and the side-effect probe. Instances are short-lived, share no memory with each other, and
+      freeze once the response is sent. Calling the same function twice in one process tests none of
+      this: the module cache hands both calls the same instance, and it passes.
 - [ ] **Browser.** Load the built package directly, through an import map or a path into `dist`,
       with no bundler. A bundler papers over a broken `exports` map, an ESM or CJS mismatch, and a
       stray Node builtin.

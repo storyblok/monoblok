@@ -10,14 +10,9 @@ on:
         description: "Blueprints to sync: comma-separated folder names under blueprints/, or `all`"
         required: true
         default: all
-  # publish.yaml calls this after every publish on main, including one that published nothing. The
-  # approval below still applies.
-  workflow_call:
-    inputs:
-      blueprints:
-        type: string
-        required: false
-        default: all
+  # publish.yaml dispatches this after every publish on main, including one that published nothing.
+  # The approval below still applies. It is dispatched, not called: when it was called, `push` got
+  # an empty App key.
 
 permissions:
   contents: read

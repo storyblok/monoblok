@@ -13,7 +13,11 @@ export { morphStoryblokDom } from "./dom/morph-storyblok-dom";
 export type { DomMorphOptions, DomMorphResult } from "./dom/morph-storyblok-dom";
 export { loadStoryblokBridge } from "./load-storyblok-bridge";
 export { onStoryblokEditorEvent } from "./on-storyblok-editor-event";
-export type { LivePreviewStory } from "./on-storyblok-editor-event";
+export type {
+  LivePreviewOptions,
+  LivePreviewStory,
+  StoryblokEditorChangeEvent,
+} from "./on-storyblok-editor-event";
 export { isBrowser } from "./utils/is-browser";
 export { isInEditor } from "./utils/is-in-editor";
 export type { BridgeParams } from "@storyblok/preview-bridge";

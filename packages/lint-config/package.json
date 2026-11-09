@@ -1,6 +1,6 @@
 {
   "name": "@storyblok/lint-config",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Shared Oxlint configuration for the Storyblok ecosystem",
   "keywords": [
     "lint-config",

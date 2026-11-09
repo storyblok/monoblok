@@ -63,9 +63,11 @@ behind it. Of the runs waiting, only the newest stays, with its own inputs: a la
 blueprint replaces a waiting `all`. Reject a run you no longer want, or it blocks the next ones until
 it times out.
 
-`publish.yaml` calls the sync after every publish on `main`, including one that had nothing new to
-publish. Reject the approval for those. The first sync after merging should be run by hand: reject
-the first chained one.
+`publish.yaml` starts the sync after every publish on `main`, including one that had nothing new to
+publish, by dispatching `sync-blueprints.yaml` as a run of its own. Reject the approval for those.
+It is dispatched, not called: when it was called, `push` got an empty App key (the environment
+variable arrived, the environment secret did not). The sync run is not nested under the Publish run; the Publish
+run's summary links to the workflow.
 
 ## GitHub settings
 

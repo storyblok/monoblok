@@ -2,9 +2,8 @@
 node_modules
 dist
 coverage
-cypress/screenshots/
-cypress/videos
-cypress/downloads
+test-results
+playwright-report
 # Local Netlify folder
 .netlify
 .vercel

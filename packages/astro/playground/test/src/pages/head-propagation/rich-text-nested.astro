@@ -1,0 +1,25 @@
+---
+import BaseLayout from "../../components/BaseLayout.astro";
+import { StoryblokRichText } from "../../storyblok";
+
+// Fixture for e2e/head-propagation.spec.ts: the block embedded in rich text,
+// nested in a blockquote so it passes through more than one rich text node.
+const document = {
+  type: "doc",
+  content: [
+    {
+      type: "blockquote",
+      content: [
+        {
+          type: "blok",
+          attrs: { id: "mdx", body: [{ _uid: "mdx-note", component: "mdx_note" }] },
+        },
+      ],
+    },
+  ],
+};
+---
+
+<BaseLayout>
+  <StoryblokRichText document={document} />
+</BaseLayout>

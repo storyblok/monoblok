@@ -5,7 +5,7 @@
 Check for inspiration VMO2 package -> https://github.com/jimdrury/ng-storyblok
 
 It was agreed that the Angular SDK will follow the new architecture, composed on top of
-@storyblok/capi-client, @storyblok/live-preview (name to be fully decided) and @storyblok/richtext
+@storyblok/api-client, @storyblok/live-preview (name to be fully decided) and @storyblok/richtext
 instead of on top fo the current JS SDK
 
 **Requested by:**
@@ -39,8 +39,8 @@ functionality we want to extra-assure).
 
 **Idiomatic Angular DX** (services, DI, signals, observables, directives, etc)
 
-Built on the new architecture (@storyblok/capi-client, @storyblok/live-preview,
-@storyblok/richtext), which will enable cleaner composition than building on the existing JS SDK
+Built on the new architecture (@storyblok/api-client, @storyblok/live-preview, @storyblok/richtext),
+which will enable cleaner composition than building on the existing JS SDK
 
 ## Reference
 

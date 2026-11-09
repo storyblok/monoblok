@@ -93,8 +93,9 @@ block IDs, or when a second pass would change the story again:
 ⚠️  a/storyblok-vs-sitecore: op 0 (splitField) on block 6a7a6e9a-… was refused: the callback threw: metric value "CX " holds no amount
 ```
 
-The command exits with an error when a content migration skipped every story it matched, or when a
-story couldn’t be read or written.
+The command exits with an error when a content migration skipped every story that contains its
+blocks, or when a story couldn’t be read or written. When a write gets no response, the command
+reads the story back, and writes it again up to twice if the write didn’t land.
 
 Before the first write, the command records each content migration run in
 `.storyblok/migrations/<space-id>/rollbacks/`, so a run that stops partway can still be rolled back.
@@ -215,9 +216,9 @@ made since the run.
 
 The command marks a content migration run as rolled back once it restored every story, so the next
 `migrations rollback` moves on to the run before it. While blocks are left in place, the run stays
-open, so `migrations rollback --force` still reaches them, and `migrations list` shows it as partly
-rolled back. When a story can’t be read or written, the command exits with an error and the run
-stays open. Run the rollback again to retry.
+open, so `migrations rollback --force` still reaches them, `migrations list` shows it as partly
+rolled back, and the command exits with an error. When a story can’t be read or written, the command
+exits with an error and the run stays open. Run the rollback again to retry.
 
 The space checks content against its current schema, not the schema of the run. When a later push
 made a field required, the space can refuse the restored content. Push the schema as it was before

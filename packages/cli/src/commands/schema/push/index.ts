@@ -76,10 +76,7 @@ schemaCommand
   .option("--force", "With --delete, delete blocks that stories still use", false)
   .option("--migrations", "Generate scaffold migration files for breaking changes", true)
   .addOption(new Option("--no-migrations", "Skip migration generation for breaking changes"))
-  .option(
-    "--typed",
-    "Generate one defineMigration file for `migrations apply` instead of one .js migration per block for `migrations run`",
-  )
+  .option("--typed", "Generate one defineMigration file instead of one .js migration per block")
   .option("--no-before", "With --typed, skip the .before.ts schema snapshot")
   .option(
     "--write-components",
@@ -111,7 +108,7 @@ schemaCommand
 
     const summary = { total: 0, succeeded: 0, failed: 0 };
     let generatedMigrations: { files: string[]; changes: ComponentBreakingChanges[] } | undefined;
-    const runCommand = options.typed ? "migrations apply" : "migrations run";
+    const runCommand = "migrations run";
 
     try {
       // 1. Load local schema

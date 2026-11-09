@@ -61,7 +61,7 @@ describe("loadMigrations", () => {
     ).rejects.toThrow(/0001-broken/);
   });
 
-  it("should load only the named migration and import no other file", async () => {
+  it("should load only the migrations the filter accepts and import no other file", async () => {
     const imported: string[] = [];
     const loaded = await loadMigrations(
       spaceMigrations,
@@ -69,7 +69,7 @@ describe("loadMigrations", () => {
         imported.push(path.basename(file));
         return importDefault(file);
       },
-      { only: "0002-drop-card-subtitle" },
+      { filter: ({ id }) => id === "0002-drop-card-subtitle" },
     );
 
     expect(loaded.map((entry) => entry.id)).toEqual(["0002-drop-card-subtitle"]);

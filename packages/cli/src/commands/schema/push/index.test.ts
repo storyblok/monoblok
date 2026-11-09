@@ -1667,7 +1667,7 @@ describe("schema push command", () => {
 
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining(
-        `storyblok migrations apply --space ${DEFAULT_SPACE} --path 'my project'`,
+        `storyblok migrations run --space ${DEFAULT_SPACE} --path 'my project'`,
       ),
     );
   });

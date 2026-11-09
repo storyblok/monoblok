@@ -51,7 +51,7 @@ vi.mock("../../../utils/schema/classify-exports", async (importOriginal) => ({
 const server = setupServer();
 
 const apply = (...args: string[]): Promise<unknown> =>
-  migrationsCommand.parseAsync(["node", "test", "apply", ...args, "--space", DEFAULT_SPACE]);
+  migrationsCommand.parseAsync(["node", "test", "run", ...args, "--space", DEFAULT_SPACE]);
 
 const renameCardTitle = defineMigration([
   renameField({ block: "card", field: "title", to: "headline" }),
@@ -94,7 +94,7 @@ const storyWithRepeatedIds = (id = 1) =>
     },
   });
 
-describe("migrations apply command", () => {
+describe("migrations run command for content migrations", () => {
   let space: ReturnType<typeof createRemoteSpace>;
 
   beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -342,7 +342,9 @@ describe("migrations apply command", () => {
 
     expect(space.writes).toEqual([]);
     expect(process.exitCode).toBe(2);
-    expect(error.mock.calls.flat().join("\n")).toContain("Available: 0001-rename-card-title.");
+    expect(error.mock.calls.flat().join("\n")).toContain(
+      "Available content migrations: 0001-rename-card-title.",
+    );
   });
 
   it("should accept the migration's filename as its name", async () => {
@@ -379,7 +381,7 @@ describe("migrations apply command", () => {
     expect(process.exitCode).toBeUndefined();
   });
 
-  it("should record the run so it can be listed and undone", async () => {
+  it("should record the run so it can be listed and rolled back", async () => {
     const info = vi.spyOn(getUI(), "info");
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
     space.hasStories(storyWithCard());
@@ -520,7 +522,7 @@ describe("migrations apply command", () => {
     expect(process.exitCode).toBe(2);
   });
 
-  it("should record the run before the first write, so a run that stops partway can be undone", async () => {
+  it("should record the run before the first write, so a run that stops partway can be rolled back", async () => {
     const recordedAtWrite: number[] = [];
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
     space.hasStories(storyWithCard());
@@ -538,7 +540,7 @@ describe("migrations apply command", () => {
     space.hasStories(storyWithCard());
     space.canUpdateStories(() => {
       journalAtWrite = Object.fromEntries(
-        Object.entries(vol.toJSON()).filter(([file]) => file.includes(".journal")),
+        Object.entries(vol.toJSON()).filter(([file]) => file.includes("/rollbacks/")),
       );
     });
     const list = () =>
@@ -1021,5 +1023,137 @@ describe("migrations apply command", () => {
       expect(space.writes).toEqual([]);
       expect(process.exitCode).toBe(2);
     });
+  });
+});
+
+describe("migrations run command with migration functions and content migrations", () => {
+  let space: ReturnType<typeof createRemoteSpace>;
+
+  beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
+  afterEach(() => {
+    server.resetHandlers();
+    vi.restoreAllMocks();
+  });
+  afterAll(() => server.close());
+
+  beforeEach(() => {
+    schemaModule = {};
+    snapshotModules = {};
+    space = createRemoteSpace(server);
+    space.hasReleases();
+    space.canUpdateStories();
+  });
+
+  const cardOf = (id: number) => (space.story(id)?.content.body as unknown[] | undefined)?.[0];
+
+  it("should apply migration functions and content migrations from the same directory", async () => {
+    space.hasMigrationFunction("card.js", (block) => ({ ...block, migrated: true }));
+    space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    space.hasStories(storyWithCard());
+
+    await apply();
+
+    expect(cardOf(1)).toEqual({
+      _uid: "card-1",
+      component: "card",
+      headline: "Hi",
+      migrated: true,
+    });
+  });
+
+  it("should tell a .js content migration from a migration function by its default export", async () => {
+    space.hasJsContentMigration("0001-rename-card-title", renameCardTitle);
+    space.hasStories(storyWithCard());
+
+    await apply();
+
+    expect(cardOf(1)).toEqual({ _uid: "card-1", component: "card", headline: "Hi" });
+    expect(journalEntries()).toEqual([
+      expect.objectContaining({ migration: "0001-rename-card-title" }),
+    ]);
+  });
+
+  it("should run a .js migration function whose name looks like a content migration", async () => {
+    space.hasMigrationFunction("0001-card.js", (block) => ({ ...block, migrated: true }));
+    space.hasStories(
+      storyWithCard({
+        content: {
+          _uid: "root",
+          component: "page",
+          body: [{ _uid: "card-1", component: "0001-card", title: "Hi" }],
+        },
+      }),
+    );
+
+    await apply();
+
+    expect(cardOf(1)).toEqual({
+      _uid: "card-1",
+      component: "0001-card",
+      title: "Hi",
+      migrated: true,
+    });
+    expect(journalEntries()).toEqual([]);
+  });
+
+  it("should select the migration functions of a component and the content migration with that id by name", async () => {
+    space.hasMigrationFunction("card.js", (block) => ({ ...block, migrated: true }));
+    space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    space.hasStories(storyWithCard());
+
+    await apply("0001-rename-card-title");
+
+    expect(cardOf(1)).toEqual({ _uid: "card-1", component: "card", headline: "Hi" });
+  });
+
+  it("should select content migrations by id with --filter", async () => {
+    space.hasMigrations(
+      ["0001-rename-card-title", renameCardTitle],
+      ["0002-rename-card-to-teaser", renameCardToTeaser],
+    );
+    space.hasStories(storyWithCard());
+
+    await apply("--filter", "*-teaser");
+
+    expect(cardOf(1)).toEqual({ _uid: "card-1", component: "teaser", title: "Hi" });
+  });
+
+  it("should migrate only the stories --starts-with selects with a content migration", async () => {
+    space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    space.hasStories(
+      storyWithCard(),
+      storyWithCard({ id: 2, slug: "post", full_slug: "blog/post" }),
+    );
+
+    await apply("--starts-with", "blog/");
+
+    expect(space.writes.map((write) => write.id)).toEqual([2]);
+  });
+
+  it("should read content migrations from the --from space and record the run for --space", async () => {
+    space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    vol.mkdirSync(".storyblok/migrations/67890", { recursive: true });
+    vol.renameSync(
+      `${MIGRATIONS_DIRECTORY}/0001-rename-card-title.ts`,
+      ".storyblok/migrations/67890/0001-rename-card-title.ts",
+    );
+    space.hasStories(storyWithCard());
+
+    await apply("--from", "67890");
+
+    expect(cardOf(1)).toEqual({ _uid: "card-1", component: "card", headline: "Hi" });
+    expect(journalEntries()).toEqual([expect.objectContaining({ space: DEFAULT_SPACE })]);
+  });
+
+  it("should refuse to run migration functions while a release is pending", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    space.hasMigrationFunction("card.js", (block) => ({ ...block, migrated: true }));
+    space.hasStories(storyWithCard());
+    space.hasReleases({ id: 7, name: "Summer campaign", released: false });
+
+    await apply();
+
+    expect(space.writes).toEqual([]);
+    expect(process.exitCode).toBe(2);
   });
 });

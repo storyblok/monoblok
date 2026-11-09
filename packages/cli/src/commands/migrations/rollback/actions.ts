@@ -1,7 +1,12 @@
 import { join } from "pathe";
-import { appendToFile, getComponentNameFromFilename, resolvePath } from "../../../utils/filesystem";
+import {
+  appendToFile,
+  fileExists,
+  getComponentNameFromFilename,
+  resolvePath,
+} from "../../../utils/filesystem";
 import type { BlokContent } from "../../stories/constants";
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { CommandError } from "../../../utils";
 
 export interface RollbackDataStory {
@@ -105,4 +110,59 @@ export async function readRollbackFile({
   } catch (error) {
     throw new CommandError(`Failed to read rollback file: ${(error as Error).message}`);
   }
+}
+
+const ROLLBACK_FILE_EXTENSION = ".jsonl";
+
+function rollbacksDirectory(space: string, path: string | undefined): string {
+  return resolvePath(path, `migrations/${space}/rollbacks`);
+}
+
+/** Whether `name` names a rollback file of migration functions, with or without its extension. */
+export async function isRollbackFile({
+  space,
+  path,
+  name,
+}: {
+  space: string;
+  path: string | undefined;
+  name: string;
+}): Promise<boolean> {
+  const file = name.endsWith(ROLLBACK_FILE_EXTENSION) ? name : `${name}${ROLLBACK_FILE_EXTENSION}`;
+  return fileExists(join(rollbacksDirectory(space, path), file));
+}
+
+export interface RollbackFile {
+  /** The file name without its extension, as `rollback` takes it. */
+  name: string;
+  createdAt: Date;
+  stories: number;
+}
+
+/** The rollback files that runs of migration functions wrote for a space, oldest first. */
+export async function listRollbackFiles({
+  space,
+  path,
+}: {
+  space: string;
+  path: string | undefined;
+}): Promise<RollbackFile[]> {
+  const directory = rollbacksDirectory(space, path);
+  const files = (await readdir(directory).catch((): string[] => [])).filter((file) =>
+    file.endsWith(ROLLBACK_FILE_EXTENSION),
+  );
+  const rollbackFiles = await Promise.all(
+    files.map(async (file) => {
+      const name = file.slice(0, -ROLLBACK_FILE_EXTENSION.length);
+      const timestamp = Number(name.split(".").pop());
+      // Files renamed by hand lose the timestamp the run wrote; they sort first.
+      const lines = (await readFile(join(directory, file), "utf-8")).split("\n").filter(Boolean);
+      return {
+        name,
+        createdAt: new Date(Number.isFinite(timestamp) ? timestamp : 0),
+        stories: lines.length,
+      };
+    }),
+  );
+  return rollbackFiles.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
 }

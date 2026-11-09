@@ -33,7 +33,7 @@ const renameHeroSubtitle = defineMigration([
 const cardOf = (story: RemoteStory | undefined) =>
   (story?.content.body as Record<string, unknown>[] | undefined)?.[0];
 
-describe("migrations undo command", () => {
+describe("migrations rollback command for content migration runs", () => {
   let space: ReturnType<typeof createRemoteSpace>;
 
   beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -56,18 +56,18 @@ describe("migrations undo command", () => {
       ["0002-rename-card-to-teaser", renameCardToTeaser],
     );
     space.hasStories(storyWithCard());
-    await run("apply");
+    await run("run");
     info.mockClear();
 
-    await run("undo");
+    await run("rollback");
 
     expect(cardOf(space.story(1))).toEqual({ _uid: "card-1", component: "card", headline: "Hi" });
     expect(info.mock.calls[0]?.[0]).toMatch(
-      /^Undoing the most recent run .*0002-rename-card-to-teaser/,
+      /^Rolling back the most recent run .*0002-rename-card-to-teaser/,
     );
   });
 
-  it("should undo the run named with --run while a later run changed other blocks", async () => {
+  it("should roll back the named run while a later run changed other blocks", async () => {
     const story = storyWithCard();
     story.content.body = [
       { _uid: "card-1", component: "card", title: "Hi" },
@@ -78,10 +78,10 @@ describe("migrations undo command", () => {
       ["0002-rename-hero-subtitle", renameHeroSubtitle],
     );
     space.hasStories(story);
-    await run("apply");
+    await run("run");
     const [first] = journalEntries();
 
-    await run("undo", "--run", String(first.id));
+    await run("rollback", String(first.id));
 
     expect(space.story(1)?.content.body).toEqual([
       { _uid: "card-1", component: "card", title: "Hi" },
@@ -96,11 +96,11 @@ describe("migrations undo command", () => {
       ["0002-rename-card-to-teaser", renameCardToTeaser],
     );
     space.hasStories(storyWithCard());
-    await run("apply");
+    await run("run");
     const [first, second] = journalEntries();
     space.writes.length = 0;
 
-    await run("undo", "--run", String(first.id));
+    await run("rollback", String(first.id));
 
     expect(space.writes).toEqual([]);
     expect(process.exitCode).toBe(2);
@@ -109,30 +109,30 @@ describe("migrations undo command", () => {
     );
   });
 
-  it("should undo an earlier run once the later run that changed the same blocks is undone", async () => {
+  it("should roll back an earlier run once the later run that changed the same blocks is rolled back", async () => {
     space.hasMigrations(
       ["0001-rename-card-title", renameCardTitle],
       ["0002-rename-card-to-teaser", renameCardToTeaser],
     );
     space.hasStories(storyWithCard());
-    await run("apply");
+    await run("run");
     const [first, second] = journalEntries();
 
-    await run("undo", "--run", String(second.id));
-    await run("undo", "--run", String(first.id));
+    await run("rollback", String(second.id));
+    await run("rollback", String(first.id));
 
     expect(cardOf(space.story(1))).toEqual({ _uid: "card-1", component: "card", title: "Hi" });
   });
 
   it("should fail for a run that is not recorded", async () => {
-    await run("undo", "--run", "2026-01-01T00-00-00-000Z-0001-unknown");
+    await run("rollback", "2026-01-01T00-00-00-000Z-0001-unknown");
 
     expect(space.writes).toEqual([]);
     expect(process.exitCode).toBe(2);
   });
 
   it("should fail when no run is recorded for the space", async () => {
-    await run("undo");
+    await run("rollback");
 
     expect(process.exitCode).toBe(2);
   });
@@ -141,13 +141,13 @@ describe("migrations undo command", () => {
     const warn = vi.spyOn(getUI(), "warn");
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
     space.hasStories(storyWithCard());
-    await run("apply");
+    await run("run");
     space.editsStory(1, (content) => {
       (content.body as Record<string, unknown>[])[0].headline = "Edited";
     });
     space.writes.length = 0;
 
-    await run("undo");
+    await run("rollback");
 
     expect(space.writes).toEqual([]);
     expect(cardOf(space.story(1))).toEqual({
@@ -166,13 +166,13 @@ describe("migrations undo command", () => {
     const warn = vi.spyOn(getUI(), "warn");
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
     space.hasStories(storyWithCard());
-    await run("apply");
+    await run("run");
     space.editsStory(1, (content) => {
       (content.body as Record<string, unknown>[])[0].headline = "Edited";
     });
     space.writes.length = 0;
 
-    await run("undo", "--force");
+    await run("rollback", "--force");
 
     expect(cardOf(space.story(1))).toEqual({ _uid: "card-1", component: "card", title: "Hi" });
     expect(warn).toHaveBeenCalledWith(
@@ -195,63 +195,65 @@ describe("migrations undo command", () => {
       twoCards,
       storyWithCard({ id: 3, slug: "contact", full_slug: "contact" }),
     );
-    await run("apply");
+    await run("run");
     const editHeadline = (content: Record<string, unknown>) => {
       (content.body as Record<string, unknown>[])[0].headline = "Edited";
     };
     space.editsStory(1, editHeadline);
     space.editsStory(2, editHeadline);
 
-    await run("undo");
+    await run("rollback");
 
     expect(info).toHaveBeenLastCalledWith(
       expect.stringMatching(
-        /^Undid 2 stories \(1 partly\) of run .*; 1 story left as changed since the run\.$/,
+        /^Rolled back 2 stories \(1 partly\) of run .*; 1 story left as changed since the run\.$/,
       ),
     );
 
-    await run("undo", "--force");
+    await run("rollback", "--force");
 
     expect(info).toHaveBeenLastCalledWith(
-      expect.stringMatching(/^Undid 2 stories of run .*; 1 story had nothing left to undo\.$/),
+      expect.stringMatching(
+        /^Rolled back 2 stories of run .*; 1 story had nothing left to roll back\.$/,
+      ),
     );
   });
 
-  it("should undo the earlier run on a second undo and list the runs as undone", async () => {
+  it("should roll back the earlier run on a second rollback and list the runs as rolled back", async () => {
     const info = vi.spyOn(getUI(), "info");
     space.hasMigrations(
       ["0001-rename-card-title", renameCardTitle],
       ["0002-rename-card-to-teaser", renameCardToTeaser],
     );
     space.hasStories(storyWithCard());
-    await run("apply");
+    await run("run");
 
-    await run("undo");
-    await run("undo");
+    await run("rollback");
+    await run("rollback");
 
     expect(cardOf(space.story(1))).toEqual({ _uid: "card-1", component: "card", title: "Hi" });
     info.mockClear();
     await run("list");
     expect(info.mock.calls.map(([message]) => message)).toEqual([
-      expect.stringMatching(/0001-rename-card-title .*\(undone /),
-      expect.stringMatching(/0002-rename-card-to-teaser .*\(undone /),
+      expect.stringMatching(/0001-rename-card-title .*\(rolled back /),
+      expect.stringMatching(/0002-rename-card-to-teaser .*\(rolled back /),
       "Pending on this machine: 0001-rename-card-title, 0002-rename-card-to-teaser",
     ]);
 
-    await run("undo");
+    await run("rollback");
     expect(process.exitCode).toBe(2);
   });
 
-  it("should keep when a run was first undone when it is undone again", async () => {
+  it("should keep when a run was first rolled back when it is rolled back again", async () => {
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
     space.hasStories(storyWithCard());
-    await run("apply");
-    await run("undo");
+    await run("run");
+    await run("rollback");
     const [undone] = journalEntries();
     vi.useFakeTimers({ now: Date.now() + 60_000, toFake: ["Date"] });
 
     try {
-      await run("undo", "--run", String(undone.id));
+      await run("rollback", String(undone.id));
     } finally {
       vi.useRealTimers();
     }
@@ -262,37 +264,37 @@ describe("migrations undo command", () => {
   it("should keep a run with blocks left in place open, so undo --force reaches them", async () => {
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
     space.hasStories(storyWithCard());
-    await run("apply");
+    await run("run");
     space.editsStory(1, (content) => {
       (content.body as Record<string, unknown>[])[0].headline = "Edited";
     });
 
-    await run("undo");
-    await run("undo", "--force");
+    await run("rollback");
+    await run("rollback", "--force");
 
     expect(cardOf(space.story(1))).toEqual({ _uid: "card-1", component: "card", title: "Hi" });
   });
 
-  it("should list a run as partly undone while blocks are left in place, and as undone once they are restored", async () => {
+  it("should list a run as partly rolled back while blocks are left in place, and as rolled back once they are restored", async () => {
     const info = vi.spyOn(getUI(), "info");
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
     space.hasStories(storyWithCard(), storyWithCard({ id: 2, slug: "about", full_slug: "about" }));
-    await run("apply");
+    await run("run");
     space.editsStory(1, (content) => {
       (content.body as Record<string, unknown>[])[0].headline = "Edited";
     });
 
-    await run("undo");
+    await run("rollback");
     info.mockClear();
     await run("list");
 
-    expect(info).toHaveBeenLastCalledWith(expect.stringMatching(/\(partly undone [^)]+\)$/));
+    expect(info).toHaveBeenLastCalledWith(expect.stringMatching(/\(partly rolled back [^)]+\)$/));
 
-    await run("undo", "--force");
+    await run("rollback", "--force");
     info.mockClear();
     await run("list");
 
-    expect(info).toHaveBeenCalledWith(expect.stringMatching(/ {2}\(undone [^)]+\)$/));
+    expect(info).toHaveBeenCalledWith(expect.stringMatching(/ {2}\(rolled back [^)]+\)$/));
   });
 
   it("should fail, count the story as failed, and keep the run open when a write fails", async () => {
@@ -300,14 +302,14 @@ describe("migrations undo command", () => {
     const warn = vi.spyOn(getUI(), "warn");
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
     space.hasStories(storyWithCard());
-    await run("apply", "--publish", "all");
+    await run("run", "--publish", "all");
     space.failsToUpdateStories();
 
-    await run("undo");
+    await run("rollback");
 
     expect(process.exitCode).toBe(2);
     expect(info).toHaveBeenCalledWith(
-      expect.stringMatching(/Undid 0 stories .*; 1 story failed\.$/),
+      expect.stringMatching(/Rolled back 0 stories .*; 1 story failed\.$/),
     );
     expect(warn).not.toHaveBeenCalledWith(expect.stringContaining("for the first time"));
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/^.*home.* could not be written: /));
@@ -327,14 +329,14 @@ describe("migrations undo command", () => {
     const warn = vi.spyOn(getUI(), "warn");
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
     space.hasStories(storyWithCard(), storyWithCard({ id: 2, slug: "about", full_slug: "about" }));
-    await run("apply");
+    await run("run");
     remove(space);
 
-    await run("undo");
+    await run("rollback");
 
     expect(cardOf(space.story(1))).toEqual({ _uid: "card-1", component: "card", title: "Hi" });
     expect(warn).toHaveBeenCalledWith(
-      `1 story was deleted since the run, so there is nothing to undo there: ${named}`,
+      `1 story was deleted since the run, so there is nothing to roll back there: ${named}`,
     );
     expect(process.exitCode).toBeUndefined();
   });
@@ -342,21 +344,21 @@ describe("migrations undo command", () => {
   it("should refuse while a release is pending unless --allow-pending-releases is passed", async () => {
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
     space.hasStories(storyWithCard());
-    await run("apply");
+    await run("run");
     space.hasReleases({ id: 7, name: "Summer campaign", released: false });
     space.writes.length = 0;
 
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
-    await run("undo");
+    await run("rollback");
 
     expect(space.writes).toEqual([]);
     expect(process.exitCode).toBe(2);
     expect(error.mock.calls.flat().join("\n")).toContain(
-      "This undo doesn't restore release content, and deploying the release overwrites the stories it restores",
+      "This rollback doesn't restore release content, and deploying the release overwrites the stories it restores",
     );
 
     process.exitCode = undefined;
-    await run("undo", "--allow-pending-releases");
+    await run("rollback", "--allow-pending-releases");
 
     expect(cardOf(space.story(1))).toEqual({ _uid: "card-1", component: "card", title: "Hi" });
   });
@@ -367,10 +369,10 @@ describe("migrations undo command", () => {
     it("should republish a story the run published", async () => {
       space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
       space.hasStories(publishedStory());
-      await run("apply", "--publish", "published");
+      await run("run", "--publish", "published");
       space.writes.length = 0;
 
-      await run("undo");
+      await run("rollback");
 
       expect(space.writes).toMatchObject([{ id: 1, publish: true }]);
     });
@@ -379,13 +381,13 @@ describe("migrations undo command", () => {
       const warn = vi.spyOn(getUI(), "warn");
       space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
       space.hasStories(publishedStory());
-      await run("apply", "--publish", "published");
+      await run("run", "--publish", "published");
       space.editsStory(1, (content) => {
         content.seo = "Edited";
       });
       space.writes.length = 0;
 
-      await run("undo");
+      await run("rollback");
 
       expect(space.writes).toMatchObject([{ id: 1, publish: false }]);
       expect(warn).toHaveBeenCalledWith(
@@ -397,11 +399,11 @@ describe("migrations undo command", () => {
       const warn = vi.spyOn(getUI(), "warn");
       space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
       space.hasStories(publishedStory());
-      await run("apply", "--publish", "published");
+      await run("run", "--publish", "published");
       space.failsToPublishStories("The field card.title can't be blank");
       const error = vi.spyOn(console, "error").mockImplementation(() => {});
 
-      await run("undo");
+      await run("rollback");
 
       expect(cardOf(space.story(1))).toEqual({ _uid: "card-1", component: "card", title: "Hi" });
       expect(warn).toHaveBeenCalledWith(
@@ -421,13 +423,96 @@ describe("migrations undo command", () => {
       const warn = vi.spyOn(getUI(), "warn");
       space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
       space.hasStories(storyWithCard());
-      await run("apply", "--publish", "all");
+      await run("run", "--publish", "all");
       space.writes.length = 0;
 
-      await run("undo");
+      await run("rollback");
 
       expect(space.writes).toMatchObject([{ id: 1, publish: false }]);
       expect(warn).toHaveBeenCalledWith(expect.stringContaining("for the first time"));
     });
+  });
+});
+
+describe("migrations rollback command for rollback files", () => {
+  let space: ReturnType<typeof createRemoteSpace>;
+
+  beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
+  afterEach(() => {
+    server.resetHandlers();
+    vi.restoreAllMocks();
+  });
+  afterAll(() => server.close());
+
+  beforeEach(() => {
+    space = createRemoteSpace(server);
+    space.hasReleases();
+    space.canUpdateStories();
+  });
+
+  const before = { _uid: "root", component: "page", body: [] };
+
+  it("should restore the stories a rollback file names, with or without its extension", async () => {
+    space.hasStories(storyWithCard());
+    space.hasRollbackFile("card.1767225600000", { storyId: 1, name: "Home", content: before });
+
+    await run("rollback", "card.1767225600000.jsonl");
+
+    expect(space.story(1)?.content).toEqual(before);
+  });
+
+  it("should refuse to restore a rollback file while a release is pending", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    space.hasStories(storyWithCard());
+    space.hasRollbackFile("card.1767225600000", { storyId: 1, name: "Home", content: before });
+    space.hasReleases({ id: 7, name: "Summer campaign", released: false });
+
+    await run("rollback", "card.1767225600000");
+
+    expect(space.writes).toEqual([]);
+  });
+
+  it("should name neither a recorded run nor a rollback file it doesn't find", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await run("rollback", "card.1767225600000");
+
+    expect(process.exitCode).toBe(2);
+    expect(error.mock.calls.flat().join("\n")).toContain(
+      'No recorded run or rollback file "card.1767225600000"',
+    );
+  });
+
+  it("should not pick a rollback file as the most recent run", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    space.hasStories(storyWithCard());
+    space.hasRollbackFile("card.1767225600000", { storyId: 1, name: "Home", content: before });
+
+    await run("rollback");
+
+    expect(space.writes).toEqual([]);
+    expect(error.mock.calls.flat().join("\n")).toContain("Name a rollback file");
+  });
+
+  it("should list rollback files beside recorded runs, oldest first", async () => {
+    const info = vi.spyOn(getUI(), "info");
+    space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    space.hasStories(storyWithCard());
+    space.hasRollbackFile(
+      "card.1767225600000",
+      { storyId: 1, name: "Home", content: before },
+      { storyId: 2, name: "About", content: before },
+    );
+    await run("run");
+    info.mockClear();
+
+    await run("list");
+
+    expect(info.mock.calls.map(([line]) => line)).toEqual([
+      "card.1767225600000  migration functions  2 stories  (rollback file)",
+      expect.stringMatching(
+        /-0001-rename-card-title {2}0001-rename-card-title {2}1 story, 1 block$/,
+      ),
+    ]);
   });
 });

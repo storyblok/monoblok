@@ -45,8 +45,10 @@ GitHub has its issue in `attachments` (`.../monoblok/issues/<n>`), and its Linea
 
 **Fix PRs:** a GitHub issue's candidates are in `closedByPullRequestsReferences`, a Linear ticket's
 are the `.../pull/<n>` links in `attachments`. Both include merged and closed PRs, so keep only
-those where `gh pr view <url> --json state` says `OPEN`. If several, the newest is the fix. If none,
-one `gh pr list --repo storyblok/monoblok --search "<keywords>"` is enough.
+those where `gh pr view <url> --json state` says `OPEN`. If several, the newest is the fix. A PR
+that is not linked, whether the issue names it or one
+`gh pr list --repo storyblok/monoblok --search "<keywords>"` finds it, is only a candidate: nobody
+has checked that it fixes the ticket. Write it as `#<n> (not linked)`.
 
 ### Step 3: Assess each ticket
 
@@ -165,7 +167,7 @@ the connection.
 - Breadth: <level> (<reason>)
 - Regression: <no, or yes: worked in <version>, broke with <version or update>>
 - Related: <tickets> **Package:** <package> **Verdict:** <verdict>
-- Fix PR: <#number or none> **Labels:** <suggested labels>
+- Fix PR: <#number, #number (not linked), or none> **Labels:** <suggested labels>
 
 **Summary:** <2-3 sentences>
 
@@ -189,12 +191,13 @@ earlier one. Every issue gets a `### <ticket-id>: <title>` heading (`### #836: â
 for P3 the body is the one line below. Start with a "Needs attention" list: P0/P1, any regression,
 or P2 with no `OWNER`/`MEMBER`/`COLLABORATOR` comment in the last 14 days
 (`gh issue view --json comments` includes `authorAssociation`; for Linear, no comment at all in 14
-days). Only `actionable` and `needs-info` tickets without an open fix PR go on that list, whatever
-their priority; the rest still get their section below. Give every issue its scores, one line is
-enough for P3 (no summary or next step): `P3 | minor / edge-case | verdict | pkg | fix PR or none`.
-Present the summary table, sorted by priority, then by ticket number from highest to lowest (newest
-first); in a mixed run, GitHub tickets come before Linear ones within the same priority. Sort the
-"Needs attention" list the same way, and write the detailed sections in table order.
+days). Only `actionable` and `needs-info` tickets without an open linked fix PR go on that list (a
+candidate does not count), whatever their priority; the rest still get their section below. Give
+every issue its scores, one line is enough for P3 (no summary or next step):
+`P3 | minor / edge-case | verdict | pkg | fix PR or none`. Present the summary table, sorted by
+priority, then by ticket number from highest to lowest (newest first); in a mixed run, GitHub
+tickets come before Linear ones within the same priority. Sort the "Needs attention" list the same
+way, and write the detailed sections in table order.
 
 ## Rules
 

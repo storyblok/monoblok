@@ -67,7 +67,7 @@ export interface StoryMigrationResult {
    * delivery API then drops. So they are reported and a runner must refuse
    * them, rather than migrated on a rule nobody chose.
    */
-  translatedReshapes: { uid: string; op: number; field: string }[];
+  translatedReshapes: { uid: string; op: number; field: string; languages: string[] }[];
 }
 
 /**
@@ -80,14 +80,23 @@ export interface StoryMigrationResult {
  * read as translations of a value they never translated — the same hazard
  * `renameFieldFamily` clears the target's family to avoid.
  */
-function translatedReshapeField(block: AnyBlock, op: MigrationOp): string | undefined {
+function translatedReshapeField(
+  block: AnyBlock,
+  op: MigrationOp,
+): { field: string; languages: string[] } | undefined {
   const fields =
     op.kind === "splitField"
       ? [op.field, ...op.into]
       : op.kind === "mergeFields"
         ? [...op.fields, op.into]
         : [];
-  return fields.find((field) => translationKeysFor(block, field).length > 0);
+  for (const field of fields) {
+    const keys = translationKeysFor(block, field);
+    if (keys.length > 0) {
+      return { field, languages: keys.map((key) => languageOfKey(key) ?? key) };
+    }
+  }
+  return undefined;
 }
 
 const DECIMAL = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i;
@@ -507,7 +516,7 @@ function runPass(content: unknown, ops: readonly MigrationOp[]): PassReport {
       report.matched.add(block._uid);
       const translated = translatedReshapeField(block, op);
       if (translated !== undefined) {
-        report.translatedReshapes.push({ uid: block._uid, op: index, field: translated });
+        report.translatedReshapes.push({ uid: block._uid, op: index, ...translated });
       }
       const before = structuredClone(comparableKeys(block));
       let refusal: string | undefined;

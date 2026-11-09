@@ -20,6 +20,8 @@ import "../index";
 import { migrationsCommand } from "../command";
 import { DEFAULT_SPACE } from "../../__tests__/helpers";
 import { getUI } from "../../../lib/ui";
+import * as storyActions from "../../stories/actions";
+import { APIError } from "../../../utils/error/api-error";
 import { session } from "../../../session";
 import { loggedInSessionState, loggedOutSessionState } from "../../../../test/setup";
 import {
@@ -157,6 +159,60 @@ describe("migrations run command for content migrations", () => {
       ),
     );
     expect(process.exitCode).toBeUndefined();
+  });
+
+  it("should skip a block rename while the space still holds the block under its old name", async () => {
+    space.hasMigrations(["0001-rename-card-to-teaser", renameCardToTeaser]);
+    space.hasBlocks({ card: ["title"], page: ["body"] });
+    space.hasStories(storyWithCard());
+    space.canUpdateStories();
+    const warn = vi.spyOn(getUI(), "warn");
+    const info = vi.spyOn(getUI(), "info");
+
+    await apply();
+
+    expect(space.writes).toEqual([]);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "renameBlock card skipped: the space has no teaser block. Push the schema that renames it first",
+      ),
+    );
+    expect(info).toHaveBeenCalledWith(
+      expect.stringContaining("Push the schema the migration was written for, then run it again."),
+    );
+  });
+
+  it("should record a first run that changes nothing, so the migration is no longer pending", async () => {
+    const info = vi.spyOn(getUI(), "info");
+    space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    space.hasStories(
+      storyWithCard({
+        content: {
+          _uid: "root",
+          component: "page",
+          body: [{ _uid: "card-1", component: "card", headline: "Hi" }],
+        },
+      }),
+    );
+    space.canUpdateStories();
+
+    await apply();
+    await apply();
+    info.mockClear();
+    await migrationsCommand.parseAsync([
+      "node",
+      "test",
+      "list",
+      "--pending",
+      "--space",
+      DEFAULT_SPACE,
+    ]);
+
+    expect(space.writes).toEqual([]);
+    expect(journalEntries()).toEqual([expect.objectContaining({ stories: 0, blocks: 0 })]);
+    expect(info.mock.calls.map(([message]) => message)).toEqual([
+      "No pending content migrations for this space on this machine.",
+    ]);
   });
 
   it("should alter a field a later migration split, in stories that still hold it", async () => {
@@ -479,6 +535,67 @@ describe("migrations run command for content migrations", () => {
 
     expect(space.writes.map((write) => write.id)).toEqual([1]);
     expect(journalEntries()).toMatchObject([{ stories: 1 }]);
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  it("should not fail when a migration refuses a story and the others are already migrated", async () => {
+    space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    space.hasStories(
+      storyWithRepeatedIds(1),
+      storyWithCard({
+        id: 2,
+        slug: "about",
+        full_slug: "about",
+        content: {
+          _uid: "root-2",
+          component: "page",
+          body: [{ _uid: "card-2", component: "card", headline: "Hi" }],
+        },
+      }),
+    );
+    space.canUpdateStories();
+    process.exitCode = undefined;
+
+    await apply();
+
+    expect(space.writes).toEqual([]);
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  it("should count a write that got no response but landed, published, as written", async () => {
+    const warn = vi.spyOn(getUI(), "warn");
+    space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    space.hasStories(storyWithCard({ published: true }));
+    space.canUpdateStories();
+    const updateStory = storyActions.updateStory;
+    vi.spyOn(storyActions, "updateStory").mockImplementationOnce(async (...args) => {
+      await updateStory(...args);
+      throw new APIError("generic", "update_story");
+    });
+    process.exitCode = undefined;
+
+    await apply("--publish", "all");
+
+    expect(space.story(1)).toEqual(
+      expect.objectContaining({ published: true, unpublished_changes: false }),
+    );
+    expect(warn).not.toHaveBeenCalledWith(expect.stringContaining("publishing it failed"));
+    expect(process.exitCode).toBeUndefined();
+    expect(journalEntries()).toEqual([expect.objectContaining({ stories: 1 })]);
+  });
+
+  it("should repeat a write that got no response and did not land", async () => {
+    space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    space.hasStories(storyWithCard());
+    space.canUpdateStories();
+    vi.spyOn(storyActions, "updateStory").mockRejectedValueOnce(
+      new APIError("generic", "update_story"),
+    );
+    process.exitCode = undefined;
+
+    await apply();
+
+    expect(space.writes).toHaveLength(1);
     expect(process.exitCode).toBeUndefined();
   });
 

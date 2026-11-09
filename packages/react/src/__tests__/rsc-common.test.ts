@@ -1,14 +1,17 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiPlugin } from "@storyblok/js";
 import type { SbReactSDKOptions } from "../types";
-import {
-  getComponent,
-  getCustomFallbackComponent,
-  getEnableFallbackComponent,
-  getStoryblokApi,
-  setComponents,
-  storyblokInit,
-} from "../core/init";
+
+type InitModule = typeof import("../core/init");
+
+// Each test gets a fresh copy of the init module, so module-level state
+// (API instance, components, fallback settings) cannot leak between tests.
+let init: InitModule;
+
+beforeEach(async () => {
+  vi.resetModules();
+  init = await import("../core/init");
+});
 
 describe("storyblokInit", () => {
   let pluginOptions: SbReactSDKOptions;
@@ -28,56 +31,64 @@ describe("storyblokInit", () => {
   });
 
   it("should initialize storyblokApiInstance", () => {
-    storyblokInit(pluginOptions);
-    const storyblokApi = getStoryblokApi();
+    init.storyblokInit(pluginOptions);
+    const storyblokApi = init.getStoryblokApi();
     expect(storyblokApi).toBeDefined();
   });
 
   it("should set componentsMap", () => {
-    storyblokInit(pluginOptions);
+    init.storyblokInit(pluginOptions);
     expect(pluginOptions.components).toHaveProperty("testComponent");
   });
 
   it("should set enableFallbackComponent", () => {
-    storyblokInit(pluginOptions);
-    expect(getEnableFallbackComponent()).toBe(true);
+    init.storyblokInit(pluginOptions);
+    expect(init.getEnableFallbackComponent()).toBe(true);
   });
 
   it("should set customFallbackComponent", () => {
-    storyblokInit(pluginOptions);
-    expect(getCustomFallbackComponent()).toBeDefined();
+    init.storyblokInit(pluginOptions);
+    expect(init.getCustomFallbackComponent()).toBeDefined();
   });
 
-  it("should re-register components when called again with an existing instance", () => {
-    storyblokInit(pluginOptions);
+  it("should re-register components and fallback options when called again with an existing instance", () => {
+    init.storyblokInit(pluginOptions);
     const updatedComponent = () => null;
-    storyblokInit({ ...pluginOptions, components: { testComponent: updatedComponent } });
-    expect(getComponent("testComponent")).toBe(updatedComponent);
+    const updatedFallback = () => null;
+    init.storyblokInit({
+      ...pluginOptions,
+      components: { testComponent: updatedComponent },
+      enableFallbackComponent: false,
+      customFallbackComponent: updatedFallback,
+    });
+    expect(init.getComponent("testComponent")).toBe(updatedComponent);
+    expect(init.getEnableFallbackComponent()).toBe(false);
+    expect(init.getCustomFallbackComponent()).toBe(updatedFallback);
   });
 });
 
 describe("setComponents", () => {
   it("should set components map", () => {
     const components = { testComponent: () => null };
-    setComponents(components);
-    expect(getComponent("testComponent")).toBe(components.testComponent);
+    init.setComponents(components);
+    expect(init.getComponent("testComponent")).toBe(components.testComponent);
   });
 });
 
 describe("getComponent", () => {
   it("should return the component if it exists", () => {
     const components = { testComponent: () => null };
-    setComponents(components);
-    expect(getComponent("testComponent")).toBe(components.testComponent);
+    init.setComponents(components);
+    expect(init.getComponent("testComponent")).toBe(components.testComponent);
   });
 
   it("should return false if the component does not exist", () => {
-    expect(getComponent("nonExistentComponent")).toBe(false);
+    expect(init.getComponent("nonExistentComponent")).toBe(false);
   });
 
   it("should return false if the component does not exist and log a message", () => {
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    expect(getComponent("nonExistentComponent")).toBe(false);
+    expect(init.getComponent("nonExistentComponent")).toBe(false);
     expect(consoleSpy).toHaveBeenCalledWith("Component nonExistentComponent doesn't exist.");
     consoleSpy.mockRestore();
   });

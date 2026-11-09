@@ -152,6 +152,7 @@ async function runMigrationFunctions(options: {
     sourceSpace: fromSpace,
     path,
     componentName,
+    dryRun,
     onTotal: (total) => {
       updateProgress.setTotal(total);
     },

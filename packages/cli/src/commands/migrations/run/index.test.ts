@@ -517,6 +517,15 @@ describe("migrations run command", () => {
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Migration Results:"));
   });
 
+  it("should write no rollback file in dry run mode", async () => {
+    preconditions.canMigrate();
+    resetLogger();
+
+    await migrationsCommand.parseAsync(["node", "test", "run", "--space", "12345", "--dry-run"]);
+
+    expect(Object.keys(vol.toJSON()).filter((file) => file.includes("/rollbacks/"))).toEqual([]);
+  });
+
   it("should handle component filtering correctly", async () => {
     preconditions.canMigrate();
 

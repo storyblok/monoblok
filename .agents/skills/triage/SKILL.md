@@ -108,8 +108,8 @@ broke it. "It used to work" alone is `no`, and so is a `regression` label withou
 | **P2 — Medium**   | Degraded + widespread/common, or critical + uncommon/edge-case |
 | **P3 — Low**      | Minor impact, or degraded + uncommon/edge-case                 |
 
-A regression raises the priority one level (P3 → P2, P2 → P1, P1 → P0): people relied on it, and an
-update took it away.
+A regression raises the priority one level (P3 → P2, P2 → P1): people relied on it, and an update
+took it away. Only a blocker reaches P0 this way.
 
 #### 3d. Verdict
 

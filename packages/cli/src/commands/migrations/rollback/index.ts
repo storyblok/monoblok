@@ -5,7 +5,7 @@ import { CommandError, handleError, requireAuthentication, toError } from "../..
 import { migrationsCommand } from "../command";
 import { session } from "../../../session";
 import { isRollbackFile, readRollbackFile } from "./actions";
-import { guardPendingReleases, toMigrationCommandError } from "../content-migrations";
+import { guardPendingReleases, plural, toMigrationCommandError } from "../content-migrations";
 import { rollbackContentMigrationRun } from "./undo-content-migration";
 import { updateStory } from "../../stories/actions";
 import { getUI } from "../../../lib/ui";
@@ -147,6 +147,17 @@ rollbackCmd.action(async (run: string | undefined, _options: unknown, command: C
       space,
       results: rollbackSummary,
     });
+    ui.info(
+      `Rolled back ${plural(rollbackSummary.succeeded, "story", "stories")} of ${chalk.bold(migrationFile)}${rollbackSummary.failed > 0 ? `; ${plural(rollbackSummary.failed, "story", "stories")} failed` : ""}.`,
+    );
+    if (rollbackSummary.failed > 0) {
+      handleError(
+        new CommandError(
+          `${plural(rollbackSummary.failed, "story", "stories")} could not be rolled back. See the errors above, fix the cause, then run "storyblok migrations rollback ${migrationFile}" again. It restores every story in the file, overwriting changes made since the run.`,
+        ),
+        verbose,
+      );
+    }
   } catch (error) {
     handleError(
       new CommandError(`Failed to rollback migration: ${(error as Error).message}`),

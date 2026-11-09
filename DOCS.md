@@ -210,7 +210,9 @@ reports its fields, and restores the other blocks. Pass `--force` to overwrite c
 The command also reports blocks that are no longer in the story and deleted stories.
 
 A rollback file holds whole stories, so the command overwrites every story it names, including edits
-made since the run.
+made since the run. A rollback file isn’t marked as rolled back, so this applies every time you run
+the command with it. When a story can’t be restored, the command restores the others and exits with
+an error. Running it again restores every story in the file again, not only the failed ones.
 
 ## Rolled back runs
 

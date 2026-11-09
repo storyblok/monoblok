@@ -32,7 +32,7 @@ gh issue view <number> --repo storyblok/monoblok \
   --json title,body,labels,state,comments,author,createdAt,closedByPullRequestsReferences
 ```
 
-**Linear:**
+**Linear:** `scripts/linear-fetch.sh` next to this file, run from the repo root:
 
 ```bash
 bash .agents/skills/triage/scripts/linear-fetch.sh issue DX-123 DX-456
@@ -74,7 +74,7 @@ output, etc.).
 
 #### 3c. Priority assessment
 
-Read `.agents/skills/triage/calibration.md` first and match the ticket against it. Then score each
+Read `calibration.md` next to this file first and match the ticket against it. Then score each
 ticket on these dimensions and derive an overall priority.
 
 **Impact:**
@@ -194,10 +194,11 @@ or P2 with no `OWNER`/`MEMBER`/`COLLABORATOR` comment in the last 14 days
 days). Only `actionable` and `needs-info` tickets without an open linked fix PR go on that list (a
 candidate does not count), whatever their priority; the rest still get their section below. Give
 every issue its scores, one line is enough for P3 (no summary or next step):
-`P3 | minor / edge-case | verdict | pkg | fix PR or none`. Present the summary table, sorted by
-priority, then by ticket number from highest to lowest (newest first); in a mixed run, GitHub
-tickets come before Linear ones within the same priority. Sort the "Needs attention" list the same
-way, and write the detailed sections in table order.
+`P3 | minor / edge-case | verdict | pkg | fix PR or none`. A P3 needs-info ticket keeps its draft
+reply under that line. Present the summary table, sorted by priority, then by ticket number from
+highest to lowest (newest first); in a mixed run, GitHub tickets come before Linear ones within the
+same priority. Sort the "Needs attention" list the same way, and write the detailed sections in
+table order.
 
 ## Rules
 

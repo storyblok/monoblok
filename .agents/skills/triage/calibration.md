@@ -25,4 +25,4 @@ Scores the team has ruled on. Match new tickets against these before scoring.
 | #797 preview template escapes `&&` (fixed)              | degraded / uncommon   | P3       | scored as reported                                                                                          |
 | #826 icon names are an untyped string                   | minor / uncommon      | P3       | feature request; a typo only costs the icon                                                                 |
 | #827 `defineTab` / `defineGroup` helpers                | minor / uncommon      | P3       | feature request; the editor shows the problem                                                               |
-| #425 CLI suggests `--verbose` when it is already set    | minor / common        | P3       | a misleading hint; the error itself is shown                                                                |
+| #425 CLI suggests `--verbose` when it is already set    | minor / uncommon      | P3       | needs `--verbose`; a misleading hint, the error itself is shown                                             |

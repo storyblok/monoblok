@@ -76,7 +76,7 @@ backup/
         └── hero.js  # Migration file
 ```
 
-4. Generate a typed content migration for `migrations apply`:
+4. Generate a typed content migration:
 
 ```bash
 storyblok migrations generate hero --space 12345 --schema src/schema.ts

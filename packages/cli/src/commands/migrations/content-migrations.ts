@@ -1,7 +1,8 @@
 /**
- * What the content migration commands share: where a space's content
- * migrations and their journal live, writing a new one, the story fields the
- * engine reads, and the guard against pending releases.
+ * What `run`, `list`, `rollback`, and the commands that write content
+ * migrations share: where a space's content migrations and their journal live,
+ * writing a new one, the story fields the engine reads, and the guard against
+ * pending releases.
  */
 import { rm } from "node:fs/promises";
 import { isDeepStrictEqual } from "node:util";
@@ -13,8 +14,8 @@ import { nextMigrationId } from "@storyblok/schema/internal/codegen";
 import {
   checkPendingReleases,
   discoverMigrations,
+  localJournal,
   MigrationError,
-  resolveJournal,
 } from "@storyblok/schema";
 import type { Journal, StoryForMigration } from "@storyblok/schema";
 import { getMapiClient } from "../../api";
@@ -121,9 +122,9 @@ export async function writeContentMigration(
   return options.before ? { migrationPath, beforePath } : { migrationPath };
 }
 
-/** The journal sits beside the space directories, so one journal serves every space. */
+/** Runs are recorded in each space's `rollbacks` directory, beside the legacy rollback files. */
 export function contentJournal(path: string | undefined): Journal {
-  return resolveJournal(resolvePath(path, "migrations"));
+  return localJournal(resolvePath(path, "migrations"));
 }
 
 export function toStoryForMigration(story: Story): StoryForMigration {
@@ -219,8 +220,8 @@ async function fetchReleases(space: string) {
  * is a warning rather than a reason to stop.
  */
 const RELEASE_CONSEQUENCES = {
-  apply: { subject: "This run doesn't change", object: "the stories it writes" },
-  undo: { subject: "This undo doesn't restore", object: "the stories it restores" },
+  run: { subject: "This run doesn't change", object: "the stories it writes" },
+  rollback: { subject: "This rollback doesn't restore", object: "the stories it restores" },
 } as const;
 
 export async function guardPendingReleases(

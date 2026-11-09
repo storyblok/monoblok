@@ -8,7 +8,7 @@ type OpTarget = { block: string; field: string };
  * A migration op described as data, rendered to the matching call from
  * `@storyblok/schema`. `todo` lines are emitted as comments above
  * the call. An op whose callback the generator cannot write gets one that
- * throws, so `migrations apply` refuses the op until the author replaces it.
+ * throws, so `migrations run` refuses the op until the author replaces it.
  */
 export type MigrationOpSource = { todo?: readonly string[] } & (
   | (OpTarget & { kind: "renameField"; to: string })
@@ -46,7 +46,7 @@ function target(op: OpTarget): string {
 /**
  * The DSL imports an op renders to. `fillField` renders to `addField` and
  * `alterField`, not one `alterBlock`, so both name the field and `migrations
- * apply` can skip them once a later schema change renames or removes it.
+ * run` can skip them once a later schema change renames or removes it.
  */
 function importsOf(op: MigrationOpSource): string[] {
   return op.kind === "fillField" ? ["addField", "alterField"] : [op.kind];

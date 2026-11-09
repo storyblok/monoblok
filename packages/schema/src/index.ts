@@ -164,4 +164,4 @@ export type {
   MigrationFile,
 } from "./migrations/load-migrations";
 
-export { JOURNAL_DIRECTORY, localJournal, resolveJournal } from "./migrations/local-journal";
+export { localJournal } from "./migrations/local-journal";

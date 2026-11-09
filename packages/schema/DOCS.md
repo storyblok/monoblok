@@ -13,8 +13,8 @@ _Introduced in_ <Badge text="0.6.0" variant="success" />
 A **content migration** is an ordered list of operations (ops) that reshapes story content after a
 block schema changes, for example to rename a field or convert its values. The ops are typed against
 your schema. The Storyblok CLI applies migrations with
-[`migrations apply`](/docs/tooling/cli/migrations/apply) and reverts a run with
-[`migrations undo`](/docs/tooling/cli/migrations/undo).
+[`migrations run`](/docs/tooling/cli/migrations/run) and reverts a run with
+[`migrations rollback`](/docs/tooling/cli/migrations/rollback).
 
 ### Write a migration
 
@@ -74,7 +74,7 @@ applied the migration, delete it and its snapshot.
 
 ### Write rerunnable ops
 
-`migrations apply` runs every migration in the directory on each run, so a second pass of an op must
+`migrations run` runs every migration in the directory on each run, so a second pass of an op must
 change nothing. The ops take care of this, and callbacks have to as well. Return `undefined` to
 leave a value unchanged, and check a value’s shape before you convert it, since it can already hold
 the converted value:

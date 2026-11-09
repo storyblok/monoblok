@@ -7,7 +7,8 @@
     "storyblok": "storyblok",
     "schema:diff": "storyblok schema push src/schema/schema.ts --delete --dry-run",
     "schema:push": "storyblok schema push src/schema/schema.ts --delete --typed",
-    "migrations:apply": "storyblok migrations apply",
+    "migrations:run": "storyblok migrations run",
+    "migrations:rollback": "storyblok migrations rollback",
     "migrations:list": "storyblok migrations list",
     "test:types": "tsc --noEmit"
   },

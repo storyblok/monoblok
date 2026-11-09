@@ -17,10 +17,12 @@ pnpm schema:diff
 pnpm schema:push
 # 4. Edit the generated migration, then check it
 pnpm test:types
-pnpm migrations:apply --dry-run
-# 5. Apply it to the space and commit
-pnpm migrations:apply --publish published
+pnpm migrations:run --dry-run
+# 5. Run it against the space and commit
+pnpm migrations:run --publish published
 pnpm migrations:list
+# Roll back the latest run if needed
+pnpm migrations:rollback
 ```
 
 ## Migrations
@@ -38,5 +40,5 @@ pnpm migrations:list
 `split-metric-value` refused one story whose `metric` value (`"CX "`) holds no amount, so its
 `metric` blocks still hold `value`.
 
-The run journal (`.storyblok/migrations/.journal/`) stays on the machine that applied the
-migrations, so a fresh checkout lists all seven as pending.
+Run records (`.storyblok/migrations/<space>/rollbacks/*.json`) are git-ignored and stay on the
+machine that ran the migrations, so a fresh checkout lists all seven as pending.

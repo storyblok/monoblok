@@ -41,7 +41,7 @@ export type CdnExperiment = {
      */
     display_name: string;
     /**
-     * IDs of stories assigned to this experiment
+     * IDs of the original stories tested in this experiment. The same for every variant, including the control variant
      */
     story_ids: Array<number>;
     /**
@@ -68,11 +68,11 @@ export type CdnExperimentVariant = {
      */
     weight: number;
     /**
-     * Whether this is the control variant
+     * Whether this is the control variant. Visitors in the control variant see the original stories, so the control variant has an empty story_mappings list by design
      */
     is_control: boolean;
     /**
-     * Mappings between original stories and their variant copies
+     * Copies of the tested stories for this variant: one entry for each original story that has a copy in this variant. The list holds copies only. By design, the control variant has an empty list, and in an experiment without copies every variant has an empty list. If a story has no entry in the visitor's variant, show the original story
      */
     story_mappings: Array<{
         /**
@@ -910,6 +910,18 @@ export type ListCdnExperimentsV2Data = {
          * Access a particular cached version of a published story using its Unix timestamp.
          */
         cv?: number;
+        /**
+         * Comma separated story IDs. Returns only the experiments linked to one of these stories. Variant stories do not match.
+         */
+        by_story_ids?: string;
+        /**
+         * Comma separated story UUIDs. Returns only the experiments linked to one of these stories. Variant stories do not match.
+         */
+        by_story_uuids?: string;
+        /**
+         * Comma separated story full slugs (e.g. `campaigns/home`, not `home`). Exact match, no wildcards. Returns only the experiments linked to one of these stories. Variant stories do not match. When several `by_story_*` parameters are sent, a story must match all of them.
+         */
+        by_story_full_slugs?: string;
     };
     url: '/v2/cdn/experiments';
 };

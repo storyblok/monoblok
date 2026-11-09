@@ -234,7 +234,7 @@ export type AiConfigurationRequest = {
         /**
          * AI provider name
          */
-        provider_name: 'openai' | 'google_gemini' | 'azure_openai';
+        provider_name: 'openai' | 'google_gemini' | 'anthropic' | 'azure_openai';
         /**
          * API key for the provider
          */
@@ -701,9 +701,13 @@ export type ApiTrafficStatisticsResponse = {
      */
     traffic_used_this_year: number;
     /**
-     * The period that the yearly limits and usage refer to
+     * Same as `yearly_usage.period`; kept for existing readers
      */
     usage_period?: UsagePeriod;
+    /**
+     * The org's yearly quotas and their usage period. Replaces `yearly_traffic_limit`, `traffic_used_this_year` and `usage_period`
+     */
+    yearly_usage?: YearlyUsage;
     /**
      * Cumulated traffic usage with detailed breakdown
      */
@@ -2230,63 +2234,6 @@ export type CreateOauthClientRequest = {
          * Spaces this client may be authorized for; empty means no restriction
          */
         permitted_space_ids?: Array<number>;
-    };
-};
-
-export type CreateOrgSubscriptionRequest = {
-    /**
-     * Plan identifier (e.g., basic_1_2_month_usd)
-     */
-    plan?: string;
-    /**
-     * Numeric ID of a custom plan (alternative to plan)
-     */
-    plan_id?: number;
-    /**
-     * Optional coupon code for discount
-     */
-    coupon?: string | null;
-    /**
-     * Stripe payment token details
-     */
-    stripe_token: {
-        /**
-         * Stripe token ID
-         */
-        id: string;
-        /**
-         * Billing email address
-         */
-        email: string;
-        /**
-         * Card billing details
-         */
-        card: {
-            /**
-             * Cardholder name
-             */
-            name: string;
-            /**
-             * Billing city
-             */
-            address_city: string;
-            /**
-             * Billing country name
-             */
-            address_country: string;
-            /**
-             * Billing address line 1
-             */
-            address_line1: string;
-            /**
-             * Billing postal code
-             */
-            address_zip: string;
-            /**
-             * Country ISO code
-             */
-            country: string;
-        };
     };
 };
 
@@ -3919,21 +3866,6 @@ export type OrgSpace = {
     created_at: string;
 };
 
-export type OrgSubscriptionCreateResponse = {
-    /**
-     * Stripe payment intent client secret for client-side confirmation
-     */
-    payment_intent?: string | null;
-    /**
-     * Status of the payment intent
-     */
-    intent_status: string;
-};
-
-export type OrgSubscriptionUpdateResponse = {
-    org: Org;
-};
-
 export type OrgUserCreateResponse = {
     user: OrgUser;
 };
@@ -4096,6 +4028,46 @@ export type PresetFiltersIndexResponse = {
      * List of preset filters
      */
     preset_filters: Array<PresetFilter>;
+};
+
+/**
+ * Check `code` to detect the error type. Do not match on `message`: its wording can change.
+ */
+export type PublicationErrorResponse = {
+    error: {
+        message: string;
+        /**
+         * `publication_in_progress`: the space already has a running publication; only one runs per space at a time. `invalid_parameters`: `details` lists the messages per field. `publish_limit_reached`: the space is in development mode and has used its publishes for today.
+         */
+        code: 'invalid_parameters' | 'publication_in_progress' | 'publish_limit_reached';
+        details: {
+            [key: string]: Array<string>;
+        } | null;
+        timestamp: string;
+    };
+};
+
+export type PublicationRequest = {
+    publication: {
+        /**
+         * IDs of the selected stories and folders, at most 1000. A folder includes its stories (and its subfolders when `options.recursive` is true).
+         */
+        story_ids: Array<number>;
+        options?: {
+            /**
+             * Include the stories in subfolders of the selected folders.
+             */
+            recursive?: boolean;
+            /**
+             * Include stories that are in a release or have scheduled publishing.
+             */
+            include_scheduled?: boolean;
+            /**
+             * Languages to publish. Use `[default]` for the default language. Languages the user cannot publish are left out.
+             */
+            languages?: Array<string>;
+        };
+    };
 };
 
 export type PushExperimentResultsRequest = {
@@ -4766,9 +4738,13 @@ export type StatisticsAllTrafficResponse = {
      */
     traffic_used_this_year?: number;
     /**
-     * The period that the yearly limits and usage refer to. Null for a space that is not in an org
+     * Same as `yearly_usage.period`; kept for existing readers. Null for a space that is not in an org
      */
     usage_period?: UsagePeriod | null;
+    /**
+     * The org's yearly quotas and their usage period. Null for a space that is not in an org. Replaces `yearly_traffic_limit`, `traffic_used_this_year` and `usage_period`
+     */
+    yearly_usage?: YearlyUsage | null;
     /**
      * Traffic data grouped by time period
      */
@@ -5849,30 +5825,6 @@ export type UpdateOauthClientRequest = {
     };
 };
 
-export type UpdateOrgSubscriptionRequest = {
-    /**
-     * Plan identifier (e.g., basic_1_2_month_usd)
-     */
-    plan?: string;
-    /**
-     * Numeric ID of a custom plan (alternative to plan)
-     */
-    plan_id?: number;
-    /**
-     * Stripe payment token to update payment method (omit to change plan instead)
-     */
-    stripe_token?: {
-        /**
-         * Stripe token ID
-         */
-        id?: string;
-        /**
-         * Billing email address
-         */
-        email?: string;
-    } | null;
-};
-
 export type UpdateOrgUserRequest = {
     user: {
         /**
@@ -6640,21 +6592,13 @@ export type UpdateStorySchedulingRequest = {
 };
 
 /**
- * Request body for updating a subscription. Use price_id for the new pricing flow or plan for the legacy flow.
+ * Request body for updating a subscription. price_id is required: a request without it gets 422.
  */
 export type UpdateSubscriptionRequest = {
     /**
-     * Stripe price ID for the new plan (new pricing flow)
+     * Stripe price ID for the new plan
      */
-    price_id?: string | null;
-    /**
-     * Legacy plan name (old pricing flow)
-     */
-    plan?: string | null;
-    /**
-     * Stripe token for payment source update
-     */
-    stripe_token?: string | null;
+    price_id: string;
     /**
      * Collaborator IDs to remove after plan change to meet new plan limits
      */
@@ -6747,7 +6691,7 @@ export type UploadImageResponse = {
 };
 
 /**
- * The period that the yearly limits and usage refer to. Currently always the calendar year.
+ * The org's current usage period: its contract year, or the calendar year when it has no contract. The yearly limits and usage refer to it.
  */
 export type UsagePeriod = {
     /**
@@ -6758,6 +6702,34 @@ export type UsagePeriod = {
      * First day of the next period (UTC), when the yearly usage resets
      */
     resets_on: string;
+};
+
+/**
+ * A yearly limit and the usage against it
+ */
+export type UsageQuota = {
+    /**
+     * Yearly limit: the org's monthly limit × 12. Null when the org has no limit or is unlimited
+     */
+    limit: number | null;
+    /**
+     * Usage within the period
+     */
+    used: number;
+};
+
+/**
+ * The yearly quotas within the period
+ */
+export type UsageQuotas = {
+    /**
+     * Traffic, in bytes
+     */
+    traffic: UsageQuota;
+    /**
+     * API requests
+     */
+    api_requests: UsageQuota;
 };
 
 export type UserAvatarUploadRequest = {
@@ -7033,6 +7005,14 @@ export type WorkflowStageAttributes = {
      * IDs of allowed next workflow stages
      */
     workflow_stage_ids?: Array<number>;
+};
+
+/**
+ * The org's yearly quotas and the usage period they are measured in. Usage counts the org's spaces in this region; deleted spaces are not counted. Can be up to one hour old.
+ */
+export type YearlyUsage = {
+    period: UsagePeriod;
+    quotas: UsageQuotas;
 };
 
 /**
@@ -8354,7 +8334,7 @@ export type AiConfiguration = {
     /**
      * AI provider name.
      */
-    provider_name: 'openai' | 'google_gemini' | 'azure_openai';
+    provider_name: 'openai' | 'google_gemini' | 'anthropic' | 'azure_openai';
     /**
      * Model identifier for the provider.
      */
@@ -10595,6 +10575,10 @@ export type MemberRoleOrg = {
      */
     restricted_regions: Array<string>;
     /**
+     * Effective AI kill switch. Only Storyblok Support can change it.
+     */
+    ai_features_disabled: boolean;
+    /**
      * Whether AI text generator is disabled
      */
     ai_text_generator_disabled: boolean;
@@ -10847,6 +10831,10 @@ export type Org = {
     sso_alt_email?: string | null;
     strong_auth?: boolean | null;
     restricted_regions: Array<string>;
+    /**
+     * Effective AI kill switch. Only Storyblok Support can change it.
+     */
+    ai_features_disabled: boolean;
     ai_text_generator_disabled: boolean;
     ai_text_generator_feature_disabled: boolean;
     ai_credits_used?: number;
@@ -10856,6 +10844,10 @@ export type Org = {
     ai_translation_enabled: boolean;
     storyblok_agents_enabled?: boolean;
     strata_available?: boolean;
+    /**
+     * The organization's own Strata switch. Only has an effect when strata_available is true
+     */
+    strata_enabled?: boolean;
     token_timeout_in?: number | null;
     disable_private_spaces?: boolean | null;
     enable_content_distributions_ai_translation?: boolean;
@@ -11378,6 +11370,185 @@ export type PresetFilter = {
      * IDs of users who have access to this preset filter
      */
     user_ids: Array<number>;
+};
+
+/**
+ * A bulk publication. Counts are per story and language pair, leave out folders, and include only pairs the author may publish.
+ */
+export type Publication = {
+    id: number;
+    /**
+     * `draft`: items are being created. `enqueued`: waiting for a worker. `running`: stories are being published. `closing`: every story is done. The folders are being published, then the final status is set and the webhook and email are sent. `success`: every item was processed, even if some failed or were skipped. Check `has_issues` to show a warning. `failure`: the publication stopped before every item was processed, for example after a system error. `success` and `failure` are final.
+     */
+    status: 'draft' | 'enqueued' | 'running' | 'closing' | 'success' | 'failure';
+    author: {
+        id: number;
+        /**
+         * Null when the author was deleted.
+         */
+        friendly_name: string | null;
+        /**
+         * Storage path of the author's avatar, not an absolute URL. Prepend the asset host to render it. Null when the author has no avatar or was deleted.
+         */
+        avatar: string | null;
+    };
+    options: PublicationOptions;
+    /**
+     * The stories and folders the user selected, in the order of `story_ids`.
+     */
+    roots: Array<PublicationRoot>;
+    stories: PublicationStoryCounts;
+    /**
+     * Counts per story and language pair. Folders are not counted.
+     */
+    counts: {
+        pending: number;
+        success: number;
+        failure: number;
+        skipped: number;
+    };
+    /**
+     * True when any item of the publication, folder or story, failed or was skipped. Use it to show a warning, for every status.
+     */
+    has_issues: boolean;
+    /**
+     * Creation timestamp (format is ISO 8601 standard in UTC).
+     */
+    created_at: string;
+    finished_at: string | null;
+};
+
+/**
+ * One story or folder in one language. A story published in two languages has two items.
+ */
+export type PublicationItem = {
+    id: number;
+    story_id: number;
+    /**
+     * Current name of the story.
+     */
+    name: string;
+    /**
+     * Current full slug of the story. Use it to build the folder tree.
+     */
+    full_slug: string;
+    /**
+     * true if the instance constitutes a folder.
+     */
+    is_folder: boolean;
+    /**
+     * True when the story was deleted after the publication started. The item stays in the list.
+     */
+    deleted: boolean;
+    /**
+     * The language code for this translation.
+     */
+    lang: string | null;
+    /**
+     * `pending`: not done yet. `success`: published. `failure`: publishing failed. `skipped`: left out on purpose (for example, not allowed or scheduled).
+     */
+    status: 'pending' | 'success' | 'failure' | 'skipped';
+    /**
+     * Empty unless `status` is `failure` or `skipped`. One item can have several reasons.
+     */
+    failure_reasons: Array<PublicationItemFailureReason>;
+    /**
+     * Current publish state of the story in the default language, as in the stories list.
+     */
+    published: boolean;
+    /**
+     * True when the story has changes in the default language that are not published yet.
+     */
+    unpublished_changes: boolean | null;
+    /**
+     * Publish date of the story's oldest pending schedule, for any language, as in the stories list. Null when the story is not scheduled.
+     */
+    scheduled_dates: string | null;
+};
+
+/**
+ * Why an item failed or was skipped. Show a text by `code`; use `message` (English) only for a `code` the client does not know yet.
+ */
+export type PublicationItemFailureReason = {
+    /**
+     * `required_field_blank`: a required field is empty (`field`, `params.field_name`). `not_allowed`: the author may not publish this story or folder. `language_not_allowed`: the author may not publish this language. `workflow_stage`: the workflow stage does not allow publishing. `story_locked`: someone else is editing the story (`params.user_name`). `story_deleted`: the story was deleted before it was published. `scheduled`: the story is in a release or scheduled, and `options.include_scheduled` was false. `timeout`: publishing took too long. New codes can be added.
+     */
+    code: 'required_field_blank' | 'not_allowed' | 'language_not_allowed' | 'workflow_stage' | 'story_locked' | 'story_deleted' | 'scheduled' | 'timeout';
+    /**
+     * Key of the field the reason is about, or null.
+     */
+    field: string | null;
+    /**
+     * Values used in the message, per code.
+     */
+    params: {
+        [key: string]: string;
+    };
+    /**
+     * English text. Its wording can change; do not match on it.
+     */
+    message: string;
+};
+
+export type PublicationOptions = {
+    recursive: boolean;
+    include_scheduled: boolean;
+    languages: Array<string>;
+};
+
+/**
+ * What a publication with the same body would publish. Nothing is saved. Counts include only stories the user may publish.
+ */
+export type PublicationPreview = {
+    this_folder_only: PublicationScopeCounts;
+    with_subfolders: PublicationScopeCounts;
+    /**
+     * Stories left out by default because they are scheduled. They are included when `options.include_scheduled` is true.
+     */
+    scheduled: {
+        in_releases: number;
+        scheduled_publishing: number;
+    };
+};
+
+/**
+ * A story or folder the user selected.
+ */
+export type PublicationRoot = {
+    id: number;
+    name: string;
+    full_slug: string;
+    /**
+     * true if the instance constitutes a folder.
+     */
+    is_folder: boolean;
+    /**
+     * Stories in the folder that the publication includes. It follows `options.recursive`. Null for a story, and for a folder while the publication is `draft`.
+     */
+    stories: number | null;
+    /**
+     * Subfolders that the publication includes. It follows `options.recursive`. Null for a story, and for a folder while the publication is `draft`.
+     */
+    subfolders: number | null;
+    /**
+     * True when an item under this root failed or was skipped.
+     */
+    has_issues: boolean;
+};
+
+export type PublicationScopeCounts = {
+    stories: number;
+    folders: number;
+};
+
+/**
+ * Counts per story. A story is `pending` while any of its languages is pending, `with_issues` when any language failed or was skipped, and `published` when all its languages succeeded. Folders are not counted.
+ */
+export type PublicationStoryCounts = {
+    total: number;
+    published: number;
+    with_issues: number;
+    pending: number;
 };
 
 /**
@@ -12004,6 +12175,10 @@ export type SpaceDetail = {
      */
     traffic_limit: number;
     /**
+     * Effective AI kill switch: true when it is on for the space or for its org. Only Storyblok Support can change it.
+     */
+    ai_features_disabled: boolean;
+    /**
      * Whether AI text generation is disabled
      */
     ai_text_generator_disabled: boolean;
@@ -12031,6 +12206,10 @@ export type SpaceDetail = {
      * Whether there are pending background tasks.
      */
     has_pending_tasks: boolean;
+    /**
+     * The organization ID if space belongs to an organization
+     */
+    org_id?: number | null;
     /**
      * Whether Storyblok granted this space access to Strata (semantic index & search) — via its org's access, or a direct grant for org-less spaces. Distinct from options.strata_enabled, the space admin's own switch
      */
@@ -13493,6 +13672,10 @@ export type UserOrg = {
     id?: number;
     name?: string;
     status?: 'active' | 'disabled' | 'deactivated';
+    /**
+     * Effective AI kill switch. Only Storyblok Support can change it.
+     */
+    ai_features_disabled?: boolean;
     settings?: OrgSettings;
 };
 
@@ -13869,10 +14052,6 @@ export type InvoicesIndexResponseWritable = {
      * List of invoices for the space
      */
     invoices: Array<InvoiceWritable>;
-};
-
-export type OrgSubscriptionUpdateResponseWritable = {
-    org: OrgWritable;
 };
 
 export type PartnerInvoicesIndexResponseWritable = {
@@ -14467,6 +14646,10 @@ export type OrgWritable = {
     sso_alt_email?: string | null;
     strong_auth?: boolean | null;
     restricted_regions: Array<string>;
+    /**
+     * Effective AI kill switch. Only Storyblok Support can change it.
+     */
+    ai_features_disabled: boolean;
     ai_text_generator_disabled: boolean;
     ai_text_generator_feature_disabled: boolean;
     ai_credits_used?: number;
@@ -14476,6 +14659,10 @@ export type OrgWritable = {
     ai_translation_enabled: boolean;
     storyblok_agents_enabled?: boolean;
     strata_available?: boolean;
+    /**
+     * The organization's own Strata switch. Only has an effect when strata_available is true
+     */
+    strata_enabled?: boolean;
     token_timeout_in?: number | null;
     disable_private_spaces?: boolean | null;
     enable_content_distributions_ai_translation?: boolean;
@@ -17218,6 +17405,10 @@ export type DeleteAppProvisionErrors = {
      * Invalid token or no custom complexity.
      */
     404: unknown;
+    /**
+     * Unable to remove space - user is not a space admin.
+     */
+    422: unknown;
     /**
      * Rate limit reached
      */
@@ -28603,107 +28794,6 @@ export type DeleteOrgSpaceResponses = {
     200: unknown;
 };
 
-export type CreateOrgSubscriptionData = {
-    body: CreateOrgSubscriptionRequest;
-    path?: never;
-    query?: never;
-    url: '/v1/org_subscriptions';
-};
-
-export type CreateOrgSubscriptionErrors = {
-    /**
-     * Unauthorized
-     */
-    401: UnauthorizedError;
-    /**
-     * Unable to remove space - user is not a space admin.
-     */
-    422: ErrorsObject;
-    /**
-     * Rate limit reached
-     */
-    429: RateLimitError;
-};
-
-export type CreateOrgSubscriptionError = CreateOrgSubscriptionErrors[keyof CreateOrgSubscriptionErrors];
-
-export type CreateOrgSubscriptionResponses = {
-    /**
-     * Subscription created successfully.
-     */
-    200: OrgSubscriptionCreateResponse;
-};
-
-export type CreateOrgSubscriptionResponse = CreateOrgSubscriptionResponses[keyof CreateOrgSubscriptionResponses];
-
-export type PartialUpdateOrgSubscriptionData = {
-    body: UpdateOrgSubscriptionRequest;
-    path: {
-        /**
-         * Numeric ID of the organization subscription (typically the space ID)
-         */
-        id: number;
-    };
-    query?: never;
-    url: '/v1/org_subscriptions/{id}';
-};
-
-export type PartialUpdateOrgSubscriptionErrors = {
-    /**
-     * Unauthorized
-     */
-    401: UnauthorizedError;
-    /**
-     * Rate limit reached
-     */
-    429: RateLimitError;
-};
-
-export type PartialUpdateOrgSubscriptionError = PartialUpdateOrgSubscriptionErrors[keyof PartialUpdateOrgSubscriptionErrors];
-
-export type PartialUpdateOrgSubscriptionResponses = {
-    /**
-     * Subscription updated successfully.
-     */
-    200: OrgSubscriptionUpdateResponse;
-};
-
-export type PartialUpdateOrgSubscriptionResponse = PartialUpdateOrgSubscriptionResponses[keyof PartialUpdateOrgSubscriptionResponses];
-
-export type UpdateOrgSubscriptionData = {
-    body: UpdateOrgSubscriptionRequest;
-    path: {
-        /**
-         * Numeric ID of the organization subscription (typically the space ID)
-         */
-        id: number;
-    };
-    query?: never;
-    url: '/v1/org_subscriptions/{id}';
-};
-
-export type UpdateOrgSubscriptionErrors = {
-    /**
-     * Unauthorized
-     */
-    401: UnauthorizedError;
-    /**
-     * Rate limit reached
-     */
-    429: RateLimitError;
-};
-
-export type UpdateOrgSubscriptionError = UpdateOrgSubscriptionErrors[keyof UpdateOrgSubscriptionErrors];
-
-export type UpdateOrgSubscriptionResponses = {
-    /**
-     * Subscription updated successfully.
-     */
-    200: OrgSubscriptionUpdateResponse;
-};
-
-export type UpdateOrgSubscriptionResponse = UpdateOrgSubscriptionResponses[keyof UpdateOrgSubscriptionResponses];
-
 export type DeleteOrgUserData = {
     body?: never;
     path: {
@@ -31130,6 +31220,19 @@ export type CreateScimTokenErrors = {
      * Unauthorized
      */
     401: UnauthorizedError;
+    /**
+     * Forbidden
+     */
+    403: {
+        /**
+         * Error message
+         */
+        error: string;
+        /**
+         * Machine-readable denial reason
+         */
+        error_code: 'feature_not_available';
+    };
     /**
      * Unable to remove space - user is not a space admin.
      */

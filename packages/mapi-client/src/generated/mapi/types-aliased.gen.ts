@@ -1613,6 +1613,10 @@ export type MemberOrganization = {
      */
     restricted_regions: Array<string>;
     /**
+     * Effective AI kill switch. Only Storyblok Support can change it.
+     */
+    ai_features_disabled: boolean;
+    /**
      * Whether AI text generator is disabled
      */
     ai_text_generator_disabled: boolean;
@@ -1724,6 +1728,10 @@ export type Organization = {
     sso_alt_email?: string | null;
     strong_auth?: boolean | null;
     restricted_regions: Array<string>;
+    /**
+     * Effective AI kill switch. Only Storyblok Support can change it.
+     */
+    ai_features_disabled: boolean;
     ai_text_generator_disabled: boolean;
     ai_text_generator_feature_disabled: boolean;
     ai_credits_used?: number;
@@ -1733,6 +1741,10 @@ export type Organization = {
     ai_translation_enabled: boolean;
     storyblok_agents_enabled?: boolean;
     strata_available?: boolean;
+    /**
+     * The organization's own Strata switch. Only has an effect when strata_available is true
+     */
+    strata_enabled?: boolean;
     token_timeout_in?: number | null;
     disable_private_spaces?: boolean | null;
     enable_content_distributions_ai_translation?: boolean;
@@ -2620,6 +2632,10 @@ export type UserOrg = {
     id?: number;
     name?: string;
     status?: 'active' | 'disabled' | 'deactivated';
+    /**
+     * Effective AI kill switch. Only Storyblok Support can change it.
+     */
+    ai_features_disabled?: boolean;
     settings?: OrgSettings;
 };
 
@@ -3021,7 +3037,7 @@ export type PublicApp = {
 };
 
 /**
- * The period that the yearly limits and usage refer to. Currently always the calendar year.
+ * The org's current usage period: its contract year, or the calendar year when it has no contract. The yearly limits and usage refer to it.
  */
 export type UsagePeriod = {
     /**

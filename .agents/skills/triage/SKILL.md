@@ -39,12 +39,14 @@ bash .agents/skills/triage/scripts/linear-fetch.sh issue DX-123 DX-456
 bash .agents/skills/triage/scripts/linear-fetch.sh triage
 ```
 
-Linear steps apply only to `DX-` tickets; skip them for GitHub-only runs.
+Linear steps apply only to `DX-` tickets; skip them for GitHub-only runs. A ticket synced from
+GitHub has its issue in `attachments` (`.../monoblok/issues/<n>`), and its Linear comments all show
+"GitHub" as the author: triage it as that GitHub issue, named `#<n> (DX-<id>)`.
 
 **Fix PRs:** a GitHub issue's candidates are in `closedByPullRequestsReferences`, a Linear ticket's
-are the GitHub PR links in `attachments`. Both include merged and closed PRs, so keep only those
-where `gh pr view <url> --json state` says `OPEN`. If several, the newest is the fix. If none, one
-`gh pr list --repo storyblok/monoblok --search "<keywords>"` is enough.
+are the `.../pull/<n>` links in `attachments`. Both include merged and closed PRs, so keep only
+those where `gh pr view <url> --json state` says `OPEN`. If several, the newest is the fix. If none,
+one `gh pr list --repo storyblok/monoblok --search "<keywords>"` is enough.
 
 ### Step 3: Assess each ticket
 

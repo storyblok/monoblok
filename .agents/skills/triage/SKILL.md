@@ -97,7 +97,8 @@ Judge the reported scenario, not the install base: if it needs a specific option
 **Regression:** `yes` when it worked in an earlier version and broke after an update, of our package
 or of a dependency, framework or runtime it supports (e.g. a Nuxt minor release). It needs evidence:
 the report names a version where it worked, or the changelog or `git log` shows the change that
-broke it. "It used to work" alone is `no`, and so is a `regression` label without evidence.
+broke it. "It used to work" alone is `no`, and so is a `regression` label without evidence. A case
+an earlier fix left out is `no` too: it never worked.
 
 **Overall priority:**
 

@@ -11,7 +11,7 @@ Scores the team has ruled on. Match new tickets against these before scoring.
 | #399 migration run aborts on a logging error            | critical / uncommon   | P2       | one failed story aborts the whole run                                                                 |
 | #803 `create` fails on paths with spaces                | critical / uncommon   | P2       | using another path is an easy workaround                                                              |
 | #805 stale attributes in live preview                   | degraded / common     | P2       | updating attributes is a normal flow                                                                  |
-| #836 underscore blok names reported missing             | degraded / common     | P2       | normal flow; not a regression: no version where it worked                                             |
+| #836 underscore blok names reported missing             | degraded / common     | P2       | normal flow; not a regression: #185 fixed rendering, never the fallback check                         |
 | #841 components ignored after hot reload                | degraded / common     | P2       | dev-only; edits to existing components should show                                                    |
 | #817 richtext adds 210 kb gzip to the browser bundle    | degraded / widespread | P2       | a heavy bundle is noticeable                                                                          |
 | #727 RSC published pages ship the client registry       | degraded / common     | P2       | performance problem on a working feature                                                              |

@@ -1,6 +1,6 @@
 /**
- * The default journal: a directory per space, two files per run, so reading the
- * ledger never loads the patches.
+ * The default journal: two files per run in a `rollbacks` directory beside each
+ * space's migration files, so reading the ledger never loads the patches.
  *
  * Run ids sort chronologically, which is what lets `list` return runs in the
  * order they happened without opening every entry.
@@ -10,10 +10,13 @@ import { MigrationError } from "./migration-error";
 import { joinPath } from "../utils/join-path";
 
 const PATCHES_SUFFIX = ".patches.json";
-/** Sits beside the space directories that hold the migration files themselves. */
-export const JOURNAL_DIRECTORY = ".journal";
-/** Recorded runs describe one machine's view of a space, so they never belong in version control. */
-const IGNORE_EVERYTHING = "*\n";
+const ROLLBACKS_DIRECTORY = "rollbacks";
+/**
+ * Recorded runs describe one machine's view of a space, so they never belong in
+ * version control. Only the journal's own files are ignored, so other files
+ * kept in the directory stay as visible to git as they were.
+ */
+const IGNORE_JOURNAL_FILES = "*.json\n.gitignore\n";
 /** Run ids and space ids become file and directory names, so they may not name a path. */
 const PATH_SEGMENT = /^[\w-]+$/;
 
@@ -43,28 +46,22 @@ function isMissingFile(error: unknown): boolean {
 }
 
 /**
- * A journal stored in `journalDirectory`. The directory is git-ignored as a
- * whole when it is named {@link JOURNAL_DIRECTORY}; {@link resolveJournal}
- * picks that directory inside a migrations directory.
+ * A journal for the migrations kept in `migrationsDirectory`, with one
+ * directory per space. Runs are stored in `<space>/rollbacks/`.
  */
-export function localJournal(journalDirectory: string): Journal {
-  const root = journalDirectory;
-  const ignoresItself =
-    root
-      .replace(/[\\/]+$/, "")
-      .split(/[\\/]/)
-      .pop() === JOURNAL_DIRECTORY;
-  const spaceDir = (space: string) => joinPath(root, space);
-  const entryPath = (space: string, id: string) => joinPath(spaceDir(space), `${id}.json`);
+export function localJournal(migrationsDirectory: string): Journal {
+  const root = migrationsDirectory;
+  const rollbacksDir = (space: string) => joinPath(root, space, ROLLBACKS_DIRECTORY);
+  const entryPath = (space: string, id: string) => joinPath(rollbacksDir(space), `${id}.json`);
   const patchPath = (space: string, id: string) =>
-    joinPath(spaceDir(space), `${id}${PATCHES_SUFFIX}`);
+    joinPath(rollbacksDir(space), `${id}${PATCHES_SUFFIX}`);
 
   /** The space a run id belongs to is not in the id, so a lookup scans spaces. */
   async function locate(id: string): Promise<string | undefined> {
     if (!PATH_SEGMENT.test(id)) return undefined;
     const { readdir } = await fs();
     for (const space of await readdir(root).catch((): string[] => [])) {
-      const entries = await readdir(spaceDir(space)).catch((): string[] => []);
+      const entries = await readdir(rollbacksDir(space)).catch((): string[] => []);
       if (entries.includes(`${id}.json`)) return space;
     }
     return undefined;
@@ -75,8 +72,8 @@ export function localJournal(journalDirectory: string): Journal {
       assertSegment("space", run.space);
       assertSegment("run id", run.id);
       const { mkdir, writeFile } = await fs();
-      await mkdir(spaceDir(run.space), { recursive: true });
-      if (ignoresItself) await writeFile(joinPath(root, ".gitignore"), IGNORE_EVERYTHING);
+      await mkdir(rollbacksDir(run.space), { recursive: true });
+      await writeFile(joinPath(rollbacksDir(run.space), ".gitignore"), IGNORE_JOURNAL_FILES);
       await writeFile(patchPath(run.space, run.id), JSON.stringify(inverse));
       await writeFile(entryPath(run.space, run.id), JSON.stringify(run, null, 2));
     },
@@ -84,12 +81,12 @@ export function localJournal(journalDirectory: string): Journal {
     async list(space) {
       assertSegment("space", space);
       const { readdir } = await fs();
-      const files = await readdir(spaceDir(space)).catch((): string[] => []);
+      const files = await readdir(rollbacksDir(space)).catch((): string[] => []);
       const entries = files.filter(
         (file) => file.endsWith(".json") && !file.endsWith(PATCHES_SUFFIX),
       );
       return Promise.all(
-        entries.sort().map((file) => readJson<MigrationRun>(joinPath(spaceDir(space), file))),
+        entries.sort().map((file) => readJson<MigrationRun>(joinPath(rollbacksDir(space), file))),
       );
     },
 
@@ -111,9 +108,4 @@ export function localJournal(journalDirectory: string): Journal {
       });
     },
   };
-}
-
-/** The journal for the migrations kept in `migrationsDirectory`. */
-export function resolveJournal(migrationsDirectory: string): Journal {
-  return localJournal(joinPath(migrationsDirectory, JOURNAL_DIRECTORY));
 }

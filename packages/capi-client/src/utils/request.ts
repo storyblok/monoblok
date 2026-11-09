@@ -2,7 +2,10 @@ export const CACHEABLE_METHODS = new Set(["GET"]);
 
 export const SPACES_ME_PATH = "/v2/cdn/spaces/me";
 
-export const NON_CACHEABLE_PATHS = new Set([SPACES_ME_PATH]);
+/** The API never caches search results, and they follow the search index, not the content version. */
+export const STRATA_SEARCH_PATH = "/v2/cdn/strata/search";
+
+export const NON_CACHEABLE_PATHS = new Set([SPACES_ME_PATH, STRATA_SEARCH_PATH]);
 
 /** Returns `true` when the query targets draft content (`version: 'draft'`). Draft requests bypass the cache. */
 export const isDraftRequest = (query: Record<string, unknown>) => query.version === "draft";
@@ -58,7 +61,7 @@ export const createCacheKey = (
   });
 };
 
-/** Returns `false` for non-GET methods, the spaces endpoint, and draft requests — all of which bypass the cache. */
+/** Returns `false` for non-GET methods, the spaces and Strata search endpoints, and draft requests — all of which bypass the cache. */
 export const shouldUseCache = (method: string, path: string, query: Record<string, unknown>) => {
   return (
     CACHEABLE_METHODS.has(method) &&

@@ -404,7 +404,7 @@ describe("migrations run command", () => {
     // UI
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Migration Results:"));
     expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining("Update Results: 1 stories updated."),
+      expect.stringContaining("Update Results: 1 story updated."),
     );
   });
 
@@ -514,7 +514,9 @@ describe("migrations run command", () => {
     expect(console.warn).toHaveBeenCalledWith(
       expect.stringContaining("DRY RUN MODE ENABLED: No changes will be made."),
     );
-    expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Migration Results:"));
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining("Migration Results: 1 story would be updated"),
+    );
   });
 
   it("should write no rollback file in dry run mode", async () => {

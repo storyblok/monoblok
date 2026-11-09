@@ -135,7 +135,10 @@ describe("applyMigration", () => {
 
     expect(outcome.writes).toEqual([]);
     expect(outcome.refusals).toEqual([
-      { slug: "home", reason: expect.stringContaining("translated") },
+      {
+        slug: "home",
+        reason: expect.stringContaining('field "name" of block a (author) has de translations'),
+      },
     ]);
   });
 

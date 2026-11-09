@@ -76,7 +76,8 @@ ticket on these dimensions and derive an overall priority.
 **Impact:**
 
 - `blocker`: Prevents core functionality, no workaround. If any workaround exists, even an obvious
-  one the reporter did not mention, it is `critical`.
+  one the reporter did not mention, it is `critical`. Downgrading to an earlier version is not a
+  workaround.
 - `critical`: Major functionality broken or data silently lost, workaround exists
 - `degraded`: Works but with noticeable problems
 - `minor`: Cosmetic or negligible effect

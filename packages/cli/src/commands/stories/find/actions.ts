@@ -88,8 +88,8 @@ export function assertSupportedOptions(options: FindOptions): void {
     );
   }
 
-  if (options.capiParams && !options.capiFilter) {
-    throw new CommandError("--capi-params has no effect without --capi-filter.");
+  if (options.capiParams && !options.capiFilter && options.mode !== "semantic") {
+    throw new CommandError("--capi-params has no effect without --capi-filter or --mode semantic.");
   }
 
   if (options.capiFilter) {

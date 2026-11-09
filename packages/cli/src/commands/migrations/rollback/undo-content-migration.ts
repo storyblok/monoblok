@@ -42,7 +42,7 @@ export async function rollbackContentMigrationRun({
   let id = requestedRun;
   if (!id) {
     const runs = await journal.list(space);
-    const latest = runs.findLast((run) => !run.undoneAt);
+    const latest = runs.findLast((run) => !run.undoneAt && run.stories > 0);
     if (!latest) {
       throw new CommandError(
         runs.length === 0

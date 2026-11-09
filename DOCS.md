@@ -108,16 +108,19 @@ interrupted. The directory’s `.gitignore` keeps run records on the machine tha
 ### Reruns
 
 Every run applies every content migration again. A content migration that already applied changes
-nothing and records nothing. So that later schema changes don’t undo it, the command first compares
-each op with the blocks in the space. It skips and reports an op that writes a field the block no
-longer has, removes a field the block has again, or converts a field to a type it no longer has. So
-run each content migration before you push the next schema change:
+nothing and records nothing. Its first run is recorded even when it changes nothing, so it no longer
+shows as pending. So that later schema changes don’t undo it, the command first compares each op
+with the blocks in the space. It skips and reports an op that writes a field the block no longer
+has, removes a field the block has again, or converts a field to a type it no longer has. So run
+each content migration before you push the next schema change:
 
 - Push the schema before you run a content migration that writes new fields. `schema push --typed`
   does this, since it pushes before you run the migration it wrote.
 - The command skips an op on a field that a later push renamed or removed, even in stories that
   still hold the field.
 - The command skips a `renameField` while the block still has the field it renames.
+- The command skips a `renameBlock` while the space holds the block under its old name but not its
+  new one.
 
 Delete a content migration once every space it targets has applied it. A later rename, removal, or
 type change of a field it writes is a type error in that migration.

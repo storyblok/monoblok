@@ -161,6 +161,60 @@ describe("migrations run command for content migrations", () => {
     expect(process.exitCode).toBeUndefined();
   });
 
+  it("should skip a block rename while the space still holds the block under its old name", async () => {
+    space.hasMigrations(["0001-rename-card-to-teaser", renameCardToTeaser]);
+    space.hasBlocks({ card: ["title"], page: ["body"] });
+    space.hasStories(storyWithCard());
+    space.canUpdateStories();
+    const warn = vi.spyOn(getUI(), "warn");
+    const info = vi.spyOn(getUI(), "info");
+
+    await apply();
+
+    expect(space.writes).toEqual([]);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "renameBlock card skipped: the space has no teaser block. Push the schema that renames it first",
+      ),
+    );
+    expect(info).toHaveBeenCalledWith(
+      expect.stringContaining("Push the schema the migration was written for, then run it again."),
+    );
+  });
+
+  it("should record a first run that changes nothing, so the migration is no longer pending", async () => {
+    const info = vi.spyOn(getUI(), "info");
+    space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    space.hasStories(
+      storyWithCard({
+        content: {
+          _uid: "root",
+          component: "page",
+          body: [{ _uid: "card-1", component: "card", headline: "Hi" }],
+        },
+      }),
+    );
+    space.canUpdateStories();
+
+    await apply();
+    await apply();
+    info.mockClear();
+    await migrationsCommand.parseAsync([
+      "node",
+      "test",
+      "list",
+      "--pending",
+      "--space",
+      DEFAULT_SPACE,
+    ]);
+
+    expect(space.writes).toEqual([]);
+    expect(journalEntries()).toEqual([expect.objectContaining({ stories: 0, blocks: 0 })]);
+    expect(info.mock.calls.map(([message]) => message)).toEqual([
+      "No pending content migrations for this space on this machine.",
+    ]);
+  });
+
   it("should alter a field a later migration split, in stories that still hold it", async () => {
     space.hasMigrations(
       [

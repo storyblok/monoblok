@@ -339,6 +339,10 @@ export async function applyContentMigrations({
 
   const live = await liveFields(space);
   const journal = contentJournal(path);
+  /** Migrations with a run still in place, so a run that changes nothing need not be recorded. */
+  const inPlace = new Set(
+    (await journal.list(space)).filter((run) => !run.undoneAt).map((run) => run.migration),
+  );
   const planned = new Map<number, StoryForMigration>();
   const access = storyAccess(space);
   const refusedEverything: string[] = [];
@@ -355,7 +359,9 @@ export async function applyContentMigrations({
       ui.warn(`${entry.id}: ${reason}`);
     }
     if (migration.ops.length === 0) {
-      ui.info(`${entry.id}: later schema changes superseded every op, so nothing was applied.`);
+      ui.info(
+        `${entry.id}: every op was skipped because the space's blocks don't match it, so nothing was applied. Push the schema the migration was written for, then run it again.`,
+      );
       continue;
     }
     const spinner = ui.createSpinner(`${entry.id}: fetching stories...`);
@@ -404,6 +410,14 @@ export async function applyContentMigrations({
     }
 
     if (outcome.writes.length === 0) {
+      // A first run with nothing to change is recorded, so the migration no
+      // longer shows as pending; an empty run is never the one rolled back.
+      if (outcome.refusals.length === 0 && !inPlace.has(entry.id)) {
+        await journal.record(outcome.run, []);
+        inPlace.add(entry.id);
+        ui.info(`${entry.id}: changed no stories, recorded as ${chalk.bold(outcome.run.id)}.`);
+        continue;
+      }
       ui.info(`${entry.id}: changed no stories, so nothing was recorded.`);
       continue;
     }

@@ -377,7 +377,9 @@ export async function applyContentMigrations({
     for (const refusal of outcome.refusals) {
       ui.warn(`${chalk.bold(refusal.slug)}: ${refusal.reason}`);
     }
-    if (outcome.refusals.length > 0 && outcome.writes.length === 0) {
+    // Stories already migrated by an earlier run neither change nor refuse, so
+    // only a migration that refused every story containing its blocks failed.
+    if (outcome.refusals.length > 0 && outcome.refusals.length >= candidates.length) {
       refusedEverything.push(entry.id);
     }
 

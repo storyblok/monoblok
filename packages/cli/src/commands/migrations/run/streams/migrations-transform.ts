@@ -21,6 +21,8 @@ export interface MigrationStreamOptions {
   sourceSpace: string;
   path: string;
   componentName?: string;
+  /** A dry run writes no rollback file, since it changes no story. */
+  dryRun?: boolean;
   onProgress: (current: number) => void;
   onTotal: (total: number) => void;
 }
@@ -190,20 +192,21 @@ export class MigrationStream extends Transform {
       const contentChanged = originalContentHash !== newContentHash;
 
       if (processed && contentChanged) {
-        // Save rollback data before applying migration
-        await saveRollbackData({
-          space: this.options.space,
-          path: this.options.path,
-          story: {
-            id: story.id,
-            name: story.name || "",
-            content: story.content as BlokContent,
-            published: story.published ?? undefined,
-            unpublished_changes: story.unpublished_changes ?? undefined,
-          },
-          migrationTimestamp: this.timestamp,
-          migrationNames,
-        });
+        if (!this.options.dryRun) {
+          await saveRollbackData({
+            space: this.options.space,
+            path: this.options.path,
+            story: {
+              id: story.id,
+              name: story.name || "",
+              content: story.content as BlokContent,
+              published: story.published ?? undefined,
+              unpublished_changes: story.unpublished_changes ?? undefined,
+            },
+            migrationTimestamp: this.timestamp,
+            migrationNames,
+          });
+        }
 
         this.results.successful.push({
           storyId: story.id,

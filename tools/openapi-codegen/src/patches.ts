@@ -179,6 +179,19 @@ const MAPI_PARSER: Parser = {
   },
 };
 
+const INPUT_PATCHES: Partial<Record<SpecSource, (spec: unknown) => void>> = {
+  mapi: patchMapiInput,
+};
+
+/**
+ * Applies a spec's whole-document patches in place, exactly as the generator
+ * does. For tooling that reads the spec outside the generator and has to see the
+ * same schemas it does.
+ */
+export function applyInputPatches(source: SpecSource, spec: unknown): void {
+  INPUT_PATCHES[source]?.(spec);
+}
+
 /** Parser config per spec, or `undefined` when a spec needs no patches. */
 export const SPEC_PARSERS: Partial<Record<SpecSource, Parser>> = {
   mapi: MAPI_PARSER,

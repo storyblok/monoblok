@@ -99,8 +99,13 @@ function refusalReason(
     return `The migration left this story with ${detail}; they would be renumbered on write, stranding the record needed to undo the run.`;
   }
   if (result.translatedReshapes.length > 0) {
-    const fields = [...new Set(result.translatedReshapes.map((entry) => entry.field))];
-    return `Field ${fields.join(", ")} is translated, and splitting or merging a translated field would strand its translations, which are then dropped. Reshape it with \`alterBlock\`, where the translated keys can be handled explicitly.`;
+    const translated = result.translatedReshapes
+      .map(
+        (entry) =>
+          `field "${entry.field}" of block ${entry.uid} (${migration.ops[entry.op]?.block}) has ${entry.languages.join(", ")} translations`,
+      )
+      .join("; ");
+    return `Splitting or merging a translated field would leave its translations under the old field, where no field reads them: ${translated}. Reshape it with \`alterBlock\`, where the translated keys can be handled explicitly.`;
   }
   if (result.refusedOps.length > 0) {
     return result.refusedOps

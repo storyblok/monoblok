@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 import { type Journal, type MigrationRun, runId, type StoryInverse } from "./journal";
-import { localJournal, resolveJournal } from "./local-journal";
+import { localJournal } from "./local-journal";
 
 function run(overrides: Partial<MigrationRun> = {}): MigrationRun {
   return {
@@ -86,7 +86,7 @@ describe("localJournal on disk", () => {
     const root = await mkdtemp(path.join(tmpdir(), "schema-journal-"));
     await localJournal(root).record(run(), inverse);
 
-    const entry = await readFile(path.join(root, "12345", `${run().id}.json`), "utf8");
+    const entry = await readFile(path.join(root, "12345", "rollbacks", `${run().id}.json`), "utf8");
     expect(JSON.parse(entry)).toEqual(run());
     expect(entry).not.toContain("written_by");
   });
@@ -94,33 +94,37 @@ describe("localJournal on disk", () => {
   it("should write one entry file and one patch file per run", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "schema-journal-"));
     await localJournal(root).record(run(), inverse);
-    expect((await readdir(path.join(root, "12345"))).sort()).toEqual([
-      `${run().id}.json`,
-      `${run().id}.patches.json`,
-    ]);
+    const files = (await readdir(path.join(root, "12345", "rollbacks"))).filter(
+      (file) => file !== ".gitignore",
+    );
+    expect(files.sort()).toEqual([`${run().id}.json`, `${run().id}.patches.json`]);
   });
 
-  it("should keep recorded runs out of version control", async () => {
+  it("should keep recorded runs out of version control, and nothing else", async () => {
     const project = await mkdtemp(path.join(tmpdir(), "schema-journal-"));
     execFileSync("git", ["init", "--quiet"], { cwd: project });
     const migrations = path.join(project, ".storyblok", "migrations");
-    await resolveJournal(migrations).record(run(), inverse);
+    await localJournal(migrations).record(run(), inverse);
     await mkdir(path.join(migrations, "12345"), { recursive: true });
     await writeFile(path.join(migrations, "12345", "0001-rename.ts"), "");
+    await writeFile(path.join(migrations, "12345", "rollbacks", "hero.1767225600000.jsonl"), "");
 
     const untracked = execFileSync("git", ["ls-files", "--others", "--exclude-standard"], {
       cwd: project,
       encoding: "utf8",
     });
 
-    expect(untracked.trim().split("\n")).toEqual([".storyblok/migrations/12345/0001-rename.ts"]);
+    expect(untracked.trim().split("\n").sort()).toEqual([
+      ".storyblok/migrations/12345/0001-rename.ts",
+      ".storyblok/migrations/12345/rollbacks/hero.1767225600000.jsonl",
+    ]);
   });
 
   it("should name the journal file that is not valid JSON", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "schema-journal-"));
     const journal = localJournal(root);
     await journal.record(run(), inverse);
-    await writeFile(path.join(root, "12345", `${run().id}.json`), "{");
+    await writeFile(path.join(root, "12345", "rollbacks", `${run().id}.json`), "{");
 
     await expect(journal.read(run().id)).rejects.toThrow(`${run().id}.json`);
   });
@@ -141,13 +145,6 @@ describe("runId", () => {
 });
 
 describe("localJournal safeguards", () => {
-  it("should not git-ignore a directory that is not a journal directory", async () => {
-    const migrations = await mkdtemp(path.join(tmpdir(), "schema-journal-"));
-    await localJournal(migrations).record(run(), inverse);
-
-    expect(await readdir(migrations)).not.toContain(".gitignore");
-  });
-
   it("should refuse a run id or space that would leave the journal directory", async () => {
     const journal = localJournal(await mkdtemp(path.join(tmpdir(), "schema-journal-")));
 
@@ -164,7 +161,7 @@ describe("localJournal safeguards", () => {
     const root = await mkdtemp(path.join(tmpdir(), "schema-journal-"));
     const journal = localJournal(root);
     await journal.record(run(), inverse);
-    await rm(path.join(root, "12345", `${run().id}.patches.json`));
+    await rm(path.join(root, "12345", "rollbacks", `${run().id}.patches.json`));
 
     await expect(journal.readInverse(run().id)).rejects.toThrow(/has no recorded patches/);
   });

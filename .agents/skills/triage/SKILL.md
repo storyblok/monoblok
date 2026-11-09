@@ -84,9 +84,10 @@ ticket on these dimensions and derive an overall priority.
 - `degraded`: Works but with noticeable problems
 - `minor`: Cosmetic or negligible effect
 
-Feature requests and improvements are `minor` unless existing use is broken. A performance or
-bundle-size problem in something that already ships is `degraded`, whatever the reporter's type.
-Score fixed tickets as reported.
+Feature requests and improvements are `minor` unless existing use is broken. A measurable cost users
+already pay in something that ships, such as bundle size or load or build time, is `degraded`,
+whatever the reporter's type. A missing optimization without such a cost stays `minor`. Score fixed
+tickets as reported.
 
 **Breadth:**
 

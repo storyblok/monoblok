@@ -202,13 +202,18 @@ describe("migrations rollback command for content migration runs", () => {
     space.editsStory(1, editHeadline);
     space.editsStory(2, editHeadline);
 
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    process.exitCode = undefined;
     await run("rollback");
 
-    expect(info).toHaveBeenLastCalledWith(
+    expect(info).toHaveBeenCalledWith(
       expect.stringMatching(
         /^Rolled back 2 stories \(1 partly\) of run .*; 1 story left as changed since the run\.$/,
       ),
     );
+    expect(process.exitCode).toBe(2);
+    expect(error.mock.calls.flat().join("\n")).toContain("The run is only partly rolled back");
+    process.exitCode = undefined;
 
     await run("rollback", "--force");
 

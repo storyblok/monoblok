@@ -3,20 +3,22 @@
 **Status:** Accepted **Date:** 2026-10-16
 
 Supersedes the file format decision in [ADR-0009](0009-schema-push-migration-generation.md) for
-`--typed` pushes. Breaking change detection inside `schema push` stands.
+`--typed` pushes. Breaking change detection inside `schema push` stands. Content migrations run
+through `migrations run` and `migrations rollback`
+([ADR-0026](0026-one-migrations-run-and-rollback-for-both-formats.md)).
 
 ## Context
 
 ADR-0009 generated per-component `.js` functions for `migrations run` and rejected a schema-level
 migration DSL because it needed a new engine. `@storyblok/schema` now provides that engine:
-`defineMigration()` ops typed against the schema, run by `migrations apply` with a journal and undo.
-Generated migrations should be able to use it.
+`defineMigration()` ops typed against the schema, run by `migrations run` with a journal and
+rollback. Generated migrations should be able to use it.
 
 The fields a migration reads are often the ones the project's schema no longer has, so typing reads
 against the live schema checks nothing.
 
-`migrations apply` reruns every migration on every run, and its journal stays on the machine that
-ran it, so no run can tell which migrations a space has already received.
+`migrations run` reruns every migration on every run, and its journal stays on the machine that ran
+it, so no run can tell which migrations a space has already received.
 
 ## Decision
 
@@ -27,19 +29,19 @@ ran it, so no run can tell which migrations a space has already received.
 - The snapshot holds the blocks the migration reads with their fields, plus name-only stubs for the
   blocks those fields allow and for every block that can contain a read block through a `bloks`
   field or an allow list, so `under` can name it. `nameOnlyBlocks` lists every other block of the
-  space, so `migrations apply` can tell an existing block from a new one. `--no-before` skips it.
+  space, so `migrations run` can tell an existing block from a new one. `--no-before` skips it.
 - A snapshot's `schema`, `Before`, and `nameOnlyBlocks` exports are a stable contract, and
   `snapshotFormat` versions it.
-- Before it applies a migration, `migrations apply` compares each op with the space's components. It
+- Before it applies a migration, `migrations run` compares each op with the space's components. It
   skips and reports an op that writes a field the block no longer has, or removes a field the block
   has again.
 - Migration ids start with the UTC creation time (`YYYYMMDDHHmmss`), not a sequence number. When an
   existing id sorts at or after that time, the new id is one second past it.
-- An op the generator cannot write gets a callback that throws, so `migrations apply` refuses it
-  until the author replaces it, instead of applying a no-op. That includes the default of a newly
-  required field other than a boolean, since only `false` is a value every required field of its
-  type accepts. A fill of a newly required string or number field also counts `""` as missing. Fills
-  are an `addField` and an `alterField`, not an `alterBlock`, so the apply check sees the field they
+- An op the generator cannot write gets a callback that throws, so `migrations run` refuses it until
+  the author replaces it, instead of applying a no-op. That includes the default of a newly required
+  field other than a boolean, since only `false` is a value every required field of its type
+  accepts. A fill of a newly required string or number field also counts `""` as missing. Fills are
+  an `addField` and an `alterField`, not an `alterBlock`, so the apply check sees the field they
   write.
 - A removed field gets a TODO naming every unpaired added field of the same type as a possible
   rename target, whether or not the addition is required.
@@ -117,7 +119,7 @@ ran it, so no run can tell which migrations a space has already received.
   that only change an existing value (`alterField`, `coerceField`, `reorderField`) are not skipped
   for a missing field: they leave blocks without it alone, and stories that still hold it reach the
   later migration in the shape it expects.
-- Snapshots carry a `snapshotFormat`, and `migrations apply` refuses a format newer than it reads.
+- Snapshots carry a `snapshotFormat`, and `migrations run` refuses a format newer than it reads.
 - `migrations run` exits with an error when the directory holds only content migrations, so a script
   that runs it after `schema push --typed` fails instead of passing silently.
 - Ops on blocks nested inside a read block need a migration generated for that block, because a stub
@@ -125,6 +127,6 @@ ran it, so no run can tell which migrations a space has already received.
 - An unrestricted `richtext` field doesn't make its block a container. Most blocks of a space have
   one, and counting them grew the median snapshot of a 177-block space from 128 to 407 lines. An
   `under` naming a block that holds the read block only through a `richtext` field is a type error,
-  though `migrations apply` accepts it.
+  though `migrations run` accepts it.
 - Changing `internal/codegen` incompatibly is a breaking change of `@storyblok/schema`: a minor
   release while it is on 0.x, since the CLI's caret range then admits only patches.

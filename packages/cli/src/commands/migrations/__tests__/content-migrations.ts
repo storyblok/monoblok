@@ -5,11 +5,12 @@ import { vi } from "vitest";
 import type { CompiledMigration } from "@storyblok/schema";
 import { DEFAULT_SPACE } from "../../__tests__/helpers";
 import { isRecord } from "../../../utils";
+import * as filesystem from "../../../utils/filesystem";
 import { importUserModuleDefault } from "../../../utils/user-module";
 
 const MAPI = `https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}`;
 export const MIGRATIONS_DIRECTORY = `.storyblok/migrations/${DEFAULT_SPACE}`;
-const JOURNAL_DIRECTORY = `.storyblok/migrations/.journal/${DEFAULT_SPACE}`;
+const JOURNAL_DIRECTORY = `.storyblok/migrations/${DEFAULT_SPACE}/rollbacks`;
 
 export type RemoteStory = {
   id: number;
@@ -56,6 +57,12 @@ export function createRemoteSpace(server: SetupServerApi) {
   const stories = new Map<number, RemoteStory>();
   const writes: StoryWrite[] = [];
   const migrations = new Map<string, CompiledMigration>();
+  /** Default exports of `.js` files by file name, as a native import returns them. */
+  const jsExports = new Map<string, unknown>();
+
+  vi.spyOn(filesystem, "importModule").mockImplementation(async (file: string) => ({
+    default: jsExports.get(file.split("/").pop() ?? ""),
+  }));
 
   // No components by default, so no op is checked against the space's schema.
   server.use(http.get(`${MAPI}/components`, () => HttpResponse.json({ components: [] })));
@@ -94,6 +101,23 @@ export function createRemoteSpace(server: SetupServerApi) {
       });
       server.use(http.get(`${MAPI}/components`, () => HttpResponse.json({ components })));
     },
+    /** A content migration in a `.js` file, which a migration function could also be. */
+    hasJsContentMigration(id: string, migration: CompiledMigration) {
+      migrations.set(id, migration);
+      jsExports.set(`${id}.js`, migration);
+      vol.fromJSON({ [`${MIGRATIONS_DIRECTORY}/${id}.js`]: "export default {};" });
+    },
+    hasMigrationFunction(file: string, migrate: (block: Record<string, unknown>) => unknown) {
+      jsExports.set(file, migrate);
+      vol.fromJSON({ [`${MIGRATIONS_DIRECTORY}/${file}`]: "export default () => {};" });
+    },
+    hasRollbackFile(name: string, ...stories: Record<string, unknown>[]) {
+      vol.fromJSON({
+        [`${MIGRATIONS_DIRECTORY}/rollbacks/${name}.jsonl`]: stories
+          .map((story) => JSON.stringify(story))
+          .join("\n"),
+      });
+    },
     hasStories(...entries: RemoteStory[]) {
       for (const story of entries) stories.set(story.id, story);
       server.use(
@@ -101,10 +125,12 @@ export function createRemoteSpace(server: SetupServerApi) {
           const params = new URL(request.url).searchParams;
           const component = params.get("contain_component");
           const folderOnly = params.get("folder_only") === "true";
+          const startsWith = params.get("starts_with");
           const matching = [...stories.values()].filter(
             (story) =>
               Boolean(story.is_folder) === folderOnly &&
-              (!component || componentsIn(story.content).has(component)),
+              (!component || componentsIn(story.content).has(component)) &&
+              (!startsWith || story.full_slug.startsWith(startsWith)),
           );
           return HttpResponse.json(
             { stories: matching.map(({ content: _content, ...rest }) => rest) },

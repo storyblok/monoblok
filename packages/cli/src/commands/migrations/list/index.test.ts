@@ -47,7 +47,7 @@ describe("migrations list command", () => {
 
   it("should list migrations that have no recorded run as pending after the runs", async () => {
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
-    await run("apply");
+    await run("run");
     space.hasMigrations(["0002-rename-card-to-teaser", renameCardToTeaser]);
 
     expect(await listed()).toEqual([
@@ -56,17 +56,17 @@ describe("migrations list command", () => {
     ]);
   });
 
-  it("should list an undone migration as pending again", async () => {
+  it("should list an rolled back migration as pending again", async () => {
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
-    await run("apply");
-    await run("undo");
+    await run("run");
+    await run("rollback");
 
     expect(await listed("--pending")).toEqual(["0001-rename-card-title"]);
   });
 
   it("should list only pending migrations with --pending", async () => {
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
-    await run("apply");
+    await run("run");
     space.hasMigrations(["0002-rename-card-to-teaser", renameCardToTeaser]);
 
     expect(await listed("--pending")).toEqual(["0002-rename-card-to-teaser"]);
@@ -74,7 +74,7 @@ describe("migrations list command", () => {
 
   it("should say nothing is pending with --pending once every migration ran", async () => {
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
-    await run("apply");
+    await run("run");
 
     expect(await listed("--pending")).toEqual([
       "No pending content migrations for this space on this machine.",

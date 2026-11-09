@@ -4,33 +4,42 @@ import { colorPalette, commands } from "../../../constants";
 import { CommandError, handleError, requireAuthentication, toError } from "../../../utils";
 import { migrationsCommand } from "../command";
 import { session } from "../../../session";
-import { readRollbackFile } from "./actions";
+import { isRollbackFile, readRollbackFile } from "./actions";
+import { guardPendingReleases, toMigrationCommandError } from "../content-migrations";
+import { rollbackContentMigrationRun } from "./undo-content-migration";
 import { updateStory } from "../../stories/actions";
 import { getUI } from "../../../lib/ui";
 import { getLogger } from "../../../lib/logger/logger";
 import chalk from "chalk";
 
 const rollbackCmd = migrationsCommand
-  .command("rollback [migrationFile]")
-  .description("Rollback a migration")
-  .option("-s, --space <space>", "space ID");
+  .command("rollback [run]")
+  .description(
+    "Roll back a migration run: a recorded run id or a rollback file name, defaulting to the most recent run not yet rolled back",
+  )
+  .option("-s, --space <space>", "space ID")
+  .option("--force", "overwrite blocks with fields changed since a recorded run")
+  .option(
+    "--allow-pending-releases",
+    "run although releases are pending; their content is not restored",
+  );
 
-rollbackCmd.action(async (migrationFile: string, _options: unknown, command: Command) => {
+rollbackCmd.action(async (run: string | undefined, _options: unknown, command: Command) => {
   const ui = getUI();
   const logger = getLogger();
 
   ui.title(
     `${commands.MIGRATIONS}`,
     colorPalette.MIGRATIONS,
-    migrationFile
-      ? `Rolling back migration ${chalk.hex(colorPalette.MIGRATIONS)(migrationFile)}...`
-      : "Rolling back migration...",
+    run
+      ? `Rolling back ${chalk.hex(colorPalette.MIGRATIONS)(run)}...`
+      : "Rolling back the most recent migration run...",
   );
 
-  const { space, path, verbose } = command.optsWithGlobals();
+  const { space, path, verbose, force, allowPendingReleases } = command.optsWithGlobals();
 
   logger.info("Migration rollback started", {
-    migrationFile,
+    run,
     space,
     path,
   });
@@ -49,7 +58,27 @@ rollbackCmd.action(async (migrationFile: string, _options: unknown, command: Com
     return;
   }
 
+  // Recorded runs are rolled back block by block, rollback files story by story.
+  if (!run || !(await isRollbackFile({ space, path, name: run }))) {
+    try {
+      await rollbackContentMigrationRun({
+        space,
+        path,
+        id: run,
+        force: Boolean(force),
+        allowPendingReleases: Boolean(allowPendingReleases),
+      });
+    } catch (maybeError) {
+      handleError(toMigrationCommandError(maybeError), verbose);
+    }
+    logger.info("Migration rollback finished", { run, space });
+    return;
+  }
+  const migrationFile = run;
+
   try {
+    await guardPendingReleases(space, { command: "rollback", allow: allowPendingReleases });
+
     // Read the rollback data
     const rollbackData = await readRollbackFile({
       space,

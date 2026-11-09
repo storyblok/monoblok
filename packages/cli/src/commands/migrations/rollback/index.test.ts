@@ -14,6 +14,7 @@ import { getLogFileContents } from "../../__tests__/helpers";
 import { session } from "../../../session";
 import { loggedOutSessionState } from "../../../../test/setup";
 import { getProgram } from "../../../program";
+import { getUI } from "../../../lib/ui";
 
 vi.mock("./actions", () => ({
   isRollbackFile: vi.fn(),
@@ -146,6 +147,8 @@ describe("migrations rollback command", () => {
 
   it("should rollback a migration successfully", async () => {
     preconditions.canRollback();
+    process.exitCode = undefined;
+    const info = vi.spyOn(getUI(), "info");
 
     await migrationsCommand.parseAsync([
       "node",
@@ -179,6 +182,8 @@ describe("migrations rollback command", () => {
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain("Migration rollback finished");
     expect(logFile).toContain('"succeeded":2');
+    expect(info).toHaveBeenCalledWith(expect.stringContaining("Rolled back 2 stories of"));
+    expect(process.exitCode).toBeUndefined();
   });
 
   it("should handle not logged in error", async () => {
@@ -256,6 +261,10 @@ describe("migrations rollback command", () => {
     expect(updateStory).toHaveBeenCalledTimes(2);
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain("Failed to restore story");
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining("2 stories could not be rolled back"),
+    );
+    expect(process.exitCode).toBe(2);
   });
 
   it("should handle custom path option", async () => {

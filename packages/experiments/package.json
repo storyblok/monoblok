@@ -57,7 +57,6 @@
     "lint": "vp lint",
     "lint:fix": "vp lint --fix",
     "test:types": "tsc --noEmit --skipLibCheck",
-    "prepublishOnly": "pnpm run build",
     "test:watch": "vp test",
     "test:ui": "vp test --ui",
     "test:coverage": "vp test run --coverage"
@@ -83,11 +82,18 @@
           "openapiCodegen"
         ],
         "outputs": [
-          "{projectRoot}/src/generated"
+          "{projectRoot}/src/generated",
+          "{projectRoot}/src/generated.sha256"
         ],
         "cache": true,
         "dependsOn": [
           "@storyblok/openapi-codegen:build"
+        ]
+      },
+      "test:e2e": {
+        "dependsOn": [
+          "^build",
+          "generate:openapi"
         ]
       }
     }

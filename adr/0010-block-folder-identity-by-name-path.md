@@ -92,8 +92,8 @@ slugified, case-insensitive path matching.
   read `Component` schema was already nullable). This is corrected at the codegen layer via a
   hey-api parser patch (`tools/openapi-codegen/src/patches.ts`) that widens the field to
   `string | null` before generation, so the generated `ComponentCreate`/`ComponentUpdate` types
-  model `null` for every consumer. The patch is a documented stopgap; the fix should also land
-  upstream in `storyblok/openapi-wdx`.
+  model `null` for every consumer. The patch is a documented stopgap; the fix should also land in
+  the public Management API spec.
 
 ## Implementation Notes
 

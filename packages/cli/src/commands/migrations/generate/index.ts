@@ -77,6 +77,25 @@ generateCmd.action(
       return;
     }
 
+    if (beforePush && !schemaEntry) {
+      handleError(
+        new CommandError(
+          "--before-push snapshots the block for a typed content migration, so it requires --schema.",
+        ),
+        verbose,
+      );
+      return;
+    }
+    if (beforePush && !before) {
+      handleError(
+        new CommandError(
+          "--before-push snapshots the block, so it can't be combined with --no-before.",
+        ),
+        verbose,
+      );
+      return;
+    }
+
     const { state } = session();
 
     if (!requireAuthentication(state, verbose)) {
@@ -99,9 +118,6 @@ generateCmd.action(
     }
     if (!schemaEntry && !before) {
       ui.warn("--no-before has no effect without --schema.");
-    }
-    if (!schemaEntry && beforePush) {
-      ui.warn("--before-push has no effect without --schema.");
     }
 
     const spinner = ui.createSpinner(`Generating migration for component ${componentName}...`);

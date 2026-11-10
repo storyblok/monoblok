@@ -421,7 +421,7 @@ as it was before that push. Pass `--no-before` to skip the snapshot.
 | --------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `--schema`      | string  | _Optional._ Path to the schema entry file, which must export `type Schema`. Generates a typed content migration and its snapshot instead of a `.js` file. |
 | `--no-before`   | boolean | _Optional._ With `--schema`, skip the snapshot.                                                                                                           |
-| `--before-push` | boolean | _Optional._ With `--schema`, snapshot the block as it was before the latest `schema push` that changed it.                                                |
+| `--before-push` | boolean | _Optional._ Snapshot the block as it was before the latest `schema push` that changed it. Requires `--schema` and can’t be combined with `--no-before`.   |
 
 <!-- target: src/content/docs/docs/tooling/cli/migrations/generate.mdx#examples (append to the code block) -->
 

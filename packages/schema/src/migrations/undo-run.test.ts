@@ -261,6 +261,28 @@ describe("undoStories publish state", () => {
     expect(outcome.firstPublishedByRun).toEqual(["home"]);
   });
 
+  it("should not report a first publish for a story the run did not get to publish", () => {
+    const outcome = undoStories({
+      inverse: [
+        {
+          story: 1,
+          patches: [renameBack],
+          before: { published: false, unpublishedChanges: false },
+          publishedByRun: true,
+        },
+      ],
+      stories: [
+        home([{ _uid: "a", component: "card", headline: "Hi" }], {
+          published: false,
+          unpublished_changes: false,
+        }),
+      ],
+    });
+
+    expect(outcome.writes[0]?.publish).toBe(false);
+    expect(outcome.firstPublishedByRun).toEqual([]);
+  });
+
   it("should not republish a story unpublished since the run", () => {
     const outcome = undoStories({
       inverse: [entry(1, [renameBack], true)],

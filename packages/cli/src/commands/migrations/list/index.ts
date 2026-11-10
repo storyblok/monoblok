@@ -43,7 +43,10 @@ listCmd.action(async (options: { pending?: boolean }, command: Command) => {
   const logger = getLogger();
   const { space, path, verbose } = command.optsWithGlobals();
 
-  ui.title(`${commands.MIGRATIONS}`, colorPalette.MIGRATIONS, "Listing migration runs...");
+  // `--pending` output is read by scripts, so it carries the ids and nothing else.
+  if (!options.pending) {
+    ui.title(`${commands.MIGRATIONS}`, colorPalette.MIGRATIONS, "Listing migration runs...");
+  }
 
   if (!space) {
     handleError(
@@ -64,11 +67,8 @@ listCmd.action(async (options: { pending?: boolean }, command: Command) => {
     );
 
     if (options.pending) {
-      if (pending.length === 0) {
-        ui.info("No pending content migrations for this space on this machine.");
-      }
       for (const id of pending) {
-        ui.info(id);
+        ui.writeMachineOutput(id);
       }
       return;
     }

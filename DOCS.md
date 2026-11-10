@@ -326,11 +326,11 @@ storyblok migrations list [flags]
 
 ## Flags
 
-| Flag            | Type    | Description                                                                               |
-| --------------- | ------- | ----------------------------------------------------------------------------------------- |
-| `--space`, `-s` | integer | _Required._ The ID of the Storyblok space to list runs for.                               |
-| `--path`, `-p`  | string  | _Optional._ Base path for migration files and run records. Defaults to `.storyblok`.      |
-| `--pending`     | boolean | _Optional._ List only the content migrations with no run still in place, one ID per line. |
+| Flag            | Type    | Description                                                                                                     |
+| --------------- | ------- | --------------------------------------------------------------------------------------------------------------- |
+| `--space`, `-s` | integer | _Required._ The ID of the Storyblok space to list runs for.                                                     |
+| `--path`, `-p`  | string  | _Optional._ Base path for migration files and run records. Defaults to `.storyblok`.                            |
+| `--pending`     | boolean | _Optional._ Print only the IDs of the content migrations with no run still in place, one per line, for scripts. |
 
 ## Examples
 

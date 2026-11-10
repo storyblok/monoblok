@@ -183,7 +183,6 @@ describe("migrations run command for content migrations", () => {
   });
 
   it("should record a first run that changes nothing, so the migration is no longer pending", async () => {
-    const info = vi.spyOn(getUI(), "info");
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
     space.hasStories(
       storyWithCard({
@@ -198,7 +197,7 @@ describe("migrations run command for content migrations", () => {
 
     await apply();
     await apply();
-    info.mockClear();
+    const stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
     await migrationsCommand.parseAsync([
       "node",
       "test",
@@ -210,9 +209,7 @@ describe("migrations run command for content migrations", () => {
 
     expect(space.writes).toEqual([]);
     expect(journalEntries()).toEqual([expect.objectContaining({ stories: 0, blocks: 0 })]);
-    expect(info.mock.calls.map(([message]) => message)).toEqual([
-      "No pending content migrations for this space on this machine.",
-    ]);
+    expect(stdout).not.toHaveBeenCalled();
   });
 
   it("should alter a field a later migration split, in stories that still hold it", async () => {

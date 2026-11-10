@@ -45,6 +45,21 @@ describe("migrations list command", () => {
     return info.mock.calls.map(([message]) => String(message));
   };
 
+  /** What `--pending` writes to stdout, and whether it wrote anything else. */
+  const listedPending = async (): Promise<{ stdout: string; otherOutput: boolean }> => {
+    const write = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    const console_ = [
+      vi.spyOn(console, "log"),
+      vi.spyOn(console, "info"),
+      vi.spyOn(console, "error"),
+    ];
+    await run("list", "--pending");
+    return {
+      stdout: write.mock.calls.map(([chunk]) => String(chunk)).join(""),
+      otherOutput: console_.some((spy) => spy.mock.calls.length > 0),
+    };
+  };
+
   it("should list migrations that have no recorded run as pending after the runs", async () => {
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
     await run("run");
@@ -56,20 +71,26 @@ describe("migrations list command", () => {
     ]);
   });
 
-  it("should list an rolled back migration as pending again", async () => {
+  it("should list a rolled back migration as pending again", async () => {
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
     await run("run");
     await run("rollback");
 
-    expect(await listed("--pending")).toEqual(["0001-rename-card-title"]);
+    expect((await listedPending()).stdout).toBe("0001-rename-card-title\n");
   });
 
-  it("should list only pending migrations with --pending", async () => {
+  it("should print only the pending migration ids, one per line on stdout, with --pending", async () => {
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
     await run("run");
-    space.hasMigrations(["0002-rename-card-to-teaser", renameCardToTeaser]);
+    space.hasMigrations(
+      ["0002-rename-card-to-teaser", renameCardToTeaser],
+      ["0003-rename-card-title-again", renameCardTitle],
+    );
 
-    expect(await listed("--pending")).toEqual(["0002-rename-card-to-teaser"]);
+    expect(await listedPending()).toEqual({
+      stdout: "0002-rename-card-to-teaser\n0003-rename-card-title-again\n",
+      otherOutput: false,
+    });
   });
 
   it("should not list a .js migration function whose name looks like a content migration", async () => {
@@ -82,12 +103,10 @@ describe("migrations list command", () => {
     ]);
   });
 
-  it("should say nothing is pending with --pending once every migration ran", async () => {
+  it("should print nothing with --pending once every migration ran", async () => {
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
     await run("run");
 
-    expect(await listed("--pending")).toEqual([
-      "No pending content migrations for this space on this machine.",
-    ]);
+    expect(await listedPending()).toEqual({ stdout: "", otherOutput: false });
   });
 });

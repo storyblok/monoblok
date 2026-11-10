@@ -100,6 +100,9 @@ describe("applyMigration", () => {
       { slug: "broken", reason: expect.stringContaining("already contains repeated block ids") },
     ]);
     expect(outcome.refusals[0].reason).toContain("dup");
+    expect(outcome.refusals[0].reason).toContain(
+      "stranding the record needed to roll back the run",
+    );
   });
 
   it("should refuse a story whose reshaped field is translated and write nothing for it", () => {

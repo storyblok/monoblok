@@ -80,7 +80,8 @@
     "ohash": "^2.0.11",
     "open": "^10.1.2",
     "pathe": "catalog:",
-    "read-package-up": "^11.0.0"
+    "read-package-up": "^11.0.0",
+    "std-env": "^4.3.0"
   },
   "devDependencies": {
     "@release-it/conventional-changelog": "10.0.0",

@@ -2,10 +2,16 @@
 import "dotenv/config";
 
 import { CommanderError } from "commander";
-import { handleError } from "./utils";
+import { CommandError, handleError } from "./utils";
 import { getProgram } from "./program";
-import { getUI } from "./lib/ui";
+import { getUI, isPagerOpen } from "./lib/ui";
 import { colorPalette } from "./constants";
+import {
+  recordTelemetryError,
+  recordTelemetryInterrupt,
+  sendTelemetry,
+  TELEMETRY_INTERRUPT_TIMEOUT_MS,
+} from "./lib/telemetry";
 import "./commands/login";
 import "./commands/logout";
 import "./commands/signup";
@@ -21,11 +27,33 @@ import "./commands/reports";
 import "./commands/assets";
 import "./commands/stories";
 import "./commands/schema";
+import "./commands/telemetry";
 
 export * from "./types/storyblok";
 
+const EXIT_CODE_INTERRUPTED = 130;
+
+const startTime = performance.timeOrigin;
 const program = getProgram();
 const ui = getUI();
+
+// Without a listener, Ctrl+C kills the process before the run can be recorded.
+let interrupted = false;
+process.on("SIGINT", async () => {
+  if (isPagerOpen()) {
+    return;
+  }
+  if (interrupted) {
+    process.exit(EXIT_CODE_INTERRUPTED);
+  }
+  interrupted = true;
+  recordTelemetryInterrupt();
+  await sendTelemetry(
+    { program, startTime, exitCode: EXIT_CODE_INTERRUPTED },
+    TELEMETRY_INTERRUPT_TIMEOUT_MS,
+  );
+  process.exit(EXIT_CODE_INTERRUPTED);
+});
 
 ui.br();
 ui.title("Storyblok CLI", colorPalette.PRIMARY);
@@ -38,6 +66,7 @@ program.on("command:*", () => {
   // Write help text directly to stderr — do not use outputHelp({ error: true })
   // which routes through configureOutput.writeErr → handleError, turning help text into an error.
   console.error(program.helpInformation());
+  recordTelemetryError(new CommandError("Invalid command"));
   process.exitCode = 2;
 });
 
@@ -59,3 +88,5 @@ try {
     handleError(error as Error);
   }
 }
+
+await sendTelemetry({ program, startTime, exitCode: Number(process.exitCode ?? 0) });

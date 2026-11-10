@@ -26,6 +26,12 @@ import {
   resolveConfig,
   setActiveConfig,
 } from "./lib/config";
+import {
+  promptForTelemetryConsent,
+  recordTelemetrySpaceId,
+  startTelemetryTrace,
+  trackTelemetryInvocation,
+} from "./lib/telemetry";
 
 const packageJson = getPackageJson();
 
@@ -67,9 +73,14 @@ export function getProgram(): Command {
       }
     }
 
+    trackTelemetryInvocation(programInstance);
+
     // Unified preAction hook: handles config resolution, then logging/reporting setup
     programInstance.hook("preAction", async (thisCommand, actionCommand) => {
       const targetCommand = actionCommand ?? thisCommand;
+
+      await promptForTelemetryConsent(targetCommand);
+      await startTelemetryTrace();
 
       // Set before config resolution so a failure there can't read as a result.
       setRuntimeErrorExitCode(
@@ -94,6 +105,7 @@ export function getProgram(): Command {
 
       // Step 2: Setup logging, UI, and reporting with resolved config
       const options = targetCommand.optsWithGlobals();
+      recordTelemetrySpaceId(options.space);
       const commandPieces: string[] = [];
       for (let c: Command | null = targetCommand; c; c = c.parent as Command | null) {
         commandPieces.unshift(c.name());

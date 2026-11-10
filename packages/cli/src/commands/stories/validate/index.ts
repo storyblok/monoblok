@@ -1,4 +1,5 @@
 import { Transform, Writable } from "node:stream";
+import { Option } from "commander";
 import { pipeline } from "node:stream/promises";
 import type { Story } from "../constants";
 import { buildStoryScopeParams } from "../query-params";
@@ -8,6 +9,7 @@ import { storiesCommand } from "../command";
 import type { ProgressBar } from "../../../lib/ui";
 import { getUI } from "../../../lib/ui";
 import { getLogger } from "../../../lib/logger/logger";
+import { denyTelemetryValue } from "../../../lib/telemetry";
 import { getReporter } from "../../../lib/reporter/reporter";
 import { fetchStoriesStream, fetchStoryStream } from "../streams";
 import { requireAuthentication } from "../../../utils/auth";
@@ -61,7 +63,11 @@ storiesCommand
     "Validate every story's draft content in a space against a local code-defined schema.",
   )
   .option("-s, --space <space>", "space ID")
-  .option("--schema <entry-file>", "Path to the TypeScript schema entry file")
+  .addOption(
+    denyTelemetryValue(
+      new Option("--schema <entry-file>", "Path to the TypeScript schema entry file"),
+    ),
+  )
   .option(
     "--starts-with <path>",
     'Only validate stories whose path starts with this prefix. Example: --starts-with="en/blog/"',

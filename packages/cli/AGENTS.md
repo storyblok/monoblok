@@ -51,6 +51,10 @@ Throw the typed errors from `src/utils/error/`: `APIError` (ID from `API_ERRORS`
 `process.exitCode`: 2 for `CommandError`, 1 for runtime errors. With `--exit-code` (`schema diff`),
 1 means a result, so runtime errors exit 2.
 
+`handleError()` and `logOnlyError()` also record the error for telemetry, as a fixed code from
+`getErrorType()` in `src/lib/telemetry/error-type.ts`. A new error class lands in `UNEXPECTED_ERROR`
+unless you map it there.
+
 ## Tests
 
 Follow `docs/testing-patterns.md`. CLI specifics:

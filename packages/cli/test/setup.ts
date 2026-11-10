@@ -6,6 +6,9 @@ import type { SessionState } from "../src/session";
 vi.mock("node:fs");
 vi.mock("node:fs/promises");
 
+// Keeps command tests from prompting for consent when run from a terminal.
+process.env.DO_NOT_TRACK = "1";
+
 export const loggedOutSessionState = (): SessionState => ({
   isLoggedIn: false,
 });

@@ -1,6 +1,6 @@
 import { colorPalette } from "../constants";
 import type { SessionState } from "../session";
-import { CommandError, handleError } from "./error";
+import { handleError, NotLoggedInError } from "./error";
 import chalk from "chalk";
 
 type AuthenticatedSessionState = SessionState & {
@@ -21,7 +21,7 @@ export function requireAuthentication(
 ): state is AuthenticatedSessionState {
   if (!state.isLoggedIn || !state.password || !state.region) {
     handleError(
-      new CommandError(
+      new NotLoggedInError(
         `You are currently not logged in. Please run ${chalk.hex(colorPalette.PRIMARY)("storyblok login")} to authenticate, or ${chalk.hex(colorPalette.PRIMARY)("storyblok signup")} to sign up.`,
       ),
       verbose,

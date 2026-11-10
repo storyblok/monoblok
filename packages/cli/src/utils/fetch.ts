@@ -1,4 +1,5 @@
 import { getActiveConfig } from "../lib/config";
+import { getTelemetryTraceHeaders } from "../lib/telemetry/run";
 
 export interface FetchErrorRequest {
   url?: string;
@@ -50,6 +51,7 @@ export async function customFetch<T>(
     try {
       const headers = {
         "Content-Type": "application/json",
+        ...getTelemetryTraceHeaders(),
         ...options.headers,
       };
 

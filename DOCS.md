@@ -109,10 +109,12 @@ interrupted. The directory’s `.gitignore` keeps run records on the machine tha
 
 Every run applies every content migration again. A content migration that already applied changes
 nothing and records nothing. Its first run is recorded even when it changes nothing, so it no longer
-shows as pending. So that later schema changes don’t undo it, the command first compares each op
-with the blocks in the space. It skips and reports an op that writes a field the block no longer
-has, removes a field the block has again, or converts a field to a type it no longer has. So run
-each content migration before you push the next schema change:
+shows as pending. A first run that changes nothing because the content migration refused stories
+isn’t recorded, so the content migration stays pending and each run reports the refusals again. So
+that later schema changes don’t undo it, the command first compares each op with the blocks in the
+space. It skips and reports an op that writes a field the block no longer has, removes a field the
+block has again, or converts a field to a type it no longer has. So run each content migration
+before you push the next schema change:
 
 - Push the schema before you run a content migration that writes new fields. `schema push --typed`
   does this, since it pushes before you run the migration it wrote.
@@ -442,6 +444,14 @@ whether to generate migrations, then confirms each detected rename. Pass `--migr
 them without asking, which takes detected field renames as given, or `--no-migrations` to skip them.
 Switching a field among text, textarea, and markdown isn’t a breaking change, because all three
 store a string.
+
+The command detects a field rename when a block loses a field and gains a field of the same type
+that isn’t required:
+
+- When the block loses one field and gains one field that isn’t required, the command pairs them
+  whatever their names, so replacing `email` with a new `score` text field counts as a rename.
+- Otherwise, it pairs each lost field with the gained field of the same type whose name is most
+  similar, if the two names share a run of characters at least 30% as long as the longer name.
 
 By default, the command writes one `.js` migration per changed block for
 [`migrations run`](/docs/tooling/cli/migrations/run). With `--dry-run`, it prints the breaking

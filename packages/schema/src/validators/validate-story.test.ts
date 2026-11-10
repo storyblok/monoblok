@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 import { defineBlock } from "../helpers/define-block";
+import { hideWhen, requiredWhen } from "../helpers/define-condition";
 import { defineField } from "../helpers/define-field";
 import { defineFieldPlugin } from "../helpers/define-field-plugin";
 import { defineFolder } from "../helpers/define-folder";
@@ -1539,5 +1540,412 @@ describe("validateStory — deny entries", () => {
       { blocks: { page, banner } },
     );
     expect(result.issues.find((i) => i.code === "disallowed_component")).toBeDefined();
+  });
+});
+
+describe("validateStory — custom field required keys", () => {
+  const blockWithPlugin = (
+    options: { required?: boolean; required_fields?: string } = {},
+  ): ReturnType<typeof defineBlock> =>
+    defineBlock({
+      name: "hero",
+      is_root: true,
+      fields: [
+        defineField("meta", {
+          type: "custom",
+          field_type: "meta-plugin",
+          required_fields: "color, size",
+          ...options,
+        }),
+      ],
+    });
+  const validateMeta = (meta: unknown, hero = blockWithPlugin()) =>
+    validateStory({ content: { component: "hero", meta } }, { blocks: { hero } });
+
+  it("should pass when every listed key is filled", () => {
+    const result = validateMeta({ color: "#fff", size: 0 });
+    expect(result.ok).toBe(true);
+    expect(result.issues).toEqual([]);
+  });
+
+  it("should report a listed key the plugin value leaves out", () => {
+    const result = validateMeta({ color: "#fff" });
+    expect(result.ok).toBe(false);
+    expect(result.issues).toEqual([
+      {
+        severity: "error",
+        code: "missing_required_field",
+        path: ["content", "meta", "size"],
+        entity: "block:hero",
+        message: 'Missing required field "meta.size" on component "hero".',
+      },
+    ]);
+  });
+
+  it.each([
+    { name: "empty string", value: "" },
+    { name: "whitespace-only string", value: "  " },
+    { name: "false", value: false },
+    { name: "null", value: null },
+    { name: "empty array", value: [] },
+    { name: "empty object", value: {} },
+  ])("should treat a listed key holding $name as blank", ({ value }) => {
+    const result = validateMeta({ color: value, size: "m" });
+    expect(result.issues.map((issue) => issue.path)).toEqual([["content", "meta", "color"]]);
+  });
+
+  it("should require the listed keys even when the field itself is optional and unset", () => {
+    const result = validateStory(
+      { content: { component: "hero" } },
+      { blocks: { hero: blockWithPlugin() } },
+    );
+    expect(result.issues.map((issue) => issue.path)).toEqual([
+      ["content", "meta", "color"],
+      ["content", "meta", "size"],
+    ]);
+  });
+
+  it("should report a required, blank field once rather than once per listed key", () => {
+    const result = validateMeta({}, blockWithPlugin({ required: true }));
+    expect(result.issues.map((issue) => issue.path)).toEqual([["content", "meta"]]);
+  });
+
+  it("should ignore blank entries in the list", () => {
+    const result = validateMeta(
+      { color: "#fff" },
+      blockWithPlugin({ required_fields: "color, ," }),
+    );
+    expect(result.ok).toBe(true);
+  });
+
+  it("should not report a key the registered plugin validator already reports", () => {
+    const hero = blockWithPlugin({ required_fields: "color" });
+    const result = validateStory(
+      { content: { component: "hero", meta: {} } },
+      {
+        blocks: { hero },
+        fieldPlugins: {
+          meta: defineFieldPlugin({
+            fieldType: "meta-plugin",
+            value: z.object({ color: z.string() }),
+          }),
+        },
+      },
+    );
+    expect(result.issues.map((issue) => issue.path)).toEqual([["content", "meta", "color"]]);
+    expect(result.issues[0]?.code).toBe("invalid_value");
+  });
+
+  it("should hold a translated value to the same listed keys", () => {
+    const result = validateStory(
+      {
+        content: {
+          component: "hero",
+          meta: { color: "#fff", size: "m" },
+          meta__i18n__de: { color: "#000", size: "" },
+        },
+      },
+      { blocks: { hero: blockWithPlugin() } },
+    );
+    expect(result.issues).toEqual([
+      expect.objectContaining({
+        code: "missing_required_field",
+        path: ["content", "meta__i18n__de", "size"],
+        message: 'Missing required field "meta__i18n__de.size" on component "hero".',
+      }),
+    ]);
+  });
+
+  it("should not require the listed keys in a locale nobody has translated", () => {
+    const result = validateStory(
+      { content: { component: "hero", meta: { color: "#fff", size: "m" }, meta__i18n__de: null } },
+      { blocks: { hero: blockWithPlugin() } },
+    );
+    expect(result.ok).toBe(true);
+  });
+});
+
+describe("validateStory — conditional required fields", () => {
+  const checkout = (address: Parameters<typeof defineField>[1]) =>
+    defineBlock({
+      name: "checkout",
+      is_root: true,
+      fields: [
+        defineField("address", address),
+        defineField("delivery", { type: "boolean" }),
+        defineField("region", {
+          type: "option",
+          options: [
+            { name: "EU", value: "eu" },
+            { name: "US", value: "us" },
+          ],
+        }),
+        defineField("quantity", { type: "number" }),
+        defineField("ships_at", { type: "datetime" }),
+        defineField("photo", { type: "asset" }),
+        defineField("notes", { type: "richtext" }),
+      ],
+    });
+  const validateCheckout = (
+    block: ReturnType<typeof defineBlock>,
+    content: Record<string, unknown>,
+  ) =>
+    validateStory(
+      { content: { component: "checkout", ...content } },
+      { blocks: { checkout: block } },
+    );
+  const missingAddress = (result: ReturnType<typeof validateStory>) =>
+    result.issues.some(
+      (issue) =>
+        issue.code === "missing_required_field" && issue.path.join(".") === "content.address",
+    );
+
+  it("should require the field while its condition matches", () => {
+    const block = checkout({
+      type: "textarea",
+      conditional_settings: [requiredWhen({ field: "delivery", is: "not_empty" })],
+    });
+    const result = validateCheckout(block, { delivery: true });
+    expect(result.ok).toBe(false);
+    expect(result.issues).toEqual([
+      {
+        severity: "error",
+        code: "missing_required_field",
+        path: ["content", "address"],
+        entity: "block:checkout",
+        message: 'Missing required field "address" on component "checkout".',
+      },
+    ]);
+  });
+
+  it("should pass when the conditionally required field holds a value", () => {
+    const block = checkout({
+      type: "textarea",
+      conditional_settings: [requiredWhen({ field: "delivery", is: "not_empty" })],
+    });
+    expect(validateCheckout(block, { delivery: true, address: "Main St" }).ok).toBe(true);
+  });
+
+  it("should not require the field while its condition does not match", () => {
+    const block = checkout({
+      type: "textarea",
+      conditional_settings: [requiredWhen({ field: "delivery", is: "not_empty" })],
+    });
+    expect(validateCheckout(block, { delivery: false }).ok).toBe(true);
+  });
+
+  it("should not match any condition against a sibling the story has never set", () => {
+    const block = checkout({
+      type: "textarea",
+      conditional_settings: [requiredWhen({ field: "delivery", is: "empty" })],
+    });
+    expect(validateCheckout(block, {}).ok).toBe(true);
+    expect(missingAddress(validateCheckout(block, { delivery: false }))).toBe(true);
+  });
+
+  it.each([
+    {
+      name: "equals",
+      condition: { field: "region", is: "equals", value: "eu" },
+      matching: { region: "eu" },
+      other: { region: "us" },
+    },
+    {
+      name: "not_equals",
+      condition: { field: "region", is: "not_equals", value: "eu" },
+      matching: { region: "us" },
+      other: { region: "eu" },
+    },
+    {
+      name: "empty (whitespace)",
+      condition: { field: "region", is: "empty" },
+      matching: { region: "  " },
+      other: { region: "eu" },
+    },
+    {
+      name: "empty (blank richtext)",
+      condition: { field: "notes", is: "empty" },
+      matching: { notes: { type: "doc", content: [{ type: "paragraph" }] } },
+      other: {
+        notes: {
+          type: "doc",
+          content: [{ type: "paragraph", content: [{ type: "text", text: "Hi" }] }],
+        },
+      },
+    },
+    {
+      name: "not_empty",
+      condition: { field: "quantity", is: "not_empty" },
+      matching: { quantity: "3" },
+      other: { quantity: "" },
+    },
+    {
+      name: "gt (number)",
+      condition: { field: "quantity", is: "gt", value: 10 },
+      matching: { quantity: "11" },
+      other: { quantity: "10" },
+    },
+    {
+      name: "lt (number)",
+      condition: { field: "quantity", is: "lt", value: "10" },
+      matching: { quantity: "9.5" },
+      other: { quantity: "10" },
+    },
+    {
+      name: "gt (datetime)",
+      condition: { field: "ships_at", is: "gt", value: "2026-01-01 00:00" },
+      matching: { ships_at: "2026-01-01 00:01" },
+      other: { ships_at: "2025-12-31 23:59" },
+    },
+    {
+      name: "lt (datetime)",
+      condition: { field: "ships_at", is: "lt", value: "2026-01-01 00:00" },
+      matching: { ships_at: "2025-12-31 23:59" },
+      other: { ships_at: "2026-01-01 00:00" },
+    },
+    {
+      name: "equals (asset filename)",
+      condition: { field: "photo", is: "equals", value: "https://a.storyblok.com/f/1/x.png" },
+      matching: {
+        photo: { fieldtype: "asset", id: 1, filename: "https://a.storyblok.com/f/1/x.png" },
+      },
+      other: {
+        photo: { fieldtype: "asset", id: 2, filename: "https://a.storyblok.com/f/1/y.png" },
+      },
+    },
+  ] as const)("should evaluate $name conditions", ({ condition, matching, other }) => {
+    const block = checkout({
+      type: "text",
+      conditional_settings: [requiredWhen({ ...condition })],
+    });
+    expect(missingAddress(validateCheckout(block, matching))).toBe(true);
+    expect(missingAddress(validateCheckout(block, other))).toBe(false);
+  });
+
+  it("should not order values that are neither numbers nor datetimes", () => {
+    const block = checkout({
+      type: "text",
+      conditional_settings: [requiredWhen({ field: "region", is: "gt", value: "a" })],
+    });
+    expect(missingAddress(validateCheckout(block, { region: "eu" }))).toBe(false);
+  });
+
+  it("should require every condition to match by default", () => {
+    const block = checkout({
+      type: "text",
+      conditional_settings: [
+        requiredWhen([
+          { field: "delivery", is: "not_empty" },
+          { field: "region", is: "equals", value: "eu" },
+        ]),
+      ],
+    });
+    expect(missingAddress(validateCheckout(block, { delivery: true, region: "eu" }))).toBe(true);
+    expect(missingAddress(validateCheckout(block, { delivery: true, region: "us" }))).toBe(false);
+  });
+
+  it("should require only one condition to match with match: any", () => {
+    const block = checkout({
+      type: "text",
+      conditional_settings: [
+        requiredWhen(
+          [
+            { field: "delivery", is: "not_empty" },
+            { field: "region", is: "equals", value: "eu" },
+          ],
+          { match: "any" },
+        ),
+      ],
+    });
+    expect(missingAddress(validateCheckout(block, { delivery: false, region: "eu" }))).toBe(true);
+    expect(missingAddress(validateCheckout(block, { delivery: false, region: "us" }))).toBe(false);
+  });
+
+  it("should apply only the first conditional setting", () => {
+    const block = checkout({
+      type: "text",
+      conditional_settings: [
+        requiredWhen({ field: "region", is: "equals", value: "us" }),
+        requiredWhen({ field: "region", is: "equals", value: "eu" }),
+      ],
+    });
+    expect(missingAddress(validateCheckout(block, { region: "eu" }))).toBe(false);
+  });
+
+  it("should lift a static required flag while a hide rule matches", () => {
+    const block = checkout({
+      type: "text",
+      required: true,
+      conditional_settings: [hideWhen({ field: "delivery", is: "empty" })],
+    });
+    expect(missingAddress(validateCheckout(block, { delivery: false }))).toBe(false);
+    expect(missingAddress(validateCheckout(block, { delivery: true }))).toBe(true);
+  });
+
+  it("should lift a static required flag while a required: false rule matches", () => {
+    const block = checkout({
+      type: "text",
+      required: true,
+      conditional_settings: [
+        {
+          rule_match: "all",
+          rule_conditions: [
+            {
+              validated_object: { type: "field", field_key: "region", field_attr: "value" },
+              validation: "equals",
+              value: "us",
+            },
+          ],
+          modifications: [{ required: false }],
+        },
+      ],
+    });
+    expect(missingAddress(validateCheckout(block, { region: "us" }))).toBe(false);
+    expect(missingAddress(validateCheckout(block, { region: "eu" }))).toBe(true);
+  });
+
+  it("should never match a half-configured rule without rule_match", () => {
+    const block = checkout({
+      type: "text",
+      conditional_settings: [
+        {
+          rule_conditions: [
+            {
+              validated_object: { type: "field", field_key: "region", field_attr: "value" },
+              validation: "equals",
+              value: "eu",
+            },
+          ],
+          modifications: [{ required: true }],
+        },
+      ],
+    });
+    expect(missingAddress(validateCheckout(block, { region: "eu" }))).toBe(false);
+  });
+
+  it("should read the conditions against the siblings of a nested block", () => {
+    const item = defineBlock({
+      name: "item",
+      fields: [
+        defineField("gift", { type: "boolean" }),
+        defineField("message", {
+          type: "text",
+          conditional_settings: [requiredWhen({ field: "gift", is: "not_empty" })],
+        }),
+      ],
+    });
+    const cart = defineBlock({
+      name: "cart",
+      is_root: true,
+      fields: [
+        defineField("gift", { type: "boolean" }),
+        defineField("items", { type: "bloks", allow: [item] }),
+      ],
+    });
+    const result = validateStory(
+      { content: { component: "cart", gift: true, items: [{ component: "item", gift: false }] } },
+      { blocks: { cart, item } },
+    );
+    expect(result.ok).toBe(true);
   });
 });

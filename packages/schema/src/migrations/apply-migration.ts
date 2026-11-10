@@ -92,14 +92,14 @@ function refusalReason(
   // migration. Only a story the migration reaches is refused for them; one it
   // does not touch is not its concern.
   if (result.matched > 0 && result.unstableUids.preExisting.length > 0) {
-    return `This story already contains repeated block ids (${result.unstableUids.preExisting.join(", ")}); they would be renumbered on write, stranding the record needed to undo the run.`;
+    return `This story already contains repeated block ids (${result.unstableUids.preExisting.join(", ")}); they would be renumbered on write, stranding the record needed to roll back the run.`;
   }
   if (result.unstableUids.duplicate.length > 0 || result.unstableUids.missing > 0) {
     const detail =
       result.unstableUids.duplicate.length > 0
         ? `repeated ids ${result.unstableUids.duplicate.join(", ")}`
         : `${result.unstableUids.missing} block(s) without an id`;
-    return `The migration left this story with ${detail}; they would be renumbered on write, stranding the record needed to undo the run.`;
+    return `The migration left this story with ${detail}; they would be renumbered on write, stranding the record needed to roll back the run.`;
   }
   if (result.translatedReshapes.length > 0) {
     const translated = result.translatedReshapes

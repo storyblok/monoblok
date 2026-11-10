@@ -419,6 +419,38 @@ describe("callback return typing", () => {
     ]);
   });
 
+  it("should accept an inline richtext document, nested arrays included", () => {
+    defineMigration<FixtureSchema>([
+      alterField({ block: "article", field: "body" }, (value) =>
+        value
+          ? value
+          : {
+              type: "doc",
+              content: [{ type: "paragraph", content: [{ type: "text", text: "Hi" }] }],
+            },
+      ),
+      addField({ block: "article", field: "body" }, () => ({
+        type: "doc",
+        content: [{ type: "paragraph", content: [{ type: "text", text: "Hi" }] }],
+      })),
+    ]);
+    defineMigration<FixtureSchema>([
+      alterField({ block: "article", field: "body" }, () => ({
+        type: "doc",
+        // @ts-expect-error a richtext node has no "para" type
+        content: [{ type: "para" }],
+      })),
+    ]);
+  });
+
+  it("should accept blocks with nested arrays for a bloks field", () => {
+    defineMigration<FixtureSchema>([
+      alterField({ block: "section", field: "items" }, () => [
+        { _uid: "c1", component: "card", title: "Hi", meta: [] },
+      ]),
+    ]);
+  });
+
   it("should let addField leave a block untouched by returning undefined", () => {
     defineMigration<FixtureSchema>([addField({ block: "card", field: "slug" }, () => undefined)]);
   });

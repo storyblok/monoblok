@@ -299,9 +299,12 @@ type WritableValue<TSchema extends SchemaShape, TBlock extends string, TField> =
  * Constraint for a `const` type parameter that captures what a callback returns.
  * The schema parameters are still being inferred when the callback is checked, so
  * a return typed only as `WritableValue` widens `linktype: "url"` to `string`;
- * the `const` capture keeps the literals, and `unknown[]` keeps arrays mutable.
+ * the `const` capture keeps the literals. The array and record members keep array
+ * literals mutable at any depth, such as a richtext document's `content`, since a
+ * `const` capture infers a readonly tuple wherever its constraint names no
+ * mutable array.
  */
-type WriteCandidate = unknown[] | {} | null | undefined;
+type WriteCandidate = WriteCandidate[] | { [key: string]: WriteCandidate } | {} | null | undefined;
 
 /**
  * A key op never honors `under`, but it carries one through when a caller

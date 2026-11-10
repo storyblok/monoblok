@@ -80,6 +80,11 @@ export function createRemoteSpace(server: SetupServerApi) {
     reads,
     /** The most reads that were in flight at once. */
     maxConcurrentReads: () => concurrency.maxReads,
+    /** Clears the reads seen so far, so a later command's reads are counted on their own. */
+    forgetReads() {
+      reads.length = 0;
+      concurrency.maxReads = 0;
+    },
     /** Each read takes this long to answer, so overlapping reads are observable. */
     delaysReads(ms: number) {
       readDelay = ms;

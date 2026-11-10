@@ -1,6 +1,6 @@
 {
   "name": "@storyblok/richtext",
-  "version": "5.5.1",
+  "version": "5.5.2",
   "description": "Storyblok RichText Resolver",
   "keywords": [
     "resolver",

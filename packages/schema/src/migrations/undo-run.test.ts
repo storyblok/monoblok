@@ -309,6 +309,66 @@ describe("undoStories publish state", () => {
   });
 });
 
+describe("undoStories after an undo whose republish failed", () => {
+  const restoredBody = [{ _uid: "a", component: "card", title: "Hi" }];
+  const pending: StoryInverse = {
+    ...entry(1, [renameBack], true),
+    pendingRepublish: { draft: home(restoredBody).content },
+  };
+
+  it("should publish the restored draft while the story still holds it", () => {
+    const outcome = undoStories({
+      inverse: [pending],
+      stories: [home(restoredBody, { published: true, unpublished_changes: true })],
+    });
+
+    expect(outcome.writes).toEqual([
+      {
+        story: expect.objectContaining({ id: 1 }),
+        content: home(restoredBody).content,
+        publish: true,
+        publishOnly: true,
+      },
+    ]);
+    expect(outcome.notRepublished).toEqual([]);
+  });
+
+  it("should not publish a restored draft an editor changed since", () => {
+    const outcome = undoStories({
+      inverse: [pending],
+      stories: [
+        home([...restoredBody, { _uid: "b", component: "card", title: "New" }], {
+          published: true,
+          unpublished_changes: true,
+        }),
+      ],
+    });
+
+    expect(outcome.writes).toEqual([]);
+    expect(outcome.notRepublished).toEqual(["home"]);
+  });
+
+  it("should not publish a restored draft of a story unpublished since", () => {
+    const outcome = undoStories({
+      inverse: [pending],
+      stories: [home(restoredBody, { published: false, unpublished_changes: false })],
+    });
+
+    expect(outcome.writes).toEqual([]);
+    expect(outcome.notRepublished).toEqual(["home"]);
+  });
+
+  it("should leave a story alone whose live version matches its draft again", () => {
+    const outcome = undoStories({
+      inverse: [pending],
+      stories: [home(restoredBody, { published: true, unpublished_changes: false })],
+    });
+
+    expect(outcome.writes).toEqual([]);
+    expect(outcome.notRepublished).toEqual([]);
+  });
+});
+
 describe("undoStories after a recorded run", () => {
   type Content = { _uid: string; component: string; [key: string]: unknown };
 

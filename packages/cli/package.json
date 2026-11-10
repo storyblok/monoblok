@@ -110,11 +110,24 @@
           "openapiCodegen"
         ],
         "outputs": [
-          "{projectRoot}/src/generated"
+          "{projectRoot}/src/generated",
+          "{projectRoot}/src/generated.sha256"
         ],
         "cache": true,
         "dependsOn": [
           "@storyblok/openapi-codegen:build"
+        ]
+      },
+      "start": {
+        "dependsOn": [
+          "^build",
+          "generate:openapi"
+        ]
+      },
+      "debug": {
+        "dependsOn": [
+          "^build",
+          "generate:openapi"
         ]
       }
     }

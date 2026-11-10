@@ -1,23 +1,28 @@
 /**
- * Internal codegen tool. Drives `@hey-api/openapi-ts` against the spec cache,
+ * Internal codegen tool. Drives `@hey-api/openapi-ts` against the pinned upstream specs,
  * applies aliases + slicing + envelope-strips via an AST post-processor, then
  * stamps wrapper-type templates (`Block<T>`, `Story<T>`, `BlockContent<T>`)
  * into each consumer's `src/generated/`.
  *
  * Public API: `generate({ outDir, include, sdk, verbose })`. Upstream type
- * names never appear in committed output; each consumer commits only the
- * aliased `types.gen.ts` plus the wrapper templates it needs.
+ * names never appear in the output; each consumer gets only the aliased
+ * `types.gen.ts` plus the wrapper templates it needs.
+ *
+ * Also writes `<outDir>.sha256`, a hash of the output. Consumers commit it, so
+ * a commit that changes their generated code touches the package and releases
+ * it (ADR-0026).
  */
 
 import { createClient } from "@hey-api/openapi-ts";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "pathe";
 import { ALIAS_BY_EMIT_NAME, ALIASES, type SpecSource } from "./aliases.ts";
+import { hashDirectory } from "./fingerprint.ts";
 import type { KnownType } from "./known-types.ts";
-import { hashCache, readLock } from "./lock.ts";
-import { SPEC_PATHS, TEMPLATES_DIR } from "./paths.ts";
+import { TEMPLATES_DIR } from "./paths.ts";
 import { SPEC_PARSERS } from "./patches.ts";
+import { resolveSpecPaths } from "./specs.ts";
 import { templateFor, TEMPLATES, type WrapperFile } from "./templates.ts";
 import { deduplicateGeneratedUnions, type KeepEntry, transformGeneratedFile } from "./transform.ts";
 
@@ -38,40 +43,16 @@ export interface GenerateConfig {
 }
 
 export async function generate(config: GenerateConfig): Promise<void> {
-  const cacheMissing = !existsSync(SPEC_PATHS.capi) || !existsSync(SPEC_PATHS.mapi);
-  if (cacheMissing) {
-    throw new Error(
-      `OpenAPI cache missing. Run \`pnpm --filter @storyblok/openapi-codegen pull\` first.`,
-    );
-  }
-  // Guard against a stale cache silently producing output that diverges from
-  // the pinned spec. `existsSync` alone can't catch a cache left over from a
-  // different SHA, so verify the content hash against spec.lock here — this
-  // covers every caller (nx, `pnpm … generate`, direct `tsx`), not just nx.
-  const lock = readLock();
-  if (!lock) {
-    throw new Error(
-      `spec.lock not found. Run \`pnpm --filter @storyblok/openapi-codegen pull\` first.`,
-    );
-  }
-  const cacheHash = hashCache();
-  if (cacheHash !== lock.hash) {
-    throw new Error(
-      `OpenAPI cache is out of sync with spec.lock.\n` +
-        `  expected (spec.lock): ${lock.hash}\n` +
-        `  computed:             ${cacheHash}\n` +
-        `Run \`pnpm --filter @storyblok/openapi-codegen pull\` to resync the cache.`,
-    );
-  }
   const { wrappers, publicPerSpec, leafPerSpec, leafLocation } = resolveInclude(config.include);
   const renameMaps = buildRenameMaps();
+  const specPaths = await resolveSpecPaths();
 
   // Wipe existing output so removed types don't linger.
   rmSync(config.outDir, { recursive: true, force: true });
   mkdirSync(config.outDir, { recursive: true });
 
   if (config.sdk) {
-    await emitFullSdk(config.sdk, config.outDir, config.verbose === true);
+    await emitFullSdk(specPaths[config.sdk], config.sdk, config.outDir, config.verbose === true);
   }
 
   for (const spec of ["capi", "mapi", "overlay"] as const) {
@@ -84,7 +65,7 @@ export async function generate(config: GenerateConfig): Promise<void> {
     const tempDir = mkdtempSync(resolve(tmpdir(), "openapi-codegen-"));
     try {
       await createClient({
-        input: SPEC_PATHS[spec],
+        input: specPaths[spec],
         output: tempDir,
         parser: SPEC_PARSERS[spec],
         plugins: ["@hey-api/typescript"],
@@ -141,19 +122,31 @@ export async function generate(config: GenerateConfig): Promise<void> {
   );
 
   if (config.zod) {
-    await emitZodSchemas(config.zod.spec, config.outDir, config.verbose === true);
+    await emitZodSchemas(
+      specPaths[config.zod.spec],
+      config.zod.spec,
+      config.outDir,
+      config.verbose === true,
+    );
   }
+
+  writeFileSync(`${config.outDir}.sha256`, `${hashDirectory(config.outDir)}\n`, "utf8");
 }
 
 /**
  * Emit Zod v4 schemas for every component in `spec` into `<outDir>/<spec>/zod.gen.ts`.
  * Runs a dedicated `@hey-api/openapi-ts` pass with the `zod` plugin.
  */
-async function emitZodSchemas(spec: SpecSource, outDir: string, verbose: boolean): Promise<void> {
+async function emitZodSchemas(
+  input: string,
+  spec: SpecSource,
+  outDir: string,
+  verbose: boolean,
+): Promise<void> {
   const tempDir = mkdtempSync(resolve(tmpdir(), "openapi-codegen-zod-"));
   try {
     await createClient({
-      input: SPEC_PATHS[spec],
+      input,
       output: tempDir,
       parser: SPEC_PARSERS[spec],
       plugins: ["@hey-api/typescript", { name: "zod", compatibilityVersion: 4 }],
@@ -181,10 +174,15 @@ async function emitZodSchemas(spec: SpecSource, outDir: string, verbose: boolean
  * runtime helpers. Names follow upstream OpenAPI conventions; the alias map
  * does not apply here (clients consume raw schema/operation names directly).
  */
-async function emitFullSdk(spec: "capi" | "mapi", outDir: string, verbose: boolean): Promise<void> {
+async function emitFullSdk(
+  input: string,
+  spec: "capi" | "mapi",
+  outDir: string,
+  verbose: boolean,
+): Promise<void> {
   const sdkDir = resolve(outDir, spec);
   await createClient({
-    input: SPEC_PATHS[spec],
+    input,
     output: sdkDir,
     parser: SPEC_PARSERS[spec],
     plugins: ["@hey-api/typescript", "@hey-api/client-ky", { name: "@hey-api/sdk" }],

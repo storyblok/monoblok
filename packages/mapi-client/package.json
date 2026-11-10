@@ -65,7 +65,8 @@
           "openapiCodegen"
         ],
         "outputs": [
-          "{projectRoot}/src/generated"
+          "{projectRoot}/src/generated",
+          "{projectRoot}/src/generated.sha256"
         ],
         "cache": true,
         "dependsOn": [
@@ -74,7 +75,8 @@
       },
       "build": {
         "dependsOn": [
-          "^build"
+          "^build",
+          "generate:openapi"
         ],
         "outputs": [
           "{projectRoot}/dist/**"

@@ -1,119 +1,74 @@
 # @storyblok/openapi-codegen
 
-Internal workspace package. It owns the OpenAPI spec cache, the committed overlay specs, and the
+Internal workspace package. It owns the upstream OpenAPI spec pins, our overlay specs, and the
 shared `@hey-api/openapi-ts` generator invocation. Not published.
 
-Every package with a `generate:openapi` target is a consumer. Today that is `@storyblok/api-client`,
-`@storyblok/management-api-client`, `@storyblok/schema`, `@storyblok/live-preview`,
-`@storyblok/experiments`, and `@storyblok/richtext`. Do not maintain that list by hand anywhere:
-`pnpm nx run-many -t generate:openapi` resolves it from the target name, so a new consumer is picked
-up automatically.
+Every package with a `generate:openapi` target is a consumer; `pnpm nx run-many -t generate:openapi`
+resolves them by target name.
 
 ## Two spec sources
 
-Generation reads from two places, and both of them can change the generated output:
+Generation reads from two places:
 
-- `.openapi-cache/` holds the upstream specs fetched from the private `storyblok/openapi-wdx` repo.
-  It is git-ignored, pinned by `spec.lock`, and populated by `pull`.
+- The public Content Delivery API and Management API specs, which the Storyblok docs publish at a
+  fixed URL per version. `spec.lock.json` pins one version of each by URL and sha256. Generation
+  downloads them into the git-ignored `.openapi-cache/` and fails when a download doesn't match its
+  pin. Never edit the lock by hand: `pull` writes it. Correct upstream gaps in `src/patches.ts`.
 - `specs/` holds this repo's own overlay specs, including `specs/overlay.openapi.yaml` and the
-  shared field-type shapes under `specs/shared/`. It **is** committed, so anyone can edit it in a
-  normal PR without spec access.
+  shared field-type shapes under `specs/shared/`.
 
-The second source is the easier one to get wrong. Editing a file under `specs/` changes the
-generated types for every consumer even though `spec.lock` does not move, so there is no lock diff
-to remind you to regenerate.
+## Generated output
 
-## Workflow
+Each consumer's `src/generated/` is git-ignored. Its `generate:openapi` target writes it, and
+`pnpm install`, the build, test, lint, and watch targets run that target. Nx caches it on
+`spec.lock.json`, the overlay specs, the generator, and the consumer's `scripts/generate.ts`.
+Generating without a cached copy of the pinned specs needs network access.
 
-```sh
-# Refresh from upstream HEAD and update the lock.
-pnpm --filter @storyblok/openapi-codegen pull:update
-
-# Re-populate the cache at the SHA pinned in spec.lock (deterministic).
-pnpm --filter @storyblok/openapi-codegen pull
-
-# Verify the cache on disk matches spec.lock.
-pnpm --filter @storyblok/openapi-codegen verify
-```
-
-Both `pull` commands require `gh auth status`. Specs live in the private `storyblok/openapi-wdx`
-repo.
-
-`generate` verifies the cache content hash against `spec.lock` before running and fails fast on a
-mismatch, so a stale cache left over from a different SHA can never silently produce divergent
-output. Run `pull` to resync if it reports a mismatch.
-
-## Regenerate consumers
-
-**Whenever you change anything the generator reads, regenerate every consumer in the same PR.** That
-means a `pull:update`, an edit under `specs/`, and a change to `src/` or `templates/`. Regenerating
-only the package you happen to be working on leaves the others behind, and because these packages
-export the same public types, the surface then disagrees across packages: a value
-`@storyblok/schema` accepts fails to compile against `@storyblok/management-api-client`.
+To regenerate every consumer, for example after pulling spec or generator changes:
 
 ```sh
 pnpm nx run-many -t generate:openapi
-git add tools/openapi-codegen packages/*/src/generated
 ```
 
-Regenerating a consumer that needs no update is free, so always run the whole set rather than
-reasoning about which packages a spec change reaches.
+`generate:openapi` also writes `src/generated.sha256`, a hash of the generated code. Commit it: a
+change to the generated code then touches the package, so a `feat` or `fix` commit releases it. CI
+fails when a committed hash is stale.
 
-To regenerate a single consumer while iterating, run its target directly. Run the full set again
-before you commit:
+## Update the spec pins
 
 ```sh
-pnpm nx run @storyblok/live-preview:generate:openapi
+pnpm --filter @storyblok/openapi-codegen pull
 ```
 
-Nx caches this target and restores its declared outputs, so a regeneration can be silently replaced
-by a cached copy of the previous output. Pass `--skip-nx-cache` if the diff looks empty when you
-expect one, and confirm the working tree before committing.
+`pull` reads the latest versions from `https://www.storyblok.com/docs/openapi-spec/latest.json`,
+pins them in `spec.lock.json`, and regenerates `src/known-types.ts`. It validates the specs first
+and writes nothing when they fail, for example when an `ALIASES` source no longer exists upstream.
+Fix the alias, then run `pull` again.
 
-## Why the upstream cache is not committed
+You rarely need `pull` by hand: the [OpenAPI Spec Sync](#automated-sync) workflow runs it daily.
 
-The upstream repo is private, and checking its specs into this repo would expose them, so
-`.openapi-cache/` stays local-only. External contributors can still build the repo without spec
-access because each consumer commits its own `src/generated/` output. The overlay specs under
-`specs/` are ours, so they are committed and reviewable.
+## Automated sync
 
-## Why generated code IS committed
+The OpenAPI Spec Sync workflow (`.github/workflows/openapi-sync.yaml`) runs daily and on demand. It
+runs `pull`, regenerates every consumer, and, if the pins changed, opens or updates one pull request
+from the `chore/openapi-spec-sync` branch. Its description includes the spec diff. CI then
+type-checks and tests every consumer against the new specs.
 
-Two reasons. First, external contributor access: people without `storyblok/openapi-wdx` access can
-still run `pnpm install && pnpm build` without fetching specs. Second, diff visibility: a spec
-update produces a real diff in the consumer packages' `src/generated/` only when something
-type-relevant changed. A PR that touches `spec.lock` or `specs/` with no consumer diff signals
-irrelevant churn. A PR that touches either and produces a consumer diff signals a real surface-area
-change worth reviewing.
+- The pull request lists the packages whose generated code changes. It is titled `chore(tools): …`,
+  which releases nothing. When the change reaches what a package exposes, retitle it to `feat(…)` or
+  `fix(…)` and squash-merge it.
+- Push fixes for consumers that no longer compile to the sync branch. The workflow leaves an open
+  pull request with commits from anyone else untouched, so your fixes survive until it is merged or
+  closed.
+- When the published specs match `main` again, the workflow closes an open sync pull request that
+  only has its own commits.
+- When `pull` fails, the run fails and no pull request opens. Check the failed run in the
+  **Actions** tab.
+- The workflow authenticates as a GitHub App (`OPENAPI_SYNC_APP_ID`, `OPENAPI_SYNC_APP_PRIVATE_KEY`)
+  so its pull requests trigger CI.
 
 ## Version policy
 
 Pinned at `0.0.1`. Updates here are chores, so consumers never get a dependency bump from spec
 refreshes or internal refactors. Bump the version only when the exported API (`generate`,
 `copyWrappers`) changes in a way that requires consumers to update their `scripts/generate.ts`.
-
-## CI contract
-
-CI never runs `pull`, `pull:update`, or any consumer `generate:openapi` target, because generation
-needs the private spec cache. CI builds from committed `src/generated/`.
-
-Nothing in CI can therefore prove that the committed output is current. A PR that edits `specs/` and
-regenerates only some consumers passes every check, and the packages left behind stay stale until
-someone regenerates them for an unrelated reason. Reviewers are the only guard: when a PR touches
-`spec.lock` or `specs/`, check that `packages/*/src/generated/` changed for every consumer the edit
-reaches, or that the author states why none of them do.
-
-## spec.lock
-
-Committed. Pins the upstream commit SHA and a sha256 hash of the resulting cache contents:
-
-```json
-{
-  "repo": "storyblok/openapi-wdx",
-  "sha": "<upstream commit SHA>",
-  "hash": "sha256:<hex>"
-}
-```
-
-The hash protects against partial fetches and silent upstream force-pushes. `pull` recomputes the
-hash after checking out the pinned SHA and fails if the content has shifted underneath us.

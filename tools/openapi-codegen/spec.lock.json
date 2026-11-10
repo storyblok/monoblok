@@ -1,0 +1,10 @@
+{
+  "capi": {
+    "url": "https://www.storyblok.com/docs/openapi-spec/e8abb0bda13a/cdn-v2.openapi.yaml",
+    "sha256": "e8abb0bda13abefdd10550f9ca748ab506d7cbbf74009b8be6f3cadf3d16e62e"
+  },
+  "mapi": {
+    "url": "https://www.storyblok.com/docs/openapi-spec/6a500b226dcb/management-v1.openapi.yaml",
+    "sha256": "6a500b226dcb9cb171610378c8924c50a32a22f675e36322dbbb03f7833cdee6"
+  }
+}

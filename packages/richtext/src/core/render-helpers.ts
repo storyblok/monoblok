@@ -1,4 +1,4 @@
-import { MARK_RENDER_MAP, NODE_RENDER_MAP } from "../generated/render-map.generated";
+import { MARK_RENDER_MAP, NODE_RENDER_MAP } from "./render-map.generated";
 import type { RichTextMark, RichTextNode } from "../generated/overlay/types.gen";
 import { escapeAttr } from "./attribute";
 

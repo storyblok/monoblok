@@ -20,5 +20,5 @@
     "skipLibCheck": true
   },
   "include": ["**/*.ts"],
-  "exclude": [".openapi-cache", "node_modules", "templates"]
+  "exclude": ["upstream", "node_modules", "templates"]
 }

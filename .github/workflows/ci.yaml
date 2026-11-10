@@ -110,6 +110,15 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: pnpm check:workspace-protocol
 
+      # `pnpm install` regenerated the OpenAPI code, which rewrites a stale hash.
+      - name: Check generated OpenAPI hashes
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          if ! git diff --exit-code -- 'packages/*/src/generated.sha256'; then
+            echo "::error::The generated OpenAPI code changed. Run \`pnpm nx run-many -t generate:openapi\` and commit packages/*/src/generated.sha256."
+            exit 1
+          fi
+
       - name: Check
         if: needs.changes.outputs.code == 'true'
         # Blueprints are nx projects, but the `blueprints` job owns them (ADR-0023).

@@ -43,7 +43,6 @@
     "test": "vp test run",
     "lint": "vp lint",
     "lint:fix": "vp lint --fix",
-    "prepublishOnly": "pnpm run build",
     "test:watch": "vp test",
     "test:ui": "vp test --ui",
     "test:types": "tsc --noEmit --skipLibCheck",
@@ -72,7 +71,8 @@
           "openapiCodegen"
         ],
         "outputs": [
-          "{projectRoot}/src/generated"
+          "{projectRoot}/src/generated",
+          "{projectRoot}/src/generated.sha256"
         ],
         "cache": true,
         "dependsOn": [

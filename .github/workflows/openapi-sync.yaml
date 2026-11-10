@@ -1,0 +1,133 @@
+name: OpenAPI Spec Sync
+
+# CI on the sync pull request regenerates and checks every consumer. See ADR-0026.
+on:
+  schedule:
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+env:
+  HUSKY: 0
+  SYNC_BRANCH: chore/openapi-spec-sync
+
+jobs:
+  sync:
+    if: github.repository == 'storyblok/monoblok'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-node
+
+      - name: Pin the latest specs
+        run: pnpm --filter @storyblok/openapi-codegen pull
+
+      - name: Regenerate the OpenAPI code
+        run: pnpm nx run-many -t generate:openapi
+
+      # Created after every step that runs package code, so none of it can read
+      # the token. A pull request opened with GITHUB_TOKEN would not trigger CI.
+      - name: Create app token
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ secrets.OPENAPI_SYNC_APP_ID }}
+          private-key: ${{ secrets.OPENAPI_SYNC_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: monoblok
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Open, update, or close the pull request
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config http.https://github.com/.extraheader \
+            "AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+
+          open_pr=$(gh pr list --head "$SYNC_BRANCH" --state open --json number --jq '.[0].number')
+          has_foreign_commits=false
+          if [ -n "$open_pr" ] && gh pr view "$open_pr" --json commits --jq '.commits[].authors[].email' | grep -qv 'github-actions\[bot\]'; then
+            has_foreign_commits=true
+          fi
+
+          if git diff --quiet -- tools/openapi-codegen/spec.lock.json; then
+            echo "Specs unchanged; nothing to sync."
+            if [ -n "$open_pr" ] && [ "$has_foreign_commits" = false ]; then
+              gh pr close "$open_pr" --delete-branch --comment "The published specs match main again."
+            elif [ -n "$open_pr" ]; then
+              echo "::warning::The published specs match main again, so #$open_pr may be obsolete."
+            fi
+            exit 0
+          fi
+
+          if [ "$has_foreign_commits" = true ]; then
+            echo "::warning::#$open_pr has commits from someone other than this workflow; leaving it untouched. Merge or close it to resume syncing."
+            exit 0
+          fi
+
+          # --force-with-lease compares against this ref, and the branch can outlive a closed pull request.
+          git fetch --depth=1 origin "+refs/heads/$SYNC_BRANCH:refs/remotes/origin/$SYNC_BRANCH" || true
+
+          if [ -n "$open_pr" ] && git diff --quiet "origin/$SYNC_BRANCH" -- tools/openapi-codegen/spec.lock.json 'packages/*/src/generated.sha256'; then
+            echo "#$open_pr already has these specs; nothing to sync."
+            exit 0
+          fi
+
+          released=$(git diff --name-only -- 'packages/*/src/generated.sha256' |
+            while read -r file; do printf -- '- `%s`\n' "$(jq -r .name "${file%/src/generated.sha256}/package.json")"; done)
+
+          # Leaves room in the 65,536-character pull request body for the rest of it.
+          max_diff_length=50000
+          spec_diff=$(for spec in capi mapi; do
+            old_url=$(git show HEAD:tools/openapi-codegen/spec.lock.json | jq -r ".$spec.url")
+            new_url=$(jq -r ".$spec.url" tools/openapi-codegen/spec.lock.json)
+            if [ "$old_url" != "$new_url" ]; then
+              diff -u --label "$old_url" --label "$new_url" <(curl -fsSL "$old_url") <(curl -fsSL "$new_url") || true
+            fi
+          done)
+          if [ "${#spec_diff}" -gt "$max_diff_length" ]; then
+            spec_diff="${spec_diff:0:$max_diff_length}
+          … truncated. Diff the URLs in spec.lock.json for the rest."
+          fi
+
+          git switch -c "$SYNC_BRANCH"
+          git add tools/openapi-codegen 'packages/*/src/generated.sha256'
+          git commit -m "chore(tools): sync OpenAPI specs"
+          git push --force-with-lease origin "$SYNC_BRANCH"
+
+          {
+            cat <<'EOF'
+          Pins the latest published OpenAPI specs in `tools/openapi-codegen/spec.lock.json`. CI regenerates, type-checks, and tests every consumer against them.
+
+          Packages whose generated code changes:
+
+          EOF
+            echo "${released:-None.}"
+            printf '\n<details><summary>Spec diff</summary>\n\n````diff\n%s\n````\n\n</details>\n' "$spec_diff"
+            cat <<'EOF'
+
+          Before merging:
+
+          - Review the spec diff. If it changes what a listed package exposes, retitle this pull request to `feat(<scopes>): …` or `fix(<scopes>): …` so the listed packages release. Squash-merge it, so the title becomes the commit message.
+          - Fix any consumer code that no longer type-checks by pushing to this branch. Once you push, later sync runs leave the branch alone until this pull request is merged or closed.
+          EOF
+          } > "$RUNNER_TEMP/body.md"
+
+          if [ -z "$open_pr" ]; then
+            gh pr create --base main --head "$SYNC_BRANCH" --title "chore(tools): sync OpenAPI specs" --body-file "$RUNNER_TEMP/body.md"
+          else
+            gh pr edit "$open_pr" --body-file "$RUNNER_TEMP/body.md"
+          fi

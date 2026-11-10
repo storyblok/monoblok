@@ -3,10 +3,10 @@
  * generates types (via `parser.patch.schemas`). Each patch mutates the parsed
  * OpenAPI schema object in place.
  *
- * Use these only to correct upstream OpenAPI gaps we cannot fix in the private
- * `storyblok/openapi-wdx` spec directly. A patch here is a deliberate, reviewed
- * divergence from upstream: keep the list small, document why each exists, and
- * migrate the fix upstream when the contract is owned there.
+ * Use these only to correct gaps in the upstream specs, which we never edit
+ * directly. A patch here is a deliberate, reviewed divergence from upstream:
+ * keep the list small, document why each exists, and migrate the fix upstream
+ * when the contract is owned there.
  */
 
 import type { UserConfig } from "@hey-api/openapi-ts";
@@ -168,9 +168,92 @@ function patchMapiInput(spec: unknown): void {
   requireWebhookCreateFields(spec);
 }
 
+const ACCESS_TOKEN_PARAM = "token";
+
+function isAccessTokenParam(parameter: unknown): boolean {
+  return isRecord(parameter) && parameter.in === "query" && parameter.name === ACCESS_TOKEN_PARAM;
+}
+
+/**
+ * The CAPI spec declares `token` as a required query parameter on every
+ * operation next to the `ApiKeyAuth` scheme, through which the client already
+ * sends it.
+ */
+function removeAccessTokenParams(spec: unknown): void {
+  if (!isRecord(spec) || !isRecord(spec.paths)) {
+    return;
+  }
+  for (const pathItem of Object.values(spec.paths)) {
+    if (!isRecord(pathItem)) {
+      continue;
+    }
+    for (const node of [pathItem, ...Object.values(pathItem)]) {
+      if (isRecord(node) && Array.isArray(node.parameters)) {
+        node.parameters = node.parameters.filter((parameter) => !isAccessTokenParam(parameter));
+      }
+    }
+  }
+}
+
+const STORY_PATHS = ["/v2/cdn/stories", "/v2/cdn/stories/{id}"];
+const WITH_TAXONOMY_TERMS_PARAM = {
+  name: "with_taxonomy_terms",
+  in: "query",
+  required: false,
+  description: "Include each story's assigned taxonomy terms in `taxonomy_terms`.",
+  schema: { type: "string", enum: ["1"] },
+};
+
+/**
+ * The docs tell callers to request `taxonomy_terms` with `with_taxonomy_terms=1`,
+ * but the spec doesn't declare the parameter. No-op once upstream declares it.
+ */
+function addWithTaxonomyTermsParam(spec: unknown): void {
+  if (!isRecord(spec) || !isRecord(spec.paths)) {
+    return;
+  }
+  for (const path of STORY_PATHS) {
+    const pathItem = spec.paths[path];
+    const operation = isRecord(pathItem) ? pathItem.get : undefined;
+    if (!isRecord(operation) || !Array.isArray(operation.parameters)) {
+      continue;
+    }
+    const declared = operation.parameters.some(
+      (parameter) =>
+        isRecord(parameter) &&
+        parameter.in === "query" &&
+        parameter.name === WITH_TAXONOMY_TERMS_PARAM.name,
+    );
+    if (!declared) {
+      operation.parameters.push(structuredClone(WITH_TAXONOMY_TERMS_PARAM));
+    }
+  }
+}
+
+function patchCapiInput(spec: unknown): void {
+  removeAccessTokenParams(spec);
+  addWithTaxonomyTermsParam(spec);
+}
+
+/**
+ * Whole-spec patches per spec, which `SPEC_PARSERS` run as `patch.input`.
+ * Exported because they can add schemas, so anything listing a spec's schemas
+ * must apply them.
+ */
+export const SPEC_INPUT_PATCHES: Partial<Record<SpecSource, (spec: unknown) => void>> = {
+  capi: patchCapiInput,
+  mapi: patchMapiInput,
+};
+
+const CAPI_PARSER: Parser = {
+  patch: {
+    input: SPEC_INPUT_PATCHES.capi,
+  },
+};
+
 const MAPI_PARSER: Parser = {
   patch: {
-    input: patchMapiInput,
+    input: SPEC_INPUT_PATCHES.mapi,
     schemas: {
       ComponentCreateRequest: widenNullableComponentProperties,
       ComponentUpdateRequest: widenNullableComponentProperties,
@@ -181,5 +264,6 @@ const MAPI_PARSER: Parser = {
 
 /** Parser config per spec, or `undefined` when a spec needs no patches. */
 export const SPEC_PARSERS: Partial<Record<SpecSource, Parser>> = {
+  capi: CAPI_PARSER,
   mapi: MAPI_PARSER,
 };

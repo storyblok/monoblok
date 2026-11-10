@@ -28,6 +28,10 @@ instructions for contributing to our monorepo.
 pnpm install
 ```
 
+This also downloads the pinned OpenAPI specs and generates the OpenAPI code in
+`packages/*/src/generated/`. After pulling spec or codegen changes, regenerate it with
+`pnpm nx run-many -t generate:openapi`.
+
 3. (Optional) Rebuild the internal monoblok CLI tool. It is built on `pnpm install` automatically;
    rebuild manually only when changing it:
 

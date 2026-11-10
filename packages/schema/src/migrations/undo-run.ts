@@ -7,7 +7,7 @@
 import type { StoryForMigration } from "./apply-migration";
 import type { Journal, MigrationRun, StoryInverse } from "./journal";
 import { MigrationError } from "./migration-error";
-import { applyPatches } from "./patch";
+import { applyPatches, deepEqual } from "./patch";
 
 export type UndoPlan = {
   run: MigrationRun;
@@ -46,6 +46,11 @@ export type UndoWrite = {
   content: unknown;
   /** Restores the live version for a story the run published. */
   publish: boolean;
+  /**
+   * The draft already holds the restored content, and the write only publishes
+   * it, retrying the publish an earlier undo failed at.
+   */
+  publishOnly: boolean;
 };
 
 export type UndoOutcome = {
@@ -68,8 +73,9 @@ export type UndoOutcome = {
   unread: number[];
   /**
    * Stories the run published that undo leaves as drafts: their draft moved on
-   * since the run, they were unpublished since, or their publish state was not
-   * passed in. Publishing them could ship an editor's unpublished work.
+   * since the run or since an undo restored it, they were unpublished since, or
+   * their publish state was not passed in. Publishing them could ship an
+   * editor's unpublished work.
    */
   notRepublished: string[];
   /**
@@ -127,6 +133,9 @@ export function undoStories(input: UndoStoriesInput): UndoOutcome {
     const content = structuredClone(story.content);
     const result = applyPatches(content, entry.patches, { force: input.force });
     if (result.applied === 0) {
+      if (entry.pendingRepublish) {
+        retryRepublish(outcome, story, entry.pendingRepublish.draft);
+      }
       continue;
     }
 
@@ -140,8 +149,25 @@ export function undoStories(input: UndoStoriesInput): UndoOutcome {
       publish = story.published === true && story.unpublished_changes === false;
       if (!publish) outcome.notRepublished.push(story.slug);
     }
-    outcome.writes.push({ story, content, publish });
+    outcome.writes.push({ story, content, publish, publishOnly: false });
   }
 
   return outcome;
+}
+
+function retryRepublish(outcome: UndoOutcome, story: StoryForMigration, draft: unknown): void {
+  // Published since, so the live version no longer holds the run's content.
+  if (story.published === true && story.unpublished_changes === false) {
+    return;
+  }
+  if (story.published === true && deepEqual(story.content, draft)) {
+    outcome.writes.push({
+      story,
+      content: structuredClone(story.content),
+      publish: true,
+      publishOnly: true,
+    });
+  } else {
+    outcome.notRepublished.push(story.slug);
+  }
 }

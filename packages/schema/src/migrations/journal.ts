@@ -46,6 +46,12 @@ export interface StoryInverse {
   before: PublishState;
   /** The run published its write, so undoing it has to republish to restore the live version. */
   publishedByRun: boolean;
+  /**
+   * An undo restored the draft but failed to publish it, so the live version
+   * still holds the run's content. A later undo publishes the draft while the
+   * story still holds exactly this content.
+   */
+  pendingRepublish?: { draft: unknown };
 }
 
 export interface Journal {

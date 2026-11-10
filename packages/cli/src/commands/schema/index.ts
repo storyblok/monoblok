@@ -4,4 +4,3 @@ import "./init";
 import "./push";
 import "./rollback";
 import "./validate";
-import "./affected";

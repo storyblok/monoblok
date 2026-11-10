@@ -209,6 +209,37 @@ describe("generateSnapshot", () => {
     expect(list).toContain("'block_29',");
   });
 
+  it("should wrap stubs and the header that don't fit in 100 columns", async () => {
+    const reader: WireComponent = {
+      name: "enterprise_landing_page",
+      schema: {
+        body: {
+          pos: 0,
+          type: "bloks",
+          restrict_components: true,
+          component_whitelist: ["teaser_with_a_really_long_block_name_here"],
+        },
+      },
+    };
+    const source = generateSnapshot({
+      components: [reader, { name: "teaser_with_a_really_long_block_name_here", schema: {} }],
+      blocks: ["enterprise_landing_page"],
+      migrationId: "20261103093215-update-enterprise-landing-page-and-author-and-some-more-blocks",
+    });
+
+    expect(source.split("\n").filter((line) => line.length > 100)).toEqual([]);
+    expect(blockNames(source)).toEqual([
+      "enterprise_landing_page",
+      "teaser_with_a_really_long_block_name_here",
+    ]);
+    const modules = await writeModules({ "0001-x.before.ts": source });
+    try {
+      expect(modules.typeErrors()).toEqual([]);
+    } finally {
+      await modules.cleanup();
+    }
+  });
+
   it("should skip field entries that are not field records", async () => {
     const broken: WireComponent = {
       name: "broken",

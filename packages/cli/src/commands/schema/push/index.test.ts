@@ -281,6 +281,15 @@ function writtenFile(suffix: string): string | undefined {
   return Object.entries(vol.toJSON()).find(([file]) => file.endsWith(suffix))?.[1] ?? undefined;
 }
 
+/** The text of each run of line comments in `source`, wrapped lines joined. */
+function commentsIn(source: string | undefined): string[] {
+  const blocks = (source ?? "").split(/\n(?!\s*\/\/)/);
+  return blocks.flatMap((block) => {
+    const lines = [...block.matchAll(/^\s*\/\/ (.*)$/gm)].map((match) => match[1]);
+    return lines.length > 0 ? [lines.join(" ")] : [];
+  });
+}
+
 function migrationFiles(): string[] {
   return Object.keys(vol.toJSON())
     .filter((file) => file.includes(`migrations/${DEFAULT_SPACE}/`))
@@ -1600,9 +1609,11 @@ describe("schema push command", () => {
       "--migrations",
     ]);
 
-    expect(writtenFile("20261016090503-update-teaser.ts")).toContain(
-      "// TODO: if 'title' was renamed to 'headline', replace this removeField and the addField of 'headline' with renameField, or the content of 'title' is lost.\n  removeField({ block: 'teaser', field: 'title' }),",
+    const migration = writtenFile("20261016090503-update-teaser.ts");
+    expect(commentsIn(migration)).toContain(
+      "TODO: if 'title' was renamed to 'headline', replace this removeField and the addField of 'headline' with renameField, or the content of 'title' is lost.",
     );
+    expect(migration).toMatch(/lost\.\n {2}removeField\(\{ block: 'teaser', field: 'title' \}\),/);
   });
 
   it("should name, for each possible rename of a removed field, only the ops the migration holds", async () => {
@@ -1645,7 +1656,7 @@ describe("schema push command", () => {
     ]);
 
     const migration = writtenFile("20261016090503-update-author.ts");
-    expect(migration).toContain(
+    expect(commentsIn(migration)).toContain(
       "TODO: if 'x_account' was renamed to 'x_handle', replace this removeField with renameField; if it was renamed to 'role', replace this removeField and the addField of 'role' with renameField. Otherwise, the content of 'x_account' is lost.",
     );
     expect(migration).not.toContain("addField({ block: 'author', field: 'x_handle'");

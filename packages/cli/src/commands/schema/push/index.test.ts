@@ -1601,8 +1601,55 @@ describe("schema push command", () => {
     ]);
 
     expect(writtenFile("20261016090503-update-teaser.ts")).toContain(
-      "// TODO: if 'title' was renamed to 'headline', replace this removeField and the addField of the new field with renameField, or the content of 'title' is lost.\n  removeField({ block: 'teaser', field: 'title' }),",
+      "// TODO: if 'title' was renamed to 'headline', replace this removeField and the addField of 'headline' with renameField, or the content of 'title' is lost.\n  removeField({ block: 'teaser', field: 'title' }),",
     );
+  });
+
+  it("should name, for each possible rename of a removed field, only the ops the migration holds", async () => {
+    preconditions.hasLocalSchema({
+      components: [
+        makeMockComponent({
+          name: "author",
+          schema: {
+            x_handle: { type: "text", pos: 0 },
+            role: { type: "text", pos: 1, required: true },
+            avatar: { type: "asset", pos: 2 },
+          },
+        }),
+      ] as any,
+      datasources: [],
+    });
+    preconditions.hasRemoteComponents([
+      makeMockComponent({
+        name: "author",
+        schema: {
+          x_account: { type: "text", pos: 0 },
+          instagram_account: { type: "text", pos: 1 },
+        },
+      }),
+    ]);
+    preconditions.hasRemoteFolders([]);
+    preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
+    preconditions.canUpdateComponents();
+
+    await schemaCommand.parseAsync([
+      "node",
+      "test",
+      "push",
+      "schema.ts",
+      "--space",
+      DEFAULT_SPACE,
+      "--typed",
+      "--migrations",
+    ]);
+
+    const migration = writtenFile("20261016090503-update-author.ts");
+    expect(migration).toContain(
+      "TODO: if 'x_account' was renamed to 'x_handle', replace this removeField with renameField; if it was renamed to 'role', replace this removeField and the addField of 'role' with renameField. Otherwise, the content of 'x_account' is lost.",
+    );
+    expect(migration).not.toContain("addField({ block: 'author', field: 'x_handle'");
+    expect(migration).not.toContain("'avatar'");
   });
 
   it("should not treat switching among text, textarea, and markdown as breaking", async () => {

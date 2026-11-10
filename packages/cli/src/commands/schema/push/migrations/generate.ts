@@ -168,14 +168,33 @@ function defaultTodo(field: string, fieldType: string, value: unknown): string {
     : `TODO: replace the placeholder default for the required field '${field}'.`;
 }
 
+/**
+ * A new field that isn't required has no op, so a rename onto it replaces only
+ * the removeField; a new required field has an addField to replace as well.
+ */
 function renameHintTodo(field: string, newFields: string[], changes: BreakingChange[]): string {
-  const targets = newFields.map((newField) => `'${newField}'`).join(" or ");
-  const addsNewField = changes.some(
-    (change) => change.kind === "required_added" && newFields.includes(change.field),
+  const withAddField = new Set(
+    changes.flatMap((change) => (change.kind === "required_added" ? [change.field] : [])),
   );
-  return addsNewField
-    ? `TODO: if '${field}' was renamed to ${targets}, replace this removeField and the addField of the new field with renameField, or the content of '${field}' is lost.`
-    : `TODO: if '${field}' was renamed to ${targets}, replace removeField with renameField, or the content of '${field}' is lost.`;
+  const withoutOp = newFields.filter((newField) => !withAddField.has(newField));
+  const clauses = [
+    ...(withoutOp.length > 0
+      ? [
+          `renamed to ${withoutOp.map((newField) => `'${newField}'`).join(" or ")}, replace this removeField with renameField`,
+        ]
+      : []),
+    ...newFields
+      .filter((newField) => withAddField.has(newField))
+      .map(
+        (newField) =>
+          `renamed to '${newField}', replace this removeField and the addField of '${newField}' with renameField`,
+      ),
+  ];
+  const [first, ...rest] = clauses;
+  const conditions = [`if '${field}' was ${first}`, ...rest.map((clause) => `if it was ${clause}`)];
+  return rest.length === 0
+    ? `TODO: ${conditions[0]}, or the content of '${field}' is lost.`
+    : `TODO: ${conditions.join("; ")}. Otherwise, the content of '${field}' is lost.`;
 }
 
 export function toMigrationOps(block: string, changes: BreakingChange[]): MigrationOpSource[] {

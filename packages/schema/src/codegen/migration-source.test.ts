@@ -1,4 +1,5 @@
 import path from "node:path";
+import { format } from "oxfmt";
 import { describe, expect, it } from "vitest";
 
 import { applyMigration } from "../migrations/apply-migration";
@@ -396,6 +397,60 @@ describe("generateMigrationSource", () => {
         ops: [JSON.parse('{ "kind": "bogus", "block": "hero", "field": "a" }')],
       }),
     ).toThrow(/Unknown migration op kind/);
+  });
+
+  it("should write source a formatter leaves unchanged, wrapping what doesn't fit in 100 columns", async () => {
+    const block = "enterprise_landing_page";
+    const source = generateMigrationSource({
+      schemaImport: "../../../src/schema/schema.js",
+      beforeImport: "./20261103093215-update-enterprise-landing-page-and-author.before.js",
+      title:
+        "Update enterprise_landing_page: rename hero_background_image, require newsletter_headline",
+      ops: [
+        { kind: "renameField", block: "author", field: "bluesky_account", to: "bluesky_handle" },
+        { kind: "renameField", block, field: "hero_background_image", to: "hero_background_asset" },
+        {
+          kind: "removeField",
+          block: "author",
+          field: "x_account",
+          todo: [
+            "TODO: if 'x_account' was renamed to 'x_handle', replace this removeField with renameField; if it was renamed to 'role', replace this removeField and the addField of 'role' with renameField. Otherwise, the content of 'x_account' is lost.",
+          ],
+        },
+        { kind: "coerceField", block, field: "hero_rating_value", from: "string", to: "number" },
+        { kind: "alterField", block, field: "hero_background_video" },
+        {
+          kind: "alterField",
+          block: "hero",
+          field: "headline_size",
+          removedValues: ["large", "extra_large", "huge_size", "giant"],
+        },
+        {
+          kind: "alterField",
+          block: "hero",
+          field: "tags",
+          removedValues: ["large", "extra_large", "huge_size", "giant"],
+          multiple: true,
+        },
+        { kind: "addField", block, field: "show_newsletter_signup_on_page", value: false },
+        { kind: "addField", block, field: "newsletter_signup_defaults", value: { title: "Join" } },
+        { kind: "fillField", block, field: "newsletter_headline", fillEmptyString: true },
+        { kind: "fillField", block: "author", field: "show", value: false },
+        {
+          kind: "renameBlock",
+          block: "enterprise_landing_page_v2",
+          to: "enterprise_landing_page_v3",
+        },
+      ],
+    });
+
+    const formatted = await format("migration.ts", source, { printWidth: 100, singleQuote: true });
+
+    expect(formatted.errors).toEqual([]);
+    expect(source).toBe(formatted.code);
+    const comments = source.split("\n").filter((line) => line.trimStart().startsWith("//"));
+    expect(comments.length).toBeGreaterThan(1);
+    expect(comments.filter((line) => line.length > 100)).toEqual([]);
   });
 
   it("should keep a todo with line breaks inside its comment", async () => {

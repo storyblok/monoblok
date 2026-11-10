@@ -1,5 +1,4 @@
 import type { Command } from "commander";
-import { discoverMigrations } from "@storyblok/schema";
 import type { MigrationRun } from "@storyblok/schema";
 import { colorPalette, commands } from "../../../constants";
 import { CommandError, handleError } from "../../../utils";
@@ -8,6 +7,7 @@ import { getUI } from "../../../lib/ui";
 import { migrationsCommand } from "../command";
 import {
   contentJournal,
+  discoverContentMigrations,
   migrationsDirectory,
   plural,
   toMigrationCommandError,
@@ -26,6 +26,8 @@ function rollbackState(run: MigrationRun): string {
   if (run.undoneAt) return `  (rolled back ${run.undoneAt})`;
   if (run.partlyUndoneAt) return `  (partly rolled back ${run.partlyUndoneAt})`;
   if (run.interrupted) return "  (interrupted)";
+  // `rollback` without a run passes over such a run, so it never shows as rolled back.
+  if (run.stories === 0) return "  (nothing to roll back)";
   return "";
 }
 
@@ -43,7 +45,10 @@ listCmd.action(async (options: { pending?: boolean }, command: Command) => {
   const logger = getLogger();
   const { space, path, verbose } = command.optsWithGlobals();
 
-  ui.title(`${commands.MIGRATIONS}`, colorPalette.MIGRATIONS, "Listing migration runs...");
+  // `--pending` output is read by scripts, so it carries the ids and nothing else.
+  if (!options.pending) {
+    ui.title(`${commands.MIGRATIONS}`, colorPalette.MIGRATIONS, "Listing migration runs...");
+  }
 
   if (!space) {
     handleError(
@@ -57,18 +62,15 @@ listCmd.action(async (options: { pending?: boolean }, command: Command) => {
 
   try {
     const runs = await contentJournal(path).list(space);
-    const files = await discoverMigrations(migrationsDirectory(path, space));
+    const files = await discoverContentMigrations(migrationsDirectory(path, space));
     const pending = pendingMigrations(
       files.map((file) => file.id),
       runs,
     );
 
     if (options.pending) {
-      if (pending.length === 0) {
-        ui.info("No pending content migrations for this space on this machine.");
-      }
       for (const id of pending) {
-        ui.info(id);
+        ui.writeMachineOutput(id);
       }
       return;
     }

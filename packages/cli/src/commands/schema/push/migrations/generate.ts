@@ -5,7 +5,7 @@ import { coercionBetween } from "@storyblok/schema/internal/codegen";
 
 import { resolvePath } from "../../../../utils/filesystem";
 import { fileTimestamp } from "../../utils";
-import type { BreakingChange } from "./types";
+import type { BreakingChange, ComponentBreakingChanges } from "./types";
 
 /** Compatible type pairs that don't need a content migration. */
 const COMPATIBLE_TYPES = new Set(["text:textarea", "textarea:text"]);
@@ -168,14 +168,33 @@ function defaultTodo(field: string, fieldType: string, value: unknown): string {
     : `TODO: replace the placeholder default for the required field '${field}'.`;
 }
 
+/**
+ * A new field that isn't required has no op, so a rename onto it replaces only
+ * the removeField; a new required field has an addField to replace as well.
+ */
 function renameHintTodo(field: string, newFields: string[], changes: BreakingChange[]): string {
-  const targets = newFields.map((newField) => `'${newField}'`).join(" or ");
-  const addsNewField = changes.some(
-    (change) => change.kind === "required_added" && newFields.includes(change.field),
+  const withAddField = new Set(
+    changes.flatMap((change) => (change.kind === "required_added" ? [change.field] : [])),
   );
-  return addsNewField
-    ? `TODO: if '${field}' was renamed to ${targets}, replace this removeField and the addField of the new field with renameField, or the content of '${field}' is lost.`
-    : `TODO: if '${field}' was renamed to ${targets}, replace removeField with renameField, or the content of '${field}' is lost.`;
+  const withoutOp = newFields.filter((newField) => !withAddField.has(newField));
+  const clauses = [
+    ...(withoutOp.length > 0
+      ? [
+          `renamed to ${withoutOp.map((newField) => `'${newField}'`).join(" or ")}, replace this removeField with renameField`,
+        ]
+      : []),
+    ...newFields
+      .filter((newField) => withAddField.has(newField))
+      .map(
+        (newField) =>
+          `renamed to '${newField}', replace this removeField and the addField of '${newField}' with renameField`,
+      ),
+  ];
+  const [first, ...rest] = clauses;
+  const conditions = [`if '${field}' was ${first}`, ...rest.map((clause) => `if it was ${clause}`)];
+  return rest.length === 0
+    ? `TODO: ${conditions[0]}, or the content of '${field}' is lost.`
+    : `TODO: ${conditions.join("; ")}. Otherwise, the content of '${field}' is lost.`;
 }
 
 export function toMigrationOps(block: string, changes: BreakingChange[]): MigrationOpSource[] {
@@ -252,6 +271,46 @@ export function toMigrationOps(block: string, changes: BreakingChange[]): Migrat
       }
     }
   });
+}
+
+function describeChange(change: BreakingChange): string {
+  switch (change.kind) {
+    case "rename":
+      return `rename ${change.oldField} to ${change.field}`;
+    case "removed":
+      return `remove ${change.field}`;
+    case "type_changed":
+      return `convert ${change.field} to ${change.newType}`;
+    case "required_added":
+      return `add ${change.field}`;
+    case "required_changed":
+      return `require ${change.field}`;
+    case "options_removed":
+      return `remove options from ${change.field}`;
+    case "block_renamed":
+      return `rename to ${change.to}`;
+  }
+}
+
+const MAX_TITLE_LENGTH = 100;
+
+const listFormat = new Intl.ListFormat("en", { type: "conjunction" });
+
+/**
+ * The title of a typed migration: its changes by block, or only the blocks
+ * when the changes don't fit. Blocks go by their name before the push, as the
+ * migration addresses them.
+ */
+export function migrationTitle(
+  changes: readonly ComponentBreakingChanges[],
+  blockBefore: (comp: ComponentBreakingChanges) => string,
+): string {
+  const detailed = `Update ${changes
+    .map((comp) => `${blockBefore(comp)}: ${comp.changes.map(describeChange).join(", ")}`)
+    .join("; ")}`;
+  return detailed.length <= MAX_TITLE_LENGTH
+    ? detailed
+    : `Update ${listFormat.format(changes.map(blockBefore))}`;
 }
 
 /** Options for writing a migration file. */

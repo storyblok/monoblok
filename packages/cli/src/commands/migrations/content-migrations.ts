@@ -17,17 +17,35 @@ import {
   localJournal,
   MigrationError,
 } from "@storyblok/schema";
-import type { Journal, StoryForMigration } from "@storyblok/schema";
+import type { Journal, MigrationFile, StoryForMigration } from "@storyblok/schema";
 import { getMapiClient } from "../../api";
 import { getUI } from "../../lib/ui";
 import { CommandError, toError } from "../../utils";
 import { APIError, handleAPIError } from "../../utils/error/api-error";
-import { fileExists, resolvePath, saveToFile } from "../../utils/filesystem";
+import { fileExists, importModule, resolvePath, saveToFile } from "../../utils/filesystem";
 import { fetchStory, updateStory } from "../stories/actions";
 import type { Story } from "../stories/constants";
 
 export function migrationsDirectory(path: string | undefined, space: string): string {
   return resolvePath(path, `migrations/${space}`);
+}
+
+/**
+ * The content migrations in a space's migrations directory. A `.js` file whose
+ * name fits the pattern may still be a migration function, told apart by its
+ * function default export. A file that fails to load counts as a content
+ * migration, so the content migration loader reports the failure.
+ */
+export async function discoverContentMigrations(directory: string): Promise<MigrationFile[]> {
+  const files = await discoverMigrations(directory);
+  const isContentMigration = await Promise.all(
+    files.map(async ({ file }) => {
+      if (!file.endsWith(".js")) return true;
+      const module = await importModule(file).catch(() => undefined);
+      return typeof module?.default !== "function";
+    }),
+  );
+  return files.filter((_, index) => isContentMigration[index]);
 }
 
 /**

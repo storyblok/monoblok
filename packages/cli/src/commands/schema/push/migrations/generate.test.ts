@@ -274,7 +274,7 @@ describe("toMigrationOps", () => {
         block: "hero",
         field: "author_name",
         todo: [
-          "TODO: if 'author_name' was renamed to 'author' or 'byline', replace removeField with renameField, or the content of 'author_name' is lost.",
+          "TODO: if 'author_name' was renamed to 'author' or 'byline', replace this removeField with renameField, or the content of 'author_name' is lost.",
         ],
       },
     ]);

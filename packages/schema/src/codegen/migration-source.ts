@@ -1,6 +1,21 @@
 import type { CoercionTarget } from "../migrations/ops";
 import { isRecord } from "../utils/is-record";
-import { commentText, formatValue, INDENT, quoteString } from "./format";
+import {
+  callDoc,
+  group,
+  hardline,
+  ifBreak,
+  indent,
+  join,
+  line,
+  objectDoc,
+  PRINT_WIDTH,
+  printDoc,
+  softline,
+  wrapWords,
+} from "./doc";
+import type { Doc } from "./doc";
+import { commentText, INDENT, quoteString } from "./format";
 
 type OpTarget = { block: string; field: string };
 
@@ -39,8 +54,46 @@ export type GenerateMigrationSourceOptions = {
   ops: readonly MigrationOpSource[];
 };
 
-function target(op: OpTarget): string {
-  return `{ block: ${quoteString(op.block)}, field: ${quoteString(op.field)}`;
+function valueDoc(value: unknown): Doc {
+  if (Array.isArray(value)) {
+    if (value.length === 0) return "[]";
+    return group([
+      "[",
+      indent([softline, join([",", line], value.map(valueDoc))]),
+      ifBreak(","),
+      softline,
+      "]",
+    ]);
+  }
+  if (isRecord(value)) {
+    return objectDoc(
+      Object.entries(value)
+        .filter(([, entry]) => entry !== undefined && entry !== null)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([key, entry]) => [key, valueDoc(entry)]),
+    );
+  }
+  return typeof value === "string" ? quoteString(value) : String(value);
+}
+
+function blockDoc(statements: readonly Doc[]): Doc {
+  return group(["{", indent([hardline, join(hardline, statements)]), hardline, "}"]);
+}
+
+function arrowDoc(params: string, body: Doc): Doc {
+  return [params, " => ", body];
+}
+
+function targetDoc(op: OpTarget, ...more: [key: string, value: Doc][]): Doc {
+  return objectDoc([["block", quoteString(op.block)], ["field", quoteString(op.field)], ...more]);
+}
+
+/** An `if` whose condition breaks at each `||` or `&&` when it doesn't fit. */
+function ifDoc(conditions: readonly Doc[], operator: "||" | "&&", then: Doc): Doc {
+  return [
+    group(["if (", indent([softline, join([` ${operator}`, line], conditions)]), softline, ") "]),
+    then,
+  ];
 }
 
 /**
@@ -52,71 +105,114 @@ function importsOf(op: MigrationOpSource): string[] {
   return op.kind === "fillField" ? ["addField", "alterField"] : [op.kind];
 }
 
-function throwPlaceholder(op: OpTarget, depth: number): string {
+function throwPlaceholder(op: OpTarget): Doc {
   const message = `Replace this placeholder for ${op.block}.${op.field} before applying the migration.`;
-  return `{\n${INDENT.repeat(depth + 1)}throw new Error(${quoteString(message)});\n${INDENT.repeat(depth)}}`;
+  return blockDoc([["throw ", callDoc("new Error", [quoteString(message)]), ";"]]);
 }
 
-function renderOp(op: MigrationOpSource, depth: number): string {
+/** A callback that returns `value`, or a placeholder that throws without one. */
+function returning(op: OpTarget, value: unknown): Doc {
+  if (value === undefined) return throwPlaceholder(op);
+  // An object literal after `=>` would parse as a block body.
+  return isRecord(value) ? ["(", valueDoc(value), ")"] : valueDoc(value);
+}
+
+/** The calls an op renders to; `fillField` renders to two. */
+function opDocs(op: MigrationOpSource): Doc[] {
   switch (op.kind) {
     case "renameField":
-      return `renameField(${target(op)}, to: ${quoteString(op.to)} })`;
+      return [callDoc("renameField", [targetDoc(op, ["to", quoteString(op.to)])], true)];
     case "removeField":
-      return `removeField(${target(op)} })`;
+      return [callDoc("removeField", [targetDoc(op)], true)];
     case "renameBlock":
-      return `renameBlock({ block: ${quoteString(op.block)}, to: ${quoteString(op.to)} })`;
+      return [
+        callDoc(
+          "renameBlock",
+          [
+            objectDoc([
+              ["block", quoteString(op.block)],
+              ["to", quoteString(op.to)],
+            ]),
+          ],
+          true,
+        ),
+      ];
     case "coerceField": {
-      const from = op.from ? `, from: ${quoteString(op.from)}` : "";
-      return `coerceField(${target(op)}${from}, to: ${quoteString(op.to)} })`;
+      const from: [string, Doc][] = op.from ? [["from", quoteString(op.from)]] : [];
+      return [callDoc("coerceField", [targetDoc(op, ...from, ["to", quoteString(op.to)])], true)];
     }
     case "alterField": {
       if (!op.removedValues?.length) {
-        return `alterField(${target(op)} }, () => ${throwPlaceholder(op, depth)})`;
+        return [callDoc("alterField", [targetDoc(op), arrowDoc("()", throwPlaceholder(op))], true)];
       }
       const isRemoved = (value: string) =>
-        op.removedValues!.map((removed) => `${value} === ${quoteString(removed)}`).join(" || ");
-      const condition = op.multiple
-        ? `Array.isArray(value) && value.some((item) => ${isRemoved("item")})`
-        : isRemoved("value");
+        op.removedValues!.map((removed) => `${value} === ${quoteString(removed)}`);
+      const someRemoved = callDoc("value.some", [
+        ["(item) =>", group(indent([line, group(join([" ||", line], isRemoved("item")))]))],
+      ]);
+      const guard = op.multiple
+        ? ifDoc(["Array.isArray(value)", someRemoved], "&&", throwPlaceholder(op))
+        : ifDoc(isRemoved("value"), "||", throwPlaceholder(op));
       return [
-        `alterField(${target(op)} }, (value) => {`,
-        `${INDENT.repeat(depth + 1)}if (${condition}) ${throwPlaceholder(op, depth + 1)}`,
-        `${INDENT.repeat(depth + 1)}return undefined;`,
-        `${INDENT.repeat(depth)}})`,
-      ].join("\n");
+        callDoc(
+          "alterField",
+          [targetDoc(op), arrowDoc("(value)", blockDoc([guard, "return undefined;"]))],
+          true,
+        ),
+      ];
     }
     case "addField": {
-      if (op.value === undefined) {
-        return `addField(${target(op)} }, () => ${throwPlaceholder(op, depth)})`;
-      }
-      const value = formatValue(op.value, depth);
-      // An object literal after `=>` would parse as a block body.
-      const body = isRecord(op.value) ? `(${value})` : value;
-      return `addField(${target(op)} }, () => ${body})`;
+      const callback = arrowDoc("()", returning(op, op.value));
+      // Only a callback with a block or object body keeps the call's opening line when it breaks.
+      const hugs = op.value === undefined || isRecord(op.value) || Array.isArray(op.value);
+      return [callDoc("addField", [targetDoc(op), callback], hugs)];
     }
     case "fillField": {
       const fill =
         op.value === undefined
-          ? throwPlaceholder(op, depth + 1)
-          : `{\n${INDENT.repeat(depth + 2)}return ${formatValue(op.value, depth + 2)};\n${INDENT.repeat(depth + 1)}}`;
-      const empty = op.fillEmptyString ? "value === null || value === ''" : "value === null";
-      const add = renderOp(
-        { kind: "addField", block: op.block, field: op.field, value: op.value },
-        depth,
+          ? throwPlaceholder(op)
+          : blockDoc([["return ", valueDoc(op.value), ";"]]);
+      const missing = op.fillEmptyString
+        ? ["language === undefined", "(value === null || value === '')"]
+        : ["language === undefined", "value === null"];
+      const add = opDocs({ kind: "addField", block: op.block, field: op.field, value: op.value });
+      const alter = callDoc(
+        "alterField",
+        [
+          targetDoc(op),
+          arrowDoc(
+            "(value, { language })",
+            blockDoc([ifDoc(missing, "&&", fill), "return undefined;"]),
+          ),
+        ],
+        true,
       );
-      const alter = [
-        `alterField(${target(op)} }, (value, { language }) => {`,
-        `${INDENT.repeat(depth + 1)}if (language === undefined && (${empty})) ${fill}`,
-        `${INDENT.repeat(depth + 1)}return undefined;`,
-        `${INDENT.repeat(depth)}})`,
-      ].join("\n");
-      return `${add},\n${INDENT.repeat(depth)}${alter}`;
+      return [...add, alter];
     }
     default: {
       const unknown: never = op;
       throw new TypeError(`Unknown migration op kind: ${JSON.stringify(unknown)}`);
     }
   }
+}
+
+/** Line comments holding `text`, wrapped to fit the print width. */
+function commentLines(text: string, depth: number): Doc[] {
+  const width = PRINT_WIDTH - depth * INDENT.length - "// ".length;
+  return wrapWords(commentText(text), width).map((comment) => `// ${comment}`);
+}
+
+function importDoc(names: readonly string[], from: string, typeOnly = false): Doc {
+  const keyword = typeOnly ? "import type" : "import";
+  // A formatter keeps a single specifier on the line, however long it is.
+  if (names.length === 1) return `${keyword} { ${names[0]} } from ${quoteString(from)};`;
+  return group([
+    `${keyword} {`,
+    indent([line, join([",", line], names)]),
+    ifBreak(","),
+    line,
+    `} from ${quoteString(from)};`,
+  ]);
 }
 
 /**
@@ -127,46 +223,45 @@ export function generateMigrationSource(options: GenerateMigrationSourceOptions)
   const { schemaImport, beforeImport, title, ops } = options;
   const imports = [...new Set(["defineMigration", ...ops.flatMap(importsOf)])].sort();
   const typeArgs = beforeImport ? "Schema, Before" : "Schema";
-
-  const lines: string[] = [
-    `import { ${imports.join(", ")} } from '@storyblok/schema';`,
-    "",
-    `import type { Schema } from ${quoteString(schemaImport)};`,
-  ];
-  if (beforeImport) {
-    lines.push(`import type { Before } from ${quoteString(beforeImport)};`);
-  }
-  lines.push("");
-
-  const opLines: string[] = [];
   const depth = title === undefined ? 1 : 2;
-  const opIndent = INDENT.repeat(depth);
-  if (ops.length === 0) {
-    opLines.push(
-      `${opIndent}// Import each op from '@storyblok/schema', for example:`,
-      `${opIndent}// renameField({ block: '<block>', field: '<field>', to: '<new field>' }),`,
-    );
-  }
-  for (const op of ops) {
-    for (const todo of op.todo ?? []) {
-      opLines.push(`${opIndent}// ${commentText(todo)}`);
-    }
-    opLines.push(`${opIndent}${renderOp(op, depth)},`);
-  }
 
-  if (title === undefined) {
-    lines.push(`export default defineMigration<${typeArgs}>([`, ...opLines, "]);", "");
-  } else {
-    lines.push(
-      `export default defineMigration<${typeArgs}>({`,
-      `${INDENT}title: ${quoteString(title)},`,
-      `${INDENT}ops: [`,
-      ...opLines,
-      `${INDENT}],`,
-      "});",
-      "",
-    );
-  }
+  const entries: Doc[] =
+    ops.length === 0
+      ? [
+          "// Import each op from '@storyblok/schema', for example:",
+          "// renameField({ block: '<block>', field: '<field>', to: '<new field>' }),",
+        ]
+      : ops.flatMap((op) => [
+          ...(op.todo ?? []).flatMap((todo) => commentLines(todo, depth)),
+          ...opDocs(op).map((call) => [call, ","]),
+        ]);
+  const list = ["[", indent([hardline, join(hardline, entries)]), hardline, "]"];
+  const argument =
+    title === undefined
+      ? list
+      : [
+          "{",
+          indent([
+            hardline,
+            group(["title:", indent([line, quoteString(title)])]),
+            ",",
+            hardline,
+            "ops: ",
+            list,
+            ",",
+          ]),
+          hardline,
+          "}",
+        ];
 
-  return lines.join("\n");
+  const statements: Doc[] = [
+    importDoc(imports, "@storyblok/schema"),
+    "",
+    importDoc(["Schema"], schemaImport, true),
+    ...(beforeImport ? [importDoc(["Before"], beforeImport, true)] : []),
+    "",
+    [`export default defineMigration<${typeArgs}>(`, argument, ");"],
+    "",
+  ];
+  return printDoc(join(hardline, statements));
 }

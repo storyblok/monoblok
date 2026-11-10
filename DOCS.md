@@ -66,16 +66,18 @@ storyblok migrations run [arguments] [flags]
 | Flag                       | Type    | Description                                                                                                                                                                                  |
 | -------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `--space`, `-s`            | integer | _Required._ The ID of the Storyblok space to run migrations in.                                                                                                                              |
-| `--filter`, `-fi`          | string  | _Optional._ Glob pattern for the migrations to run, matched against migration function file names and content migration names. For example, `hero*` matches `hero.js` and `hero-section.js`. |
+| `--filter`, `--fi`         | string  | _Optional._ Glob pattern for the migrations to run, matched against migration function file names and content migration names. For example, `hero*` matches `hero.js` and `hero-section.js`. |
 | `--dry-run`, `-d`          | boolean | _Optional._ Report the changes without writing them.                                                                                                                                         |
 | `--query`, `-q`            | string  | _Optional._ Filter stories using [query parameters](/docs/api/management/stories/retrieve-multiple-stories#query-parameters).                                                                |
-| `--starts-with`, `-sw`     | string  | _Optional._ A path prefix to filter stories to migrate.                                                                                                                                      |
+| `--starts-with`            | string  | _Optional._ A path prefix to filter stories to migrate.                                                                                                                                      |
 | `--publish`                | string  | _Optional._ Publish the migrated stories. See [Publishing](#publishing). Defaults to drafts only.                                                                                            |
 | `--schema`                 | string  | _Optional._ Path to a schema entry file describing the schema before a content migration. Checks the content migration against it instead of its snapshot. Requires a migration name.        |
 | `--no-validate`            | boolean | _Optional._ Skip checking each content migration against its `.before.ts` snapshot.                                                                                                          |
 | `--allow-pending-releases` | boolean | _Optional._ Run the migrations while releases are pending. The command lists the releases it doesn’t migrate.                                                                                |
 | `--from`, `-f`             | integer | _Optional._ The ID of the space to read migration files from. Defaults to `--space`.                                                                                                         |
-| `--path`, `-p`             | string  | _Optional._ Base path for migration files and run records. Defaults to `.storyblok`.                                                                                                         |
+
+Migration files and run records live in the base path the global `--path` option sets, `.storyblok`
+by default. See [global options](/docs/tooling/cli/global-options).
 
 ## How a run works
 
@@ -109,10 +111,12 @@ interrupted. The directory’s `.gitignore` keeps run records on the machine tha
 
 Every run applies every content migration again. A content migration that already applied changes
 nothing and records nothing. Its first run is recorded even when it changes nothing, so it no longer
-shows as pending. So that later schema changes don’t undo it, the command first compares each op
-with the blocks in the space. It skips and reports an op that writes a field the block no longer
-has, removes a field the block has again, or converts a field to a type it no longer has. So run
-each content migration before you push the next schema change:
+shows as pending. A first run that changes nothing because the content migration refused stories
+isn’t recorded, so the content migration stays pending and each run reports the refusals again. So
+that later schema changes don’t undo it, the command first compares each op with the blocks in the
+space. It skips and reports an op that writes a field the block no longer has, removes a field the
+block has again, or converts a field to a type it no longer has. So run each content migration
+before you push the next schema change:
 
 - Push the schema before you run a content migration that writes new fields. `schema push --typed`
   does this, since it pushes before you run the migration it wrote.
@@ -163,7 +167,8 @@ along with the write:
 
 When the space saves the draft of a content migration but refuses to publish it, for example because
 the content misses a field the schema now requires, the command keeps and records the draft, names
-the story, and exits with an error.
+the story, and exits with an error. `migrations rollback` restores the draft and leaves the
+published version as it is.
 
 ## Examples
 
@@ -218,9 +223,9 @@ storyblok migrations rollback [arguments] [flags]
 
 ## Arguments
 
-| Argument | Type   | Description                                                                                                                                                                                                                                         |
-| -------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Run      | string | _Optional._ The ID of a content migration run or the name of a rollback file, with or without its extension, as [`migrations list`](/docs/tooling/cli/migrations/list) prints it. Defaults to the latest content migration run not rolled back yet. |
+| Argument | Type   | Description                                                                                                                                                                                                                                                                    |
+| -------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Run      | string | _Optional._ The ID of a content migration run or the name of a rollback file, with or without its extension, as [`migrations list`](/docs/tooling/cli/migrations/list) prints it. Defaults to the latest content migration run that changed stories and isn’t rolled back yet. |
 
 ## Flags
 
@@ -229,7 +234,9 @@ storyblok migrations rollback [arguments] [flags]
 | `--space`, `-s`            | integer | _Required._ The ID of the Storyblok space to roll back the run in.                                                       |
 | `--force`                  | boolean | _Optional._ Overwrite blocks with fields changed since a content migration run. The command lists them before it writes. |
 | `--allow-pending-releases` | boolean | _Optional._ Roll back the run while releases are pending. The command lists the releases it doesn’t restore.             |
-| `--path`, `-p`             | string  | _Optional._ Base path for migration files and run records. Defaults to `.storyblok`.                                     |
+
+Migration files and run records live in the base path the global `--path` option sets, `.storyblok`
+by default. See [global options](/docs/tooling/cli/global-options).
 
 ## Conflicts
 
@@ -253,9 +260,12 @@ exits with an error and the run stays open. Run the rollback again to retry.
 
 The space checks content against its current schema, not the schema of the run. When a later push
 made a field required, the space can refuse the restored content. Push the schema as it was before
-the run, then roll back again. When the space saves the draft but refuses to publish it, the command
-restores the draft, names the story, and exits with an error. Publish the story once the space
-accepts its content.
+the run, then roll back again.
+
+When the space saves a restored draft but refuses to publish it, the published version keeps the
+migrated content. The command names the story, keeps the run open, and exits with an error. Push the
+schema as it was before the run, then roll back again. The command then publishes the restored draft
+if the story is still published and its draft hasn’t changed since the rollback.
 
 ## Rollback order
 
@@ -314,9 +324,10 @@ stories and blocks it changed. A rollback file shows its name and the stories it
 ℹ 2026-10-29T13-32-45-737Z-20261029132727-rename-teaser-to-excerpt  Rename teaser to excerpt on blog entries and events  478 stories, 478 blocks
 ```
 
-A content migration run also shows when it was rolled back, partly rolled back, or interrupted. Each
-machine records its own runs, so a content migration applied elsewhere shows as pending here. The
-command reads local records only and doesn’t require a login.
+A content migration run also shows when it was rolled back, partly rolled back, or interrupted, or
+that it has nothing to roll back because it changed no stories. Each machine records its own runs,
+so a content migration applied elsewhere shows as pending here. The command reads local records only
+and doesn’t require a login.
 
 ## Usage
 
@@ -326,11 +337,13 @@ storyblok migrations list [flags]
 
 ## Flags
 
-| Flag            | Type    | Description                                                                               |
-| --------------- | ------- | ----------------------------------------------------------------------------------------- |
-| `--space`, `-s` | integer | _Required._ The ID of the Storyblok space to list runs for.                               |
-| `--path`, `-p`  | string  | _Optional._ Base path for migration files and run records. Defaults to `.storyblok`.      |
-| `--pending`     | boolean | _Optional._ List only the content migrations with no run still in place, one ID per line. |
+| Flag            | Type    | Description                                                                                                     |
+| --------------- | ------- | --------------------------------------------------------------------------------------------------------------- |
+| `--space`, `-s` | integer | _Required._ The ID of the Storyblok space to list runs for.                                                     |
+| `--pending`     | boolean | _Optional._ Print only the IDs of the content migrations with no run still in place, one per line, for scripts. |
+
+Migration files and run records live in the base path the global `--path` option sets, `.storyblok`
+by default. See [global options](/docs/tooling/cli/global-options).
 
 ## Examples
 
@@ -420,7 +433,7 @@ as it was before that push. Pass `--no-before` to skip the snapshot.
 | --------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `--schema`      | string  | _Optional._ Path to the schema entry file, which must export `type Schema`. Generates a typed content migration and its snapshot instead of a `.js` file. |
 | `--no-before`   | boolean | _Optional._ With `--schema`, skip the snapshot.                                                                                                           |
-| `--before-push` | boolean | _Optional._ With `--schema`, snapshot the block as it was before the latest `schema push` that changed it.                                                |
+| `--before-push` | boolean | _Optional._ Snapshot the block as it was before the latest `schema push` that changed it. Requires `--schema` and can’t be combined with `--no-before`.   |
 
 <!-- target: src/content/docs/docs/tooling/cli/migrations/generate.mdx#examples (append to the code block) -->
 
@@ -441,6 +454,14 @@ whether to generate migrations, then confirms each detected rename. Pass `--migr
 them without asking, which takes detected field renames as given, or `--no-migrations` to skip them.
 Switching a field among text, textarea, and markdown isn’t a breaking change, because all three
 store a string.
+
+The command detects a field rename when a block loses a field and gains a field of the same type
+that isn’t required:
+
+- When the block loses one field and gains one field that isn’t required, the command pairs them
+  whatever their names, so replacing `email` with a new `score` text field counts as a rename.
+- Otherwise, it pairs each lost field with the gained field of the same type whose name is most
+  similar, if the two names share a run of characters at least 30% as long as the longer name.
 
 By default, the command writes one `.js` migration per changed block for
 [`migrations run`](/docs/tooling/cli/migrations/run). With `--dry-run`, it prints the breaking
@@ -466,17 +487,23 @@ import type { Before } from "./20261103093215-update-author-hero.before.js";
 
 const EDITORIAL_EMAIL = "editorial@example.com";
 
-export default defineMigration<Schema, Before>([
-  renameField({ block: "author", field: "bluesky_account", to: "bluesky_handle" }),
-  addField({ block: "author", field: "email" }, () => EDITORIAL_EMAIL),
-  alterField({ block: "author", field: "email" }, (value, { language }) =>
-    language === undefined && (value === null || value === "") ? EDITORIAL_EMAIL : undefined,
-  ),
-  alterField({ block: "hero", field: "headline_size" }, (value) =>
-    value === "large" ? "normal" : undefined,
-  ),
-]);
+export default defineMigration<Schema, Before>({
+  title: "Update author and hero",
+  ops: [
+    renameField({ block: "author", field: "bluesky_account", to: "bluesky_handle" }),
+    addField({ block: "author", field: "email" }, () => EDITORIAL_EMAIL),
+    alterField({ block: "author", field: "email" }, (value, { language }) =>
+      language === undefined && (value === null || value === "") ? EDITORIAL_EMAIL : undefined,
+    ),
+    alterField({ block: "hero", field: "headline_size" }, (value) =>
+      value === "large" ? "normal" : undefined,
+    ),
+  ],
+});
 ```
+
+The title names each block’s changes, or only the blocks when the changes take more than 100
+characters.
 
 The migration handles these changes:
 

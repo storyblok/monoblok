@@ -7,7 +7,7 @@
 import type { StoryForMigration } from "./apply-migration";
 import type { Journal, MigrationRun, StoryInverse } from "./journal";
 import { MigrationError } from "./migration-error";
-import { applyPatches, uidsIn } from "./patch";
+import { applyPatches, deepEqual, uidsIn } from "./patch";
 import type { ApplyConflict, BlockPatch } from "./patch";
 
 export type UndoPlan = {
@@ -42,7 +42,7 @@ export async function planUndo(input: {
   const later = await laterRunsSharingBlocks(input.journal, run, inverse);
   if (later.length > 0) {
     throw new MigrationError(
-      `Run ${input.id} can't be undone while later runs that changed the same blocks are still applied: undoing it would remove content they built on. Undo them first, newest first:\n${[
+      `Run ${input.id} can't be rolled back while later runs that changed the same blocks are still applied: rolling it back would remove content they built on. Roll them back first, newest first:\n${[
         ...later,
       ]
         .reverse()
@@ -97,6 +97,11 @@ export type UndoWrite = {
   content: unknown;
   /** Restores the live version for a story the run published. */
   publish: boolean;
+  /**
+   * The draft already holds the restored content, and the write only publishes
+   * it, retrying the publish an earlier undo failed at.
+   */
+  publishOnly: boolean;
 };
 
 export type ConflictingBlock = {
@@ -125,8 +130,9 @@ export type UndoOutcome = {
   unread: number[];
   /**
    * Stories the run published that undo leaves as drafts: their draft moved on
-   * since the run, they were unpublished since, or their publish state was not
-   * passed in. Publishing them could ship an editor's unpublished work.
+   * since the run or since an undo restored it, they were unpublished since, or
+   * their publish state was not passed in. Publishing them could ship an
+   * editor's unpublished work.
    */
   notRepublished: string[];
   /**
@@ -186,19 +192,23 @@ export function undoStories(input: UndoStoriesInput): UndoOutcome {
     const content = structuredClone(story.content);
     const result = applyPatches(content, entry.patches, { force: input.force });
     if (result.applied === 0) {
+      if (entry.pendingRepublish) {
+        retryRepublish(outcome, story, entry.pendingRepublish.draft);
+      }
       continue;
     }
 
     let publish = false;
     if (entry.publishedByRun && !entry.before.published) {
-      outcome.firstPublishedByRun.push(story.slug);
+      // A story that is not live has nothing to unpublish.
+      if (story.published === true) outcome.firstPublishedByRun.push(story.slug);
     } else if (entry.publishedByRun) {
       // Republishing ships the whole draft, so it needs positive evidence that
       // the draft holds nothing but the migration and the story is still live.
       publish = story.published === true && story.unpublished_changes === false;
       if (!publish) outcome.notRepublished.push(story.slug);
     }
-    outcome.writes.push({ story, content, publish });
+    outcome.writes.push({ story, content, publish, publishOnly: false });
   }
 
   return outcome;
@@ -217,4 +227,21 @@ function conflictingBlocks(conflicts: ApplyConflict[], patches: BlockPatch[]): C
     byUid.set(conflict.uid, block);
   }
   return [...byUid.values()];
+}
+
+function retryRepublish(outcome: UndoOutcome, story: StoryForMigration, draft: unknown): void {
+  // Published since, so the live version no longer holds the run's content.
+  if (story.published === true && story.unpublished_changes === false) {
+    return;
+  }
+  if (story.published === true && deepEqual(story.content, draft)) {
+    outcome.writes.push({
+      story,
+      content: structuredClone(story.content),
+      publish: true,
+      publishOnly: true,
+    });
+  } else {
+    outcome.notRepublished.push(story.slug);
+  }
 }

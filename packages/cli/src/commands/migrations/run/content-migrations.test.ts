@@ -182,8 +182,21 @@ describe("migrations run command for content migrations", () => {
     );
   });
 
-  it("should record a first run that changes nothing, so the migration is no longer pending", async () => {
+  it("should say a migration without ops has none, instead of blaming the space's blocks", async () => {
+    space.hasMigrations(["0001-card", defineMigration([])]);
+    space.hasBlocks({ card: ["title"], page: ["body"] });
+    space.hasStories(storyWithCard());
+    space.canUpdateStories();
     const info = vi.spyOn(getUI(), "info");
+
+    await apply();
+
+    expect(space.writes).toEqual([]);
+    expect(info).toHaveBeenCalledWith("0001-card: has no ops yet, so nothing was applied.");
+    expect(info).not.toHaveBeenCalledWith(expect.stringContaining("Push the schema"));
+  });
+
+  it("should record a first run that changes nothing, so the migration is no longer pending", async () => {
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
     space.hasStories(
       storyWithCard({
@@ -198,7 +211,7 @@ describe("migrations run command for content migrations", () => {
 
     await apply();
     await apply();
-    info.mockClear();
+    const stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
     await migrationsCommand.parseAsync([
       "node",
       "test",
@@ -210,9 +223,7 @@ describe("migrations run command for content migrations", () => {
 
     expect(space.writes).toEqual([]);
     expect(journalEntries()).toEqual([expect.objectContaining({ stories: 0, blocks: 0 })]);
-    expect(info.mock.calls.map(([message]) => message)).toEqual([
-      "No pending content migrations for this space on this machine.",
-    ]);
+    expect(stdout).not.toHaveBeenCalled();
   });
 
   it("should alter a field a later migration split, in stories that still hold it", async () => {
@@ -512,6 +523,53 @@ describe("migrations run command for content migrations", () => {
       ),
       expect.stringMatching(/^0002-rename-teaser-title: changed 1 story \(1 block\), recorded as /),
     ]);
+  });
+
+  it("should read each story once across migrations, and let later migrations see what earlier ones wrote", async () => {
+    space.hasMigrations(
+      ["0001-rename-card-title", renameCardTitle],
+      ["0002-rename-card-to-teaser", renameCardToTeaser],
+    );
+    space.hasStories(storyWithCard(), storyWithCard({ id: 2, slug: "about", full_slug: "about" }));
+    space.canUpdateStories();
+
+    await apply();
+
+    expect(space.reads.toSorted()).toEqual([1, 2]);
+    expect(space.writes.map(({ id }) => id)).toEqual([1, 2, 1, 2]);
+    expect(space.story(1)?.content.body).toEqual([
+      { _uid: "card-1", component: "teaser", headline: "Hi" },
+    ]);
+  });
+
+  it("should let a later migration see the publish state an earlier one left", async () => {
+    space.hasMigrations(
+      ["0001-rename-card-title", renameCardTitle],
+      ["0002-rename-card-to-teaser", renameCardToTeaser],
+    );
+    space.hasStories(storyWithCard({ published: true, unpublished_changes: true }));
+    space.canUpdateStories();
+
+    await apply("--publish", "published-with-changes");
+
+    expect(space.writes.map(({ publish }) => publish)).toEqual([true, false]);
+  });
+
+  it("should read stories concurrently, within a bound", async () => {
+    space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    space.hasStories(
+      ...Array.from({ length: 30 }, (_, index) =>
+        storyWithCard({ id: index + 1, slug: `story-${index}`, full_slug: `story-${index}` }),
+      ),
+    );
+    space.delaysReads(5);
+    space.canUpdateStories();
+
+    await apply();
+
+    expect(space.writes).toHaveLength(30);
+    expect(space.maxConcurrentReads()).toBeGreaterThan(1);
+    expect(space.maxConcurrentReads()).toBeLessThan(30);
   });
 
   it("should refuse a story that already contains repeated block ids and fail when nothing was written", async () => {
@@ -1211,6 +1269,20 @@ describe("migrations run command with migration functions and content migrations
       migrated: true,
     });
     expect(journalEntries()).toEqual([]);
+  });
+
+  it("should list only content migrations, not a .js migration function with a numeric prefix, for an unknown name", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    space.hasMigrationFunction("3-article.js", (block) => ({ ...block, migrated: true }));
+    space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    space.hasStories(storyWithCard());
+
+    await apply("0002-other");
+
+    expect(process.exitCode).toBe(2);
+    expect(error.mock.calls.flat().join("\n")).toContain(
+      "Available content migrations: 0001-rename-card-title.",
+    );
   });
 
   it("should select the migration functions of a component and the content migration with that id by name", async () => {

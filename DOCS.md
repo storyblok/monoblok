@@ -224,9 +224,12 @@ exits with an error and the run stays open. Run the rollback again to retry.
 
 The space checks content against its current schema, not the schema of the run. When a later push
 made a field required, the space can refuse the restored content. Push the schema as it was before
-the run, then roll back again. When the space saves the draft but refuses to publish it, the command
-restores the draft, names the story, and exits with an error. Publish the story once the space
-accepts its content.
+the run, then roll back again.
+
+When the space saves a restored draft but refuses to publish it, the published version keeps the
+migrated content. The command names the story, keeps the run open, and exits with an error. Push the
+schema as it was before the run, then roll back again. The command then publishes the restored draft
+if the story is still published and its draft hasn’t changed since the rollback.
 
 ## Rollback order
 

@@ -1,6 +1,7 @@
+import { isDeepStrictEqual } from "node:util";
 import chalk from "chalk";
 import { planUndo, undoStories } from "@storyblok/schema";
-import type { StoryForMigration } from "@storyblok/schema";
+import type { StoryForMigration, StoryInverse } from "@storyblok/schema";
 import { CommandError, isRecord, toError } from "../../../utils";
 import { APIError } from "../../../utils/error/api-error";
 import { getLogger } from "../../../lib/logger/logger";
@@ -73,6 +74,8 @@ export async function rollbackContentMigrationRun({
   const stories: StoryForMigration[] = [];
   /** By slug while the story is in the trash, by id once it is gone. */
   const deleted: (string | number)[] = [];
+  /** Stories that could not be read or written, so a republish they wait for stays pending. */
+  const unsettled = new Set<number>();
   let failed = 0;
   for (const storyId of plan.stories) {
     try {
@@ -88,6 +91,7 @@ export async function rollbackContentMigrationRun({
         continue;
       }
       failed++;
+      unsettled.add(storyId);
       const error = toError(maybeError);
       ui.warn(`Story ${storyId} could not be read, so it was not rolled back: ${error.message}`);
       logger.error("Failed to read story", { storyId, run: id, space, error });
@@ -120,21 +124,28 @@ export async function rollbackContentMigrationRun({
   }
 
   const restored = new Set<string>();
-  const notPublished: string[] = [];
+  const republished = new Set<string>();
+  /** Restored drafts whose publish failed, so the live version still holds the run's content. */
+  const stillLive = new Map<number, { slug: string; draft: unknown }>();
+  const failedWrites = new Set<string>();
   for (const write of outcome.writes) {
     if (!isRecord(write.content)) {
       continue;
     }
     try {
       await access.write(write.story.id, write.content, write.publish);
-      restored.add(write.story.slug);
-      logger.info("Story rolled back", { storyId: write.story.id, run: id, space });
+      (write.publishOnly ? republished : restored).add(write.story.slug);
+      logger.info(write.publishOnly ? "Restored draft published" : "Story rolled back", {
+        storyId: write.story.id,
+        run: id,
+        space,
+      });
     } catch (maybeError) {
       if (maybeError instanceof DraftNotPublishedError) {
-        restored.add(write.story.slug);
-        notPublished.push(write.story.slug);
+        if (!write.publishOnly) restored.add(write.story.slug);
+        stillLive.set(write.story.id, { slug: write.story.slug, draft: write.content });
         ui.warn(
-          `${chalk.bold(write.story.slug)}: the draft was restored, but publishing it failed: ${maybeError.message}`,
+          `${chalk.bold(write.story.slug)}: ${write.publishOnly ? "publishing the restored draft failed" : "the draft was restored, but publishing it failed"}: ${maybeError.message}`,
         );
         logger.error("Failed to publish rolled back story", {
           storyId: write.story.id,
@@ -145,13 +156,15 @@ export async function rollbackContentMigrationRun({
         continue;
       }
       failed++;
+      unsettled.add(write.story.id);
+      failedWrites.add(write.story.slug);
       const error = toError(maybeError);
       ui.warn(`${chalk.bold(write.story.slug)} could not be written: ${error.message}`);
       logger.error("Failed to roll back story", { storyId: write.story.id, run: id, space, error });
     }
   }
 
-  const notRepublished = outcome.notRepublished.filter((slug) => restored.has(slug));
+  const notRepublished = outcome.notRepublished.filter((slug) => !failedWrites.has(slug));
   if (notRepublished.length > 0) {
     ui.warn(
       `The run published ${plural(notRepublished.length, "story", "stories")} that ${notRepublished.length === 1 ? "was" : "were"} changed or unpublished since, so only the draft was restored: ${notRepublished.join(", ")}`,
@@ -169,8 +182,12 @@ export async function rollbackContentMigrationRun({
   const written = new Set(outcome.writes.map((write) => write.story.slug));
   const partly = [...restored].filter((slug) => keptChanges.has(slug)).length;
   const leftAsIs = [...keptChanges].filter((slug) => !written.has(slug)).length;
-  const nothingToUndo = plan.stories.length - restored.size - leftAsIs - failed;
+  const stillLiveSlugs = [...stillLive.values()].map(({ slug }) => slug);
+  const handled = new Set([...restored, ...republished, ...stillLiveSlugs]);
+  const nothingToUndo = plan.stories.length - handled.size - leftAsIs - failed;
   const tally = [
+    republished.size > 0 &&
+      `published the restored draft of ${plural(republished.size, "story", "stories")}`,
     leftAsIs > 0 && `${plural(leftAsIs, "story", "stories")} left as changed since the run`,
     nothingToUndo > 0 &&
       `${plural(nothingToUndo, "story", "stories")} had nothing left to roll back`,
@@ -181,13 +198,20 @@ export async function rollbackContentMigrationRun({
   );
 
   // Blocks left in place keep the run open, so `rollback --force` without a run
-  // still reaches them.
-  const complete = failed === 0 && (outcome.conflicts.length === 0 || force);
+  // still reaches them. So does a failed republish, so a later rollback
+  // publishes the restored draft once the space accepts it.
+  const inverse = plan.inverse.map(({ pendingRepublish, ...entry }): StoryInverse => {
+    const live = stillLive.get(entry.story);
+    if (live) return { ...entry, pendingRepublish: { draft: live.draft } };
+    return pendingRepublish && unsettled.has(entry.story) ? { ...entry, pendingRepublish } : entry;
+  });
+  const complete =
+    failed === 0 && (outcome.conflicts.length === 0 || force) && stillLive.size === 0;
   const now = new Date().toISOString();
   if (complete) {
-    await journal.record({ ...plan.run, undoneAt: plan.run.undoneAt ?? now }, plan.inverse);
-  } else if (restored.size > 0) {
-    await journal.record({ ...plan.run, partlyUndoneAt: now }, plan.inverse);
+    await journal.record({ ...plan.run, undoneAt: plan.run.undoneAt ?? now }, inverse);
+  } else if (handled.size > 0 || !isDeepStrictEqual(inverse, plan.inverse)) {
+    await journal.record({ ...plan.run, partlyUndoneAt: now }, inverse);
   }
   // The space validates content against its current schema, which may no
   // longer accept the content as it was before the run.
@@ -199,8 +223,8 @@ export async function rollbackContentMigrationRun({
       `The run is only partly rolled back: ${plural(keptBlocks, "block was", "blocks were")} changed since the run and left as ${keptBlocks === 1 ? "it is" : "they are"}. Run "storyblok migrations rollback ${id} --force" to overwrite ${keptBlocks === 1 ? "it" : "them"}.`,
     failed > 0 &&
       `${plural(failed, "story", "stories")} could not be rolled back. See the warnings above. If the schema changed since the run, push the schema as it was before the run first, then run "storyblok migrations rollback ${id}" again.`,
-    notPublished.length > 0 &&
-      `${plural(notPublished.length, "story was", "stories were")} restored as ${notPublished.length === 1 ? "a draft" : "drafts"} but could not be published: ${notPublished.join(", ")}. If the schema changed since the run, push the schema as it was before the run, then publish ${notPublished.length === 1 ? "it" : "them"}.`,
+    stillLive.size > 0 &&
+      `${plural(stillLive.size, "story still publishes", "stories still publish")} the content the run published, because publishing the restored draft failed: ${stillLiveSlugs.join(", ")}. Push the schema as it was before the run, then run "storyblok migrations rollback ${id}" again to publish the restored ${stillLive.size === 1 ? "draft" : "drafts"}.`,
   ].filter(Boolean);
   if (problems.length > 0) {
     throw new CommandError(problems.join("\n"));

@@ -399,12 +399,13 @@ describe("migrations rollback command for content migration runs", () => {
       );
     });
 
-    it("should name the stories it restored as drafts but could not publish, and how to publish them", async () => {
+    it("should keep the run open while a story still publishes migrated content, and say how to finish", async () => {
       const warn = vi.spyOn(getUI(), "warn");
       space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
       space.hasStories(publishedStory());
       await run("run", "--publish", "published");
-      space.failsToPublishStories("The field card.title can't be blank");
+      const [recorded] = journalEntries();
+      space.failsToPublishStories("The field card.headline can't be blank");
       const error = vi.spyOn(console, "error").mockImplementation(() => {});
 
       await run("rollback");
@@ -418,9 +419,70 @@ describe("migrations rollback command for content migration runs", () => {
       expect(process.exitCode).toBe(2);
       expect(error).toHaveBeenCalledWith(
         expect.stringContaining(
-          "1 story was restored as a draft but could not be published: home. If the schema changed since the run, push the schema as it was before the run, then publish it.",
+          `1 story still publishes the content the run published, because publishing the restored draft failed: home. Push the schema as it was before the run, then run "storyblok migrations rollback ${String(recorded.id)}" again to publish the restored draft.`,
         ),
       );
+      const info = vi.spyOn(getUI(), "info");
+      await run("list");
+      expect(info).toHaveBeenLastCalledWith(expect.stringMatching(/\(partly rolled back [^)]+\)$/));
+    });
+
+    it("should publish the restored draft on the next rollback once publishing succeeds, and mark the run rolled back", async () => {
+      const info = vi.spyOn(getUI(), "info");
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+      space.hasStories(publishedStory());
+      await run("run", "--publish", "published");
+      space.failsToPublishStories("The field card.headline can't be blank");
+      await run("rollback");
+      space.canUpdateStories();
+      space.writes.length = 0;
+      process.exitCode = undefined;
+
+      await run("rollback");
+
+      expect(space.writes).toEqual([
+        {
+          id: 1,
+          content: expect.objectContaining({
+            body: [{ _uid: "card-1", component: "card", title: "Hi" }],
+          }),
+          publish: true,
+        },
+      ]);
+      expect(process.exitCode).toBeUndefined();
+      expect(info).toHaveBeenLastCalledWith(
+        expect.stringMatching(
+          /^Rolled back 0 stories of run .*; published the restored draft of 1 story\.$/,
+        ),
+      );
+      info.mockClear();
+      await run("list");
+      expect(info).toHaveBeenLastCalledWith(expect.stringMatching(/ {2}\(rolled back [^)]+\)$/));
+    });
+
+    it("should not publish a restored draft an editor changed after a republish failed", async () => {
+      const warn = vi.spyOn(getUI(), "warn");
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+      space.hasStories(publishedStory());
+      await run("run", "--publish", "published");
+      space.failsToPublishStories("The field card.headline can't be blank");
+      await run("rollback");
+      space.canUpdateStories();
+      space.editsStory(1, (content) => {
+        content.seo = "Edited";
+      });
+      space.writes.length = 0;
+      process.exitCode = undefined;
+
+      await run("rollback");
+
+      expect(space.writes).toEqual([]);
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("only the draft was restored: home"),
+      );
+      expect(process.exitCode).toBeUndefined();
     });
 
     it("should roll back a story whose publish failed during the run as a draft only, without publish warnings", async () => {

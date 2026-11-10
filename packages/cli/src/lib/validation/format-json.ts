@@ -1,4 +1,9 @@
-import type { LevelOption, ValidationFilter, ValidationRunResult } from "./types";
+import type {
+  LevelOption,
+  ValidationBaseline,
+  ValidationFilter,
+  ValidationRunResult,
+} from "./types";
 import { countIssues, filterIssuesByLevel } from "./filter";
 
 /** The machine-readable payload emitted by `--format json`. */
@@ -14,6 +19,8 @@ export interface ValidationJsonReport {
   unitsWithIssues: number;
   /** The filter that narrowed the population. Omitted when none was applied. */
   filter?: ValidationFilter;
+  /** The space whose current schema the issues were compared with. Omitted without `--baseline`. */
+  baseline?: ValidationBaseline;
   /**
    * `true` when a filter was applied and matched nothing, so the run validated
    * no content at all. Omitted otherwise — a consumer reading `ok: true` without
@@ -47,6 +54,7 @@ export function formatJson(result: ValidationRunResult, level: LevelOption): str
     unitsTotal: result.unitsTotal,
     unitsWithIssues,
     ...(result.filter ? { filter: result.filter } : {}),
+    ...(result.baseline ? { baseline: result.baseline } : {}),
     // Only stated when it is the whole story: a listing that failed already
     // explains the empty population through `listFailed`.
     ...(result.filter && result.unitsTotal === 0 && !listFailed ? { noMatches: true } : {}),

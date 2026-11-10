@@ -17,6 +17,7 @@ export { writeValidationReport } from "./report";
 export type {
   FormatOption,
   LevelOption,
+  ValidationBaseline,
   ValidationGroup,
   ValidationGroupRef,
   ValidationRunResult,

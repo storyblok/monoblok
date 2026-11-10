@@ -47,9 +47,13 @@ export function formatPretty(result: ValidationRunResult, level: LevelOption): s
     level === "error" && warnings > 0
       ? chalk.dim(` (${pluralize(warnings, "warning")} hidden by --level error)`)
       : "";
+  const qualifier = result.baseline ? "new " : "";
+  const baseline = result.baseline
+    ? ` (compared with the current schema of space ${result.baseline.space})`
+    : "";
   lines.push(
-    `${summarySymbol} ${pluralize(errors, "error")}, ${pluralize(warnings, "warning")} ` +
-      `across ${unitsWithIssues} of ${result.unitsTotal} ${unitNoun}${hidden}`,
+    `${summarySymbol} ${pluralize(errors, `${qualifier}error`)}, ${pluralize(warnings, `${qualifier}warning`)} ` +
+      `across ${unitsWithIssues} of ${result.unitsTotal} ${unitNoun}${baseline}${hidden}`,
   );
 
   return lines.join("\n");

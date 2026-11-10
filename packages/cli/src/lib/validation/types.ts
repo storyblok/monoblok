@@ -50,6 +50,10 @@ export interface ValidationFilter {
   value: string;
 }
 
+export interface ValidationBaseline {
+  space: string;
+}
+
 /**
  * The outcome of a validation run, ready to format. `unitsTotal` is the full
  * population (all entities / all stories); the summary reports the number of
@@ -73,6 +77,8 @@ export interface ValidationRunResult {
   groups: ValidationGroup[];
   /** The filter that narrowed the population, when one was applied. */
   filter?: ValidationFilter;
+  /** The space whose current schema the issues were compared with; only new issues are listed. */
+  baseline?: ValidationBaseline;
   /** Units that could not be fetched and were therefore not validated. */
   fetchFailures?: number;
   /** Why each unit could not be fetched, in the order the failures happened. */

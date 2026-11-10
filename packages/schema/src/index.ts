@@ -130,10 +130,11 @@ export type { MigrationIssue, ValidateMigrationOptions } from "./migrations/vali
 export { runId } from "./migrations/journal";
 export type { Journal, MigrationRun, PublishState, StoryInverse } from "./migrations/journal";
 
-export { applyMigration } from "./migrations/apply-migration";
+export { applyMigration, settleRun } from "./migrations/apply-migration";
 export type {
   ApplyMigrationInput,
   ApplyMigrationOutcome,
+  LandedWrite,
   MigrationWrite,
   PublishMode,
   StoryForMigration,

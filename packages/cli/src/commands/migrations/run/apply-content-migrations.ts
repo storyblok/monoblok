@@ -1,8 +1,9 @@
 import chalk from "chalk";
 import { relative } from "pathe";
-import { applyMigration, validateMigration } from "@storyblok/schema";
+import { applyMigration, settleRun, validateMigration } from "@storyblok/schema";
 import type {
   ApplyMigrationOutcome,
+  LandedWrite,
   LoadedMigration,
   MigrationRun,
   PublishMode,
@@ -10,6 +11,7 @@ import type {
   StoryForMigration,
 } from "@storyblok/schema";
 import { CommandError, fetchAllPages, toError } from "../../../utils";
+import { createPipelineBackpressureLock } from "../../../utils/backpressure-lock";
 import { handleAPIError } from "../../../utils/error/api-error";
 import { fileExists } from "../../../utils/filesystem";
 import { getLogger } from "../../../lib/logger/logger";
@@ -116,37 +118,77 @@ function changeSummary(run: MigrationRun): string {
 }
 
 /**
- * The stories one migration runs against. `planned` holds content an earlier
- * migration in the same dry run would have written. It is passed in whole, not
- * filtered by target: the API only matches the content it holds, so a block an
- * earlier migration renamed or created is invisible to it, and the engine skips
- * any story the migration leaves unchanged anyway.
+ * The stories of one command run, each read at most once and kept up to date
+ * with what the run wrote, or in a dry run would have written, so a later
+ * migration sees an earlier one's output.
  */
-async function readStories(
-  space: string,
-  candidates: number[],
-  planned: Map<number, StoryForMigration>,
-  access: StoryAccess,
-): Promise<{ stories: StoryForMigration[]; unread: number }> {
-  const stories = new Map(planned);
-  let unread = 0;
-  for (const id of candidates) {
-    if (stories.has(id)) {
-      continue;
-    }
-    try {
-      const story = await access.read(id);
-      if (story) {
-        stories.set(id, toStoryForMigration(story));
-      }
-    } catch (maybeError) {
-      unread++;
-      const error = toError(maybeError);
-      getUI().warn(`Story ${id} could not be read, so it was not migrated: ${error.message}`);
-      getLogger().error("Failed to read story", { storyId: id, space, error });
-    }
+function storyCache(space: string, access: StoryAccess) {
+  const known = new Map<number, StoryForMigration>();
+  /** Stories an earlier migration changed. */
+  const changed = new Set<number>();
+  const unreadable = new Set<number>();
+
+  async function readMissing(ids: number[]): Promise<number> {
+    const lock = createPipelineBackpressureLock();
+    let unread = 0;
+    await Promise.all(
+      ids
+        .filter((id) => !known.has(id) && !unreadable.has(id))
+        .map(async (id) => {
+          await lock.acquire();
+          try {
+            const story = await access.read(id);
+            if (story) known.set(id, toStoryForMigration(story));
+          } catch (maybeError) {
+            unread++;
+            unreadable.add(id);
+            const error = toError(maybeError);
+            getUI().warn(`Story ${id} could not be read, so it was not migrated: ${error.message}`);
+            getLogger().error("Failed to read story", { storyId: id, space, error });
+          } finally {
+            lock.release();
+          }
+        }),
+    );
+    return unread;
   }
-  return { stories: [...stories.values()], unread };
+
+  return {
+    /**
+     * The stories one migration runs against: its candidates, and every story
+     * an earlier migration changed. The API only matches the content it holds,
+     * so in a dry run a block an earlier migration renamed or created is
+     * invisible to it, and the engine skips any story the migration leaves
+     * unchanged anyway.
+     */
+    async storiesFor(
+      candidates: number[],
+    ): Promise<{ stories: StoryForMigration[]; unread: number }> {
+      const unread = await readMissing(candidates);
+      const ids = new Set([...candidates, ...changed]);
+      const stories = [...ids].flatMap((id) => known.get(id) ?? []);
+      return { stories, unread };
+    },
+    /** The draft now holds `content`, published too when `published` is set. */
+    wrote(story: StoryForMigration, content: Record<string, unknown>, published: boolean): void {
+      changed.add(story.id);
+      known.set(story.id, {
+        ...story,
+        content,
+        published: story.published === true || published,
+        unpublished_changes: !published && story.published === true,
+      });
+    },
+    /** What a dry run would have written, with the publish state left as it is. */
+    planned(story: StoryForMigration, content: Record<string, unknown>): void {
+      changed.add(story.id);
+      known.set(story.id, { ...story, content });
+    },
+    /** A write that failed leaves the story in a state the run can't tell, so it is read again. */
+    forget(id: number): void {
+      known.delete(id);
+    },
+  };
 }
 
 type SchemaCheck = {
@@ -343,8 +385,8 @@ export async function applyContentMigrations({
   const inPlace = new Set(
     (await journal.list(space)).filter((run) => !run.undoneAt).map((run) => run.migration),
   );
-  const planned = new Map<number, StoryForMigration>();
   const access = storyAccess(space);
+  const cache = storyCache(space, access);
   const refusedEverything: string[] = [];
   let failed = 0;
   const notPublished: string[] = [];
@@ -370,7 +412,7 @@ export async function applyContentMigrations({
     }
     const spinner = ui.createSpinner(`${entry.id}: fetching stories...`);
     const candidates = await findCandidateStories(space, migration.targets, scope);
-    const { stories, unread } = await readStories(space, candidates, planned, access);
+    const { stories, unread } = await cache.storiesFor(candidates);
     failed += unread;
     spinner.succeed(
       `${entry.id}: ${plural(candidates.length, "story contains", "stories contain")} ${migration.targets.join(", ")}`,
@@ -397,7 +439,7 @@ export async function applyContentMigrations({
 
     if (dryRun) {
       for (const write of outcome.writes) {
-        planned.set(write.story.id, { ...write.story, content: write.content });
+        cache.planned(write.story, write.content);
       }
       ui.info(
         outcome.writes.length === 0
@@ -430,16 +472,18 @@ export async function applyContentMigrations({
     // be rolled back. A rollback skips stories whose content never changed.
     await journal.record({ ...outcome.run, interrupted: true }, outcome.inverse);
 
-    const landed = new Set<number>();
+    const landed: LandedWrite[] = [];
     for (const write of outcome.writes) {
       try {
         await access.write(write.story.id, write.content, write.publish);
-        landed.add(write.story.id);
+        landed.push({ story: write.story.id, published: write.publish });
+        cache.wrote(write.story, write.content, write.publish);
         logger.info("Story migrated", { storyId: write.story.id, migration: entry.id, space });
       } catch (maybeError) {
         // The draft changed, so the run records it and a rollback can restore it.
         if (maybeError instanceof DraftNotPublishedError) {
-          landed.add(write.story.id);
+          landed.push({ story: write.story.id, published: false });
+          cache.wrote(write.story, write.content, false);
           notPublished.push(write.story.slug);
           ui.warn(
             `${chalk.bold(write.story.slug)}: the draft was migrated, but publishing it failed: ${maybeError.message}`,
@@ -453,6 +497,7 @@ export async function applyContentMigrations({
           continue;
         }
         failed++;
+        cache.forget(write.story.id);
         const error = toError(maybeError);
         ui.warn(`${chalk.bold(write.story.slug)} could not be written: ${error.message}`);
         logger.error("Failed to migrate story", {
@@ -466,19 +511,14 @@ export async function applyContentMigrations({
 
     // An entry for a run that changed nothing would become the most recent
     // run, which `rollback` picks by default, leaving the real work applied.
-    if (landed.size === 0) {
+    if (landed.length === 0) {
       await journal.remove(outcome.run.id);
       ui.info(`${entry.id}: changed no stories, so nothing was recorded.`);
       continue;
     }
 
-    const recorded = outcome.inverse.filter((item) => landed.has(item.story));
-    const run = {
-      ...outcome.run,
-      stories: recorded.length,
-      blocks: recorded.reduce((total, item) => total + item.patches.length, 0),
-    };
-    await journal.record(run, recorded);
+    const { run, inverse } = settleRun(outcome, landed);
+    await journal.record(run, inverse);
     ui.info(`${entry.id}: changed ${changeSummary(run)}, recorded as ${chalk.bold(run.id)}.`);
   }
 

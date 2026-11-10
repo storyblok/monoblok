@@ -66,16 +66,18 @@ storyblok migrations run [arguments] [flags]
 | Flag                       | Type    | Description                                                                                                                                                                                  |
 | -------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `--space`, `-s`            | integer | _Required._ The ID of the Storyblok space to run migrations in.                                                                                                                              |
-| `--filter`, `-fi`          | string  | _Optional._ Glob pattern for the migrations to run, matched against migration function file names and content migration names. For example, `hero*` matches `hero.js` and `hero-section.js`. |
+| `--filter`, `--fi`         | string  | _Optional._ Glob pattern for the migrations to run, matched against migration function file names and content migration names. For example, `hero*` matches `hero.js` and `hero-section.js`. |
 | `--dry-run`, `-d`          | boolean | _Optional._ Report the changes without writing them.                                                                                                                                         |
 | `--query`, `-q`            | string  | _Optional._ Filter stories using [query parameters](/docs/api/management/stories/retrieve-multiple-stories#query-parameters).                                                                |
-| `--starts-with`, `-sw`     | string  | _Optional._ A path prefix to filter stories to migrate.                                                                                                                                      |
+| `--starts-with`            | string  | _Optional._ A path prefix to filter stories to migrate.                                                                                                                                      |
 | `--publish`                | string  | _Optional._ Publish the migrated stories. See [Publishing](#publishing). Defaults to drafts only.                                                                                            |
 | `--schema`                 | string  | _Optional._ Path to a schema entry file describing the schema before a content migration. Checks the content migration against it instead of its snapshot. Requires a migration name.        |
 | `--no-validate`            | boolean | _Optional._ Skip checking each content migration against its `.before.ts` snapshot.                                                                                                          |
 | `--allow-pending-releases` | boolean | _Optional._ Run the migrations while releases are pending. The command lists the releases it doesn’t migrate.                                                                                |
 | `--from`, `-f`             | integer | _Optional._ The ID of the space to read migration files from. Defaults to `--space`.                                                                                                         |
-| `--path`, `-p`             | string  | _Optional._ Base path for migration files and run records. Defaults to `.storyblok`.                                                                                                         |
+
+Migration files and run records live in the base path the global `--path` option sets, `.storyblok`
+by default. See [global options](/docs/tooling/cli/global-options).
 
 ## How a run works
 
@@ -165,7 +167,8 @@ along with the write:
 
 When the space saves the draft of a content migration but refuses to publish it, for example because
 the content misses a field the schema now requires, the command keeps and records the draft, names
-the story, and exits with an error.
+the story, and exits with an error. `migrations rollback` restores the draft and leaves the
+published version as it is.
 
 ## Examples
 
@@ -231,7 +234,9 @@ storyblok migrations rollback [arguments] [flags]
 | `--space`, `-s`            | integer | _Required._ The ID of the Storyblok space to roll back the run in.                                                       |
 | `--force`                  | boolean | _Optional._ Overwrite blocks with fields changed since a content migration run. The command lists them before it writes. |
 | `--allow-pending-releases` | boolean | _Optional._ Roll back the run while releases are pending. The command lists the releases it doesn’t restore.             |
-| `--path`, `-p`             | string  | _Optional._ Base path for migration files and run records. Defaults to `.storyblok`.                                     |
+
+Migration files and run records live in the base path the global `--path` option sets, `.storyblok`
+by default. See [global options](/docs/tooling/cli/global-options).
 
 ## Conflicts
 
@@ -255,9 +260,12 @@ exits with an error and the run stays open. Run the rollback again to retry.
 
 The space checks content against its current schema, not the schema of the run. When a later push
 made a field required, the space can refuse the restored content. Push the schema as it was before
-the run, then roll back again. When the space saves the draft but refuses to publish it, the command
-restores the draft, names the story, and exits with an error. Publish the story once the space
-accepts its content.
+the run, then roll back again.
+
+When the space saves a restored draft but refuses to publish it, the published version keeps the
+migrated content. The command names the story, keeps the run open, and exits with an error. Push the
+schema as it was before the run, then roll back again. The command then publishes the restored draft
+if the story is still published and its draft hasn’t changed since the rollback.
 
 ## Rollback order
 
@@ -332,8 +340,10 @@ storyblok migrations list [flags]
 | Flag            | Type    | Description                                                                                                     |
 | --------------- | ------- | --------------------------------------------------------------------------------------------------------------- |
 | `--space`, `-s` | integer | _Required._ The ID of the Storyblok space to list runs for.                                                     |
-| `--path`, `-p`  | string  | _Optional._ Base path for migration files and run records. Defaults to `.storyblok`.                            |
 | `--pending`     | boolean | _Optional._ Print only the IDs of the content migrations with no run still in place, one per line, for scripts. |
+
+Migration files and run records live in the base path the global `--path` option sets, `.storyblok`
+by default. See [global options](/docs/tooling/cli/global-options).
 
 ## Examples
 

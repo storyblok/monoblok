@@ -144,7 +144,8 @@ along with the write:
 
 When the space saves the draft of a content migration but refuses to publish it, for example because
 the content misses a field the schema now requires, the command keeps and records the draft, names
-the story, and exits with an error.
+the story, and exits with an error. `migrations rollback` restores the draft and leaves the
+published version as it is.
 
 ## Examples
 

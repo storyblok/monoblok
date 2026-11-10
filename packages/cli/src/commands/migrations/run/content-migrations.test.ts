@@ -182,6 +182,20 @@ describe("migrations run command for content migrations", () => {
     );
   });
 
+  it("should say a migration without ops has none, instead of blaming the space's blocks", async () => {
+    space.hasMigrations(["0001-card", defineMigration([])]);
+    space.hasBlocks({ card: ["title"], page: ["body"] });
+    space.hasStories(storyWithCard());
+    space.canUpdateStories();
+    const info = vi.spyOn(getUI(), "info");
+
+    await apply();
+
+    expect(space.writes).toEqual([]);
+    expect(info).toHaveBeenCalledWith("0001-card: has no ops yet, so nothing was applied.");
+    expect(info).not.toHaveBeenCalledWith(expect.stringContaining("Push the schema"));
+  });
+
   it("should record a first run that changes nothing, so the migration is no longer pending", async () => {
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
     space.hasStories(

@@ -351,6 +351,10 @@ export async function applyContentMigrations({
   const renamedBlocks = new Map<string, string>();
 
   for (const entry of selected) {
+    if (entry.migration.ops.length === 0) {
+      ui.info(`${entry.id}: has no ops yet, so nothing was applied.`);
+      continue;
+    }
     const { migration, stale } = withoutStaleOps(entry.migration, live);
     for (const op of migration.ops) {
       if (op.kind === "renameBlock") renamedBlocks.set(op.block, op.to);

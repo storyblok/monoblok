@@ -98,7 +98,7 @@ describe("planUndo", () => {
       });
 
       await expect(planUndo({ journal, space: "12345", id: "run-1" })).rejects.toThrow(
-        "Undo them first, newest first:\n  - run-3\n  - run-2",
+        "Roll them back first, newest first:\n  - run-3\n  - run-2",
       );
     });
 

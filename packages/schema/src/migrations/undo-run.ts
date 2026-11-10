@@ -42,7 +42,7 @@ export async function planUndo(input: {
   const later = await laterRunsSharingBlocks(input.journal, run, inverse);
   if (later.length > 0) {
     throw new MigrationError(
-      `Run ${input.id} can't be undone while later runs that changed the same blocks are still applied: undoing it would remove content they built on. Undo them first, newest first:\n${[
+      `Run ${input.id} can't be rolled back while later runs that changed the same blocks are still applied: rolling it back would remove content they built on. Roll them back first, newest first:\n${[
         ...later,
       ]
         .reverse()

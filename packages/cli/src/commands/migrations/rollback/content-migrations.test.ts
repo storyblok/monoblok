@@ -89,7 +89,7 @@ describe("migrations rollback command for content migration runs", () => {
     ]);
   });
 
-  it("should refuse to undo a run while a later run that changed the same blocks is applied", async () => {
+  it("should refuse to roll back a run while a later run that changed the same blocks is applied", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     space.hasMigrations(
       ["0001-rename-card-title", renameCardTitle],
@@ -105,7 +105,7 @@ describe("migrations rollback command for content migration runs", () => {
     expect(space.writes).toEqual([]);
     expect(process.exitCode).toBe(2);
     expect(error.mock.calls.flat().join("\n")).toContain(
-      `Undo them first, newest first:\n  - ${second.id}`,
+      `Roll them back first, newest first:\n  - ${second.id}`,
     );
   });
 

@@ -2,9 +2,8 @@
   "name": "@storyblok/openapi-codegen",
   "version": "0.0.1",
   "private": true,
-  "description": "Internal: owns the OpenAPI spec cache and the shared code generator used by consumer packages. Specs are git-ignored; the upstream commit SHA is pinned in spec.lock. Not published.",
+  "description": "Internal: the OpenAPI spec pins and the shared code generator for consumer packages.",
   "files": [
-    "spec.lock",
     "src",
     "templates"
   ],
@@ -19,8 +18,6 @@
   },
   "scripts": {
     "pull": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/fetch.ts",
-    "pull:update": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/fetch.ts --update",
-    "verify": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/verify.ts",
     "build": "vp pack",
     "lint": "vp lint",
     "lint:fix": "vp lint --fix",
@@ -47,12 +44,12 @@
     "targets": {
       "build": {
         "inputs": [
-          "{projectRoot}/spec.lock",
+          "{projectRoot}/package.json",
           "{projectRoot}/src/**",
           "{projectRoot}/scripts/**",
+          "{projectRoot}/spec.lock.json",
           "{projectRoot}/specs/**",
           "{projectRoot}/templates/**",
-          "{projectRoot}/.openapi-cache/**",
           "{projectRoot}/vite.config.ts"
         ],
         "outputs": [

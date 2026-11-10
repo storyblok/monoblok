@@ -3,14 +3,15 @@
  *
  * The emitted file keeps the public `KnownType` type unchanged (still derived
  * from `ALIASES` + `TEMPLATES` at the type level), and adds an informational
- * `UPSTREAM_SCHEMAS` const enumerating every schema discovered in the cached
+ * `UPSTREAM_SCHEMAS` const enumerating every schema discovered in the upstream
  * specs. Contributors can scan this to find candidates for new aliases without
  * grepping the YAMLs.
  *
  * Validation runs before writing: every `ALIASES[].source` must exist as a
- * schema in its declared `spec`, and every `TEMPLATES[*].sourceLeaves` entry
- * must match an `ALIASES[].emitAs`. Mismatches throw — the generator fails
- * loud rather than emitting a stale catalog.
+ * schema in its declared `spec` (after input patches), and every
+ * `TEMPLATES[*].sourceLeaves` entry must match an `ALIASES[].emitAs`.
+ * Mismatches throw — the generator fails loud rather than emitting a stale
+ * catalog.
  */
 
 import { readFileSync, writeFileSync } from "node:fs";
@@ -19,15 +20,11 @@ import { resolve } from "pathe";
 import { parse as parseYaml } from "yaml";
 import { ALIASES, type SpecSource } from "../src/aliases.ts";
 import { TEMPLATES } from "../src/templates.ts";
-import { CACHE_DIR, TOOL_ROOT } from "../src/lock.ts";
+import { SPEC_INPUT_PATCHES } from "../src/patches.ts";
+import { TOOL_ROOT } from "../src/paths.ts";
+import { resolveSpecPaths } from "../src/specs.ts";
 
 const KNOWN_TYPES_PATH = resolve(TOOL_ROOT, "src/known-types.ts");
-const OVERLAY_PATH = resolve(TOOL_ROOT, "specs/overlay.openapi.yaml");
-const SPEC_PATHS: Record<SpecSource, string> = {
-  capi: resolve(CACHE_DIR, "capi/cdn-v2.openapi.yaml"),
-  mapi: resolve(CACHE_DIR, "mapi/management-v1.openapi.yaml"),
-  overlay: OVERLAY_PATH,
-};
 
 interface OpenApiDoc {
   components: { schemas: Record<string, unknown> | undefined };
@@ -44,11 +41,14 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
 }
 
 /**
- * Parses an OpenAPI YAML and narrows it to the slice this script reads. Anything
- * malformed or missing collapses to empty records, so callers can index freely.
+ * Parses a spec, applies its parser patches, and narrows it to the slice this
+ * script reads. Anything malformed or missing collapses to empty records, so
+ * callers can index freely.
  */
-function loadSpec(yamlPath: string): OpenApiDoc {
-  const root = asRecord(parseYaml(readFileSync(yamlPath, "utf8"))) ?? {};
+function loadSpec(spec: SpecSource, source: string): OpenApiDoc {
+  const parsed: unknown = parseYaml(source);
+  SPEC_INPUT_PATCHES[spec]?.(parsed);
+  const root = asRecord(parsed) ?? {};
   const components = asRecord(root.components);
   return {
     components: { schemas: asRecord(components?.schemas) },
@@ -60,10 +60,10 @@ function loadSpec(yamlPath: string): OpenApiDoc {
 /**
  * Extracts top-level schema names from `components.schemas` in an OpenAPI spec.
  */
-export function listSchemaNames(yamlPath: string): string[] {
-  const { schemas } = loadSpec(yamlPath).components;
+function listSchemaNames(spec: SpecSource, doc: OpenApiDoc): string[] {
+  const { schemas } = doc.components;
   if (!schemas) {
-    throw new Error(`Could not locate \`components.schemas\` block in ${yamlPath}`);
+    throw new Error(`Could not locate \`components.schemas\` block in the ${spec} spec`);
   }
   return Object.keys(schemas).sort();
 }
@@ -77,9 +77,7 @@ function toPascalCase(input: string): string {
  * `operationId` (e.g. `createAssetFolder` → `CreateAssetFolderData`). Aliases
  * may target these in addition to `components.schemas` entries.
  */
-export function listOperationDataNames(yamlPath: string): string[] {
-  const { paths, webhooks } = loadSpec(yamlPath);
-
+function listOperationDataNames({ paths, webhooks }: OpenApiDoc): string[] {
   const names = new Set<string>();
   for (const pathItem of [...Object.values(paths), ...Object.values(webhooks)]) {
     if (!isRecord(pathItem)) {
@@ -120,7 +118,7 @@ function renderArray(names: readonly string[]): string {
   if (names.length === 0) {
     return "[]";
   }
-  return `[\n${names.map((n) => `    '${n}',`).join("\n")}\n  ]`;
+  return `[\n${names.map((n) => `    "${n}",`).join("\n")}\n  ]`;
 }
 
 function renderFile(schemasBySpec: Record<SpecSource, readonly string[]>): string {
@@ -129,16 +127,16 @@ function renderFile(schemasBySpec: Record<SpecSource, readonly string[]>): strin
 // Public catalog of all type names the codegen tool can emit. Drives the
 // \`include\` parameter on \`generate()\` and gives IDE autocomplete.
 //
-// \`UPSTREAM_SCHEMAS\` lists every schema discovered in the cached specs and
+// \`UPSTREAM_SCHEMAS\` lists every schema discovered in the upstream specs and
 // is informational — use it to find candidates for new aliases. The \`KnownType\`
 // union remains the source of truth for callable names; extend it by adding to
 // \`ALIASES\` (which feeds \`AliasName\`) or to \`TEMPLATES\` (which feeds \`TemplateName\`).
 
-import type { ALIASES } from './aliases.ts';
-import type { TEMPLATES } from './templates.ts';
+import type { ALIASES } from "./aliases.ts";
+import type { TEMPLATES } from "./templates.ts";
 
-type AliasName = typeof ALIASES[number]['emitAs'];
-type TemplateName = typeof TEMPLATES[keyof typeof TEMPLATES]['provides'][number];
+type AliasName = (typeof ALIASES)[number]["emitAs"];
+type TemplateName = (typeof TEMPLATES)[keyof typeof TEMPLATES]["provides"][number];
 
 export type KnownType = AliasName | TemplateName;
 
@@ -150,26 +148,50 @@ export const UPSTREAM_SCHEMAS = {
 `;
 }
 
-export function generateKnownTypes(): void {
+export type SpecSources = Readonly<Record<SpecSource, string>>;
+
+async function readSpecSources(): Promise<SpecSources> {
+  const paths = await resolveSpecPaths();
+  return {
+    capi: readFileSync(paths.capi, "utf8"),
+    mapi: readFileSync(paths.mapi, "utf8"),
+    overlay: readFileSync(paths.overlay, "utf8"),
+  };
+}
+
+/**
+ * Validates the aliases and templates against the given specs and returns the
+ * content of `src/known-types.ts`.
+ */
+export function renderKnownTypes(sources: SpecSources): string {
+  const docs: Record<SpecSource, OpenApiDoc> = {
+    capi: loadSpec("capi", sources.capi),
+    mapi: loadSpec("mapi", sources.mapi),
+    overlay: loadSpec("overlay", sources.overlay),
+  };
   const schemasBySpec: Record<SpecSource, readonly string[]> = {
-    capi: listSchemaNames(SPEC_PATHS.capi),
-    mapi: listSchemaNames(SPEC_PATHS.mapi),
-    overlay: listSchemaNames(SPEC_PATHS.overlay),
+    capi: listSchemaNames("capi", docs.capi),
+    mapi: listSchemaNames("mapi", docs.mapi),
+    overlay: listSchemaNames("overlay", docs.overlay),
   };
 
   const validSourcesBySpec: Record<SpecSource, ReadonlySet<string>> = {
-    capi: new Set([...schemasBySpec.capi, ...listOperationDataNames(SPEC_PATHS.capi)]),
-    mapi: new Set([...schemasBySpec.mapi, ...listOperationDataNames(SPEC_PATHS.mapi)]),
-    overlay: new Set([...schemasBySpec.overlay, ...listOperationDataNames(SPEC_PATHS.overlay)]),
+    capi: new Set([...schemasBySpec.capi, ...listOperationDataNames(docs.capi)]),
+    mapi: new Set([...schemasBySpec.mapi, ...listOperationDataNames(docs.mapi)]),
+    overlay: new Set([...schemasBySpec.overlay, ...listOperationDataNames(docs.overlay)]),
   };
 
   validate(validSourcesBySpec);
 
-  writeFileSync(KNOWN_TYPES_PATH, renderFile(schemasBySpec), "utf8");
+  return renderFile(schemasBySpec);
+}
+
+export function writeKnownTypes(content: string): void {
+  writeFileSync(KNOWN_TYPES_PATH, content, "utf8");
 }
 
 const isDirectInvocation = process.argv[1] === fileURLToPath(import.meta.url);
 if (isDirectInvocation) {
-  generateKnownTypes();
+  writeKnownTypes(renderKnownTypes(await readSpecSources()));
   console.warn(`Regenerated ${KNOWN_TYPES_PATH}`);
 }

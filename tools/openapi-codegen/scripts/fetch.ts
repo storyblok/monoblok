@@ -1,135 +1,85 @@
 #!/usr/bin/env -S node --experimental-strip-types --no-warnings=ExperimentalWarning
 /**
- * Populates `.openapi-cache/{mapi,capi}/` from the private storyblok/openapi-wdx repo.
+ * Pins the latest public OpenAPI specs from the Storyblok docs in
+ * `spec.lock.json` and regenerates `src/known-types.ts` from them.
  *
  *   pnpm --filter @storyblok/openapi-codegen pull
- *     → clones at the SHA pinned in spec.lock; fails if computed hash doesn't match.
- *
- *   pnpm --filter @storyblok/openapi-codegen pull:update
- *     → clones upstream HEAD, writes a new SHA + hash into spec.lock.
- *
- * Requires `gh auth status`. Specs are git-ignored — external contributors
- * without org access build from committed `src/generated/` in each consumer.
  */
 
-import { spawnSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { dirname, resolve } from "pathe";
-import { generateKnownTypes } from "./known-types.ts";
-import { CACHE_DIR, hashCache, readLock, UPSTREAM_REPO, writeLock } from "../src/lock.ts";
+import { readFileSync } from "node:fs";
+import { renderKnownTypes, writeKnownTypes } from "./known-types.ts";
+import { OVERLAY_PATH } from "../src/paths.ts";
+import {
+  cacheSpec,
+  download,
+  readSpecLock,
+  type SpecLock,
+  UPSTREAM_SPECS,
+  type UpstreamSpec,
+  verifySpec,
+  writeSpecLock,
+} from "../src/specs.ts";
 
-const SPECS = [
-  { surface: "capi", file: "cdn-v2.openapi.yaml" },
-  { surface: "mapi", file: "management-v1.openapi.yaml" },
-] as const;
+const DOCS_ORIGIN = "https://www.storyblok.com";
+const LATEST_URL = `${DOCS_ORIGIN}/docs/openapi-spec/latest.json`;
 
-function ensureGhAuth(): void {
-  const result = spawnSync("gh", ["auth", "status"], { stdio: "pipe" });
-  if (result.status !== 0) {
-    console.error("gh CLI is not authenticated. Run `gh auth login` first.");
-    console.error(
-      "Specs live in a private repo; external contributors should build from committed src/generated/.",
-    );
-    process.exit(1);
-  }
+const SPEC_FILES: Record<UpstreamSpec, string> = {
+  capi: "cdn-v2.openapi.yaml",
+  mapi: "management-v1.openapi.yaml",
+};
+
+interface LatestSpec {
+  path: string;
+  sha256: string;
 }
 
-function run(cmd: string, args: string[]): void {
-  const result = spawnSync(cmd, args, { stdio: "inherit" });
-  if (result.status !== 0) {
-    console.error(`Command failed: ${cmd} ${args.join(" ")}`);
-    process.exit(1);
-  }
-}
+const utf8 = new TextDecoder("utf-8", { fatal: true });
 
-function captureStdout(cmd: string, args: string[]): string {
-  const result = spawnSync(cmd, args, { stdio: ["ignore", "pipe", "inherit"] });
-  if (result.status !== 0) {
-    console.error(`Command failed: ${cmd} ${args.join(" ")}`);
-    process.exit(1);
-  }
-  return result.stdout.toString().trim();
-}
-
-function clonePinned(sha: string): string {
-  const clonePath = resolve(mkdtempSync(resolve(tmpdir(), "openapi-wdx-")), "repo");
-  run("gh", ["repo", "clone", UPSTREAM_REPO, clonePath, "--", "--no-checkout"]);
-  run("git", ["-C", clonePath, "fetch", "--depth", "1", "origin", sha]);
-  run("git", ["-C", clonePath, "checkout", sha]);
-  return clonePath;
-}
-
-function cloneHead(): { clonePath: string; sha: string } {
-  const clonePath = resolve(mkdtempSync(resolve(tmpdir(), "openapi-wdx-")), "repo");
-  run("gh", ["repo", "clone", UPSTREAM_REPO, clonePath, "--", "--depth", "1"]);
-  const sha = captureStdout("git", ["-C", clonePath, "rev-parse", "HEAD"]);
-  return { clonePath, sha };
-}
-
-function populateCache(clonePath: string): void {
-  rmSync(CACHE_DIR, { recursive: true, force: true });
-  mkdirSync(CACHE_DIR, { recursive: true });
-
-  for (const { surface, file } of SPECS) {
-    const src = resolve(clonePath, "specs", file);
-    if (!existsSync(src)) {
-      throw new Error(`Expected ${surface} spec at ${src} — upstream layout has changed.`);
+async function fetchLatestLock(): Promise<SpecLock> {
+  const latest = JSON.parse((await download(LATEST_URL)).toString("utf8")) as Record<
+    string,
+    LatestSpec | undefined
+  >;
+  const pin = (spec: UpstreamSpec) => {
+    const entry = latest[SPEC_FILES[spec]];
+    if (!entry) {
+      throw new Error(`${LATEST_URL} lists no ${SPEC_FILES[spec]}.`);
     }
-    const dest = resolve(CACHE_DIR, surface);
-    mkdirSync(dest, { recursive: true });
-    copyFileSync(src, resolve(dest, file));
-  }
+    return { url: new URL(entry.path, DOCS_ORIGIN).href, sha256: entry.sha256 };
+  };
+  return { capi: pin("capi"), mapi: pin("mapi") };
 }
 
-function main(): void {
-  const update = process.argv.slice(2).includes("--update");
+function isSameLock(a: SpecLock, b: SpecLock): boolean {
+  return UPSTREAM_SPECS.every((spec) => a[spec].sha256 === b[spec].sha256);
+}
 
-  const lock = readLock();
-  if (!update && !lock) {
-    console.error(
-      "No spec.lock found. Run `pnpm --filter @storyblok/openapi-codegen pull:update` to bootstrap.",
-    );
-    process.exit(1);
-  }
-
-  // A pinned fetch is a no-op when the cache on disk already matches the lock
-  // hash, so skip the gh auth check and network clone entirely.
-  if (!update && existsSync(CACHE_DIR) && hashCache() === lock!.hash) {
-    console.warn(`Cache already matches spec.lock; nothing to fetch (${CACHE_DIR}).`);
+async function main(): Promise<void> {
+  const lock = await fetchLatestLock();
+  if (isSameLock(lock, readSpecLock())) {
+    console.warn("Specs unchanged.");
     return;
   }
 
-  ensureGhAuth();
-
-  const { clonePath, sha } = update
-    ? cloneHead()
-    : { clonePath: clonePinned(lock!.sha), sha: lock!.sha };
-
-  try {
-    populateCache(clonePath);
-  } finally {
-    rmSync(dirname(clonePath), { recursive: true, force: true });
+  const [capi, mapi] = await Promise.all(UPSTREAM_SPECS.map((spec) => download(lock[spec].url)));
+  const downloads = { capi, mapi } satisfies Record<UpstreamSpec, Buffer>;
+  for (const spec of UPSTREAM_SPECS) {
+    verifySpec(lock[spec], downloads[spec]);
   }
 
-  generateKnownTypes();
+  // Validate before pinning, so specs that break the aliases leave the lock untouched.
+  const knownTypes = renderKnownTypes({
+    capi: utf8.decode(downloads.capi),
+    mapi: utf8.decode(downloads.mapi),
+    overlay: readFileSync(OVERLAY_PATH, "utf8"),
+  });
 
-  const computedHash = hashCache();
-
-  if (update) {
-    writeLock({ repo: UPSTREAM_REPO, sha, hash: computedHash });
-    console.warn(`Updated spec.lock → ${sha}`);
-  } else if (computedHash !== lock!.hash) {
-    console.error("Hash mismatch after pinned fetch:");
-    console.error(`  expected (spec.lock): ${lock!.hash}`);
-    console.error(`  computed:             ${computedHash}`);
-    console.error(
-      "Upstream content at the pinned SHA may have shifted (force-push?). Run `fetch:update`.",
-    );
-    process.exit(1);
+  for (const spec of UPSTREAM_SPECS) {
+    cacheSpec(lock[spec], downloads[spec]);
   }
-
-  console.warn(`Cache populated at ${CACHE_DIR}`);
+  writeSpecLock(lock);
+  writeKnownTypes(knownTypes);
+  console.warn("Updated spec.lock.json.");
 }
 
-main();
+await main();

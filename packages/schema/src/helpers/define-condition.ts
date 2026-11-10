@@ -39,9 +39,9 @@ function toRuleConditions(conditions: FieldCondition | FieldCondition[]): RuleCo
 /**
  * Hides the field while the conditions match.
  *
- * Emits the `hide` spelling, which is the one the editor writes and reads. The
- * server's conditional-required check recognizes only `hidden`, so a hidden
- * field is still required on save; use {@link requiredWhen} to drive that side.
+ * Emits the `hide` spelling, which is the one the editor writes and reads. While
+ * the conditions match, the editor and the server both skip the field's
+ * required check.
  *
  * @example
  * defineField('cta_label', {

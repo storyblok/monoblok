@@ -5,18 +5,52 @@
  */
 import { isDeepStrictEqual } from "node:util";
 import chalk from "chalk";
-import { checkPendingReleases, localJournal, MigrationError } from "@storyblok/schema";
-import type { Journal, StoryForMigration } from "@storyblok/schema";
+import {
+  checkPendingReleases,
+  discoverMigrations,
+  localJournal,
+  MigrationError,
+} from "@storyblok/schema";
+import type { Journal, MigrationFile, StoryForMigration } from "@storyblok/schema";
 import { getMapiClient } from "../../api";
 import { getUI } from "../../lib/ui";
 import { CommandError, toError } from "../../utils";
 import { APIError, handleAPIError } from "../../utils/error/api-error";
-import { resolvePath } from "../../utils/filesystem";
+import { importModule, resolvePath } from "../../utils/filesystem";
 import { fetchStory, updateStory } from "../stories/actions";
 import type { Story } from "../stories/constants";
 
 export function migrationsDirectory(path: string | undefined, space: string): string {
   return resolvePath(path, `migrations/${space}`);
+}
+
+/**
+ * Whether a `.js` file the engine discovers is a migration function rather
+ * than a content migration. A file that fails to load here is left to the
+ * content migration loader, which reports the failure.
+ */
+async function exportsMigrationFunction(file: string): Promise<boolean> {
+  try {
+    const module = await importModule(file);
+    return typeof module.default === "function";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The content migrations in a migrations directory. A file's format is its
+ * default export, so a `.js` migration function named like a content
+ * migration is left out.
+ */
+export async function discoverContentMigrations(directory: string): Promise<MigrationFile[]> {
+  const content: MigrationFile[] = [];
+  for (const migration of await discoverMigrations(directory)) {
+    if (!migration.file.endsWith(".js") || !(await exportsMigrationFunction(migration.file))) {
+      content.push(migration);
+    }
+  }
+  return content;
 }
 
 /** Runs are recorded in each space's `rollbacks` directory, beside the legacy rollback files. */

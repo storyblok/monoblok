@@ -945,6 +945,20 @@ describe("migrations run command with migration functions and content migrations
     expect(journalEntries()).toEqual([]);
   });
 
+  it("should list only content migrations, not a .js migration function with a numeric prefix, for an unknown name", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    space.hasMigrationFunction("3-article.js", (block) => ({ ...block, migrated: true }));
+    space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    space.hasStories(storyWithCard());
+
+    await apply("0002-other");
+
+    expect(process.exitCode).toBe(2);
+    expect(error.mock.calls.flat().join("\n")).toContain(
+      "Available content migrations: 0001-rename-card-title.",
+    );
+  });
+
   it("should select the migration functions of a component and the content migration with that id by name", async () => {
     space.hasMigrationFunction("card.js", (block) => ({ ...block, migrated: true }));
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);

@@ -218,9 +218,9 @@ storyblok migrations rollback [arguments] [flags]
 
 ## Arguments
 
-| Argument | Type   | Description                                                                                                                                                                                                                                         |
-| -------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Run      | string | _Optional._ The ID of a content migration run or the name of a rollback file, with or without its extension, as [`migrations list`](/docs/tooling/cli/migrations/list) prints it. Defaults to the latest content migration run not rolled back yet. |
+| Argument | Type   | Description                                                                                                                                                                                                                                                                    |
+| -------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Run      | string | _Optional._ The ID of a content migration run or the name of a rollback file, with or without its extension, as [`migrations list`](/docs/tooling/cli/migrations/list) prints it. Defaults to the latest content migration run that changed stories and isn’t rolled back yet. |
 
 ## Flags
 
@@ -314,9 +314,10 @@ stories and blocks it changed. A rollback file shows its name and the stories it
 ℹ 2026-10-29T13-32-45-737Z-20261029132727-rename-teaser-to-excerpt  Rename teaser to excerpt on blog entries and events  478 stories, 478 blocks
 ```
 
-A content migration run also shows when it was rolled back, partly rolled back, or interrupted. Each
-machine records its own runs, so a content migration applied elsewhere shows as pending here. The
-command reads local records only and doesn’t require a login.
+A content migration run also shows when it was rolled back, partly rolled back, or interrupted, or
+that it has nothing to roll back because it changed no stories. Each machine records its own runs,
+so a content migration applied elsewhere shows as pending here. The command reads local records only
+and doesn’t require a login.
 
 ## Usage
 

@@ -26,6 +26,8 @@ function rollbackState(run: MigrationRun): string {
   if (run.undoneAt) return `  (rolled back ${run.undoneAt})`;
   if (run.partlyUndoneAt) return `  (partly rolled back ${run.partlyUndoneAt})`;
   if (run.interrupted) return "  (interrupted)";
+  // `rollback` without a run passes over such a run, so it never shows as rolled back.
+  if (run.stories === 0) return "  (nothing to roll back)";
   return "";
 }
 

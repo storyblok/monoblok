@@ -466,6 +466,37 @@ describe("migrations rollback command with runs that changed nothing", () => {
 
     expect(cardOf(space.story(1))).toEqual({ _uid: "card-1", component: "card", title: "Hi" });
   });
+
+  it("should say that no run has changes to roll back when the runs left changed nothing", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    space.hasMigrations(["0001-rename-hero-subtitle", renameHeroSubtitle]);
+    space.hasStories(storyWithCard());
+    await run("run");
+
+    await run("rollback");
+
+    const printed = error.mock.calls.flat().join("\n");
+    expect(printed).toContain(
+      `No content migration run recorded for space ${DEFAULT_SPACE} has changes left to roll back. The runs not rolled back changed no stories.`,
+    );
+    expect(printed).not.toContain("already rolled back");
+  });
+
+  it("should list a run that changed nothing as having nothing to roll back", async () => {
+    const info = vi.spyOn(getUI(), "info");
+    space.hasMigrations(["0001-rename-hero-subtitle", renameHeroSubtitle]);
+    space.hasStories(storyWithCard());
+    await run("run");
+    info.mockClear();
+
+    await run("list");
+
+    expect(info.mock.calls.map(([line]) => line)).toEqual([
+      expect.stringMatching(
+        /0001-rename-hero-subtitle {2}0 stories, 0 blocks {2}\(nothing to roll back\)$/,
+      ),
+    ]);
+  });
 });
 
 describe("migrations rollback command for rollback files", () => {

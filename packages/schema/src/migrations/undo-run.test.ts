@@ -338,6 +338,28 @@ describe("undoStories publish state", () => {
     expect(outcome.firstPublishedByRun).toEqual(["home"]);
   });
 
+  it("should not report a first publish for a story the run did not get to publish", () => {
+    const outcome = undoStories({
+      inverse: [
+        {
+          story: 1,
+          patches: [renameBack],
+          before: { published: false, unpublishedChanges: false },
+          publishedByRun: true,
+        },
+      ],
+      stories: [
+        home([{ _uid: "a", component: "card", headline: "Hi" }], {
+          published: false,
+          unpublished_changes: false,
+        }),
+      ],
+    });
+
+    expect(outcome.writes[0]?.publish).toBe(false);
+    expect(outcome.firstPublishedByRun).toEqual([]);
+  });
+
   it("should not republish a story unpublished since the run", () => {
     const outcome = undoStories({
       inverse: [entry(1, [renameBack], true)],
@@ -361,6 +383,66 @@ describe("undoStories publish state", () => {
 
     expect(outcome.writes[0]?.publish).toBe(false);
     expect(outcome.notRepublished).toEqual(["home"]);
+  });
+});
+
+describe("undoStories after an undo whose republish failed", () => {
+  const restoredBody = [{ _uid: "a", component: "card", title: "Hi" }];
+  const pending: StoryInverse = {
+    ...entry(1, [renameBack], true),
+    pendingRepublish: { draft: home(restoredBody).content },
+  };
+
+  it("should publish the restored draft while the story still holds it", () => {
+    const outcome = undoStories({
+      inverse: [pending],
+      stories: [home(restoredBody, { published: true, unpublished_changes: true })],
+    });
+
+    expect(outcome.writes).toEqual([
+      {
+        story: expect.objectContaining({ id: 1 }),
+        content: home(restoredBody).content,
+        publish: true,
+        publishOnly: true,
+      },
+    ]);
+    expect(outcome.notRepublished).toEqual([]);
+  });
+
+  it("should not publish a restored draft an editor changed since", () => {
+    const outcome = undoStories({
+      inverse: [pending],
+      stories: [
+        home([...restoredBody, { _uid: "b", component: "card", title: "New" }], {
+          published: true,
+          unpublished_changes: true,
+        }),
+      ],
+    });
+
+    expect(outcome.writes).toEqual([]);
+    expect(outcome.notRepublished).toEqual(["home"]);
+  });
+
+  it("should not publish a restored draft of a story unpublished since", () => {
+    const outcome = undoStories({
+      inverse: [pending],
+      stories: [home(restoredBody, { published: false, unpublished_changes: false })],
+    });
+
+    expect(outcome.writes).toEqual([]);
+    expect(outcome.notRepublished).toEqual(["home"]);
+  });
+
+  it("should leave a story alone whose live version matches its draft again", () => {
+    const outcome = undoStories({
+      inverse: [pending],
+      stories: [home(restoredBody, { published: true, unpublished_changes: false })],
+    });
+
+    expect(outcome.writes).toEqual([]);
+    expect(outcome.notRepublished).toEqual([]);
   });
 });
 

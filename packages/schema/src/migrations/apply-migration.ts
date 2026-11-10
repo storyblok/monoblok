@@ -44,7 +44,10 @@ export type MigrationWrite = {
 };
 
 export type ApplyMigrationOutcome = {
-  /** The journal entry to record once the writes succeeded. */
+  /**
+   * The journal entry for every write. Once the writes are done, record what
+   * {@link settleRun} returns instead.
+   */
   run: MigrationRun;
   inverse: StoryInverse[];
   writes: MigrationWrite[];
@@ -162,5 +165,34 @@ export function applyMigration(input: ApplyMigrationInput): ApplyMigrationOutcom
     refusals,
     publishedDraftOnly: writes.filter((write) => write.story.published === true && !write.publish)
       .length,
+  };
+}
+
+/** A write that saved the story's draft, and whether its publish succeeded too. */
+export type LandedWrite = { story: number; published: boolean };
+
+/**
+ * The journal entry and inverse for the writes that landed. A write whose
+ * draft was saved but whose publish failed is recorded as a draft-only write,
+ * so an undo neither republishes it nor reports it as published by the run.
+ */
+export function settleRun(
+  outcome: ApplyMigrationOutcome,
+  landed: readonly LandedWrite[],
+): { run: MigrationRun; inverse: StoryInverse[] } {
+  const published = new Map(landed.map((write) => [write.story, write.published]));
+  const inverse = outcome.inverse
+    .filter((entry) => published.has(entry.story))
+    .map((entry) => ({
+      ...entry,
+      publishedByRun: entry.publishedByRun && published.get(entry.story) === true,
+    }));
+  return {
+    run: {
+      ...outcome.run,
+      stories: inverse.length,
+      blocks: inverse.reduce((total, entry) => total + entry.patches.length, 0),
+    },
+    inverse,
   };
 }

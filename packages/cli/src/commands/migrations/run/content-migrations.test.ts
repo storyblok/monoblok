@@ -280,6 +280,53 @@ describe("migrations run command for content migrations", () => {
     ]);
   });
 
+  it("should read each story once across migrations, and let later migrations see what earlier ones wrote", async () => {
+    space.hasMigrations(
+      ["0001-rename-card-title", renameCardTitle],
+      ["0002-rename-card-to-teaser", renameCardToTeaser],
+    );
+    space.hasStories(storyWithCard(), storyWithCard({ id: 2, slug: "about", full_slug: "about" }));
+    space.canUpdateStories();
+
+    await apply();
+
+    expect(space.reads.toSorted()).toEqual([1, 2]);
+    expect(space.writes.map(({ id }) => id)).toEqual([1, 2, 1, 2]);
+    expect(space.story(1)?.content.body).toEqual([
+      { _uid: "card-1", component: "teaser", headline: "Hi" },
+    ]);
+  });
+
+  it("should let a later migration see the publish state an earlier one left", async () => {
+    space.hasMigrations(
+      ["0001-rename-card-title", renameCardTitle],
+      ["0002-rename-card-to-teaser", renameCardToTeaser],
+    );
+    space.hasStories(storyWithCard({ published: true, unpublished_changes: true }));
+    space.canUpdateStories();
+
+    await apply("--publish", "published-with-changes");
+
+    expect(space.writes.map(({ publish }) => publish)).toEqual([true, false]);
+  });
+
+  it("should read stories concurrently, within a bound", async () => {
+    space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    space.hasStories(
+      ...Array.from({ length: 30 }, (_, index) =>
+        storyWithCard({ id: index + 1, slug: `story-${index}`, full_slug: `story-${index}` }),
+      ),
+    );
+    space.delaysReads(5);
+    space.canUpdateStories();
+
+    await apply();
+
+    expect(space.writes).toHaveLength(30);
+    expect(space.maxConcurrentReads()).toBeGreaterThan(1);
+    expect(space.maxConcurrentReads()).toBeLessThan(30);
+  });
+
   it("should refuse a story that already contains repeated block ids and fail when nothing was written", async () => {
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
     space.hasStories(storyWithRepeatedIds());

@@ -1,4 +1,4 @@
-import { http, HttpResponse } from "msw";
+import { delay, http, HttpResponse } from "msw";
 import type { SetupServerApi } from "msw/node";
 import { vol } from "memfs";
 import { vi } from "vitest";
@@ -54,6 +54,10 @@ export const storyWithCard = (overrides: Partial<RemoteStory> = {}): RemoteStory
 export function createRemoteSpace(server: SetupServerApi) {
   const stories = new Map<number, RemoteStory>();
   const writes: StoryWrite[] = [];
+  /** The ids of the stories read one by one, in the order the reads arrived. */
+  const reads: number[] = [];
+  const concurrency = { reads: 0, maxReads: 0 };
+  let readDelay = 0;
   const migrations = new Map<string, CompiledMigration>();
   /** Default exports of `.js` files by file name, as a native import returns them. */
   const jsExports = new Map<string, unknown>();
@@ -73,6 +77,13 @@ export function createRemoteSpace(server: SetupServerApi) {
 
   return {
     writes,
+    reads,
+    /** The most reads that were in flight at once. */
+    maxConcurrentReads: () => concurrency.maxReads,
+    /** Each read takes this long to answer, so overlapping reads are observable. */
+    delaysReads(ms: number) {
+      readDelay = ms;
+    },
     story: (id: number) => stories.get(id),
     hasMigrations(...entries: [id: string, migration: CompiledMigration][]) {
       for (const [id, migration] of entries) {
@@ -114,7 +125,12 @@ export function createRemoteSpace(server: SetupServerApi) {
             { headers: { Total: String(matching.length), "Per-Page": "100" } },
           );
         }),
-        http.get(`${MAPI}/stories/:id`, ({ params }) => {
+        http.get(`${MAPI}/stories/:id`, async ({ params }) => {
+          reads.push(Number(params.id));
+          concurrency.reads++;
+          concurrency.maxReads = Math.max(concurrency.maxReads, concurrency.reads);
+          await delay(readDelay);
+          concurrency.reads--;
           const story = stories.get(Number(params.id));
           return story
             ? HttpResponse.json({ story })

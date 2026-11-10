@@ -67,6 +67,27 @@ describe("migrations rollback command for content migration runs", () => {
     );
   });
 
+  it("should read each story of the run once, several at a time within a bound", async () => {
+    space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    space.hasStories(
+      ...Array.from({ length: 30 }, (_, index) =>
+        storyWithCard({ id: index + 1, slug: `story-${index}`, full_slug: `story-${index}` }),
+      ),
+    );
+    await run("run");
+    space.forgetReads();
+    space.delaysReads(5);
+
+    await run("rollback");
+
+    expect(cardOf(space.story(30))).toEqual({ _uid: "card-1", component: "card", title: "Hi" });
+    expect([...space.reads].sort((a, b) => a - b)).toEqual(
+      Array.from({ length: 30 }, (_, index) => index + 1),
+    );
+    expect(space.maxConcurrentReads()).toBeGreaterThan(1);
+    expect(space.maxConcurrentReads()).toBeLessThan(30);
+  });
+
   it("should roll back the named run while a later run changed other blocks", async () => {
     const story = storyWithCard();
     story.content.body = [

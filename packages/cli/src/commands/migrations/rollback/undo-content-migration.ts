@@ -3,6 +3,7 @@ import chalk from "chalk";
 import { planUndo, undoStories } from "@storyblok/schema";
 import type { StoryForMigration, StoryInverse } from "@storyblok/schema";
 import { CommandError, isRecord, toError } from "../../../utils";
+import { createPipelineBackpressureLock } from "../../../utils/backpressure-lock";
 import { APIError } from "../../../utils/error/api-error";
 import { getLogger } from "../../../lib/logger/logger";
 import { getUI } from "../../../lib/ui";
@@ -79,24 +80,36 @@ export async function rollbackContentMigrationRun({
   /** Stories that could not be read or written, so a republish they wait for stays pending. */
   const unsettled = new Set<number>();
   let failed = 0;
-  for (const storyId of plan.stories) {
-    try {
-      const story = await access.read(storyId);
-      if (story?.deleted_at) {
-        deleted.push(toStoryForMigration(story).slug);
-      } else if (story) {
-        stories.push(toStoryForMigration(story));
+  const lock = createPipelineBackpressureLock();
+  const reads = await Promise.all(
+    plan.stories.map(async (storyId) => {
+      await lock.acquire();
+      try {
+        return { storyId, story: await access.read(storyId) };
+      } catch (error) {
+        return { storyId, error };
+      } finally {
+        lock.release();
       }
-    } catch (maybeError) {
-      if (maybeError instanceof APIError && maybeError.errorId === "not_found") {
-        deleted.push(storyId);
+    }),
+  );
+  for (const read of reads) {
+    if ("error" in read) {
+      if (read.error instanceof APIError && read.error.errorId === "not_found") {
+        deleted.push(read.storyId);
         continue;
       }
       failed++;
-      unsettled.add(storyId);
-      const error = toError(maybeError);
-      ui.warn(`Story ${storyId} could not be read, so it was not rolled back: ${error.message}`);
-      logger.error("Failed to read story", { storyId, run: id, space, error });
+      unsettled.add(read.storyId);
+      const error = toError(read.error);
+      ui.warn(
+        `Story ${read.storyId} could not be read, so it was not rolled back: ${error.message}`,
+      );
+      logger.error("Failed to read story", { storyId: read.storyId, run: id, space, error });
+    } else if (read.story?.deleted_at) {
+      deleted.push(toStoryForMigration(read.story).slug);
+    } else if (read.story) {
+      stories.push(toStoryForMigration(read.story));
     }
   }
   if (deleted.length > 0) {

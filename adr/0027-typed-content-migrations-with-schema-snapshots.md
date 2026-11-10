@@ -1,4 +1,4 @@
-# ADR-0020: Typed Content Migrations with Schema Snapshots
+# ADR-0027: Typed Content Migrations with Schema Snapshots
 
 **Status:** Accepted **Date:** 2026-10-16
 
@@ -120,8 +120,6 @@ it, so no run can tell which migrations a space has already received.
   for a missing field: they leave blocks without it alone, and stories that still hold it reach the
   later migration in the shape it expects.
 - Snapshots carry a `snapshotFormat`, and `migrations run` refuses a format newer than it reads.
-- `migrations run` exits with an error when the directory holds only content migrations, so a script
-  that runs it after `schema push --typed` fails instead of passing silently.
 - Ops on blocks nested inside a read block need a migration generated for that block, because a stub
   types its fields as empty.
 - An unrestricted `richtext` field doesn't make its block a container. Most blocks of a space have

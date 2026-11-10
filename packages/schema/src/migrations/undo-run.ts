@@ -132,7 +132,8 @@ export function undoStories(input: UndoStoriesInput): UndoOutcome {
 
     let publish = false;
     if (entry.publishedByRun && !entry.before.published) {
-      outcome.firstPublishedByRun.push(story.slug);
+      // A story that is not live has nothing to unpublish.
+      if (story.published === true) outcome.firstPublishedByRun.push(story.slug);
     } else if (entry.publishedByRun) {
       // Republishing ships the whole draft, so it needs positive evidence that
       // the draft holds nothing but the migration and the story is still live.

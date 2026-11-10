@@ -1,6 +1,6 @@
 {
   "name": "@storyblok/nuxt",
-  "version": "11.3.1",
+  "version": "11.3.2",
   "description": "Storyblok Nuxt module",
   "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/nuxt#readme",
   "bugs": {

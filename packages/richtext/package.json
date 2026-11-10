@@ -1,6 +1,6 @@
 {
   "name": "@storyblok/richtext",
-  "version": "5.5.1",
+  "version": "5.5.2",
   "description": "Storyblok RichText Resolver",
   "keywords": [
     "resolver",
@@ -80,6 +80,7 @@
     "test:coverage": "vp test run --coverage"
   },
   "dependencies": {
+    "@floating-ui/dom": "^1.8.0",
     "@tiptap/core": "^3.32.2",
     "@tiptap/extension-blockquote": "^3.32.2",
     "@tiptap/extension-bold": "^3.32.2",

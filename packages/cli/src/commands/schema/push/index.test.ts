@@ -1072,13 +1072,105 @@ describe("schema push command", () => {
 
     const migration = writtenFile(`migrations/${DEFAULT_SPACE}/20261016090503-update-hero.ts`);
     expect(migration).toContain("import type { Schema } from '../../../schema.js';");
-    expect(migration).toContain("export default defineMigration<Schema, Before>([");
+    expect(migration).toContain("export default defineMigration<Schema, Before>({");
+    expect(migration).toContain("title: 'Update hero: rename author_name to author',");
     expect(migration).toContain(
       "renameField({ block: 'hero', field: 'author_name', to: 'author' })",
     );
     expect(
       writtenFile(`migrations/${DEFAULT_SPACE}/20261016090503-update-hero.before.ts`),
     ).toContain("defineField('author_name'");
+  });
+
+  it("should title a typed migration after its changes, or its blocks when those are too long", async () => {
+    const blocks = ["hero", "teaser", "card", "banner"];
+    preconditions.hasLocalSchema({
+      components: blocks.map((name) =>
+        makeMockComponent({
+          name,
+          schema: {
+            title: { type: "text", pos: 0, required: true },
+            rating: { type: "number", pos: 1 },
+          },
+        }),
+      ) as any,
+      datasources: [],
+    });
+    preconditions.hasRemoteComponents(
+      blocks.map((name) =>
+        makeMockComponent({
+          name,
+          schema: {
+            title: { type: "text", pos: 0 },
+            rating: { type: "text", pos: 1 },
+            legacy: { type: "asset", pos: 2 },
+          },
+        }),
+      ),
+    );
+    preconditions.hasRemoteFolders([]);
+    preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
+    preconditions.canUpdateComponents();
+
+    await schemaCommand.parseAsync([
+      "node",
+      "test",
+      "push",
+      "schema.ts",
+      "--space",
+      DEFAULT_SPACE,
+      "--typed",
+      "--migrations",
+    ]);
+
+    expect(
+      writtenFile(`migrations/${DEFAULT_SPACE}/20261016090503-update-banner-card-hero-teaser.ts`),
+    ).toContain("title: 'Update banner, card, hero, and teaser',");
+  });
+
+  it("should title a typed migration of one block after its changes", async () => {
+    preconditions.hasLocalSchema({
+      components: [
+        makeMockComponent({
+          name: "hero",
+          schema: {
+            title: { type: "text", pos: 0, required: true },
+            rating: { type: "number", pos: 1 },
+          },
+        }),
+      ] as any,
+      datasources: [],
+    });
+    preconditions.hasRemoteComponents([
+      makeMockComponent({
+        name: "hero",
+        schema: {
+          title: { type: "text", pos: 0 },
+          rating: { type: "text", pos: 1 },
+          legacy: { type: "asset", pos: 2 },
+        },
+      }),
+    ]);
+    preconditions.hasRemoteFolders([]);
+    preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
+    preconditions.canUpdateComponents();
+
+    await schemaCommand.parseAsync([
+      "node",
+      "test",
+      "push",
+      "schema.ts",
+      "--space",
+      DEFAULT_SPACE,
+      "--typed",
+      "--migrations",
+    ]);
+
+    expect(writtenFile(`migrations/${DEFAULT_SPACE}/20261016090503-update-hero.ts`)).toContain(
+      "title: 'Update hero: remove legacy, convert rating to number, require title',",
+    );
   });
 
   it("should generate an alterField for option values the schema removed", async () => {
@@ -1381,7 +1473,7 @@ describe("schema push command", () => {
       "--no-before",
     ]);
 
-    expect(writtenFile("20261016090503-update-hero.ts")).toContain("defineMigration<Schema>([");
+    expect(writtenFile("20261016090503-update-hero.ts")).toContain("defineMigration<Schema>({");
     expect(writtenFile(".before.ts")).toBeUndefined();
   });
 
@@ -1613,7 +1705,7 @@ describe("schema push command", () => {
     expect(commentsIn(migration)).toContain(
       "TODO: if 'title' was renamed to 'headline', replace this removeField and the addField of 'headline' with renameField, or the content of 'title' is lost.",
     );
-    expect(migration).toMatch(/lost\.\n {2}removeField\(\{ block: 'teaser', field: 'title' \}\),/);
+    expect(migration).toMatch(/lost\.\n\s+removeField\(\{ block: 'teaser', field: 'title' \}\),/);
   });
 
   it("should name, for each possible rename of a removed field, only the ops the migration holds", async () => {

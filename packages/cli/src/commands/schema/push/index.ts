@@ -21,7 +21,12 @@ import { buildChangesetEntries, executePush, formatDiffOutput } from "./actions"
 import { saveChangeset } from "../changeset";
 import { analyzeBreakingChanges } from "./migrations/analyze";
 import type { ComponentBreakingChanges } from "./migrations/types";
-import { renderMigrationCode, toMigrationOps, writeMigrationFile } from "./migrations/generate";
+import {
+  migrationTitle,
+  renderMigrationCode,
+  toMigrationOps,
+  writeMigrationFile,
+} from "./migrations/generate";
 import { writeContentMigration } from "../../migrations/content-migrations";
 import { writeLocalComponents } from "./write-local-components";
 import { detectBlockRenames, withBlockRenames } from "./block-renames";
@@ -179,6 +184,7 @@ schemaCommand
           path: basePath,
           space,
           name: `update-${blocks.join("-")}`,
+          title: migrationTitle(changes, blockBefore),
           schemaEntry: entryFile,
           ops,
           before: options.before

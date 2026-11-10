@@ -467,17 +467,23 @@ import type { Before } from "./20261103093215-update-author-hero.before.js";
 
 const EDITORIAL_EMAIL = "editorial@example.com";
 
-export default defineMigration<Schema, Before>([
-  renameField({ block: "author", field: "bluesky_account", to: "bluesky_handle" }),
-  addField({ block: "author", field: "email" }, () => EDITORIAL_EMAIL),
-  alterField({ block: "author", field: "email" }, (value, { language }) =>
-    language === undefined && (value === null || value === "") ? EDITORIAL_EMAIL : undefined,
-  ),
-  alterField({ block: "hero", field: "headline_size" }, (value) =>
-    value === "large" ? "normal" : undefined,
-  ),
-]);
+export default defineMigration<Schema, Before>({
+  title: "Update author and hero",
+  ops: [
+    renameField({ block: "author", field: "bluesky_account", to: "bluesky_handle" }),
+    addField({ block: "author", field: "email" }, () => EDITORIAL_EMAIL),
+    alterField({ block: "author", field: "email" }, (value, { language }) =>
+      language === undefined && (value === null || value === "") ? EDITORIAL_EMAIL : undefined,
+    ),
+    alterField({ block: "hero", field: "headline_size" }, (value) =>
+      value === "large" ? "normal" : undefined,
+    ),
+  ],
+});
 ```
+
+The title names each block’s changes, or only the blocks when the changes take more than 100
+characters.
 
 The migration handles these changes:
 

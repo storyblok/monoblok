@@ -5,7 +5,7 @@ import { coercionBetween } from "@storyblok/schema/internal/codegen";
 
 import { resolvePath } from "../../../../utils/filesystem";
 import { fileTimestamp } from "../../utils";
-import type { BreakingChange } from "./types";
+import type { BreakingChange, ComponentBreakingChanges } from "./types";
 
 /** Compatible type pairs that don't need a content migration. */
 const COMPATIBLE_TYPES = new Set(["text:textarea", "textarea:text"]);
@@ -271,6 +271,46 @@ export function toMigrationOps(block: string, changes: BreakingChange[]): Migrat
       }
     }
   });
+}
+
+function describeChange(change: BreakingChange): string {
+  switch (change.kind) {
+    case "rename":
+      return `rename ${change.oldField} to ${change.field}`;
+    case "removed":
+      return `remove ${change.field}`;
+    case "type_changed":
+      return `convert ${change.field} to ${change.newType}`;
+    case "required_added":
+      return `add ${change.field}`;
+    case "required_changed":
+      return `require ${change.field}`;
+    case "options_removed":
+      return `remove options from ${change.field}`;
+    case "block_renamed":
+      return `rename to ${change.to}`;
+  }
+}
+
+const MAX_TITLE_LENGTH = 100;
+
+const listFormat = new Intl.ListFormat("en", { type: "conjunction" });
+
+/**
+ * The title of a typed migration: its changes by block, or only the blocks
+ * when the changes don't fit. Blocks go by their name before the push, as the
+ * migration addresses them.
+ */
+export function migrationTitle(
+  changes: readonly ComponentBreakingChanges[],
+  blockBefore: (comp: ComponentBreakingChanges) => string,
+): string {
+  const detailed = `Update ${changes
+    .map((comp) => `${blockBefore(comp)}: ${comp.changes.map(describeChange).join(", ")}`)
+    .join("; ")}`;
+  return detailed.length <= MAX_TITLE_LENGTH
+    ? detailed
+    : `Update ${listFormat.format(changes.map(blockBefore))}`;
 }
 
 /** Options for writing a migration file. */

@@ -192,6 +192,18 @@ describe("schema init generated code", () => {
     expect(typeErrors(files)).toEqual([]);
   });
 
+  it("should type-check blocks without fields", () => {
+    const withoutSchema = {
+      id: 2,
+      name: "divider",
+      created_at: "",
+      updated_at: "",
+    } as unknown as Component;
+    const files = generateProject([component("listing_placeholder", {}), withoutSchema]);
+
+    expect(typeErrors(files)).toEqual([]);
+  });
+
   it("should still reject an unknown option written by hand", () => {
     // Guards the check above: it must be able to fail.
     const files = generateProject([component("page", { title: { type: "text", pos: 0 } })]);

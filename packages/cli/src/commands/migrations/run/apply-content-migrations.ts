@@ -1,8 +1,9 @@
 import chalk from "chalk";
 import { relative } from "pathe";
-import { applyMigration, validateMigration } from "@storyblok/schema";
+import { applyMigration, settleRun, validateMigration } from "@storyblok/schema";
 import type {
   ApplyMigrationOutcome,
+  LandedWrite,
   LoadedMigration,
   MigrationRun,
   PublishMode,
@@ -349,16 +350,16 @@ export async function applyContentMigrations({
     // be rolled back. A rollback skips stories whose content never changed.
     await journal.record({ ...outcome.run, interrupted: true }, outcome.inverse);
 
-    const landed = new Set<number>();
+    const landed: LandedWrite[] = [];
     for (const write of outcome.writes) {
       try {
         await access.write(write.story.id, write.content, write.publish);
-        landed.add(write.story.id);
+        landed.push({ story: write.story.id, published: write.publish });
         logger.info("Story migrated", { storyId: write.story.id, migration: entry.id, space });
       } catch (maybeError) {
         // The draft changed, so the run records it and a rollback can restore it.
         if (maybeError instanceof DraftNotPublishedError) {
-          landed.add(write.story.id);
+          landed.push({ story: write.story.id, published: false });
           notPublished.push(write.story.slug);
           ui.warn(
             `${chalk.bold(write.story.slug)}: the draft was migrated, but publishing it failed: ${maybeError.message}`,
@@ -385,19 +386,14 @@ export async function applyContentMigrations({
 
     // An entry for a run that changed nothing would become the most recent
     // run, which `rollback` picks by default, leaving the real work applied.
-    if (landed.size === 0) {
+    if (landed.length === 0) {
       await journal.remove(outcome.run.id);
       ui.info(`${entry.id}: changed no stories, so nothing was recorded.`);
       continue;
     }
 
-    const recorded = outcome.inverse.filter((item) => landed.has(item.story));
-    const run = {
-      ...outcome.run,
-      stories: recorded.length,
-      blocks: recorded.reduce((total, item) => total + item.patches.length, 0),
-    };
-    await journal.record(run, recorded);
+    const { run, inverse } = settleRun(outcome, landed);
+    await journal.record(run, inverse);
     ui.info(`${entry.id}: changed ${changeSummary(run)}, recorded as ${chalk.bold(run.id)}.`);
   }
 

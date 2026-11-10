@@ -423,6 +423,30 @@ describe("migrations rollback command for content migration runs", () => {
       );
     });
 
+    it("should roll back a story whose publish failed during the run as a draft only, without publish warnings", async () => {
+      const warn = vi.spyOn(getUI(), "warn");
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+      space.hasStories(
+        storyWithCard(),
+        storyWithCard({ id: 2, slug: "about", full_slug: "about", published: true }),
+      );
+      space.failsToPublishStories("The field card.headline can't be blank");
+      await run("run", "--publish", "all");
+      space.canUpdateStories();
+      warn.mockClear();
+      process.exitCode = undefined;
+
+      await run("rollback");
+
+      expect(space.writes.map(({ id, publish }) => ({ id, publish }))).toEqual([
+        { id: 1, publish: false },
+        { id: 2, publish: false },
+      ]);
+      expect(warn).not.toHaveBeenCalled();
+      expect(process.exitCode).toBeUndefined();
+    });
+
     it("should report a story the run published for the first time", async () => {
       const warn = vi.spyOn(getUI(), "warn");
       space.hasMigrations(["0001-rename-card-title", renameCardTitle]);

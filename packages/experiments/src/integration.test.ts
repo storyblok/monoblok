@@ -1,7 +1,6 @@
 import type { Experiment, ExperimentEvent } from "./types";
 import { describe, expect, it, vi } from "vitest";
 import { assignVariant } from "./assign-variant";
-import { applyRelationVariants } from "./apply-relation-variants";
 import { createConversion } from "./create-conversion";
 import { createExperiments } from "./create-experiments";
 import { defineGoal } from "./define-goal";
@@ -674,15 +673,7 @@ describe("scenario: experiments on resolved relations", () => {
     throw new Error(`no visitor buckets into ${publicId}`);
   }
 
-  const page = {
-    story: { uuid: "uuid-page", content: { component: "page", cta: "uuid-cta" } },
-    rels: [{ uuid: "uuid-cta", name: "CTA", content: { component: "cta", label: "Sign up" } }],
-  };
-  const variantStories = [
-    { uuid: "uuid-cta-urgent", content: { component: "cta", label: "Sign up today" } },
-  ];
-
-  it("renders the variant content of a related story under the original's identity", () => {
+  it("asks the API for the variant content of a related story", () => {
     const sink = createSink();
     const experiments = createExperiments({
       experiments: [ctaExperiment],
@@ -690,16 +681,10 @@ describe("scenario: experiments on resolved relations", () => {
     });
     const visitorId = visitorOn(ctaExperiment, "var_cta_urgent");
 
-    const resolution = experiments.resolveRelations({
-      uuids: page.rels.map((rel) => rel.uuid),
-      visitorId,
-    });
-    const rels = applyRelationVariants(page.rels, variantStories, resolution);
+    const resolution = experiments.resolveRelations({ uuids: ["uuid-cta"], visitorId });
 
-    expect([...resolution.variants.values()]).toEqual(["uuid-cta-urgent"]);
-    expect(rels).toEqual([
-      { uuid: "uuid-cta", name: "CTA", content: { component: "cta", label: "Sign up today" } },
-    ]);
+    expect([...resolution.variants]).toEqual([["uuid-cta", "uuid-cta-urgent"]]);
+    expect(resolution.param).toBe("uuid-cta:uuid-cta-urgent");
     expect(sink.ofType("exposure")).toEqual([
       {
         type: "exposure",
@@ -710,17 +695,7 @@ describe("scenario: experiments on resolved relations", () => {
     ]);
   });
 
-  it("leaves the cached response untouched so other visitors keep the original", () => {
-    const experiments = createExperiments({ experiments: [ctaExperiment] });
-    const visitorId = visitorOn(ctaExperiment, "var_cta_urgent");
-
-    const resolution = experiments.resolveRelations({ uuids: ["uuid-cta"], visitorId });
-    applyRelationVariants(page, variantStories, resolution);
-
-    expect(page.rels[0].content.label).toBe("Sign up");
-  });
-
-  it("needs no variant stories for a control visitor, but still exposes them", () => {
+  it("needs no second request for a control visitor, but still exposes them", () => {
     const sink = createSink();
     const experiments = createExperiments({
       experiments: [ctaExperiment],
@@ -732,42 +707,8 @@ describe("scenario: experiments on resolved relations", () => {
 
     expect(resolution.variants.size).toBe(0);
     expect(resolution.param).toBe("");
-    expect(applyRelationVariants(page.rels, [], resolution)).toEqual(page.rels);
     expect(sink.ofType("exposure")).toHaveLength(1);
     expect(sink.ofType("exposure")[0].variant.public_id).toBe("var_cta_control");
-  });
-
-  it("swaps relations already inlined into the story content", () => {
-    const inlined = {
-      uuid: "uuid-page",
-      content: { component: "page", cta: page.rels[0], body: [{ cta: page.rels[0] }] },
-    };
-    const experiments = createExperiments({ experiments: [ctaExperiment] });
-    const visitorId = visitorOn(ctaExperiment, "var_cta_urgent");
-
-    const resolution = experiments.resolveRelations({ uuids: ["uuid-cta"], visitorId });
-    const story = applyRelationVariants(inlined, variantStories, resolution);
-
-    expect(story.content.cta.content.label).toBe("Sign up today");
-    expect(story.content.body[0].cta.content.label).toBe("Sign up today");
-  });
-
-  it("keeps the original content when the variant story could not be fetched", () => {
-    const experiments = createExperiments({ experiments: [ctaExperiment] });
-    const visitorId = visitorOn(ctaExperiment, "var_cta_urgent");
-
-    const resolution = experiments.resolveRelations({ uuids: ["uuid-cta"], visitorId });
-
-    expect(applyRelationVariants(page.rels, [], resolution)).toEqual(page.rels);
-  });
-
-  it("builds the resolve_experiment_variants value from the same resolution", () => {
-    const experiments = createExperiments({ experiments: [ctaExperiment] });
-    const visitorId = visitorOn(ctaExperiment, "var_cta_urgent");
-
-    const resolution = experiments.resolveRelations({ uuids: ["uuid-cta"], visitorId });
-
-    expect(resolution.param).toBe("uuid-cta:uuid-cta-urgent");
   });
 
   it("returns the exposures without firing them when exposure is false", async () => {

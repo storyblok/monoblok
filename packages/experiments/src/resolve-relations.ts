@@ -19,14 +19,15 @@ export interface ResolvedRelations {
   /**
    * Original story UUID → UUID of the variant story to render in its place.
    * Holds only the stories the visitor sees as a variant, so it is empty for
-   * a control visitor and nothing needs fetching.
+   * a control visitor and the page needs no second request.
    */
   variants: Map<string, string>;
   /** One exposure per experiment on a related story, control included. */
   exposures: Exposure[];
   /**
-   * `variants` as `original_uuid:variant_uuid` pairs, the value of the stories
-   * API `resolve_experiment_variants` parameter. Empty when `variants` is.
+   * `variants` as `original_uuid:variant_uuid` pairs, the value of the
+   * `resolve_experiment_variants` parameter of a single-story request. Empty
+   * when `variants` is.
    */
   param: string;
 }
@@ -48,8 +49,8 @@ const mapsAnyUuid = (experiment: Experiment, uuids: ReadonlySet<string>): boolea
 /**
  * Buckets `visitorId` into every running experiment on one of the related
  * stories `uuids` and maps each story to the variant story to render. Pure, no
- * I/O: fetch the variant stories (for example with `by_uuids`) and apply them
- * with `applyRelationVariants`, or pass `param` as `resolve_experiment_variants`.
+ * I/O: fetch the page again with `param` as `resolve_experiment_variants`, and
+ * the API returns each related story with its variant's content.
  *
  * A story in more than one running experiment renders the variant of the
  * first experiment that maps it.

@@ -1,5 +1,3 @@
-export { applyRelationVariants } from "./apply-relation-variants";
-export type { VariantStory } from "./apply-relation-variants";
 export { assignVariant } from "./assign-variant";
 export { createConversion } from "./create-conversion";
 export type { CreateConversionOptions } from "./create-conversion";

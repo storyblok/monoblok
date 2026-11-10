@@ -111,8 +111,8 @@ export interface Experiments {
   /**
    * Resolves the experiments on a page's related stories (`resolve_relations`)
    * and, unless `exposure: false`, delivers one exposure per experiment that
-   * applies. Fetch the stories in `variants` and pass them to
-   * `applyRelationVariants`. Like `resolveExperiment`, it does not deduplicate.
+   * applies. Fetch the page again with `param` as `resolve_experiment_variants`
+   * to render the variants. Like `resolveExperiment`, it does not deduplicate.
    */
   resolveRelations: (options: FactoryResolveRelationsOptions) => FactoryResolvedRelations;
   /**

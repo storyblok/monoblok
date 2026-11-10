@@ -358,10 +358,16 @@ export function generateComponentFile(
   tagNameById?: Map<string, string>,
 ): string {
   const lines: string[] = [];
+  const schema = isRecord(component.schema)
+    ? (component.schema as Record<string, Record<string, unknown>>)
+    : {};
+  const sortedFields = sortSchemaByPos(schema);
 
   lines.push("import {");
   lines.push("  defineBlock,");
-  lines.push("  defineField,");
+  if (sortedFields.length > 0) {
+    lines.push("  defineField,");
+  }
   lines.push("} from '@storyblok/schema';");
   lines.push("");
 
@@ -369,9 +375,6 @@ export function generateComponentFile(
   // references lives in the root `folders.ts`, so all imports share one relative
   // path derived from the block's own group depth (0 when ungrouped).
   const blockDepth = folderRef?.segments.length ?? 0;
-  const schema = isRecord(component.schema)
-    ? (component.schema as Record<string, Record<string, unknown>>)
-    : {};
   const folderVars = [
     ...new Set([
       ...(folderRef ? [folderRef.varName] : []),
@@ -443,20 +446,16 @@ export function generateComponentFile(
   }
 
   // Schema fields — emitted as an ordered `fields:` array of `defineField('name', {...})` calls.
-  if (clean.schema && typeof clean.schema === "object") {
-    const schema = clean.schema as Record<string, Record<string, unknown>>;
-    const sortedFields = sortSchemaByPos(schema);
-
-    if (sortedFields.length > 0) {
-      lines.push(`${INDENT}fields: [`);
-      for (const [fieldName, fieldData] of sortedFields) {
-        const fieldCode = generateFieldCode(fieldName, fieldData, 2, folderVarByUuid, tagNameById);
-        lines.push(`${INDENT}${INDENT}${fieldCode},`);
-      }
-      lines.push(`${INDENT}],`);
-    } else {
-      lines.push(`${INDENT}fields: [],`);
+  // `defineBlock` requires `fields`, so a block without a schema gets an empty list.
+  if (sortedFields.length > 0) {
+    lines.push(`${INDENT}fields: [`);
+    for (const [fieldName, fieldData] of sortedFields) {
+      const fieldCode = generateFieldCode(fieldName, fieldData, 2, folderVarByUuid, tagNameById);
+      lines.push(`${INDENT}${INDENT}${fieldCode},`);
     }
+    lines.push(`${INDENT}],`);
+  } else {
+    lines.push(`${INDENT}fields: [],`);
   }
 
   lines.push("});");

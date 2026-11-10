@@ -1,4 +1,5 @@
 import { isRecord } from "../utils/is-record";
+import { callDoc, objectDoc, PRINT_WIDTH, printDoc, wrapWords } from "./doc";
 import {
   generateFieldCode,
   RESTRICTABLE_FIELD_TYPES,
@@ -257,11 +258,12 @@ export function generateSnapshot(options: GenerateSnapshotOptions): string {
   const varNames = resolveVarNames(ordered, componentVarName, SNAPSHOT_IMPORTS);
   const hasFields = blocks.some((name) => fieldsOf(byName.get(name)).length > 0);
 
+  const subject = migrationId
+    ? `The schema as it stood before migration ${commentText(migrationId)}.`
+    : "The schema as it stood before the migration beside it.";
   const lines: string[] = [
     "/**",
-    migrationId
-      ? ` * The schema as it stood before migration ${commentText(migrationId)}.`
-      : " * The schema as it stood before the migration beside it.",
+    ...wrapWords(subject, PRINT_WIDTH - " * ".length).map((text) => ` * ${text}`),
     " * Generated. Blocks the migration reads list their fields; the blocks around",
     " * them are name-only stubs. Keep this file unchanged once the migration ships,",
     " * so the fields it reads stay typed after later schema changes.",
@@ -280,7 +282,11 @@ export function generateSnapshot(options: GenerateSnapshotOptions): string {
 
   ordered.forEach((name, i) => {
     if (!blocks.includes(name)) {
-      lines.push(`const ${varNames[i]} = defineBlock({ name: ${quoteString(name)}, fields: [] });`);
+      const stub = objectDoc([
+        ["name", quoteString(name)],
+        ["fields", "[]"],
+      ]);
+      lines.push(printDoc([`const ${varNames[i]} = `, callDoc("defineBlock", [stub], true), ";"]));
       return;
     }
     const component = byName.get(name);

@@ -27,7 +27,7 @@ This will generate a migration file for the specified component:
 | `-p, --path <path>`       | Custom path to store the migration file                                                                                                           | `.storyblok/migrations` |
 | `--schema <entry-file>`   | Schema entry file that exports `type Schema`. Generates a typed `defineMigration` file and its `.before.ts` snapshot instead of a `.js` migration | -                       |
 | `--no-before`             | With `--schema`, skip the `.before.ts` snapshot                                                                                                   | -                       |
-| `--before-push`           | With `--schema`, snapshot the block as it was before the latest `schema push` that changed it                                                     | -                       |
+| `--before-push`           | Snapshot the block as it was before the latest `schema push` that changed it. Requires `--schema` and can't be combined with `--no-before`        | -                       |
 
 ## Examples
 

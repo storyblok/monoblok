@@ -1,14 +1,13 @@
 import type { Command } from "commander";
 import chalk from "chalk";
 import { basename } from "pathe";
-import { discoverMigrations, loadMigrations } from "@storyblok/schema";
+import { loadMigrations } from "@storyblok/schema";
 import type { LoadedMigration, PublishMode } from "@storyblok/schema";
 import { getUI } from "../../../lib/ui";
 import { getLogger } from "../../../lib/logger/logger";
 import { getReporter } from "../../../lib/reporter/reporter";
 import { colorPalette, commands } from "../../../constants";
 import { CommandError, handleError, requireAuthentication } from "../../../utils";
-import { importModule } from "../../../utils/filesystem";
 import { createRegexFromGlob } from "../../../utils/format";
 import { importUserModuleDefault } from "../../../utils/user-module";
 import { session } from "../../../session";
@@ -23,6 +22,7 @@ import { isLegacyMigrationFilename, migrationTargetsComponent } from "../migrati
 import { UpdateStream } from "./streams/update-stream";
 import { pipeline } from "node:stream";
 import {
+  discoverContentMigrations,
   guardPendingReleases,
   migrationsDirectory,
   toMigrationCommandError,
@@ -38,20 +38,6 @@ const MIGRATION_EXTENSION = /\.(?:ts|js|mjs)$/;
 
 function isPublishMode(value: unknown): value is PublishMode {
   return PUBLISH_MODES.some((mode) => mode === value);
-}
-
-/**
- * Whether a `.js` file the engine discovers is a migration function rather
- * than a content migration. A file that fails to load here is left to the
- * content migration loader, which reports the failure.
- */
-async function exportsMigrationFunction(file: string): Promise<boolean> {
-  try {
-    const module = await importModule(file);
-    return typeof module.default === "function";
-  } catch {
-    return false;
-  }
 }
 
 type SelectedMigrations = {
@@ -75,12 +61,9 @@ async function selectMigrations(options: {
   const directory = migrationsDirectory(path, space);
   const jsFiles = await readMigrationFiles({ space, path, filter });
 
-  const contentFiles = new Set<string>();
-  for (const { file } of await discoverMigrations(directory)) {
-    if (!file.endsWith(".js") || !(await exportsMigrationFunction(file))) {
-      contentFiles.add(basename(file));
-    }
-  }
+  const contentFiles = new Set(
+    (await discoverContentMigrations(directory)).map(({ file }) => basename(file)),
+  );
 
   const functions = jsFiles.filter(
     (file) => !contentFiles.has(file.name) && (!name || migrationTargetsComponent(file.name, name)),
@@ -313,7 +296,7 @@ runCmd.action(async (name: string | undefined, options: MigrationsRunOptions, co
 
     if (total === 0 && name) {
       spinner.failed(`No migration found for "${name}".`);
-      const available = (await discoverMigrations(migrationsDirectory(path, fromSpace))).map(
+      const available = (await discoverContentMigrations(migrationsDirectory(path, fromSpace))).map(
         (migration) => migration.id,
       );
       throw new CommandError(

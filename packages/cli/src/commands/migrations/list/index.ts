@@ -1,5 +1,4 @@
 import type { Command } from "commander";
-import { discoverMigrations } from "@storyblok/schema";
 import type { MigrationRun } from "@storyblok/schema";
 import { colorPalette, commands } from "../../../constants";
 import { CommandError, handleError } from "../../../utils";
@@ -8,6 +7,7 @@ import { getUI } from "../../../lib/ui";
 import { migrationsCommand } from "../command";
 import {
   contentJournal,
+  discoverContentMigrations,
   migrationsDirectory,
   plural,
   toMigrationCommandError,
@@ -57,7 +57,7 @@ listCmd.action(async (options: { pending?: boolean }, command: Command) => {
 
   try {
     const runs = await contentJournal(path).list(space);
-    const files = await discoverMigrations(migrationsDirectory(path, space));
+    const files = await discoverContentMigrations(migrationsDirectory(path, space));
     const pending = pendingMigrations(
       files.map((file) => file.id),
       runs,

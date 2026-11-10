@@ -72,6 +72,16 @@ describe("migrations list command", () => {
     expect(await listed("--pending")).toEqual(["0002-rename-card-to-teaser"]);
   });
 
+  it("should not list a .js migration function whose name looks like a content migration", async () => {
+    space.hasMigrationFunction("3-article.js", (block) => block);
+    space.hasMigrations(["0004-rename-card-title", renameCardTitle]);
+
+    expect(await listed()).toEqual([
+      "No migration runs recorded for this space.",
+      "Pending on this machine: 0004-rename-card-title",
+    ]);
+  });
+
   it("should say nothing is pending with --pending once every migration ran", async () => {
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
     await run("run");

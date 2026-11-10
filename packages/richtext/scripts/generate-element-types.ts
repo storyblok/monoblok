@@ -170,7 +170,7 @@ export function generateElementTypesFromSource(
   const lines: string[] = [
     "// THIS FILE IS AUTO-GENERATED. DO NOT EDIT.",
     "",
-    `import type { RichTextMark, RichTextNode, ${ifaceImports.join(", ")} } from './overlay/types.gen';`,
+    `import type { RichTextMark, RichTextNode, ${ifaceImports.join(", ")} } from '../generated/overlay/types.gen';`,
     "",
   ];
 
@@ -210,7 +210,7 @@ export function generateElementTypesFromSource(
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   const TYPES_GEN_PATH = path.join(__dirname, "../src/generated/overlay/types.gen.ts");
-  const OUT_PATH = path.join(__dirname, "../src/generated/richtext-element-types.generated.ts");
+  const OUT_PATH = path.join(__dirname, "../src/core/richtext-element-types.generated.ts");
 
   writeFileSync(OUT_PATH, generateElementTypes(TYPES_GEN_PATH), "utf-8");
   formatGeneratedFile(OUT_PATH);

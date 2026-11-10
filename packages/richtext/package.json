@@ -148,11 +148,12 @@
     "targets": {
       "generate": {
         "dependsOn": [
-          "^build"
+          "^build",
+          "generate:openapi"
         ],
         "outputs": [
-          "{projectRoot}/src/generated/render-map.generated.ts",
-          "{projectRoot}/src/generated/richtext-element-types.generated.ts"
+          "{projectRoot}/src/core/render-map.generated.ts",
+          "{projectRoot}/src/core/richtext-element-types.generated.ts"
         ]
       },
       "generate:openapi": {
@@ -162,7 +163,8 @@
           "openapiCodegen"
         ],
         "outputs": [
-          "{projectRoot}/src/generated"
+          "{projectRoot}/src/generated",
+          "{projectRoot}/src/generated.sha256"
         ],
         "cache": true,
         "dependsOn": [
@@ -172,10 +174,17 @@
       "build": {
         "dependsOn": [
           "generate",
-          "^build"
+          "^build",
+          "generate:openapi"
         ],
         "outputs": [
           "{projectRoot}/dist/**"
+        ]
+      },
+      "playground": {
+        "dependsOn": [
+          "^build",
+          "generate:openapi"
         ]
       }
     }

@@ -8,6 +8,7 @@ import {
   zRichTextFieldValue,
   zTableFieldValue,
 } from "./internal-schemas";
+import { resolveConditionalRequirement } from "./conditional-requirement";
 import { isRecord, toValues } from "./shapes";
 import { slugifyFolderPath } from "../utils/slugify-folder-path";
 
@@ -73,6 +74,67 @@ function isBlank(value: unknown): boolean {
 
 function isMissingRequiredValue(field: SchemaFieldLike, value: unknown): boolean {
   return field.type === "custom" ? isBlank(value) : isUnset(value);
+}
+
+/** Whether a field must hold a value, given the sibling values its conditional settings read. */
+function isRequired(field: SchemaFieldLike, content: Record<string, unknown>): boolean {
+  const requirement = resolveConditionalRequirement(field, content);
+  return requirement === "unchanged" ? Boolean(field.required) : requirement === "required";
+}
+
+/** The keys a custom field's `required_fields` names. A blank entry names no key. */
+function pluginRequiredKeys(field: SchemaFieldLike): string[] {
+  if (field.type !== "custom" || typeof field.required_fields !== "string") {
+    return [];
+  }
+  return field.required_fields
+    .split(",")
+    .map((key) => key.trim())
+    .filter((key) => key !== "");
+}
+
+/**
+ * Reports each `required_fields` key a custom field's value leaves blank. An
+ * unset or non-object value leaves every key blank, so the keys are required
+ * even when the field itself is not. Hiding the field does not lift them
+ * either: publishing still rejects the story.
+ *
+ * Issues reported from `issueCountBefore` on come from the same value's plugin
+ * validator. A key one of them already covers, at the key or above it, is not
+ * reported again.
+ */
+function checkPluginRequiredKeys(
+  field: SchemaFieldLike,
+  value: unknown,
+  valuePath: (string | number)[],
+  blockName: string,
+  entity: string,
+  issues: ValidationIssue[],
+  issueCountBefore: number,
+): void {
+  const valueIssuePaths = issues.slice(issueCountBefore).map((issue) => pathKey(issue.path));
+  const valueKey = String(valuePath.at(-1));
+  for (const key of pluginRequiredKeys(field)) {
+    if (!isBlank(isRecord(value) ? value[key] : undefined)) {
+      continue;
+    }
+    const keyPath = [...valuePath, key];
+    const keyPathKey = pathKey(keyPath);
+    if (
+      valueIssuePaths.some(
+        (issuePath) => keyPathKey === issuePath || keyPathKey.startsWith(`${issuePath}\u0000`),
+      )
+    ) {
+      continue;
+    }
+    issues.push({
+      severity: "error",
+      code: "missing_required_field",
+      path: keyPath,
+      entity,
+      message: `Missing required field "${valueKey}.${key}" on component "${blockName}".`,
+    });
+  }
 }
 
 /** Capitalizes and gives the text exactly one trailing period. */
@@ -860,7 +922,7 @@ function validateBlokContent(
     // true, so an empty string is unset rather than a value. That matters most
     // for `number`, whose unset wire form *is* `''` — the value branch below
     // legitimately skips it, leaving the required check as the only diagnostic.
-    if (field.required && isMissingRequiredValue(field, value)) {
+    if (isRequired(field, content) && isMissingRequiredValue(field, value)) {
       issues.push({
         severity: "error",
         code: "missing_required_field",
@@ -868,22 +930,33 @@ function validateBlokContent(
         entity,
         message: `Missing required field "${field.name}" on component "${block.name}".`,
       });
-    }
-    // `''` counts as unset for every field type, matching the required check
-    // above. Validating it as a value instead made the same content both unset
-    // and wrongly typed depending on the field: `''` passed for `number` and
-    // `datetime`, whose unset wire form it is, and failed for `boolean`, `asset`,
-    // and `multilink`. Nothing is lost by skipping it, since an empty string
-    // carries no value to be wrong about.
-    else if (!isUnset(value)) {
-      validateFieldValue(
+    } else {
+      const issueCountBefore = issues.length;
+      // `''` counts as unset for every field type, matching the required check
+      // above. Validating it as a value instead made the same content both unset
+      // and wrongly typed depending on the field: `''` passed for `number` and
+      // `datetime`, whose unset wire form it is, and failed for `boolean`, `asset`,
+      // and `multilink`. Nothing is lost by skipping it, since an empty string
+      // carries no value to be wrong about.
+      if (!isUnset(value)) {
+        validateFieldValue(
+          field,
+          value,
+          blocksByName,
+          fieldPluginsByType,
+          [...path, field.name],
+          entity,
+          issues,
+        );
+      }
+      checkPluginRequiredKeys(
         field,
         value,
-        blocksByName,
-        fieldPluginsByType,
         [...path, field.name],
+        block.name,
         entity,
         issues,
+        issueCountBefore,
       );
     }
 
@@ -895,6 +968,7 @@ function validateBlokContent(
       if (isUnset(translatedValue)) {
         continue;
       }
+      const issueCountBefore = issues.length;
       validateFieldValue(
         field,
         translatedValue,
@@ -903,6 +977,15 @@ function validateBlokContent(
         [...path, key],
         entity,
         issues,
+      );
+      checkPluginRequiredKeys(
+        field,
+        translatedValue,
+        [...path, key],
+        block.name,
+        entity,
+        issues,
+        issueCountBefore,
       );
     }
   }
@@ -917,6 +1000,11 @@ function validateBlokContent(
  * Field-level translations (`headline__i18n__de`) are validated against the
  * field they belong to, so a translated value is held to the same rules as the
  * default one and is not mistaken for an unknown field.
+ *
+ * A field is required when its `required` flag or a matching conditional
+ * setting (`requiredWhen`) says so, evaluated against its sibling values the way
+ * the editor does. A custom field's `required_fields` keys must not be blank in
+ * its value.
  *
  * @example
  * const result = validateStory(story, { blocks: { page, hero } });

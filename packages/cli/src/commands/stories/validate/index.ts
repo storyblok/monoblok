@@ -10,6 +10,7 @@ import { getUI } from "../../../lib/ui";
 import { getLogger } from "../../../lib/logger/logger";
 import { getReporter } from "../../../lib/reporter/reporter";
 import { fetchStoriesStream, fetchStoryStream } from "../streams";
+import { fetchRemoteComponents } from "./actions";
 import { requireAuthentication } from "../../../utils/auth";
 import { handleError, toError } from "../../../utils/error/error";
 import { CommandError } from "../../../utils/error/command-error";
@@ -31,12 +32,14 @@ import {
   validateStory,
   writeValidationReport,
 } from "../../../lib/validation";
+import { buildBaselineSchemas, introducedIssues } from "./baseline";
 
 interface StoriesValidateOptions {
   schema?: string;
   startsWith?: string;
   level: string;
   format: string;
+  baseline?: boolean;
 }
 
 /** Human-readable heading for a story group, e.g. `app/home (story #123456)`. */
@@ -68,6 +71,18 @@ storiesCommand
   )
   .option("--level <level>", "Display threshold: error|warning", "warning")
   .option("--format <format>", "Output format: pretty|json", "pretty")
+  .option("--baseline", "Only report issues a push of the local schema would add", false)
+  .addHelpText(
+    "after",
+    `
+Reports every issue in the content. Use it to audit a space, or to check it
+after a push or content migration.
+
+Use --baseline to find the stories a push of the local schema would break,
+before \`schema push\` or in CI. It reports only the issues the push would add:
+content that is already invalid does not count, and blocks that exist only in
+the space are kept, as \`schema push\` without --delete keeps them.`,
+  )
   .action(async (options: StoriesValidateOptions, command) => {
     const { schema: schemaEntry } = options;
     const scopeParams = buildStoryScopeParams({ startsWith: options.startsWith });
@@ -98,7 +113,14 @@ storiesCommand
       }
 
       const isJson = format === "json";
-      logger.info("Stories validate started", { space, schemaEntry, startsWith, level, format });
+      logger.info("Stories validate started", {
+        space,
+        schemaEntry,
+        startsWith,
+        level,
+        format,
+        baseline: options.baseline,
+      });
 
       if (!requireAuthentication(state, verbose)) {
         // `requireAuthentication` has already reported through `handleError`,
@@ -117,10 +139,19 @@ storiesCommand
 
       // 2. Load the schema (fatal on bad/empty/unresolvable entry file — exit 2).
       let schema: SchemaLike;
+      let baselineSchema: SchemaLike | undefined;
       try {
         // Story content cannot be validated without block definitions, so an
         // entry file with none is a bad invocation rather than a clean run.
-        ({ schema } = await loadSchemaEntry(schemaEntry, { requireBlocks: true }));
+        const local = await loadSchemaEntry(schemaEntry, { requireBlocks: true });
+        schema = local.schema;
+        if (options.baseline) {
+          const remoteComponents = await fetchRemoteComponents(space);
+          ({ target: schema, baseline: baselineSchema } = buildBaselineSchemas(
+            local,
+            remoteComponents,
+          ));
+        }
       } catch (maybeError) {
         failFatal(toError(maybeError).message);
         return;
@@ -221,7 +252,11 @@ storiesCommand
             objectMode: true,
             async write(story: Story, _encoding, callback) {
               try {
-                const { issues } = await validateStory(story, schema);
+                let { issues } = await validateStory(story, schema);
+                if (baselineSchema && issues.length > 0) {
+                  const existing = await validateStory(story, baselineSchema);
+                  issues = introducedIssues(issues, existing.issues);
+                }
                 if (issues.length > 0) {
                   groups.push({ header: storyHeader(story), ref: storyRef(story), issues });
                 }
@@ -273,6 +308,7 @@ storiesCommand
         ...(startsWith === undefined
           ? {}
           : { filter: { option: "--starts-with", value: startsWith } }),
+        ...(baselineSchema ? { baseline: { space } } : {}),
         fetchFailures,
         fetchErrors,
         listFailed,

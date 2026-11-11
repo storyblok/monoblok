@@ -509,6 +509,145 @@ describe("stories validate command", () => {
     expect(failure.message).toBeTruthy();
   });
 
+  describe("--baseline", () => {
+    const remote = {
+      hasComponents(components: Record<string, unknown>[]) {
+        server.use(
+          http.get("https://mapi.storyblok.com/v1/spaces/12345/components", () =>
+            HttpResponse.json({ components }),
+          ),
+        );
+      },
+      failsToListComponents() {
+        server.use(
+          http.get("https://mapi.storyblok.com/v1/spaces/12345/components", () =>
+            HttpResponse.json({ message: "Internal Server Error" }, { status: 500 }),
+          ),
+        );
+      },
+    };
+
+    it("should report only the issues the local schema introduces", async () => {
+      remote.hasComponents([{ name: "page", schema: { headline: { type: "text" } } }]);
+      const stories = [
+        makeMockStory({ id: 1, full_slug: "empty", content: { component: "page" } }),
+        makeMockStory({
+          id: 2,
+          full_slug: "legacy",
+          content: { component: "page", headline: "Hi", legacy_cta: "x" },
+        }),
+      ];
+      preconditions.canListStories(stories);
+      preconditions.canFetchStories(stories);
+
+      await runValidate("--baseline");
+
+      expect(process.exitCode).toBe(1);
+      const output = loggedOutput();
+      expect(output).toContain("empty (story #1)");
+      expect(output).not.toContain("legacy (story #2)");
+      expect(output).toContain(
+        "1 new error, 0 new warnings across 1 of 2 stories (compared with the current schema of space 12345)",
+      );
+    });
+
+    it("should exit 0 when the local schema matches the space, even with invalid content", async () => {
+      schemaModule = {
+        page: {
+          name: "page",
+          fields: [
+            { name: "headline", type: "text", required: true },
+            { name: "body", type: "bloks", allow: ["hero"] },
+          ],
+        },
+        hero: { name: "hero", fields: [] },
+        teaser: { name: "teaser", fields: [] },
+      };
+      remote.hasComponents([
+        {
+          name: "page",
+          schema: {
+            headline: { type: "text", required: true },
+            body: {
+              type: "bloks",
+              restrict_components: true,
+              restrict_type: "",
+              component_whitelist: ["hero"],
+            },
+          },
+        },
+        { name: "hero", schema: {} },
+        { name: "teaser", schema: {} },
+      ]);
+      const story = makeMockStory({
+        full_slug: "home",
+        content: { component: "page", body: [{ component: "teaser", _uid: "1" }] },
+      });
+      preconditions.canListStories([story]);
+      preconditions.canFetchStories([story]);
+
+      await runValidate("--baseline");
+
+      expect(process.exitCode).toBe(0);
+      expect(loggedOutput()).toContain("0 new errors, 0 new warnings across 0 of 1 story");
+    });
+
+    it("should report a tightened limit that content already exceeded", async () => {
+      schemaModule = {
+        page: { name: "page", fields: [{ name: "headline", type: "text", max_length: 2 }] },
+      };
+      remote.hasComponents([
+        { name: "page", schema: { headline: { type: "text", max_length: 3 } } },
+      ]);
+      const story = makeMockStory({
+        full_slug: "home",
+        content: { component: "page", headline: "Hello" },
+      });
+      preconditions.canListStories([story]);
+      preconditions.canFetchStories([story]);
+
+      await runValidate("--baseline", "--format", "json");
+
+      expect(JSON.parse(machineOutput()).groups[0].issues).toEqual([
+        expect.objectContaining({ code: "constraint_violation", path: ["content", "headline"] }),
+      ]);
+    });
+
+    it("should validate blocks nested in blocks that exist only in the space", async () => {
+      schemaModule = {
+        hero: { name: "hero", fields: [{ name: "kicker", type: "text", required: true }] },
+      };
+      remote.hasComponents([
+        { name: "section", schema: { items: { type: "bloks" } } },
+        { name: "hero", schema: {} },
+      ]);
+      const story = makeMockStory({
+        id: 7,
+        full_slug: "nested",
+        content: { component: "section", items: [{ component: "hero", _uid: "1" }] },
+      });
+      preconditions.canListStories([story]);
+      preconditions.canFetchStories([story]);
+
+      await runValidate("--baseline", "--format", "json");
+
+      expect(process.exitCode).toBe(1);
+      const report = JSON.parse(machineOutput());
+      expect(report).toMatchObject({ baseline: { space: "12345" }, errors: 1 });
+      expect(report.groups[0].issues).toEqual([
+        expect.objectContaining({ code: "missing_required_field", entity: "block:hero" }),
+      ]);
+    });
+
+    it("should exit 2 when the space's schema cannot be fetched", async () => {
+      remote.failsToListComponents();
+
+      await runValidate("--baseline");
+
+      expect(process.exitCode).toBe(2);
+    });
+  });
+
   it("should exit 2 when not logged in", async () => {
     // `preAction` calls `initializeSession`; make that one call land logged out.
     vi.mocked(session().initializeSession).mockImplementationOnce(async () => {

@@ -84,6 +84,21 @@ export interface SchemaFieldLike {
   min_options?: string;
   /** `options`: maximum number of selected options (stored as a string). */
   max_options?: string;
+  /** `custom`: comma-separated keys of the plugin value that must not be blank. */
+  required_fields?: string;
+  /** Rules that modify the field while its sibling values match them. */
+  conditional_settings?: readonly ConditionalSettingLike[];
+}
+
+/** A `conditional_settings` entry. Any part may be missing on a half-configured rule. */
+export interface ConditionalSettingLike {
+  rule_match?: string | null;
+  rule_conditions?: readonly {
+    validated_object?: { field_key?: string } | null;
+    validation?: string | null;
+    value?: unknown;
+  }[];
+  modifications?: readonly { display?: string; required?: boolean }[];
 }
 
 /** A block definition (`defineBlock` result). */

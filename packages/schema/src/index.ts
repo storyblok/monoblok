@@ -56,7 +56,7 @@ export { defineSchema } from "./helpers/define-schema";
 export type { Schema } from "./helpers/schema-type";
 
 // Field types
-export { FIELD_TYPES } from "./field-types";
+export { FIELD_TYPES, LAYOUT_FIELD_TYPES } from "./field-types";
 // Restrictions
 export {
   DENIABLE_FIELD_TYPES,

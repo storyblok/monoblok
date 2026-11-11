@@ -1075,6 +1075,84 @@ describe("component property type annotations", () => {
     expect(result).not.toContain("contact_details");
   });
 
+  it("should skip a tab marked required", async () => {
+    // `required` on a layout field has no effect in the editor. The tab must not come back
+    // as a required property just because its key is listed as required.
+    const componentWithRequiredTab: Component = {
+      ...componentDefaults,
+      name: "test_component",
+      display_name: "Test Component",
+      created_at: "2023-01-01T00:00:00Z",
+      updated_at: "2023-01-01T00:00:00Z",
+      id: 1,
+      schema: {
+        "tab-required": {
+          type: "tab",
+          required: true,
+          keys: ["title"],
+        },
+        title: {
+          type: "text",
+          required: true,
+        },
+      },
+      internal_tags_list: [],
+      internal_tag_ids: [],
+    };
+
+    const spaceData: SpaceComponentsData = {
+      components: [componentWithRequiredTab],
+      datasources: [],
+      groups: [],
+      presets: [],
+      internalTags: [],
+    };
+
+    for (const strict of [false, true]) {
+      const result = await generateTypes(spaceData, { strict });
+
+      expect(result).toContain("title: string");
+      expect(result).not.toContain("tab-required");
+    }
+  });
+
+  it("should skip legacy group properties", async () => {
+    // Older spaces can still hold fields of type `group`. Like `section` and `tab`,
+    // they only arrange other fields and never hold a value of their own.
+    const componentWithLegacyGroup: Component = {
+      ...componentDefaults,
+      name: "test_component",
+      display_name: "Test Component",
+      created_at: "2023-01-01T00:00:00Z",
+      updated_at: "2023-01-01T00:00:00Z",
+      id: 1,
+      schema: {
+        legacy_group: {
+          type: "group",
+        },
+        title: {
+          type: "text",
+          required: true,
+        },
+      },
+      internal_tags_list: [],
+      internal_tag_ids: [],
+    };
+
+    const spaceData: SpaceComponentsData = {
+      components: [componentWithLegacyGroup],
+      datasources: [],
+      groups: [],
+      presets: [],
+      internalTags: [],
+    };
+
+    const result = await generateTypes(spaceData, { strict: false });
+
+    expect(result).toContain("title: string");
+    expect(result).not.toContain("legacy_group");
+  });
+
   it("should keep a regular field whose name starts with tab-", async () => {
     // Tabs are identified by their type, not by their key. A content field that merely
     // happens to be named `tab-...` still holds a value and belongs in the types.

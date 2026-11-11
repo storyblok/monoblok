@@ -75,13 +75,13 @@ storiesCommand
   .addHelpText(
     "after",
     `
-Without --baseline, every issue in the content is reported. Use it to audit a
-space, or to check it after a push or content migration.
+Reports every issue in the content. Use it to audit a space, or to check it
+after a push or content migration.
 
-With --baseline, only issues a push of the local schema would add are reported.
-Use it before \`schema push\` or in CI. Content that is already invalid does not
-count, and blocks that exist only in the space are kept, as \`schema push\`
-without --delete keeps them.`,
+Use --baseline to find the stories a push of the local schema would break,
+before \`schema push\` or in CI. It reports only the issues the push would add:
+content that is already invalid does not count, and blocks that exist only in
+the space are kept, as \`schema push\` without --delete keeps them.`,
   )
   .action(async (options: StoriesValidateOptions, command) => {
     const { schema: schemaEntry } = options;

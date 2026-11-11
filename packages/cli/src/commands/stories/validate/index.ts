@@ -71,18 +71,17 @@ storiesCommand
   )
   .option("--level <level>", "Display threshold: error|warning", "warning")
   .option("--format <format>", "Output format: pretty|json", "pretty")
-  .option(
-    "--baseline",
-    "Only report issues the local schema introduces, compared with the space's current schema",
-    false,
-  )
+  .option("--baseline", "Only report issues a push of the local schema would add", false)
   .addHelpText(
     "after",
     `
-With --baseline, every story is validated twice: against the space's current
-schema, and against the schema \`schema push <entry-file>\` would leave behind.
-Only issues the second run adds are reported. Blocks that exist only in the
-space are kept, as \`schema push\` without --delete keeps them.`,
+Without --baseline, every issue in the content is reported. Use it to audit a
+space, or to check it after a push or content migration.
+
+With --baseline, only issues a push of the local schema would add are reported.
+Use it before \`schema push\` or in CI. Content that is already invalid does not
+count, and blocks that exist only in the space are kept, as \`schema push\`
+without --delete keeps them.`,
   )
   .action(async (options: StoriesValidateOptions, command) => {
     const { schema: schemaEntry } = options;

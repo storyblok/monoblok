@@ -1541,3 +1541,51 @@ describe("validateStory — deny entries", () => {
     expect(result.issues.find((i) => i.code === "disallowed_component")).toBeDefined();
   });
 });
+
+describe("validateStory — layout fields", () => {
+  const form = defineBlock({
+    name: "form",
+    is_root: true,
+    fields: [
+      defineField("tab-1", { type: "tab", keys: ["title"], required: true }),
+      defineField("details", { type: "section", keys: ["title"], required: true }),
+      defineField("legacy", { type: "group", required: true }),
+      defineField("title", { type: "text" }),
+    ],
+  });
+  const layoutSchema = { blocks: { form } };
+
+  it("does not require a layout field marked required, since it holds no value", () => {
+    const result = validateStory({ content: { component: "form", title: "Hi" } }, layoutSchema);
+    expect(result.ok).toBe(true);
+    expect(result.issues).toEqual([]);
+  });
+
+  it("accepts a layout key left unset", () => {
+    const result = validateStory(
+      { content: { component: "form", "tab-1": null, details: undefined, legacy: "" } },
+      layoutSchema,
+    );
+    expect(result.issues).toEqual([]);
+  });
+
+  it("warns (but does not fail) on a value stored under a layout key", () => {
+    const result = validateStory(
+      { content: { component: "form", "tab-1": "oops", details__i18n__de: "oops" } },
+      layoutSchema,
+    );
+    expect(result.ok).toBe(true);
+    expect(result.issues).toEqual([
+      expect.objectContaining({
+        severity: "warning",
+        code: "layout_field_value",
+        path: ["content", "tab-1"],
+      }),
+      expect.objectContaining({
+        severity: "warning",
+        code: "layout_field_value",
+        path: ["content", "details__i18n__de"],
+      }),
+    ]);
+  });
+});

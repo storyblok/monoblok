@@ -205,12 +205,26 @@ const getPropertyTypeAnnotation = (property: FieldSchema, prefix?: string, suffi
       return { type: "boolean" };
     case "datetime":
     case "image":
+    case "file":
+    case "link":
     case "markdown":
     case "number":
     case "text":
     case "textarea":
       return { type: "string" };
+    case "commerce":
+    case "custom":
+      return { type: "any" };
+    case "section":
+    case "tab":
+    case "group":
+      // Unreachable: layout fields are skipped before their type is annotated.
+      // Listed so the exhaustiveness guard below holds.
+      return { type: "any" };
     default:
+      // Unknown types still reach this at runtime, e.g. from a newer API than the
+      // CLI was built against.
+      property.type satisfies never;
       return { type: "any" };
   }
 };

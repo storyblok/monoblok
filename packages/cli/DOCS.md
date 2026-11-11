@@ -13,9 +13,6 @@
 
 ## Check a schema change before a push
 
-By default, the command reports every issue in the content. Use it to audit a space, or to check it
-after a push or a content migration.
-
 Use `--baseline` to find the stories a push of the local schema would break, before
 [`schema push`](/docs/tooling/cli/schema/push) or in CI. It reports only the issues the push would
 add: content that’s already invalid doesn’t count, and blocks that exist only in the space are kept,

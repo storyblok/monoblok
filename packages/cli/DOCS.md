@@ -16,8 +16,8 @@
 Use `--baseline` to find the stories a push of the local schema would break, before
 [`schema push`](/docs/tooling/cli/schema/push) or in CI. It reports only the issues the push would
 add: content that’s already invalid doesn’t count, and blocks that exist only in the space are kept,
-as `schema push` without `--delete` keeps them. The command exits with code `2` when it can’t read
-the schema of the space.
+as `schema push` without `--delete` keeps them. It exits with code `2` when it can’t read the schema
+of the space.
 
 <!-- target: src/content/docs/docs/tooling/cli/stories/validate.mdx#examples (add to the first code block) -->
 

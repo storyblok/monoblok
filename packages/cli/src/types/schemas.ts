@@ -1,23 +1,11 @@
-import type { StoryblokPropertyType } from "./storyblok";
 import type { Field } from ".";
 
-export type ComponentPropertySchemaType =
-  | StoryblokPropertyType
-  | "array"
-  | "bloks"
-  | "boolean"
-  | "custom"
-  | "datetime"
-  | "group"
-  | "image"
-  | "markdown"
-  | "number"
-  | "option"
-  | "options"
-  | "section"
-  | "tab"
-  | "text"
-  | "textarea";
+/**
+ * Every field type the Management API accepts on a component schema. Derived from
+ * the generated `Field` union so `storyblok types` fails to compile when a new
+ * field type arrives without a mapping.
+ */
+export type ComponentPropertySchemaType = Field["type"];
 
 export interface ComponentPropertySchemaOption {
   _uid: string;

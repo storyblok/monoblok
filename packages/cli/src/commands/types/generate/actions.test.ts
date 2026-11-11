@@ -1153,6 +1153,41 @@ describe("component property type annotations", () => {
     expect(result).not.toContain("legacy_group");
   });
 
+  it("should type legacy file and link properties as strings", async () => {
+    // The legacy `file` and `link` field types store a bare URL string.
+    const componentWithLegacyFields: Component = {
+      ...componentDefaults,
+      name: "test_component",
+      display_name: "Test Component",
+      created_at: "2023-01-01T00:00:00Z",
+      updated_at: "2023-01-01T00:00:00Z",
+      id: 1,
+      schema: {
+        legacy_file: {
+          type: "file",
+        },
+        legacy_link: {
+          type: "link",
+        },
+      },
+      internal_tags_list: [],
+      internal_tag_ids: [],
+    };
+
+    const spaceData: SpaceComponentsData = {
+      components: [componentWithLegacyFields],
+      datasources: [],
+      groups: [],
+      presets: [],
+      internalTags: [],
+    };
+
+    const result = await generateTypes(spaceData, { strict: false });
+
+    expect(result).toContain("legacy_file?: string");
+    expect(result).toContain("legacy_link?: string");
+  });
+
   it("should keep a regular field whose name starts with tab-", async () => {
     // Tabs are identified by their type, not by their key. A content field that merely
     // happens to be named `tab-...` still holds a value and belongs in the types.

@@ -8,6 +8,7 @@ export type ComponentPropertySchemaType =
   | "boolean"
   | "custom"
   | "datetime"
+  | "group"
   | "image"
   | "markdown"
   | "number"

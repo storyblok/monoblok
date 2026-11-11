@@ -1,4 +1,5 @@
 import { compile, type JSONSchema } from "json-schema-to-typescript";
+import { LAYOUT_FIELD_TYPES } from "@storyblok/schema";
 import type { Component, SpaceComponentsData } from "../../../commands/components/constants";
 import {
   __dirname,
@@ -69,9 +70,9 @@ const SOURCE_MAP_START = "//# sourceMappingURL=";
 const IMPORT_STATEMENT = /^import\s+(?:(.+?)\s+from\s+)?["'][^"']+["'];?[ \t]*$/gm;
 // Field types that exist purely to arrange other fields in the editor. They carry no
 // value of their own, so a story never stores anything under their key. The management
-// API calls the editor's "Group" field a `section`.
-const LAYOUT_FIELD_TYPES = new Set<ComponentPropertySchemaType>(["section", "tab"]);
-const isLayoutFieldType = (type: ComponentPropertySchemaType) => LAYOUT_FIELD_TYPES.has(type);
+// API calls the editor's "Group" field a `section`; `group` only appears in older spaces.
+const LAYOUT_FIELD_TYPE_SET: ReadonlySet<string> = new Set<string>(LAYOUT_FIELD_TYPES);
+const isLayoutFieldType = (type: ComponentPropertySchemaType) => LAYOUT_FIELD_TYPE_SET.has(type);
 const getDatasourceTypeTitle = (slug: string) => `${toPascalCase(slug)}DataSource`;
 
 const getImportedBindings = (content: string) =>

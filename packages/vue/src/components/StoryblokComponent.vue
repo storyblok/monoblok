@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { inject, ref, resolveDynamicComponent, useSlots } from "vue";
+import { camelize, capitalize, inject, ref, resolveDynamicComponent, useSlots } from "vue";
 import type { Slots } from "vue";
 import type { SbBlokData, SbVueSDKOptions } from "../types.ts";
 
@@ -12,15 +12,15 @@ defineExpose({
   value: blokRef,
 });
 
-const componentFound: boolean = typeof resolveDynamicComponent(props.blok.component) !== "string";
-
 const VueSDKOptions: SbVueSDKOptions | undefined = inject("VueSDKOptions");
 
 const componentName = ref(props.blok.component?.replace(/_/g, "-"));
+const componentFound: boolean = typeof resolveDynamicComponent(componentName.value) !== "string";
 if (!componentFound && VueSDKOptions) {
   if (!VueSDKOptions.enableFallbackComponent) {
+    const registrationName = capitalize(camelize(componentName.value ?? ""));
     console.error(
-      `Component could not be found for blok "${props.blok.component}"! Is it defined in main.ts as "app.component("${props.blok.component}", ${props.blok.component});"?`,
+      `Component could not be found for blok "${props.blok.component}"! Is it defined in main.ts as "app.component("${registrationName}", ${registrationName});"?`,
     );
   } else {
     componentName.value = VueSDKOptions.customFallbackComponent ?? "FallbackComponent";

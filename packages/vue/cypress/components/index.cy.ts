@@ -6,8 +6,10 @@ import MyCustomFallback from "../../playground/vue/src/components/MyCustomFallba
 import { apiPlugin, StoryblokVue } from "@storyblok/vue";
 import EmojiRandomizer from "./testing-components/EmojiRandomizer.vue";
 import Essential from "./testing-components/Essential.vue";
+import FeaturedPosts from "./testing-components/FeaturedPosts.vue";
 import RealApi from "./testing-components/RealApi.vue";
 import RichText from "./testing-components/RichText.vue";
+import UnderscoredBlok from "./testing-components/UnderscoredBlok.vue";
 import { mount } from "cypress/vue";
 
 const prepare = (pluginOpts = {}, comp = Essential, globalOpts = {}) => {
@@ -114,7 +116,7 @@ describe("@storyblok/vue", () => {
       prepare({ use: [apiPlugin], enableFallbackComponent: false }, RealApi);
       cy.get("@error").should(
         "be.calledWithMatch",
-        'Component could not be found for blok "page"! Is it defined in main.ts as "app.component("page", page);"?',
+        'Component could not be found for blok "page"! Is it defined in main.ts as "app.component("Page", Page);"?',
       );
     });
 
@@ -166,7 +168,7 @@ describe("@storyblok/vue", () => {
       cy.get("[data-test=custom-fallback-component]").should("not.exist");
       cy.get("@error").should(
         "be.calledWithMatch",
-        'Component could not be found for blok "teaser"! Is it defined in main.ts as "app.component("teaser", teaser);"?',
+        'Component could not be found for blok "teaser"! Is it defined in main.ts as "app.component("Teaser", Teaser);"?',
       );
     });
 
@@ -187,6 +189,41 @@ describe("@storyblok/vue", () => {
         "be.calledWithMatch",
         'Is the Fallback component "MyCustomFallback" registered properly?',
       );
+    });
+    describe("with an underscored blok name", () => {
+      it("should render the component registered under the PascalCase name without an error", () => {
+        prepare({}, UnderscoredBlok, { components: { FeaturedPosts } });
+
+        cy.get("[data-test=featured-posts]").should("have.text", "FeaturedPosts works");
+        cy.get("@error").should("not.be.calledWithMatch", "Component could not be found");
+      });
+
+      it("should render the registered component instead of the fallback when enableFallbackComponent is true", () => {
+        prepare({ enableFallbackComponent: true }, UnderscoredBlok, {
+          components: { FeaturedPosts },
+        });
+
+        cy.get("[data-test=featured-posts]").should("have.text", "FeaturedPosts works");
+        cy.get(".fallback-component").should("not.exist");
+      });
+
+      it("should render the fallback component when enableFallbackComponent is true and no component is registered", () => {
+        prepare({ enableFallbackComponent: true }, UnderscoredBlok);
+
+        cy.get(".fallback-component").contains(
+          "Component could not be found for blok featured_posts! Is it configured correctly?",
+        );
+      });
+
+      it("should suggest the PascalCase name in the console.error when no component is registered", () => {
+        prepare({}, UnderscoredBlok);
+
+        cy.get("[data-test=root]").should("exist");
+        cy.get("@error").should(
+          "be.calledWithMatch",
+          'Component could not be found for blok "featured_posts"! Is it defined in main.ts as "app.component("FeaturedPosts", FeaturedPosts);"?',
+        );
+      });
     });
   });
 

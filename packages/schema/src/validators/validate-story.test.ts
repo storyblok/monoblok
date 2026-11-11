@@ -1543,13 +1543,16 @@ describe("validateStory — deny entries", () => {
 });
 
 describe("validateStory — layout fields", () => {
+  // `defineField` rejects `required` on layout fields, so this is the
+  // plain-object form a schema pulled from a space or written without the
+  // helpers takes.
   const form = defineBlock({
     name: "form",
     is_root: true,
     fields: [
-      defineField("tab-1", { type: "tab", keys: ["title"], required: true }),
-      defineField("details", { type: "section", keys: ["title"], required: true }),
-      defineField("legacy", { type: "group", required: true }),
+      { name: "tab-1", type: "tab", keys: ["title"], required: true },
+      { name: "details", type: "section", keys: ["title"], required: true },
+      { name: "legacy", type: "group", required: true },
       defineField("title", { type: "text" }),
     ],
   });

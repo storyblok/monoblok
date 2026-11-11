@@ -249,7 +249,6 @@ type DslInputAll = {
    */
   deny?: BlockRef | FolderRef | TagRef | readonly (BlockRef | FolderRef | TagRef)[];
   datasource?: DatasourceRef;
-  required?: boolean;
 };
 
 /**
@@ -267,12 +266,10 @@ type DslInputAll = {
  * exempting all three on every variant would leave a hole in the middle of the
  * check.
  *
- * `name` and `required` stay universal. `defineField` stamps `name` itself, and
- * the layout-only `section`/`tab` variants do not declare `required`.
+ * `name` stays universal because `defineField` stamps it itself.
  */
 type DslKeysFor<TVariant> =
   | "name"
-  | "required"
   | ("component_whitelist" extends keyof TVariant ? "allow" : never)
   | ("component_denylist" extends keyof TVariant ? "deny" : never)
   | ("datasource_slug" extends keyof TVariant ? "datasource" : never);

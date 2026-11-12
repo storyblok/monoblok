@@ -168,8 +168,8 @@ describe("migrations run command for content migrations", () => {
       defineMigration([
         fieldsToBlock({
           block: "card",
-          field: "meta",
-          into: { block: "meta", fields: { title: "og_title" } },
+          fields: { title: "og_title" },
+          into: { block: "meta", field: "meta" },
         }),
       ]),
     ]);
@@ -183,7 +183,7 @@ describe("migrations run command for content migrations", () => {
     expect(space.writes).toEqual([]);
     expect(warn).toHaveBeenCalledWith(
       expect.stringContaining(
-        'fieldsToBlock card.meta skipped: the card block in the space has the field "title" again.',
+        'fieldsToBlock card skipped: the card block in the space has the field "title" again.',
       ),
     );
   });

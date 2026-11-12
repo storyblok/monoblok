@@ -6,7 +6,7 @@ import type { Component, ComponentFolder, Datasource, InternalTag } from "../../
 import { buildGroupPathByUuid } from "../folders";
 import {
   collectCustomFieldTypes,
-  collectDroppedLayoutFieldOptions,
+  collectRequiredLayoutFields,
   generateComponentFile,
   generateDatasourceFile,
   generateFieldPluginFile,
@@ -23,8 +23,8 @@ export interface WriteSchemaFilesResult {
   placeholderFieldPlugins: { fieldType: string; filePath: string }[];
   /** `<block>.<field>` paths of custom fields that were skipped because they name no field plugin. */
   fieldsWithoutFieldType: string[];
-  /** `<block>.<field>: <options>` for layout fields whose unowned options were dropped. */
-  droppedLayoutFieldOptions: string[];
+  /** `<block>.<field>` paths of layout fields whose `required` setting was removed. */
+  requiredLayoutFields: string[];
 }
 
 /** Writes a file, creating parent directories as needed. */
@@ -140,6 +140,6 @@ export async function writeSchemaFiles(
     writtenFiles,
     placeholderFieldPlugins,
     fieldsWithoutFieldType,
-    droppedLayoutFieldOptions: collectDroppedLayoutFieldOptions(components),
+    requiredLayoutFields: collectRequiredLayoutFields(components),
   };
 }

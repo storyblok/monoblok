@@ -980,7 +980,7 @@ describe("generateComponentFile", () => {
     });
   });
 
-  it("should drop conditional required modifications from a layout field", () => {
+  it("should make conditional required modifications on a layout field not required in place", () => {
     const rule_conditions = [
       {
         validated_object: { type: "field", field_key: "show", field_attr: "value" },
@@ -995,16 +995,23 @@ describe("generateComponentFile", () => {
           type: "section",
           pos: 0,
           conditional_settings: [
-            { rule_match: "any", rule_conditions, modifications: [{ required: true }] },
+            {
+              rule_match: "any",
+              rule_conditions,
+              modifications: [{ required: true }, { display: "hide" }],
+            },
             { rule_match: "any", rule_conditions, modifications: [{ display: "hide" }] },
-            { rule_match: "any", rule_conditions, modifications: [{ required: false }] },
           ],
         },
         "tab-1": {
           type: "tab",
           pos: 1,
           conditional_settings: [
-            { rule_match: "any", rule_conditions, modifications: [{ required: true }] },
+            {
+              rule_match: "any",
+              rule_conditions,
+              modifications: [{ display: "hide", required: true }],
+            },
           ],
         },
         title: {
@@ -1026,11 +1033,25 @@ describe("generateComponentFile", () => {
           name: "details",
           type: "section",
           conditional_settings: [
+            {
+              rule_match: "any",
+              rule_conditions,
+              modifications: [{ required: false }, { display: "hide" }],
+            },
             { rule_match: "any", rule_conditions, modifications: [{ display: "hide" }] },
-            { rule_match: "any", rule_conditions, modifications: [{ required: false }] },
           ],
         },
-        { name: "tab-1", type: "tab" },
+        {
+          name: "tab-1",
+          type: "tab",
+          conditional_settings: [
+            {
+              rule_match: "any",
+              rule_conditions,
+              modifications: [{ display: "hide", required: false }],
+            },
+          ],
+        },
         {
           name: "title",
           type: "text",

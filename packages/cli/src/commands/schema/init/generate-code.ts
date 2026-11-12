@@ -57,71 +57,49 @@ const LAYOUT_FIELD_KEYS = new Map<string, ReadonlySet<string>>(
   } satisfies Record<(typeof LAYOUT_FIELD_TYPES)[number], ReadonlySet<string>>),
 );
 
-const BLOCKS_PUBLISHING = "(blocks publishing)";
-
 /**
- * Removes what `defineField` rejects on a layout field: keys its type doesn't own
- * and conditional `required: true` modifications. Other field types pass through
- * unchanged.
+ * Removes the keys a layout field's type doesn't own and turns each conditional
+ * `required: true` into the editor's "Not Required". Rewriting in place keeps
+ * every modification at its index, which matters because the editor and the
+ * Management API read only the first one. Other field types pass through unchanged.
  */
 function toLayoutDslField(field: Record<string, unknown>): {
   field: Record<string, unknown>;
-  dropped: string[];
+  removedRequired: boolean;
 } {
   const ownedKeys = LAYOUT_FIELD_KEYS.get(String(field.type));
   if (!ownedKeys) {
-    return { field, dropped: [] };
+    return { field, removedRequired: false };
   }
-  const out: Record<string, unknown> = {};
-  const dropped: string[] = [];
-  for (const [key, value] of Object.entries(field)) {
-    if (ownedKeys.has(key)) {
-      out[key] = value;
-    } else {
-      dropped.push(key === "required" && value === true ? `required ${BLOCKS_PUBLISHING}` : key);
-    }
-  }
+  let removedRequired = field.required === true;
+  const out = Object.fromEntries(Object.entries(field).filter(([key]) => ownedKeys.has(key)));
   if (Array.isArray(out.conditional_settings)) {
-    let droppedRequired = false;
-    const settings = out.conditional_settings.flatMap((setting: unknown) => {
+    out.conditional_settings = out.conditional_settings.map((setting: unknown) => {
       if (!isRecord(setting) || !Array.isArray(setting.modifications)) {
-        return [setting];
+        return setting;
       }
-      const modifications = setting.modifications.flatMap((modification: unknown) => {
-        if (!isRecord(modification) || modification.required !== true) {
-          return [modification];
-        }
-        droppedRequired = true;
-        const { required: _required, ...rest } = modification;
-        return Object.keys(rest).length > 0 ? [rest] : [];
-      });
-      if (modifications.length === setting.modifications.length) {
-        return [setting];
-      }
-      return modifications.length > 0 ? [{ ...setting, modifications }] : [];
+      return {
+        ...setting,
+        modifications: setting.modifications.map((modification: unknown) => {
+          if (!isRecord(modification) || modification.required !== true) {
+            return modification;
+          }
+          removedRequired = true;
+          return { ...modification, required: false };
+        }),
+      };
     });
-    if (droppedRequired) {
-      dropped.push(`conditional required ${BLOCKS_PUBLISHING}`);
-    }
-    if (settings.length > 0) {
-      out.conditional_settings = settings;
-    } else {
-      delete out.conditional_settings;
-    }
   }
-  return { field: out, dropped };
+  return { field: out, removedRequired };
 }
 
-export function collectDroppedLayoutFieldOptions(components: Component[]): string[] {
+/** `<block>.<field>` paths of layout fields whose `required` `toLayoutDslField` removes. */
+export function collectRequiredLayoutFields(components: Component[]): string[] {
   const result: string[] = [];
   for (const component of components) {
     for (const [fieldName, field] of Object.entries(component.schema ?? {})) {
-      if (!isRecord(field)) {
-        continue;
-      }
-      const { dropped } = toLayoutDslField(stripKeys(field, FIELD_STRIP_KEYS));
-      if (dropped.length > 0) {
-        result.push(`${component.name}.${fieldName}: ${dropped.join(", ")}`);
+      if (isRecord(field) && toLayoutDslField(field).removedRequired) {
+        result.push(`${component.name}.${fieldName}`);
       }
     }
   }

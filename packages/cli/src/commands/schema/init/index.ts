@@ -95,7 +95,7 @@ schemaCommand
         writtenFiles,
         placeholderFieldPlugins,
         fieldsWithoutFieldType,
-        droppedLayoutFieldOptions,
+        requiredLayoutFields,
       } = await writeSchemaFiles(
         targetPath,
         rawComponents,
@@ -131,11 +131,11 @@ schemaCommand
         );
       }
 
-      if (droppedLayoutFieldOptions.length > 0) {
+      if (requiredLayoutFields.length > 0) {
         ui.warn(
           [
-            "Dropped settings that tab, section, and group fields don't support. The next schema push removes them from the space:",
-            ...droppedLayoutFieldOptions.map((entry) => `  - ${entry}`),
+            "Made these group and tab fields not required. They hold no value, so a required one prevents publishing. The next schema push updates the space:",
+            ...requiredLayoutFields.map((entry) => `  - ${entry}`),
           ].join("\n"),
         );
       }

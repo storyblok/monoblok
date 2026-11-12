@@ -584,10 +584,10 @@ describe("schema init command", () => {
       await schemaCommand.parseAsync(["node", "test", "validate", join(diskDir, "schema.ts")]);
 
       expect(process.exitCode).toBe(0);
-      expect(warnings()).toContain("form.details: required (blocks publishing), max_length");
+      expect(warnings()).toContain("form.details");
     });
 
-    it("should report a conditional required on a layout field but not a not-required one", async () => {
+    it("should report a conditional `required: true` on a layout field, not `required: false`", async () => {
       const comp = makeMockComponent({
         name: "form",
         is_root: true,
@@ -607,7 +607,7 @@ describe("schema init command", () => {
       preconditions.hasRemoteSchema({ components: [comp] });
       diskDir = await initToDisk();
 
-      expect(warnings()).toContain("form.tab-1: conditional required (blocks publishing)");
+      expect(warnings()).toContain("form.tab-1");
       expect(warnings()).not.toContain("form.details");
     });
   });

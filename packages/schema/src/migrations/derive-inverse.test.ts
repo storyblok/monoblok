@@ -54,7 +54,7 @@ describe("deriveInverse", () => {
 
   it("refuses to invert fieldsToBlock", () => {
     const derived = deriveInverse([
-      fieldsToBlock<AnySchema, AnySchema, "form", string>({
+      fieldsToBlock<SchemaShape, SchemaShape, "form", string>({
         block: "form",
         fields: { turnstileTheme: "theme" },
         into: "turnstile",

@@ -302,6 +302,15 @@ type FieldValue<TSchema extends SchemaShape, TBlock extends string, TField> =
       : unknown
     : unknown;
 
+/** A block a callback writes may leave out `_uid`; the runner derives one from its position. */
+type WithOptionalUids<T> = T extends readonly (infer Item)[]
+  ? WithOptionalUids<Item>[]
+  : T extends { _uid: string; component: string }
+    ? Omit<WithOptionalChildUids<T>, "_uid"> & { _uid?: string }
+    : T;
+
+type WithOptionalChildUids<T> = { [K in keyof T]: WithOptionalUids<T[K]> };
+
 /**
  * What a callback may write to `<block>.<field>`. A schema without literal block
  * and field names (the bare `SchemaShape` interface) resolves every field to
@@ -311,7 +320,7 @@ type WritableValue<TSchema extends SchemaShape, TBlock extends string, TField> =
   FieldValue<TSchema, TBlock, TField>,
 ] extends [never]
   ? unknown
-  : FieldValue<TSchema, TBlock, TField>;
+  : WithOptionalUids<FieldValue<TSchema, TBlock, TField>>;
 
 /**
  * Constraint for a `const` type parameter that captures what a callback returns.
@@ -459,7 +468,11 @@ export function alterBlock<
     block: TBlock extends BlockNameOf<TBefore>
       ? ContentOf<TBefore, TBlock>
       : Record<string, unknown>,
-  ) => void | (TBlock extends BlockNameOf<TAfter> ? ContentOf<TAfter, TBlock> : never),
+  ) =>
+    | void
+    | (TBlock extends BlockNameOf<TAfter>
+        ? WithOptionalChildUids<ContentOf<TAfter, TBlock>>
+        : never),
 ): AlterBlockOp<TAfter, TBefore> {
   return {
     kind: "alterBlock",

@@ -641,3 +641,22 @@ describe("fieldsToBlock", () => {
     ]);
   });
 });
+
+describe("blocks a callback creates", () => {
+  it("should accept a block without a _uid, since the runner derives one", () => {
+    defineMigration<FixtureSchema>([
+      addField({ block: "card", field: "meta" }, () => [{ component: "meta", og_title: "new" }]),
+      alterBlock({ block: "section" }, (block) => ({
+        ...block,
+        meta: [{ component: "meta", author: "Ada" }],
+      })),
+    ]);
+  });
+
+  it("should still check the values of a block without a _uid", () => {
+    defineMigration<FixtureSchema>([
+      // @ts-expect-error og_title holds text
+      addField({ block: "card", field: "meta" }, () => [{ component: "meta", og_title: 42 }]),
+    ]);
+  });
+});

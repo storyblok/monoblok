@@ -61,7 +61,7 @@ const renameCardTitle = defineMigration([
 ]);
 const renameCardToTeaser = defineMigration([renameBlock({ block: "card", to: "teaser" })]);
 const wrapPageBody = defineMigration([
-  wrapChildren({ block: "page", field: "body", in: "grid", into: "items" }),
+  wrapChildren({ block: "page", field: "body", into: { block: "grid", field: "items" } }),
 ]);
 const cardBlock = defineBlock({ name: "card", fields: [defineField("title", { type: "text" })] });
 const pageBlock = defineBlock({ name: "page", fields: [defineField("body", { type: "bloks" })] });
@@ -168,9 +168,8 @@ describe("migrations run command for content migrations", () => {
       defineMigration([
         fieldsToBlock({
           block: "card",
-          fields: { title: "og_title" },
-          into: "meta",
-          component: "meta",
+          field: "meta",
+          into: { block: "meta", fields: { title: "og_title" } },
         }),
       ]),
     ]);
@@ -184,7 +183,7 @@ describe("migrations run command for content migrations", () => {
     expect(space.writes).toEqual([]);
     expect(warn).toHaveBeenCalledWith(
       expect.stringContaining(
-        'fieldsToBlock card skipped: the card block in the space has the field "title" again.',
+        'fieldsToBlock card.meta skipped: the card block in the space has the field "title" again.',
       ),
     );
   });

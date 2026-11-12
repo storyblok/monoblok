@@ -27,8 +27,8 @@ function fieldEffects(op: MigrationOp): { creates: readonly string[]; removes: r
     case "mergeFields":
       return { creates: [op.into], removes: op.fields.filter((field) => field !== op.into) };
     case "fieldsToBlock": {
-      const moved = Object.keys(op.fields);
-      return { creates: [op.into], removes: moved.filter((field) => field !== op.into) };
+      const moved = Object.keys(op.into.fields);
+      return { creates: [op.field], removes: moved.filter((field) => field !== op.field) };
     }
     default:
       return { creates: [], removes: [] };

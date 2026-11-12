@@ -58,11 +58,19 @@ allOf:
         type: boolean
         description: Whether to allow advanced search in a modal when source is internal_stories
       max_options:
-        type: string
-        description: Maximum number of selectable options
+        oneOf:
+          - type: integer
+          - type: string
+        description: |
+          Maximum number of selectable options. The schema form writes a number;
+          older spaces hold the same value as a numeric string.
       min_options:
-        type: string
-        description: Minimum number of selectable options
+        oneOf:
+          - type: integer
+          - type: string
+        description: |
+          Minimum number of selectable options. The schema form writes a number;
+          older spaces hold the same value as a numeric string.
       multiple:
         type: boolean
         description: Whether multiple values are allowed

@@ -63,10 +63,18 @@ export const NODE_RENDER_MAP = {
   },
   tableCell: {
     tag: "td",
+    attrs: {
+      colspan: 1,
+      rowspan: 1,
+    },
     content: true,
   },
   tableHeader: {
     tag: "th",
+    attrs: {
+      colspan: 1,
+      rowspan: 1,
+    },
     content: true,
   },
   blok: null,

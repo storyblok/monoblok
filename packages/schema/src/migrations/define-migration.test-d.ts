@@ -594,9 +594,9 @@ describe("fieldsToBlock", () => {
 
   it("should reject a target field the component does not define", () => {
     defineMigration<FixtureSchema>([
-      // @ts-expect-error meta has no field "headline"
       fieldsToBlock({
         block: "card",
+        // @ts-expect-error meta has no field "headline"
         fields: { title: "headline" },
         into: "meta",
         component: "meta",
@@ -606,11 +606,11 @@ describe("fieldsToBlock", () => {
 
   it("should reject a component the schema does not define", () => {
     defineMigration<FixtureSchema>([
-      // @ts-expect-error there is no block "turnstile"
       fieldsToBlock({
         block: "card",
-        fields: { title: "x" },
+        fields: { title: "og_title" },
         into: "meta",
+        // @ts-expect-error there is no block "turnstile"
         component: "turnstile",
       }),
     ]);

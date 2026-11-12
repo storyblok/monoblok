@@ -44,7 +44,7 @@ function sourceFieldsOf(op: MigrationOp): readonly string[] {
     case "mergeFields":
       return op.fields;
     case "fieldsToBlock":
-      return Object.keys(op.fields);
+      return Object.keys(op.into.fields);
     default:
       return [op.field];
   }
@@ -73,8 +73,8 @@ function applyToFields(op: MigrationOp, fields: Set<string>): void {
       fields.add(op.into);
       break;
     case "fieldsToBlock":
-      for (const field of Object.keys(op.fields)) fields.delete(field);
-      fields.add(op.into);
+      for (const field of Object.keys(op.into.fields)) fields.delete(field);
+      fields.add(op.field);
       break;
     default:
       break;
@@ -155,44 +155,44 @@ export function validateMigration(
     }
     if (op.kind === "wrapChildren") {
       // An unknown container is a block the migration introduces.
-      const container = fields.get(op.in);
-      if (nameOnly.has(op.in)) {
+      const container = fields.get(op.into.block);
+      if (nameOnly.has(op.into.block)) {
         warning(
-          `Block "${op.in}" already exists but is listed by name only, so whether it defines the field "${op.into}" can't be checked.`,
+          `Block "${op.into.block}" already exists but is listed by name only, so whether it defines the field "${op.into.field}" can't be checked.`,
         );
-      } else if (container && !container.has(op.into)) {
+      } else if (container && !container.has(op.into.field)) {
         issue(
-          `Block "${op.in}" already exists and has no field "${op.into}"; wrapping into it would leave the children under a field its schema does not define.`,
+          `Block "${op.into.block}" already exists and has no field "${op.into.field}"; wrapping into it would leave the children under a field its schema does not define.`,
         );
       }
     }
     if (op.kind === "fieldsToBlock") {
-      // An unknown component is a block the migration introduces.
-      const component = fields.get(op.component);
-      if (nameOnly.has(op.component)) {
+      // An unknown block is one the migration introduces.
+      const newBlock = fields.get(op.into.block);
+      if (nameOnly.has(op.into.block)) {
         warning(
-          `Block "${op.component}" already exists but is listed by name only, so whether it defines the fields moved into it can't be checked.`,
+          `Block "${op.into.block}" already exists but is listed by name only, so whether it defines the fields moved into it can't be checked.`,
         );
-      } else if (component) {
-        for (const field of Object.values(op.fields)) {
-          if (!component.has(field)) {
+      } else if (newBlock) {
+        for (const field of Object.values(op.into.fields)) {
+          if (!newBlock.has(field)) {
             issue(
-              `Block "${op.component}" has no field "${field}"; moving a value into it would leave the value under a field its schema does not define.`,
+              `Block "${op.into.block}" has no field "${field}"; moving a value into it would leave the value under a field its schema does not define.`,
             );
           }
         }
       }
     }
     if (op.kind === "unwrapChildren") {
-      const container = known.get(op.unwrap);
-      if (nameOnly.has(op.unwrap)) {
+      const container = known.get(op.from.block);
+      if (nameOnly.has(op.from.block)) {
         warning(
-          `Block "${op.unwrap}" is listed by name only, so whether it defines the field "${op.from}" can't be checked.`,
+          `Block "${op.from.block}" is listed by name only, so whether it defines the field "${op.from.field}" can't be checked.`,
         );
       } else if (!container) {
-        issue(`Unknown block "${op.unwrap}" to unwrap. Known blocks: ${knownNames()}.`);
-      } else if (!container.has(op.from)) {
-        issue(`Block "${op.unwrap}" has no field "${op.from}" to unwrap children from.`);
+        issue(`Unknown block "${op.from.block}" to unwrap. Known blocks: ${knownNames()}.`);
+      } else if (!container.has(op.from.field)) {
+        issue(`Block "${op.from.block}" has no field "${op.from.field}" to unwrap children from.`);
       }
     }
 

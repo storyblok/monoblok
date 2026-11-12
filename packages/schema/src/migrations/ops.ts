@@ -174,12 +174,14 @@ export interface MergeFieldsOp<TAfter extends SchemaShape, TBefore extends Schem
 export interface FieldsToBlockOp<TAfter extends SchemaShape, TBefore extends SchemaShape> {
   kind: "fieldsToBlock";
   block: string;
-  /** Source field → the field of the new block it moves to. */
-  fields: Readonly<Record<string, string>>;
-  /** The `bloks` field that holds the new block. */
-  into: string;
-  /** The new block's name. */
-  component: string;
+  /** The `bloks` field of `block` that holds the new block. */
+  field: string;
+  into: {
+    /** The new block's name. */
+    block: string;
+    /** Field of `block` → the field of the new block it moves to. */
+    fields: Readonly<Record<string, string>>;
+  };
   readonly [schemaBrand]?: [TAfter, TBefore];
 }
 
@@ -193,22 +195,28 @@ export interface RenameBlockOp<TAfter extends SchemaShape, TBefore extends Schem
 export interface WrapChildrenOp<TAfter extends SchemaShape, TBefore extends SchemaShape> {
   kind: "wrapChildren";
   block: string;
+  /** The `bloks` field of `block` whose children move, and that then holds the container. */
   field: string;
-  /** The container block name. */
-  in: string;
-  /** The container's own field that will hold the children. */
-  into: string;
+  into: {
+    /** The container block's name. */
+    block: string;
+    /** The container's field that holds the children. */
+    field: string;
+  };
   readonly [schemaBrand]?: [TAfter, TBefore];
 }
 
 export interface UnwrapChildrenOp<TAfter extends SchemaShape, TBefore extends SchemaShape> {
   kind: "unwrapChildren";
   block: string;
+  /** The `bloks` field of `block` that holds the containers. */
   field: string;
-  /** The container block name to dissolve. */
-  unwrap: string;
-  /** The container's field holding the children to splice out. */
-  from: string;
+  from: {
+    /** The container block's name. */
+    block: string;
+    /** The container's field holding the children to splice out. */
+    field: string;
+  };
   readonly [schemaBrand]?: [TAfter, TBefore];
 }
 
@@ -595,35 +603,39 @@ export function mergeFields<
 }
 
 /**
- * Moves fields of a block into one new `component` block in its `into` field,
+ * Moves fields of a block into one new `into.block` block in its `field`,
  * translations included, and removes them from the block. Creates the block
- * only where a moved field holds a value, and refuses a block whose `into`
- * field already holds one, since moving would drop either it or the values.
+ * only where a moved field holds a value, and refuses a block whose `field`
+ * already holds one, since moving would drop either it or the values.
  */
 export function fieldsToBlock<
   TAfter extends SchemaShape,
   TBefore extends SchemaShape,
   const TBlock extends SourceBlockName<TAfter, TBefore>,
-  const TComponent extends BlockNameOf<TAfter>,
+  const TNewBlock extends BlockNameOf<TAfter>,
 >(spec: {
   block: TBlock;
-  fields: Partial<
-    Record<SourceFieldName<TAfter, TBefore, TBlock>, TargetFieldName<TAfter, TComponent>>
-  >;
-  into: TargetFieldName<TAfter, TBlock>;
-  component: TComponent;
+  field: TargetFieldName<TAfter, TBlock>;
+  into: {
+    block: TNewBlock;
+    fields: Partial<
+      Record<SourceFieldName<TAfter, TBefore, TBlock>, TargetFieldName<TAfter, TNewBlock>>
+    >;
+  };
   under?: KeyOpUnder;
 }): FieldsToBlockOp<TAfter, TBefore> {
   return {
     kind: "fieldsToBlock",
     block: spec.block,
-    fields: Object.fromEntries(
-      Object.entries(spec.fields).filter(
-        (entry): entry is [string, string] => typeof entry[1] === "string",
+    field: spec.field,
+    into: {
+      block: spec.into.block,
+      fields: Object.fromEntries(
+        Object.entries(spec.into.fields).filter(
+          (entry): entry is [string, string] => typeof entry[1] === "string",
+        ),
       ),
-    ),
-    into: spec.into,
-    component: spec.component,
+    },
     ...carriedUnder(spec),
   };
 }
@@ -645,8 +657,8 @@ export function renameBlock<
 }
 
 /**
- * Introduces a container level: every child of `field` moves into one new
- * `in` block, under the container's `into` field.
+ * Introduces a container level: every child of `field` moves into the
+ * `into.field` of one new `into.block` block, which takes their place.
  */
 export function wrapChildren<
   TAfter extends SchemaShape,
@@ -655,16 +667,14 @@ export function wrapChildren<
 >(spec: {
   block: TBlock;
   field: SourceFieldName<TAfter, TBefore, TBlock>;
-  in: BlockNameOf<TAfter> | (string & {});
-  into: string;
+  into: { block: BlockNameOf<TAfter> | (string & {}); field: string };
   under?: KeyOpUnder;
 }): WrapChildrenOp<TAfter, TBefore> {
   return {
     kind: "wrapChildren",
     block: spec.block,
     field: spec.field,
-    in: spec.in,
-    into: spec.into,
+    into: { block: spec.into.block, field: spec.into.field },
     ...carriedUnder(spec),
   };
 }
@@ -681,16 +691,14 @@ export function unwrapChildren<
 >(spec: {
   block: TBlock;
   field: SourceFieldName<TAfter, TBefore, TBlock>;
-  unwrap: BlockNameOf<TBefore> | (string & {});
-  from: string;
+  from: { block: BlockNameOf<TBefore> | (string & {}); field: string };
   under?: KeyOpUnder;
 }): UnwrapChildrenOp<TAfter, TBefore> {
   return {
     kind: "unwrapChildren",
     block: spec.block,
     field: spec.field,
-    unwrap: spec.unwrap,
-    from: spec.from,
+    from: { block: spec.from.block, field: spec.from.field },
     ...carriedUnder(spec),
   };
 }

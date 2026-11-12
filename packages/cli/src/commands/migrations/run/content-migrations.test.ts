@@ -9,6 +9,7 @@ import {
   defineBlock,
   defineField,
   defineMigration,
+  fieldsToBlock,
   mergeFields,
   removeField,
   renameBlock,
@@ -159,6 +160,33 @@ describe("migrations run command for content migrations", () => {
       ),
     );
     expect(process.exitCode).toBeUndefined();
+  });
+
+  it("should skip moving fields into a block while the space holds the fields again", async () => {
+    space.hasMigrations([
+      "0001-card-meta",
+      defineMigration([
+        fieldsToBlock({
+          block: "card",
+          fields: { title: "og_title" },
+          into: "meta",
+          component: "meta",
+        }),
+      ]),
+    ]);
+    space.hasBlocks({ card: ["title", "meta"], page: ["body"] });
+    space.hasStories(storyWithCard());
+    space.canUpdateStories();
+    const warn = vi.spyOn(getUI(), "warn");
+
+    await apply();
+
+    expect(space.writes).toEqual([]);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'fieldsToBlock card skipped: the card block in the space has the field "title" again.',
+      ),
+    );
   });
 
   it("should skip a block rename while the space still holds the block under its old name", async () => {
@@ -516,7 +544,7 @@ describe("migrations run command for content migrations", () => {
 
     await apply();
 
-    expect(space.writes).toHaveLength(2);
+    expect(space.writes).toHaveLength(1);
     expect(info.mock.calls.map(([message]) => message)).toEqual([
       expect.stringMatching(
         /^0001-rename-card-to-teaser: changed 1 story \(1 block\), recorded as /,
@@ -525,7 +553,7 @@ describe("migrations run command for content migrations", () => {
     ]);
   });
 
-  it("should read each story once across migrations, and let later migrations see what earlier ones wrote", async () => {
+  it("should read and write each story once across migrations, and let later migrations see what earlier ones changed", async () => {
     space.hasMigrations(
       ["0001-rename-card-title", renameCardTitle],
       ["0002-rename-card-to-teaser", renameCardToTeaser],
@@ -536,13 +564,13 @@ describe("migrations run command for content migrations", () => {
     await apply();
 
     expect(space.reads.toSorted()).toEqual([1, 2]);
-    expect(space.writes.map(({ id }) => id)).toEqual([1, 2, 1, 2]);
+    expect(space.writes.map(({ id }) => id)).toEqual([1, 2]);
     expect(space.story(1)?.content.body).toEqual([
       { _uid: "card-1", component: "teaser", headline: "Hi" },
     ]);
   });
 
-  it("should let a later migration see the publish state an earlier one left", async () => {
+  it("should publish a story several migrations changed in one write, decided by the state it was read in", async () => {
     space.hasMigrations(
       ["0001-rename-card-title", renameCardTitle],
       ["0002-rename-card-to-teaser", renameCardToTeaser],
@@ -552,7 +580,65 @@ describe("migrations run command for content migrations", () => {
 
     await apply("--publish", "published-with-changes");
 
-    expect(space.writes.map(({ publish }) => publish)).toEqual([true, false]);
+    expect(space.writes.map(({ id, publish }) => ({ id, publish }))).toEqual([
+      { id: 1, publish: true },
+    ]);
+  });
+
+  it("should record a run per migration for a story written once, so each rolls back, newest first", async () => {
+    space.hasMigrations(
+      ["0001-rename-card-title", renameCardTitle],
+      ["0002-rename-card-to-teaser", renameCardToTeaser],
+    );
+    space.hasStories(storyWithCard({ published: true, unpublished_changes: false }));
+    space.canUpdateStories();
+    const rollback = () =>
+      migrationsCommand.parseAsync(["node", "test", "rollback", "--space", DEFAULT_SPACE]);
+
+    await apply("--publish", "published");
+
+    expect(space.writes).toHaveLength(1);
+    expect(journalEntries()).toMatchObject([
+      { migration: "0001-rename-card-title", stories: 1 },
+      { migration: "0002-rename-card-to-teaser", stories: 1 },
+    ]);
+
+    space.writes.length = 0;
+    await rollback();
+    expect(space.story(1)?.content.body).toEqual([
+      { _uid: "card-1", component: "card", headline: "Hi" },
+    ]);
+    await rollback();
+    expect(space.story(1)?.content.body).toEqual([
+      { _uid: "card-1", component: "card", title: "Hi" },
+    ]);
+    expect(space.writes.map(({ publish }) => publish)).toEqual([true, true]);
+  });
+
+  it("should leave a story whose single write failed out of every migration's run", async () => {
+    const warn = vi.spyOn(getUI(), "warn");
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    space.hasMigrations(
+      ["0001-rename-card-title", renameCardTitle],
+      ["0002-rename-card-to-teaser", renameCardToTeaser],
+    );
+    space.hasStories(storyWithCard(), storyWithCard({ id: 2, slug: "about", full_slug: "about" }));
+    space.canUpdateStories();
+    server.use(
+      http.put(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/stories/2`, () =>
+        HttpResponse.json({ error: "Unprocessable Entity" }, { status: 422 }),
+      ),
+    );
+
+    await apply();
+
+    expect(journalEntries()).toMatchObject([{ stories: 1 }, { stories: 1 }]);
+    expect(
+      warn.mock.calls.filter(([message]) => /could not be written/.test(message ?? "")),
+    ).toHaveLength(1);
+    expect(error).toHaveBeenCalledWith(
+      expect.stringContaining("1 story could not be read or written"),
+    );
   });
 
   it("should read stories concurrently, within a bound", async () => {
@@ -895,7 +981,9 @@ describe("migrations run command for content migrations", () => {
 
       await apply();
 
-      expect(space.writes).toHaveLength(2);
+      expect(space.story(1)?.content.body).toEqual([
+        { _uid: "card-1", component: "teaser", headline: "Hi" },
+      ]);
       expect(process.exitCode).toBeUndefined();
     });
 
@@ -1182,6 +1270,25 @@ describe("migrations run command for content migrations", () => {
       );
       expect(journalEntries()).toEqual([expect.objectContaining({ stories: 1 })]);
       expect(process.exitCode).toBe(2);
+      expect(error).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "1 story was migrated as a draft but could not be published: story-1",
+        ),
+      );
+    });
+
+    it("should record a story several migrations changed but could not publish once, in every run", async () => {
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      space.hasMigrations(
+        ["0001-rename-card-title", renameCardTitle],
+        ["0002-rename-card-to-teaser", renameCardToTeaser],
+      );
+      space.hasStories(publishedStory(1, false));
+      space.failsToPublishStories("The field card.heading can't be blank");
+
+      await apply("--publish", "published");
+
+      expect(journalEntries()).toMatchObject([{ stories: 1 }, { stories: 1 }]);
       expect(error).toHaveBeenCalledWith(
         expect.stringContaining(
           "1 story was migrated as a draft but could not be published: story-1",

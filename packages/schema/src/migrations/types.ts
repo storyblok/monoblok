@@ -81,14 +81,6 @@ export type SourceContent<TBefore extends SchemaShape, TBlock extends string> =
       ? ContentOf<TBefore, TBlock>
       : Record<string, unknown>;
 
-/** A block as a callback returns it: its post-migration content, or a plain record without schema types. */
-export type TargetContent<TAfter extends SchemaShape, TBlock extends string> =
-  IsUntypedSchema<TAfter> extends true
-    ? Record<string, unknown>
-    : TBlock extends BlockNameOf<TAfter>
-      ? ContentOf<TAfter, TBlock>
-      : never;
-
 /** Value type of one `"block.field"` path. */
 export type ValueOfPath<TSchema extends SchemaShape, TPath extends FieldPathOf<TSchema>> =
   BlockOfPath<TPath> extends BlockNameOf<TSchema>

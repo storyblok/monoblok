@@ -1,0 +1,91 @@
+import { defineBlock, defineField } from "@storyblok/schema";
+
+import { mvpFolder } from "../../folders";
+
+export const mvpCategorySummariesBlock = defineBlock({
+  name: "mvp_category_summaries",
+  display_name: "MVP Category Summaries",
+  is_root: false,
+  is_nestable: true,
+  folder: mvpFolder,
+  color: "var(--sb-color-accent-background-green-cyan)",
+  icon: "mouse-pointer",
+  image: "https://example.com/component-screenshots/mvp_category_summaries.png",
+  fields: [
+    defineField("builder_summary", {
+      customize_toolbar: true,
+      toolbar: [
+        "bold",
+        "list",
+        "unset",
+        "italic",
+        "link",
+        "olist",
+        "strike",
+        "subscript",
+        "superscript",
+      ],
+      type: "richtext",
+    }),
+    defineField("changemaker_summary", {
+      customize_toolbar: true,
+      toolbar: [
+        "bold",
+        "list",
+        "unset",
+        "italic",
+        "link",
+        "olist",
+        "strike",
+        "subscript",
+        "superscript",
+      ],
+      type: "richtext",
+    }),
+    defineField("collaborator_summary", {
+      customize_toolbar: true,
+      toolbar: [
+        "bold",
+        "list",
+        "unset",
+        "italic",
+        "link",
+        "olist",
+        "strike",
+        "subscript",
+        "superscript",
+      ],
+      type: "richtext",
+    }),
+    defineField("advisor_summary", {
+      customize_toolbar: true,
+      toolbar: [
+        "bold",
+        "list",
+        "unset",
+        "italic",
+        "link",
+        "olist",
+        "strike",
+        "subscript",
+        "superscript",
+      ],
+      type: "richtext",
+    }),
+    defineField("legend_summary", {
+      customize_toolbar: true,
+      toolbar: [
+        "bold",
+        "list",
+        "unset",
+        "italic",
+        "link",
+        "olist",
+        "strike",
+        "subscript",
+        "superscript",
+      ],
+      type: "richtext",
+    }),
+  ],
+});

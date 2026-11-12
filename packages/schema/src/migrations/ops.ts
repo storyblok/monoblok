@@ -167,8 +167,10 @@ export interface AddFieldOp<TAfter extends SchemaShape, TBefore extends SchemaSh
   kind: "addField";
   block: string;
   field: string;
-  /** Returning `undefined` leaves the block untouched. */
-  fn: (block: never) => unknown;
+  /** Also add a translation for every language the block holds one for. */
+  translatable?: boolean;
+  /** Returning `undefined` leaves the key unset. */
+  fn: (block: never, context: AlterFieldContext) => unknown;
   readonly [schemaBrand]?: [TAfter, TBefore];
 }
 
@@ -554,8 +556,13 @@ export function expandBlock<
 
 /**
  * Introduces a field, backfilled from the block it lands on. The backfill only
- * runs where the field is absent, so a rerun cannot overwrite an editor's
- * later correction — which is also what makes the op idempotent.
+ * runs where the key is absent, so a rerun cannot overwrite an editor's later
+ * correction — which is also what makes the op idempotent.
+ *
+ * With `translatable`, `fn` also runs once per language the block holds a
+ * translation for, in any field, with that language in its context. Opt-in,
+ * because translation keys on a field that is not translatable are junk no
+ * editor can see or remove.
  */
 export function addField<
   TAfter extends SchemaShape,
@@ -565,17 +572,19 @@ export function addField<
   const TField extends TargetFieldName<TAfter, TBlock> = TargetFieldName<TAfter, TBlock>,
   const TValue extends WriteCandidate = WritableValue<TAfter, TBlock, TField> | undefined,
 >(
-  spec: { block: TBlock; field: TField; under?: KeyOpUnder },
+  spec: { block: TBlock; field: TField; translatable?: boolean; under?: KeyOpUnder },
   fn: (
     block: TBlock extends BlockNameOf<TBefore>
       ? ContentOf<TBefore, TBlock>
       : Record<string, unknown>,
+    context: AlterFieldContext,
   ) => TValue & (WritableValue<TAfter, TBlock, TField> | undefined),
 ): AddFieldOp<TAfter, TBefore> {
   return {
     kind: "addField",
     block: spec.block,
     field: spec.field,
+    ...(spec.translatable ? { translatable: true } : {}),
     fn: fn as AddFieldOp<TAfter, TBefore>["fn"],
     ...carriedUnder(spec),
   };

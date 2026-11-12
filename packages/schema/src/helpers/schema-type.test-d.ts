@@ -17,6 +17,14 @@ const heroBlock = defineBlock({
 });
 
 const colorsDatasource = defineDatasource({ name: "Colors", slug: "colors" });
+const datasourceWithDimensions = defineDatasource({
+  name: "Colors with dimensions",
+  slug: "colors-with-dimensions",
+  dimensions: [
+    { name: "Light Mode", entry_value: "light" },
+    { name: "Dark Mode", entry_value: "dark" },
+  ],
+});
 
 const _schema = {
   blocks: { pageBlock, heroBlock },

@@ -247,8 +247,42 @@ describe("toDatasourceUpdate", () => {
       name: "Colors",
       slug: "colors",
       dimensions_attributes: [
-        { name: "German", entry_value: "de" },
+        { id: 10, name: "German", entry_value: "de" },
         { id: 11, _destroy: true },
+      ],
+    });
+  });
+
+  it("should update existing dimensions by entry_value, including renamed dimensions", () => {
+    const local = {
+      name: "Colors",
+      slug: "colors",
+      dimensions: [
+        { name: "Light theme", entry_value: "light" },
+        { name: "Dark", entry_value: "dark" },
+        { name: "High Contrast", entry_value: "contrast" },
+      ],
+    } as unknown as Datasource;
+
+    const remote = {
+      id: 5,
+      name: "Colors",
+      slug: "colors",
+      dimensions: [
+        { id: 10, name: "Light", entry_value: "light" },
+        { id: 11, name: "Dark", entry_value: "dark" },
+      ],
+    } as unknown as Datasource;
+
+    const result = toDatasourceUpdate(local, remote);
+
+    expect(result).toEqual({
+      name: "Colors",
+      slug: "colors",
+      dimensions_attributes: [
+        { id: 10, name: "Light theme", entry_value: "light" },
+        { id: 11, name: "Dark", entry_value: "dark" },
+        { name: "High Contrast", entry_value: "contrast" },
       ],
     });
   });

@@ -19,7 +19,6 @@ import type {
   SourceBlockName,
   SourceContent,
   SourceFieldName,
-  TargetContent,
   TargetFieldName,
 } from "./types";
 

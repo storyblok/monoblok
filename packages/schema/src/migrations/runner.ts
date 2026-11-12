@@ -283,20 +283,20 @@ function applyOp(block: AnyBlock, op: MigrationOp): string | undefined {
       break;
     }
     case "fieldsToBlock": {
-      const moves = Object.entries(op.into.fields).flatMap(([from, to]) =>
+      const moves = Object.entries(op.fields).flatMap(([from, to]) =>
         [from, ...translationKeysFor(block, from)]
           .filter((key) => key in block)
           .map((key) => ({ key, target: `${to}${key.slice(from.length)}` })),
       );
       if (moves.length === 0) break;
       if (moves.some(({ key }) => !isEmptyValue(block[key]))) {
-        if (!isEmptyValue(block[op.field])) {
-          return `field "${op.field}" already holds a block, and moving ${moves.map(({ key }) => `"${key}"`).join(", ")} into a new one would drop either it or their values.`;
+        if (!isEmptyValue(block[op.into.field])) {
+          return `field "${op.into.field}" already holds a block, and moving ${moves.map(({ key }) => `"${key}"`).join(", ")} into a new one would drop either it or their values.`;
         }
         const created: Record<string, unknown> = { component: op.into.block };
         for (const { key, target } of moves) created[target] = block[key];
         // The uid is derived after the pass, like for any block a migration creates.
-        block[op.field] = [created];
+        block[op.into.field] = [created];
       }
       for (const { key } of moves) delete block[key];
       break;

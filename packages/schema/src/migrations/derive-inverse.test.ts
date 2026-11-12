@@ -58,8 +58,8 @@ describe("deriveInverse", () => {
     const derived = deriveInverse([
       fieldsToBlock<AnySchema, AnySchema, "form", string>({
         block: "form",
-        field: "turnstile",
-        into: { block: "turnstile", fields: { turnstileTheme: "theme" } },
+        fields: { turnstileTheme: "theme" },
+        into: { block: "turnstile", field: "turnstile" },
       }),
     ]);
 

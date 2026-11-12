@@ -107,23 +107,23 @@ export default defineMigration<Schema, Before>(ops);
 `block` names the block the op applies to. Key ops apply to every instance of the block. Value ops
 accept `under` (see [Key ops and value ops](#key-ops-and-value-ops)):
 
-| Op                                                    | Kind  | Effect                                                                                                                                                                                                                    |
-| ----------------------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `renameField({ block, field, to })`                   | Key   | Renames a field. Refuses a story whose `to` field already holds a value. `undefined`, `null`, `""`, and `[]` count as empty.                                                                                              |
-| `moveField({ block, field, to })`                     | Key   | Renames a field and overwrites any value the `to` field holds.                                                                                                                                                            |
-| `removeField({ block, field })`                       | Key   | Deletes a field.                                                                                                                                                                                                          |
-| `addField({ block, field }, fn)`                      | Key   | Sets `field` to `fn(block)` on blocks that don’t have the key. Returning `undefined` leaves the block unchanged. A rerun keeps values editors set since.                                                                  |
-| `coerceField({ block, field, to, from? })`            | Key   | Converts a value to `"string"`, `"number"`, or `"boolean"`. Refuses a story with a value that has no faithful counterpart. With `from`, the op can be undone without a recorded run.                                      |
-| `splitField({ block, field, into, merge? }, split)`   | Key   | Replaces `field` with the values `split(value)` returns, assigned to the `into` fields by position. Refused on translated fields. With `merge`, the op can be undone without a recorded run.                              |
-| `mergeFields({ block, fields, into, split? }, merge)` | Key   | Replaces `fields` with `merge(values)` in the `into` field, with `values` in the order of `fields`. Refused on translated fields. With `split`, the op can be undone without a recorded run.                              |
-| `fieldsToBlock({ block, fields, into, component })`   | Key   | Moves each field in `fields` (source → target) into one new `component` block in the `into` field. Creates the block only when a moved field holds a value. Refuses a story whose `into` field already holds a value.     |
-| `renameBlock({ block, to })`                          | Key   | Changes the `component` of every instance. Rename the block in the schema separately.                                                                                                                                     |
-| `wrapChildren({ block, field, in, into })`            | Key   | Moves all child blocks of `field` into one new `in` block, under its `into` field. The new block’s `_uid` derives from the parent, the field, and `in`, so a rerun doesn’t add a second level.                            |
-| `unwrapChildren({ block, field, unwrap, from })`      | Key   | Replaces each `unwrap` block in `field` with the child blocks of its `from` field. Drops the container’s own fields. Only an undo of a recorded run restores them.                                                        |
-| `alterField({ block, field, under? }, fn)`            | Value | Sets the field to `fn(value, context)`, once for the base key and once per translation key. Returning `undefined` leaves the key unchanged; use `removeField()` to remove a field.                                        |
-| `alterBlock({ block, under? }, fn)`                   | Value | Passes a copy of the block to `fn`. Return the whole block, including `_uid` and `component` (spread the block into the result), or change the copy and return nothing. Refuses a story when the result lacks either key. |
-| `expandBlock({ block, under? }, fn)`                  | Value | Replaces the block in its `bloks` field with the blocks `fn(block)` returns.                                                                                                                                              |
-| `reorderField({ block, field, under? }, compare)`     | Value | Sorts the child blocks of a `bloks` field with `compare(a, b, { siblings, index })`. `siblings` is the list before sorting, and `index(child)` returns a block’s original position.                                       |
+| Op                                                    | Kind  | Effect                                                                                                                                                                                                                         |
+| ----------------------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `renameField({ block, field, to })`                   | Key   | Renames a field. Refuses a story whose `to` field already holds a value. `undefined`, `null`, `""`, and `[]` count as empty.                                                                                                   |
+| `moveField({ block, field, to })`                     | Key   | Renames a field and overwrites any value the `to` field holds.                                                                                                                                                                 |
+| `removeField({ block, field })`                       | Key   | Deletes a field.                                                                                                                                                                                                               |
+| `addField({ block, field, translatable? }, fn)`       | Key   | Sets `field` to `fn(block, context)` on blocks that don’t have the key. Returning `undefined` leaves the key unset. With `translatable: true`, also sets each missing translation key. A rerun keeps values editors set since. |
+| `coerceField({ block, field, to, from? })`            | Key   | Converts a value to `"string"`, `"number"`, or `"boolean"`. Refuses a story with a value that has no faithful counterpart. With `from`, the op can be undone without a recorded run.                                           |
+| `splitField({ block, field, into, merge? }, split)`   | Key   | Replaces `field` with the values `split(value)` returns, assigned to the `into` fields by position. Splits each translation on its own. With `merge`, the op can be undone without a recorded run.                             |
+| `mergeFields({ block, fields, into, split? }, merge)` | Key   | Replaces `fields` with `merge(values)` in the `into` field, with `values` in the order of `fields`. Merges each language on its own. With `split`, the op can be undone without a recorded run.                                |
+| `fieldsToBlock({ block, fields, into, component })`   | Key   | Moves each field in `fields` (source → target) into one new `component` block in the `into` field. Creates the block only when a moved field holds a value. Refuses a story whose `into` field already holds a value.          |
+| `renameBlock({ block, to })`                          | Key   | Changes the `component` of every instance. Rename the block in the schema separately.                                                                                                                                          |
+| `wrapChildren({ block, field, in, into })`            | Key   | Moves all child blocks of `field` into one new `in` block, under its `into` field. The new block’s `_uid` derives from the parent, the field, and `in`, so a rerun doesn’t add a second level.                                 |
+| `unwrapChildren({ block, field, unwrap, from })`      | Key   | Replaces each `unwrap` block in `field` with the child blocks of its `from` field. Drops the container’s own fields. Only an undo of a recorded run restores them.                                                             |
+| `alterField({ block, field, under? }, fn)`            | Value | Sets the field to `fn(value, context)`, once for the base key and once per translation key. Returning `undefined` leaves the key unchanged; use `removeField()` to remove a field.                                             |
+| `alterBlock({ block, under? }, fn)`                   | Value | Passes a copy of the block to `fn`. Return the whole block, including `_uid` and `component` (spread the block into the result), or change the copy and return nothing. Refuses a story when the result lacks either key.      |
+| `expandBlock({ block, under? }, fn)`                  | Value | Replaces the block in its `bloks` field with the blocks `fn(block)` returns.                                                                                                                                                   |
+| `reorderField({ block, field, under? }, compare)`     | Value | Sorts the child blocks of a `bloks` field with `compare(a, b, { siblings, index })`. `siblings` is the list before sorting, and `index(child)` returns a block’s original position.                                            |
 
 A block the migration creates without a `_uid`, such as one returned by an `addField()` callback,
 gets one derived from its position, for example `<parent _uid>-<field>-0`. A rerun derives the same
@@ -225,10 +225,18 @@ the base key plus all its translation keys:
 - `alterField()` calls its callback once per key. `context.language` is `undefined` for the base key
   and the language code, such as `en-US`, for a translation key. `context.key` is the key being
   written.
-- `splitField()` and `mergeFields()` refuse a story whose source or target field holds translation
-  keys. Use `alterBlock()` instead.
+- `splitField()` calls `split` once per key and writes the parts to the matching translation keys of
+  the `into` fields.
+- `mergeFields()` calls `merge` once for the base keys and once per language any source field
+  translates. A source field without a translation in that language contributes its base value,
+  which is what the language shows. The result lands on the `into` field's matching key.
+- `splitField()` and `mergeFields()` delete the targets' other translation keys, so old translations
+  don't attach to the new values.
 - `alterBlock()` receives the raw keys, translation keys included.
-- `addField()` sets the base key only.
+- `addField()` sets the base key only. With `translatable: true`, it calls `fn` once more per
+  language the block holds a translation for, in any field, with `context.language` set. Leave it
+  off for a field that isn't translatable: translation keys on such a field are leftover content
+  editors can't see.
 - `fieldsToBlock()` moves the translation keys with their field, so `title__i18n__de` becomes the
   new block's `<target>__i18n__de`.
 
@@ -242,7 +250,6 @@ A refused story stays unchanged. A migration refuses a story when:
 - The story already holds repeated block `_uid` values, and the migration reaches one of its blocks.
   Saving such a story assigns new `_uid` values and breaks the undo record.
 - The migration leaves blocks with a repeated `_uid`.
-- `splitField()` or `mergeFields()` touches a translated field.
 - An op refuses a block, for example a rename onto a field that holds a value, or a callback throws.
 - A second pass of the migration over its own output changes the story again, as a callback that
   toggles a value does.

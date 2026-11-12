@@ -1,0 +1,9 @@
+---
+import Counter from "./react/Counter.jsx";
+
+const { block, editable } = Astro.props;
+---
+
+<div {...editable}>
+  <Counter block={block} client:visible />
+</div>

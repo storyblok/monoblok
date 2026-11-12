@@ -1,6 +1,7 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ISbFetch } from "./sbFetch";
 import SbFetch from "./sbFetch";
+import StoryblokClient from "./index";
 import { headersToObject } from "../tests/utils";
 import type { ISbStoriesParams } from "./interfaces";
 
@@ -273,6 +274,71 @@ describe("sbFetch", () => {
       expect((result as any).message).toBe(
         "Request timeout: The request was aborted due to timeout",
       );
+    });
+
+    describe("timer cleanup", () => {
+      beforeEach(() => {
+        vi.useFakeTimers();
+      });
+
+      afterEach(() => {
+        vi.clearAllTimers();
+        vi.useRealTimers();
+      });
+
+      it("should clear the timer when fetch rejects", async () => {
+        const fetch = vi.fn<typeof globalThis.fetch>().mockRejectedValue(new Error("Fetch failed"));
+
+        const result = await createSbFetchWithTimeout(10, fetch).get("cdn/stories", {});
+
+        expect(result).toEqual({ message: "Fetch failed" });
+        expect(vi.getTimerCount()).toBe(0);
+      });
+
+      it("should clear the timer when fetch rejects with an AbortError", async () => {
+        const error = new Error("Fetch failed");
+        error.name = "AbortError";
+        const fetch = vi.fn<typeof globalThis.fetch>().mockRejectedValue(error);
+
+        const result = await createSbFetchWithTimeout(10, fetch).get("cdn/stories", {});
+
+        expect(result).toEqual({
+          message: "Request timeout: The request was aborted due to timeout",
+        });
+        expect(vi.getTimerCount()).toBe(0);
+      });
+
+      it("should clear the timer when fetch throws synchronously", async () => {
+        const fetch = vi.fn<typeof globalThis.fetch>(() => {
+          throw new Error("Fetch failed");
+        });
+
+        const result = await createSbFetchWithTimeout(10, fetch).get("cdn/stories", {});
+
+        expect(result).toEqual({ message: "Fetch failed" });
+        expect(vi.getTimerCount()).toBe(0);
+      });
+
+      it("should clear the timer after a successful fetch", async () => {
+        const fetch = vi
+          .fn<typeof globalThis.fetch>()
+          .mockResolvedValue(new Response(JSON.stringify({ story: {} }), { status: 200 }));
+
+        const result = await createSbFetchWithTimeout(10, fetch).get("cdn/stories", {});
+
+        expect(result).toHaveProperty("status", 200);
+        expect(vi.getTimerCount()).toBe(0);
+      });
+
+      it("should clear the timer when a StoryblokClient request fails", async () => {
+        const fetch = vi.fn<typeof globalThis.fetch>().mockRejectedValue(new Error("Fetch failed"));
+        const client = new StoryblokClient({ accessToken: "test-token", timeout: 10, fetch });
+
+        await expect(client.get("cdn/stories", { version: "draft" })).rejects.toMatchObject({
+          message: "Fetch failed",
+        });
+        expect(vi.getTimerCount()).toBe(0);
+      });
     });
   });
 });

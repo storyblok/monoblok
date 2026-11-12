@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyMigration, type StoryForMigration } from "./apply-migration";
+import { applyMigration, settleRun, type StoryForMigration } from "./apply-migration";
 import { defineMigration, type MigrationOps } from "./define-migration";
 import { alterBlock, alterField, renameBlock, renameField, splitField } from "./ops";
 import type { SchemaShape } from "./types";
@@ -100,9 +100,12 @@ describe("applyMigration", () => {
       { slug: "broken", reason: expect.stringContaining("already contains repeated block ids") },
     ]);
     expect(outcome.refusals[0].reason).toContain("dup");
+    expect(outcome.refusals[0].reason).toContain(
+      "stranding the record needed to roll back the run",
+    );
   });
 
-  it("should refuse a story whose reshaped field is translated and write nothing for it", () => {
+  it("should write a story whose split field is translated", () => {
     const splitName = defineMigration([
       splitField({ block: "author", field: "name", into: ["first_name", "last_name"] }, (value) =>
         String(value).split(" "),
@@ -133,9 +136,22 @@ describe("applyMigration", () => {
       ],
     });
 
-    expect(outcome.writes).toEqual([]);
-    expect(outcome.refusals).toEqual([
-      { slug: "home", reason: expect.stringContaining("translated") },
+    expect(outcome.refusals).toEqual([]);
+    expect(outcome.writes.map((write) => write.content)).toEqual([
+      {
+        _uid: "r1",
+        component: "page",
+        body: [
+          {
+            _uid: "a",
+            component: "author",
+            first_name: "Ada",
+            last_name: "Lovelace",
+            first_name__i18n__de: "Ada",
+            last_name__i18n__de: "von",
+          },
+        ],
+      },
     ]);
   });
 
@@ -405,6 +421,48 @@ describe("applyMigration publish state", () => {
 
     expect(outcome.writes[0].publish).toBe(false);
     expect(outcome.publishedDraftOnly).toBe(0);
+  });
+});
+
+describe("settleRun", () => {
+  const twoCards: StoryForMigration[] = [1, 2].map((id) => ({
+    id,
+    slug: `story-${id}`,
+    content: {
+      _uid: `r${id}`,
+      component: "page",
+      body: [{ _uid: `c${id}`, component: "card", title: "Hi" }],
+    },
+    published: true,
+    unpublished_changes: false,
+  }));
+  const outcome = applyMigration({
+    migration,
+    id: "0001-rename",
+    space: "12345",
+    stories: twoCards,
+    publish: "published",
+  });
+
+  it("should record only the writes that landed, counted again", () => {
+    const settled = settleRun(outcome, [{ story: 2, published: true }]);
+
+    expect(settled.inverse.map((entry) => entry.story)).toEqual([2]);
+    expect(settled.run).toEqual({ ...outcome.run, stories: 1, blocks: 1 });
+  });
+
+  it("should record a write whose publish failed as a draft-only write", () => {
+    const settled = settleRun(outcome, [
+      { story: 1, published: false },
+      { story: 2, published: true },
+    ]);
+
+    expect(settled.inverse.map(({ story, publishedByRun }) => ({ story, publishedByRun }))).toEqual(
+      [
+        { story: 1, publishedByRun: false },
+        { story: 2, publishedByRun: true },
+      ],
+    );
   });
 });
 

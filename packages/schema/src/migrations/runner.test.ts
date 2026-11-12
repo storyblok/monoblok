@@ -13,6 +13,7 @@ import {
   alterField,
   coerceField,
   expandBlock,
+  fieldsToBlock,
   mergeFields,
   removeField as removeFieldOp,
   renameBlock,
@@ -680,15 +681,105 @@ describe("block identity", () => {
     expect(run.unstableUids.duplicate).toEqual(["card-a1", "meta-a1", "card-b1", "meta-b1"]);
   });
 
-  it("should report a block an alter created without a _uid", () => {
-    const uidless = defineMigration<FixtureSchema>([
-      alterBlock({ block: "section" }, (block) => {
-        // @ts-expect-error a block literal without _uid is exactly what this guards against
-        block.meta = [{ component: "meta", og_title: "no uid" }];
-      }),
+  it("should give a block the migration created without a _uid one derived from its position", () => {
+    const uidless = defineMigration<TestSchema>([
+      addField({ block: "card", field: "meta" }, () => [
+        { component: "meta", og_title: "first" },
+        { component: "meta", og_title: "second" },
+      ]),
+    ]);
+    const story = {
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "card" }],
+    };
+
+    const run = runMigrationOnStory(uidless, story);
+
+    expect(run.content).toEqual({
+      _uid: "root",
+      component: "page",
+      body: [
+        {
+          _uid: "a",
+          component: "card",
+          meta: [
+            { _uid: "a-meta-0", component: "meta", og_title: "first" },
+            { _uid: "a-meta-1", component: "meta", og_title: "second" },
+          ],
+        },
+      ],
+    });
+    expect(run.unstableUids).toEqual({ duplicate: [], missing: 0, preExisting: [] });
+    expect(run.nonIdempotent).toEqual([]);
+    // A dry run and the real run mint the same uids.
+    expect(runMigrationOnStory(uidless, story).content).toEqual(run.content);
+  });
+
+  it("should derive the uid of a block created inside another created block from its own position", () => {
+    const nested = defineMigration<TestSchema>([
+      addField({ block: "card", field: "section" }, () => [
+        { component: "section", items: [{ component: "meta" }] },
+      ]),
     ]);
 
-    expect(runMigrationOnStory(uidless, pageStoryContent()).unstableUids.missing).toBe(2);
+    const run = runMigrationOnStory(nested, {
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "card" }],
+    });
+
+    expect(run.content).toMatchObject({
+      body: [
+        {
+          section: [
+            {
+              _uid: "a-section-0",
+              items: [{ _uid: "a-section-0-items-0", component: "meta" }],
+            },
+          ],
+        },
+      ],
+    });
+    expect(run.unstableUids.missing).toBe(0);
+  });
+
+  it("should not hand a created block a uid the story already uses", () => {
+    const uidless = defineMigration<TestSchema>([
+      addField({ block: "card", field: "meta" }, () => [{ component: "meta" }]),
+    ]);
+
+    const run = runMigrationOnStory(uidless, {
+      _uid: "root",
+      component: "page",
+      body: [
+        { _uid: "a", component: "card" },
+        { _uid: "a-meta-0", component: "meta" },
+      ],
+    });
+
+    expect(run.unstableUids).toEqual({ duplicate: [], missing: 0, preExisting: [] });
+    expect(run.content).toMatchObject({
+      body: [{ meta: [{ _uid: "a-meta-0-1" }] }, { _uid: "a-meta-0" }],
+    });
+  });
+
+  it("should roll back a created block that got a derived uid", () => {
+    const uidless = defineMigration<TestSchema>([
+      addField({ block: "card", field: "meta" }, () => [{ component: "meta" }]),
+    ]);
+    const original = {
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "card" }],
+    };
+
+    const run = runMigrationOnStory(uidless, original);
+    const rolledBack = structuredClone(run.content);
+    const result = applyPatches(rolledBack, run.inverse);
+
+    expect(result.conflicts).toEqual([]);
+    expect(rolledBack).toEqual(original);
   });
 
   it("should report nothing for a migration that keeps identity intact", () => {
@@ -1219,6 +1310,81 @@ describe("uid instability the content already had", () => {
 });
 
 describe("addField", () => {
+  it("should add a translation for every language the block holds when the field is translatable", () => {
+    const migration = defineMigration<TestSchema>([
+      addField({ block: "card", field: "slug", translatable: true }, (block, { key }) =>
+        String(block[key.replace("slug", "title")] ?? "").toLowerCase(),
+      ),
+    ]);
+
+    const result = runMigrationOnStory(migration, {
+      _uid: "root",
+      component: "page",
+      body: [
+        {
+          _uid: "a",
+          component: "card",
+          title: "Hello",
+          title__i18n__de: "Hallo",
+          slug__i18n__fr: "kept",
+        },
+      ],
+    });
+
+    expect(result.content).toEqual({
+      _uid: "root",
+      component: "page",
+      body: [
+        {
+          _uid: "a",
+          component: "card",
+          title: "Hello",
+          title__i18n__de: "Hallo",
+          slug__i18n__fr: "kept",
+          slug: "hello",
+          slug__i18n__de: "hallo",
+        },
+      ],
+    });
+    expect(result.nonIdempotent).toEqual([]);
+  });
+
+  it("should pass the language of the key being added", () => {
+    const languages: (string | undefined)[] = [];
+    const migration = defineMigration<TestSchema>([
+      addField({ block: "card", field: "slug", translatable: true }, (_block, { language }) => {
+        languages.push(language);
+        return undefined;
+      }),
+    ]);
+
+    runMigrationOnStory(migration, {
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "card", title__i18n__pt_br: "Olá" }],
+    });
+
+    expect(new Set(languages)).toEqual(new Set([undefined, "pt-br"]));
+  });
+
+  it("should add only the base key when the field is not translatable", () => {
+    const migration = defineMigration<TestSchema>([
+      addField({ block: "card", field: "featured" }, () => false),
+    ]);
+
+    const result = runMigrationOnStory(migration, {
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "card", title__i18n__de: "Hallo" }],
+    });
+
+    expect(result.content).toEqual({
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "card", title__i18n__de: "Hallo", featured: false }],
+    });
+  });
+
   it("should add the field with the computed value", () => {
     const migration = defineMigration<FixtureSchema>({
       ops: [
@@ -1449,8 +1615,8 @@ describe("splitField", () => {
     });
   });
 
-  it("should report a source field that carries translations instead of stranding them", () => {
-    const result = runMigrationOnStory(splitName, {
+  it("should split every translation with the same callback", () => {
+    const original = {
       _uid: "root",
       component: "page",
       body: [
@@ -1459,27 +1625,38 @@ describe("splitField", () => {
           component: "author",
           name: "Ada Lovelace",
           name__i18n__de: "Ada von Lovelace",
+          name__i18n__pt_br: "Ada",
+        },
+      ],
+    };
+    const result = runMigrationOnStory(splitName, original);
+
+    expect(result.refusedOps).toEqual([]);
+    expect(result.content).toEqual({
+      _uid: "root",
+      component: "page",
+      body: [
+        {
+          _uid: "a",
+          component: "author",
+          first_name: "Ada",
+          last_name: "Lovelace",
+          first_name__i18n__de: "Ada",
+          last_name__i18n__de: "von Lovelace",
+          first_name__i18n__pt_br: "Ada",
+          last_name__i18n__pt_br: "",
         },
       ],
     });
 
-    expect(result.translatedReshapes).toEqual([{ uid: "a", op: 0, field: "name" }]);
+    const rolledBack = structuredClone(result.content);
+    expect(applyPatches(rolledBack, result.inverse).conflicts).toEqual([]);
+    expect(rolledBack).toEqual(original);
   });
 
-  it("should report nothing for a source field that carries no translations", () => {
-    const result = runMigrationOnStory(splitName, {
-      _uid: "root",
-      component: "page",
-      body: [{ _uid: "a", component: "author", name: "Ada Lovelace" }],
-    });
-
-    expect(result.translatedReshapes).toEqual([]);
-  });
-
-  // A target that keeps its translations is the same corruption one field over:
-  // the stale sibling is then read as the translation of the part that landed
-  // on it.
-  it("should report a target field that already carries translations", () => {
+  // A stale sibling left on a target would be read as the translation of the
+  // part that landed on it.
+  it("should drop translations a target field held that the source does not replace", () => {
     const result = runMigrationOnStory(splitName, {
       _uid: "root",
       component: "page",
@@ -1493,7 +1670,11 @@ describe("splitField", () => {
       ],
     });
 
-    expect(result.translatedReshapes).toEqual([{ uid: "a", op: 0, field: "first_name" }]);
+    expect(result.content).toEqual({
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "author", first_name: "Ada", last_name: "Lovelace" }],
+    });
   });
 });
 
@@ -1577,8 +1758,10 @@ describe("mergeFields", () => {
     });
   });
 
-  it("should report a source field that carries translations instead of stranding them", () => {
-    const result = runMigrationOnStory(mergeName, {
+  // A language without its own key shows the default language value, so that
+  // is what the merge reads for it.
+  it("should merge every language, reading the default value where a language has no translation", () => {
+    const original = {
       _uid: "root",
       component: "page",
       body: [
@@ -1590,22 +1773,29 @@ describe("mergeFields", () => {
           last_name__i18n__de: "von Lovelace",
         },
       ],
-    });
+    };
+    const result = runMigrationOnStory(mergeName, original);
 
-    expect(result.translatedReshapes).toEqual([{ uid: "a", op: 0, field: "last_name" }]);
-  });
-
-  it("should report nothing for source fields that carry no translations", () => {
-    const result = runMigrationOnStory(mergeName, {
+    expect(result.refusedOps).toEqual([]);
+    expect(result.content).toEqual({
       _uid: "root",
       component: "page",
-      body: [{ _uid: "a", component: "author", first_name: "Ada", last_name: "Lovelace" }],
+      body: [
+        {
+          _uid: "a",
+          component: "author",
+          name: "Ada Lovelace",
+          name__i18n__de: "Ada von Lovelace",
+        },
+      ],
     });
 
-    expect(result.translatedReshapes).toEqual([]);
+    const rolledBack = structuredClone(result.content);
+    expect(applyPatches(rolledBack, result.inverse).conflicts).toEqual([]);
+    expect(rolledBack).toEqual(original);
   });
 
-  it("should report a target field that already carries translations", () => {
+  it("should drop translations the target field held that no source replaces", () => {
     const result = runMigrationOnStory(mergeName, {
       _uid: "root",
       component: "page",
@@ -1620,7 +1810,11 @@ describe("mergeFields", () => {
       ],
     });
 
-    expect(result.translatedReshapes).toEqual([{ uid: "a", op: 0, field: "name" }]);
+    expect(result.content).toEqual({
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "author", name: "Ada Lovelace" }],
+    });
   });
 });
 
@@ -2082,6 +2276,107 @@ describe("expandBlock", () => {
   });
 });
 
+describe("fieldsToBlock", () => {
+  const migration = defineMigration<TestSchema>([
+    fieldsToBlock({
+      block: "form",
+      fields: { turnstileTheme: "theme", turnstileSize: "size" },
+      into: "turnstile",
+      component: "turnstile",
+    }),
+  ]);
+
+  function story(form: Record<string, unknown>): Record<string, unknown> {
+    return { _uid: "root", component: "page", body: [{ _uid: "f", component: "form", ...form }] };
+  }
+
+  it("should move the fields into a new block", () => {
+    const result = runMigrationOnStory(
+      migration,
+      story({ title: "Contact", turnstileTheme: "dark", turnstileSize: "compact" }),
+    );
+
+    expect(result.content).toEqual(
+      story({
+        title: "Contact",
+        turnstile: [
+          { _uid: "f-turnstile-0", component: "turnstile", theme: "dark", size: "compact" },
+        ],
+      }),
+    );
+    expect(result.unstableUids).toEqual({ duplicate: [], missing: 0, preExisting: [] });
+    expect(result.nonIdempotent).toEqual([]);
+  });
+
+  it("should restore the fields on undo", () => {
+    const original = story({ turnstileTheme: "dark", turnstileSize: "" });
+    const result = runMigrationOnStory(migration, original);
+
+    const rolledBack = structuredClone(result.content);
+    expect(applyPatches(rolledBack, result.inverse).conflicts).toEqual([]);
+    expect(rolledBack).toEqual(original);
+  });
+
+  it("should remove empty fields without creating a block", () => {
+    const result = runMigrationOnStory(
+      migration,
+      story({ turnstileTheme: "", turnstileSize: null }),
+    );
+
+    expect(result.content).toEqual(story({}));
+  });
+
+  it("should leave a block without any of the fields unchanged", () => {
+    const result = runMigrationOnStory(migration, story({ title: "Contact" }));
+
+    expect(result.changed).toBe(false);
+  });
+
+  it("should move translations into the new block", () => {
+    const result = runMigrationOnStory(
+      migration,
+      story({ turnstileTheme: "dark", turnstileTheme__i18n__de: "dunkel" }),
+    );
+
+    expect(result.content).toEqual(
+      story({
+        turnstile: [
+          {
+            _uid: "f-turnstile-0",
+            component: "turnstile",
+            theme: "dark",
+            theme__i18n__de: "dunkel",
+          },
+        ],
+      }),
+    );
+  });
+
+  it("should refuse a block whose target field already holds a block", () => {
+    const existing = [{ _uid: "t", component: "turnstile", theme: "light" }];
+    const result = runMigrationOnStory(
+      migration,
+      story({ turnstileTheme: "dark", turnstile: existing }),
+    );
+
+    expect(result.refusedOps).toEqual([
+      { uid: "f", op: 0, reason: expect.stringContaining('field "turnstile" already holds') },
+    ]);
+    expect(result.content).toEqual(story({ turnstileTheme: "dark", turnstile: existing }));
+  });
+
+  it("should drop the empty fields when the target field already holds a block", () => {
+    const existing = [{ _uid: "t", component: "turnstile", theme: "light" }];
+    const result = runMigrationOnStory(
+      migration,
+      story({ turnstileTheme: "", turnstile: existing }),
+    );
+
+    expect(result.refusedOps).toEqual([]);
+    expect(result.content).toEqual(story({ turnstile: existing }));
+  });
+});
+
 describe("validateMigration over an op sequence", () => {
   it("should accept a field an earlier op introduced as the source of a later one", () => {
     const migration = defineMigration<TestSchema>([
@@ -2118,5 +2413,39 @@ describe("validateMigration over an op sequence", () => {
     expect(validateMigration(migration, schemaLike)[0]?.message).toContain(
       'Unknown block "nope" to unwrap',
     );
+  });
+
+  it("should reject a fieldsToBlock source field the block does not define", () => {
+    const migration = defineMigration<TestSchema>([
+      fieldsToBlock({ block: "card", fields: { nope: "title" }, into: "meta", component: "meta" }),
+    ]);
+
+    expect(validateMigration(migration, schemaLike)[0]?.message).toContain(
+      'Block "card" has no field "nope"',
+    );
+  });
+
+  it("should reject a fieldsToBlock target field an existing component does not define", () => {
+    const migration = defineMigration<TestSchema>([
+      fieldsToBlock({ block: "card", fields: { title: "nope" }, into: "meta", component: "meta" }),
+    ]);
+
+    expect(validateMigration(migration, schemaLike)[0]?.message).toContain(
+      'Block "meta" has no field "nope"',
+    );
+  });
+
+  it("should accept a fieldsToBlock into a component the migration introduces", () => {
+    const migration = defineMigration<TestSchema>([
+      fieldsToBlock({
+        block: "card",
+        fields: { title: "label" },
+        into: "badge",
+        component: "badge",
+      }),
+      alterField({ block: "card", field: "badge" }, (value) => value),
+    ]);
+
+    expect(validateMigration(migration, schemaLike)).toEqual([]);
   });
 });

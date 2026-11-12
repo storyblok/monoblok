@@ -167,8 +167,10 @@ export interface AddFieldOp<TAfter extends SchemaShape, TBefore extends SchemaSh
   kind: "addField";
   block: string;
   field: string;
-  /** Returning `undefined` leaves the block untouched. */
-  fn: (block: never) => unknown;
+  /** Also add a translation for every language the block holds one for. */
+  translatable?: boolean;
+  /** Returning `undefined` leaves the key unset. */
+  fn: (block: never, context: AlterFieldContext) => unknown;
   readonly [schemaBrand]?: [TAfter, TBefore];
 }
 
@@ -191,6 +193,22 @@ export interface MergeFieldsOp<TAfter extends SchemaShape, TBefore extends Schem
   merge: (values: readonly unknown[]) => unknown;
   /** Present only when the author stated it; without it the op cannot be inverted. */
   split?: (value: never) => readonly unknown[];
+  readonly [schemaBrand]?: [TAfter, TBefore];
+}
+
+/**
+ * Several fields of a block moved into one new block, held in a `bloks` field
+ * of the block they came from.
+ */
+export interface FieldsToBlockOp<TAfter extends SchemaShape, TBefore extends SchemaShape> {
+  kind: "fieldsToBlock";
+  block: string;
+  /** Source field → the field of the new block it moves to. */
+  fields: Readonly<Record<string, string>>;
+  /** The `bloks` field that holds the new block. */
+  into: string;
+  /** The new block's name. */
+  component: string;
   readonly [schemaBrand]?: [TAfter, TBefore];
 }
 
@@ -235,6 +253,7 @@ export type MigrationOpOf<TAfter extends SchemaShape, TBefore extends SchemaShap
   | AddFieldOp<TAfter, TBefore>
   | SplitFieldOp<TAfter, TBefore>
   | MergeFieldsOp<TAfter, TBefore>
+  | FieldsToBlockOp<TAfter, TBefore>
   | RenameBlockOp<TAfter, TBefore>
   | WrapChildrenOp<TAfter, TBefore>
   | UnwrapChildrenOp<TAfter, TBefore>;
@@ -257,6 +276,7 @@ export const KEY_OP_KINDS = [
   "addField",
   "splitField",
   "mergeFields",
+  "fieldsToBlock",
   "renameBlock",
   "wrapChildren",
   "unwrapChildren",
@@ -315,6 +335,15 @@ type FieldValue<TSchema extends SchemaShape, TBlock extends string, TField> =
       : unknown
     : unknown;
 
+/** A block a callback writes may leave out `_uid`; the runner derives one from its position. */
+type WithOptionalUids<T> = T extends readonly (infer Item)[]
+  ? WithOptionalUids<Item>[]
+  : T extends { _uid: string; component: string }
+    ? Omit<WithOptionalChildUids<T>, "_uid"> & { _uid?: string }
+    : T;
+
+type WithOptionalChildUids<T> = { [K in keyof T]: WithOptionalUids<T[K]> };
+
 /**
  * What a callback may write to `<block>.<field>`. A schema without literal block
  * and field names (the bare `SchemaShape` interface) resolves every field to
@@ -324,15 +353,18 @@ type WritableValue<TSchema extends SchemaShape, TBlock extends string, TField> =
   FieldValue<TSchema, TBlock, TField>,
 ] extends [never]
   ? unknown
-  : FieldValue<TSchema, TBlock, TField>;
+  : WithOptionalUids<FieldValue<TSchema, TBlock, TField>>;
 
 /**
  * Constraint for a `const` type parameter that captures what a callback returns.
  * The schema parameters are still being inferred when the callback is checked, so
  * a return typed only as `WritableValue` widens `linktype: "url"` to `string`;
- * the `const` capture keeps the literals, and `unknown[]` keeps arrays mutable.
+ * the `const` capture keeps the literals. The array and record members keep array
+ * literals mutable at any depth, such as a richtext document's `content`, since a
+ * `const` capture infers a readonly tuple wherever its constraint names no
+ * mutable array.
  */
-type WriteCandidate = unknown[] | {} | null | undefined;
+type WriteCandidate = WriteCandidate[] | { [key: string]: WriteCandidate } | {} | null | undefined;
 
 /**
  * A key op never honors `under`, but it carries one through when a caller
@@ -469,7 +501,11 @@ export function alterBlock<
     block: TBlock extends BlockNameOf<TBefore>
       ? ContentOf<TBefore, TBlock>
       : Record<string, unknown>,
-  ) => void | (TBlock extends BlockNameOf<TAfter> ? ContentOf<TAfter, TBlock> : never),
+  ) =>
+    | void
+    | (TBlock extends BlockNameOf<TAfter>
+        ? WithOptionalChildUids<ContentOf<TAfter, TBlock>>
+        : never),
 ): AlterBlockOp<TAfter, TBefore> {
   return {
     kind: "alterBlock",
@@ -520,8 +556,13 @@ export function expandBlock<
 
 /**
  * Introduces a field, backfilled from the block it lands on. The backfill only
- * runs where the field is absent, so a rerun cannot overwrite an editor's
- * later correction — which is also what makes the op idempotent.
+ * runs where the key is absent, so a rerun cannot overwrite an editor's later
+ * correction — which is also what makes the op idempotent.
+ *
+ * With `translatable`, `fn` also runs once per language the block holds a
+ * translation for, in any field, with that language in its context. Opt-in,
+ * because translation keys on a field that is not translatable are junk no
+ * editor can see or remove.
  */
 export function addField<
   TAfter extends SchemaShape,
@@ -531,17 +572,19 @@ export function addField<
   const TField extends TargetFieldName<TAfter, TBlock> = TargetFieldName<TAfter, TBlock>,
   const TValue extends WriteCandidate = WritableValue<TAfter, TBlock, TField> | undefined,
 >(
-  spec: { block: TBlock; field: TField; under?: KeyOpUnder },
+  spec: { block: TBlock; field: TField; translatable?: boolean; under?: KeyOpUnder },
   fn: (
     block: TBlock extends BlockNameOf<TBefore>
       ? ContentOf<TBefore, TBlock>
       : Record<string, unknown>,
+    context: AlterFieldContext,
   ) => TValue & (WritableValue<TAfter, TBlock, TField> | undefined),
 ): AddFieldOp<TAfter, TBefore> {
   return {
     kind: "addField",
     block: spec.block,
     field: spec.field,
+    ...(spec.translatable ? { translatable: true } : {}),
     fn: fn as AddFieldOp<TAfter, TBefore>["fn"],
     ...carriedUnder(spec),
   };
@@ -620,6 +663,40 @@ export function mergeFields<
     into: spec.into,
     merge,
     ...(spec.split === undefined ? {} : { split: spec.split }),
+    ...carriedUnder(spec),
+  };
+}
+
+/**
+ * Moves fields of a block into one new `component` block in its `into` field,
+ * translations included, and removes them from the block. Creates the block
+ * only where a moved field holds a value, and refuses a block whose `into`
+ * field already holds one, since moving would drop either it or the values.
+ */
+export function fieldsToBlock<
+  TAfter extends SchemaShape,
+  TBefore extends SchemaShape,
+  const TBlock extends SourceBlockName<TAfter, TBefore>,
+  const TComponent extends BlockNameOf<TAfter>,
+>(spec: {
+  block: TBlock;
+  fields: Partial<
+    Record<SourceFieldName<TAfter, TBefore, TBlock>, TargetFieldName<TAfter, TComponent>>
+  >;
+  into: TargetFieldName<TAfter, TBlock>;
+  component: TComponent;
+  under?: KeyOpUnder;
+}): FieldsToBlockOp<TAfter, TBefore> {
+  return {
+    kind: "fieldsToBlock",
+    block: spec.block,
+    fields: Object.fromEntries(
+      Object.entries(spec.fields).filter(
+        (entry): entry is [string, string] => typeof entry[1] === "string",
+      ),
+    ),
+    into: spec.into,
+    component: spec.component,
     ...carriedUnder(spec),
   };
 }

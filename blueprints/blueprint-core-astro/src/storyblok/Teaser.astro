@@ -1,0 +1,11 @@
+---
+import type { StoryblokBlockComponentProps } from '@storyblok/astro';
+
+type Props = StoryblokBlockComponentProps<{ headline?: string }>;
+
+const { block, editable } = Astro.props;
+---
+
+<section class="teaser" {...editable}>
+	<h1>{block.headline}</h1>
+</section>

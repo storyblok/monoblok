@@ -34,13 +34,13 @@ export default defineConfig({
 
 ### Framework presets
 
-| Preset                     | When to use it                         |
-| -------------------------- | -------------------------------------- |
-| `base` (or default export) | Default. Plain TS / JS libraries.      |
-| `vue`                      | Projects with `.vue` SFCs.             |
-| `svelte`                   | Projects with `.svelte` files.         |
-| `astro`                    | Projects with `.astro` files.          |
-| `nuxt`                     | Nuxt apps and modules (extends `vue`). |
+| Preset   | When to use it                         |
+| -------- | -------------------------------------- |
+| `base`   | Default. Plain TS / JS libraries.      |
+| `vue`    | Projects with `.vue` SFCs.             |
+| `svelte` | Projects with `.svelte` files.         |
+| `astro`  | Projects with `.astro` files.          |
+| `nuxt`   | Nuxt apps and modules (extends `vue`). |
 
 ```ts
 // oxlint.config.ts — a Nuxt project
@@ -121,7 +121,7 @@ Then update your `package.json`:
 - }
 + "devDependencies": {
 +   "@storyblok/lint-config": "^0.1.0",
-+   "oxlint": "^0.15.0"
++   "oxlint": "^1.45.0"
 + }
 ```
 

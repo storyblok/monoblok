@@ -12,10 +12,10 @@
     "monoblok": "node tools/monoblok/dist/index.mjs",
     "prepare": "husky && (git config blame.ignoreRevsFile .git-blame-ignore-revs || true)",
     "release": "node tools/release.mjs",
-    "build": "pnpm nx run-many --target=build",
+    "build": "pnpm nx run-many --target=build --exclude=tag:blueprint",
     "lint": "oxlint --disable-nested-config && nx run-many --target=lint",
     "lint:fix": "oxlint --disable-nested-config --fix && nx run-many --target=lint --fix",
-    "lint:affected": "nx affected:lint",
+    "lint:affected": "nx affected --target=lint",
     "format": "vp fmt",
     "format:check": "vp fmt --check",
     "check:workspace-protocol": "node tools/workspace-protocol-guard.mjs",
@@ -42,7 +42,7 @@
   },
   "resolutions": {
     "cypress": "^15.21.0",
-    "happy-dom": "^20.8.8"
+    "happy-dom": "^21.0.4"
   },
   "packageManager": "pnpm@10.27.0",
   "pnpm": {

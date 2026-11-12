@@ -313,6 +313,47 @@ describe("migrations generate command", () => {
       );
     });
 
+    it("should refuse --before-push without --schema with one error", async () => {
+      preconditions.componentExists();
+      vol.fromJSON({
+        ".storyblok/schema/changesets/2026-10-16T09-00-00-000Z.json": JSON.stringify({
+          timestamp: "2026-10-16T09:00:00.000Z",
+          spaceId: 12345,
+          remote: { components: [mockComponent], componentFolders: [], datasources: [] },
+          changes: [{ type: "component", name: "component-name", action: "update" }],
+        }),
+      });
+
+      await generate("component-name", "--before-push");
+
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "--before-push snapshots the block for a typed content migration, so it requires --schema.",
+        ),
+      );
+      expect(console.warn).not.toHaveBeenCalled();
+      expect(vi.mocked(console.error).mock.calls.flat().join("\n")).not.toContain("No schema push");
+      expect(Object.keys(vol.toJSON())).not.toContainEqual(
+        expect.stringContaining("migrations/12345"),
+      );
+    });
+
+    it("should refuse --before-push with --no-before", async () => {
+      preconditions.componentExists();
+      preconditions.hasSchemaEntry();
+
+      await generate("component-name", "--schema", "src/schema.ts", "--no-before", "--before-push");
+
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "--before-push snapshots the block, so it can't be combined with --no-before.",
+        ),
+      );
+      expect(Object.keys(vol.toJSON())).not.toContainEqual(
+        expect.stringContaining("migrations/12345"),
+      );
+    });
+
     it("should refuse a schema entry that does not exist", async () => {
       preconditions.componentExists();
 

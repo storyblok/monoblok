@@ -39,8 +39,8 @@
 
 ## Documentation
 
-For complete documentation, please visit
-[package reference](https://www.storyblok.com/docs/libraries/js/experiments)
+For complete documentation, please visit the
+[package reference](https://www.storyblok.com/docs/libraries/js/experiments).
 
 ## Contributing
 
@@ -81,4 +81,4 @@ If you have a question, please ask in the
 
 ## License
 
-[License](/LICENSE)
+[License](./LICENSE)

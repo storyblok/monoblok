@@ -1,5 +1,4 @@
 import type { Command } from "commander";
-import { discoverMigrations } from "@storyblok/schema";
 import type { MigrationRun } from "@storyblok/schema";
 import { colorPalette, commands } from "../../../constants";
 import { CommandError, handleError } from "../../../utils";
@@ -8,23 +7,27 @@ import { getUI } from "../../../lib/ui";
 import { migrationsCommand } from "../command";
 import {
   contentJournal,
+  discoverContentMigrations,
   migrationsDirectory,
   plural,
   toMigrationCommandError,
 } from "../content-migrations";
+import { listRollbackFiles } from "../rollback/actions";
 
 const listCmd = migrationsCommand
   .command("list")
   .description(
-    "List the content migration runs recorded for a space on this machine, then the migrations without one",
+    "List the migration runs recorded for a space on this machine, then the content migrations without one",
   )
   .option("-s, --space <space>", "space ID")
   .option("--pending", "List only the migrations without a recorded run that is still in place");
 
-function undoState(run: MigrationRun): string {
-  if (run.undoneAt) return `  (undone ${run.undoneAt})`;
-  if (run.partlyUndoneAt) return `  (partly undone ${run.partlyUndoneAt})`;
+function rollbackState(run: MigrationRun): string {
+  if (run.undoneAt) return `  (rolled back ${run.undoneAt})`;
+  if (run.partlyUndoneAt) return `  (partly rolled back ${run.partlyUndoneAt})`;
   if (run.interrupted) return "  (interrupted)";
+  // `rollback` without a run passes over such a run, so it never shows as rolled back.
+  if (run.stories === 0) return "  (nothing to roll back)";
   return "";
 }
 
@@ -42,7 +45,10 @@ listCmd.action(async (options: { pending?: boolean }, command: Command) => {
   const logger = getLogger();
   const { space, path, verbose } = command.optsWithGlobals();
 
-  ui.title(`${commands.MIGRATIONS}`, colorPalette.MIGRATIONS, "Listing content migration runs...");
+  // `--pending` output is read by scripts, so it carries the ids and nothing else.
+  if (!options.pending) {
+    ui.title(`${commands.MIGRATIONS}`, colorPalette.MIGRATIONS, "Listing migration runs...");
+  }
 
   if (!space) {
     handleError(
@@ -52,33 +58,39 @@ listCmd.action(async (options: { pending?: boolean }, command: Command) => {
     return;
   }
 
-  logger.info("Content migration list started", { space });
+  logger.info("Migration list started", { space });
 
   try {
     const runs = await contentJournal(path).list(space);
-    const files = await discoverMigrations(migrationsDirectory(path, space));
+    const files = await discoverContentMigrations(migrationsDirectory(path, space));
     const pending = pendingMigrations(
       files.map((file) => file.id),
       runs,
     );
 
     if (options.pending) {
-      if (pending.length === 0) {
-        ui.info("No pending content migrations for this space on this machine.");
-      }
       for (const id of pending) {
-        ui.info(id);
+        ui.writeMachineOutput(id);
       }
       return;
     }
+    const rollbackFiles = await listRollbackFiles({ space, path });
+    const entries = [
+      ...runs.map((run) => ({
+        at: new Date(run.appliedAt).getTime(),
+        line: `${run.id}  ${run.title ?? run.migration}  ${plural(run.stories, "story", "stories")}, ${plural(run.blocks, "block", "blocks")}${rollbackState(run)}`,
+      })),
+      ...rollbackFiles.map((file) => ({
+        at: file.createdAt.getTime(),
+        line: `${file.name}  migration functions  ${plural(file.stories, "story", "stories")}  (rollback file)`,
+      })),
+    ].sort((a, b) => a.at - b.at);
 
-    if (runs.length === 0) {
-      ui.info("No content migration runs recorded for this space.");
+    if (entries.length === 0) {
+      ui.info("No migration runs recorded for this space.");
     }
-    for (const run of runs) {
-      ui.info(
-        `${run.id}  ${run.title ?? run.migration}  ${plural(run.stories, "story", "stories")}, ${plural(run.blocks, "block", "blocks")}${undoState(run)}`,
-      );
+    for (const entry of entries) {
+      ui.info(entry.line);
     }
     if (pending.length > 0) {
       ui.info(`Pending on this machine: ${pending.join(", ")}`);
@@ -87,5 +99,5 @@ listCmd.action(async (options: { pending?: boolean }, command: Command) => {
     handleError(toMigrationCommandError(maybeError), verbose);
   }
 
-  logger.info("Content migration list finished", { space });
+  logger.info("Migration list finished", { space });
 });

@@ -22,7 +22,12 @@ import { saveChangeset } from "../changeset";
 import { analyzeBreakingChanges } from "./migrations/analyze";
 import type { BreakingChange, ComponentBreakingChanges } from "./migrations/types";
 import { applyDeclaredRenames } from "./migrations/declared-renames";
-import { renderMigrationCode, toMigrationOps, writeMigrationFile } from "./migrations/generate";
+import {
+  migrationTitle,
+  renderMigrationCode,
+  toMigrationOps,
+  writeMigrationFile,
+} from "./migrations/generate";
 import { writeContentMigration } from "../../migrations/content-migrations";
 import { writeLocalComponents } from "./write-local-components";
 import { detectBlockRenames, withBlockRenames } from "./block-renames";
@@ -108,10 +113,7 @@ schemaCommand
     "Generate migration files for breaking changes without asking, taking detected field renames as given",
   )
   .addOption(new Option("--no-migrations", "Skip migration generation for breaking changes"))
-  .option(
-    "--typed",
-    "Generate one defineMigration file for `migrations apply` instead of one .js migration per block for `migrations run`",
-  )
+  .option("--typed", "Generate one defineMigration file instead of one .js migration per block")
   .option("--no-before", "With --typed, skip the .before.ts schema snapshot")
   .option(
     "--write-components",
@@ -143,7 +145,7 @@ schemaCommand
 
     const summary = { total: 0, succeeded: 0, failed: 0 };
     let generatedMigrations: { files: string[]; changes: ComponentBreakingChanges[] } | undefined;
-    const runCommand = options.typed ? "migrations apply" : "migrations run";
+    const runCommand = "migrations run";
 
     /**
      * Without a terminal, questions are collected instead of asked, so a script
@@ -239,6 +241,7 @@ schemaCommand
           path: basePath,
           space,
           name: `update-${blocks.join("-")}`,
+          title: migrationTitle(changes, blockBefore),
           schemaEntry: entryFile,
           ops,
           before: options.before

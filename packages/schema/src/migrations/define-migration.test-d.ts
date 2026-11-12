@@ -14,6 +14,7 @@ import {
   expandBlock,
   alterField,
   coerceField,
+  fieldsToBlock,
   mergeFields,
   moveField,
   removeField,
@@ -419,6 +420,38 @@ describe("callback return typing", () => {
     ]);
   });
 
+  it("should accept an inline richtext document, nested arrays included", () => {
+    defineMigration<FixtureSchema>([
+      alterField({ block: "article", field: "body" }, (value) =>
+        value
+          ? value
+          : {
+              type: "doc",
+              content: [{ type: "paragraph", content: [{ type: "text", text: "Hi" }] }],
+            },
+      ),
+      addField({ block: "article", field: "body" }, () => ({
+        type: "doc",
+        content: [{ type: "paragraph", content: [{ type: "text", text: "Hi" }] }],
+      })),
+    ]);
+    defineMigration<FixtureSchema>([
+      alterField({ block: "article", field: "body" }, () => ({
+        type: "doc",
+        // @ts-expect-error a richtext node has no "para" type
+        content: [{ type: "para" }],
+      })),
+    ]);
+  });
+
+  it("should accept blocks with nested arrays for a bloks field", () => {
+    defineMigration<FixtureSchema>([
+      alterField({ block: "section", field: "items" }, () => [
+        { _uid: "c1", component: "card", title: "Hi", meta: [] },
+      ]),
+    ]);
+  });
+
   it("should let addField leave a block untouched by returning undefined", () => {
     defineMigration<FixtureSchema>([addField({ block: "card", field: "slug" }, () => undefined)]);
   });
@@ -544,5 +577,86 @@ describe("under on a key op, past the object literal", () => {
 
   it("should keep accepting a value op built the same way", () => {
     defineMigration<FixtureSchema>([alterBlock({ block: "meta", ...scoped }, () => {})]);
+  });
+});
+
+describe("fieldsToBlock", () => {
+  it("should accept fields of the block moved to fields of the component", () => {
+    defineMigration<FixtureSchema>([
+      fieldsToBlock({
+        block: "card",
+        fields: { title: "og_title", old_slug: "author" },
+        into: "meta",
+        component: "meta",
+      }),
+    ]);
+  });
+
+  it("should reject a target field the component does not define", () => {
+    defineMigration<FixtureSchema>([
+      fieldsToBlock({
+        block: "card",
+        // @ts-expect-error meta has no field "headline"
+        fields: { title: "headline" },
+        into: "meta",
+        component: "meta",
+      }),
+    ]);
+  });
+
+  it("should reject a component the schema does not define", () => {
+    defineMigration<FixtureSchema>([
+      fieldsToBlock({
+        block: "card",
+        fields: { title: "og_title" },
+        into: "meta",
+        // @ts-expect-error there is no block "turnstile"
+        component: "turnstile",
+      }),
+    ]);
+  });
+
+  it("should reject a source field the pre-migration block does not define", () => {
+    defineMigration<AfterRenameArticleAuthor, FixtureSchema>([
+      fieldsToBlock({
+        block: "card",
+        // @ts-expect-error card has no field "titel"
+        fields: { titel: "og_title" },
+        into: "meta",
+        component: "meta",
+      }),
+    ]);
+  });
+
+  it("should reject `under`, since it is a key op", () => {
+    defineMigration<FixtureSchema>([
+      fieldsToBlock({
+        block: "card",
+        fields: { title: "og_title" },
+        into: "meta",
+        component: "meta",
+        // @ts-expect-error a key op applies to every instance
+        under: "section",
+      }),
+    ]);
+  });
+});
+
+describe("blocks a callback creates", () => {
+  it("should accept a block without a _uid, since the runner derives one", () => {
+    defineMigration<FixtureSchema>([
+      addField({ block: "card", field: "meta" }, () => [{ component: "meta", og_title: "new" }]),
+      alterBlock({ block: "section" }, (block) => ({
+        ...block,
+        meta: [{ component: "meta", author: "Ada" }],
+      })),
+    ]);
+  });
+
+  it("should still check the values of a block without a _uid", () => {
+    defineMigration<FixtureSchema>([
+      // @ts-expect-error og_title holds text
+      addField({ block: "card", field: "meta" }, () => [{ component: "meta", og_title: 42 }]),
+    ]);
   });
 });

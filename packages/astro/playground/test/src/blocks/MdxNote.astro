@@ -1,0 +1,14 @@
+---
+import { getEntry, render } from "astro:content";
+
+// A block that renders a content collection entry, the case head propagation
+// exists for. Fixture for e2e/head-propagation.spec.ts.
+const entry = await getEntry("notes", "styled");
+if (!entry) {
+  throw new Error('Content entry "notes/styled" not found');
+}
+const { Content } = await render(entry);
+const { editable } = Astro.props;
+---
+
+<div data-test="mdx-note" {...editable}><Content /></div>

@@ -135,10 +135,10 @@ export async function discoverMigrations(directory: string): Promise<MigrationFi
 
 export type LoadMigrationsOptions = {
   /**
-   * Load only the migration with this id. The other files are not imported, so
-   * a broken migration elsewhere in the directory does not block this one.
+   * Load only the migrations it accepts. The other files are not imported, so a
+   * broken migration elsewhere in the directory does not block these.
    */
-  only?: string;
+  filter?: (file: MigrationFile) => boolean;
 };
 
 export async function loadMigrations(
@@ -146,9 +146,7 @@ export async function loadMigrations(
   importDefault: ImportDefault,
   options: LoadMigrationsOptions = {},
 ): Promise<LoadedMigration[]> {
-  const files = (await discoverMigrations(directory)).filter(
-    ({ id }) => options.only === undefined || id === options.only,
-  );
+  const files = (await discoverMigrations(directory)).filter(options.filter ?? (() => true));
   return Promise.all(
     files.map(async ({ id, file }) => {
       const migration = await importDefault(file).catch((error: unknown) => {

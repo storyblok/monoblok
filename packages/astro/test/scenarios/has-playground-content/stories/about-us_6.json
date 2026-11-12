@@ -1,0 +1,21 @@
+{
+  "id": 6,
+  "uuid": "6",
+  "name": "About Us",
+  "slug": "about-us",
+  "full_slug": "about-us",
+  "is_folder": false,
+  "is_startpage": false,
+  "parent_id": 0,
+  "content": {
+    "component": "page",
+    "body": [
+      {
+        "_uid": "teaser-about-us-1",
+        "component": "teaser",
+        "headline": "Reload-only teaser",
+        "text": { "type": "doc", "content": [{ "type": "paragraph" }] }
+      }
+    ]
+  }
+}

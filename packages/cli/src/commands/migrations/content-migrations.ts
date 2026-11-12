@@ -1,7 +1,8 @@
 /**
- * What the content migration commands share: where a space's content
- * migrations and their journal live, writing a new one, the story fields the
- * engine reads, and the guard against pending releases.
+ * What `run`, `list`, `rollback`, and the commands that write content
+ * migrations share: where a space's content migrations and their journal live,
+ * writing a new one, the story fields the engine reads, and the guard against
+ * pending releases.
  */
 import { rm } from "node:fs/promises";
 import { isDeepStrictEqual } from "node:util";
@@ -13,20 +14,38 @@ import { nextMigrationId } from "@storyblok/schema/internal/codegen";
 import {
   checkPendingReleases,
   discoverMigrations,
+  localJournal,
   MigrationError,
-  resolveJournal,
 } from "@storyblok/schema";
-import type { Journal, StoryForMigration } from "@storyblok/schema";
+import type { Journal, MigrationFile, StoryForMigration } from "@storyblok/schema";
 import { getMapiClient } from "../../api";
 import { getUI } from "../../lib/ui";
 import { CommandError, toError } from "../../utils";
-import { handleAPIError } from "../../utils/error/api-error";
-import { fileExists, resolvePath, saveToFile } from "../../utils/filesystem";
+import { APIError, handleAPIError } from "../../utils/error/api-error";
+import { fileExists, importModule, resolvePath, saveToFile } from "../../utils/filesystem";
 import { fetchStory, updateStory } from "../stories/actions";
 import type { Story } from "../stories/constants";
 
 export function migrationsDirectory(path: string | undefined, space: string): string {
   return resolvePath(path, `migrations/${space}`);
+}
+
+/**
+ * The content migrations in a space's migrations directory. A `.js` file whose
+ * name fits the pattern may still be a migration function, told apart by its
+ * function default export. A file that fails to load counts as a content
+ * migration, so the content migration loader reports the failure.
+ */
+export async function discoverContentMigrations(directory: string): Promise<MigrationFile[]> {
+  const files = await discoverMigrations(directory);
+  const isContentMigration = await Promise.all(
+    files.map(async ({ file }) => {
+      if (!file.endsWith(".js")) return true;
+      const module = await importModule(file).catch(() => undefined);
+      return typeof module?.default !== "function";
+    }),
+  );
+  return files.filter((_, index) => isContentMigration[index]);
 }
 
 /**
@@ -121,9 +140,9 @@ export async function writeContentMigration(
   return options.before ? { migrationPath, beforePath } : { migrationPath };
 }
 
-/** The journal sits beside the space directories, so one journal serves every space. */
+/** Runs are recorded in each space's `rollbacks` directory, beside the legacy rollback files. */
 export function contentJournal(path: string | undefined): Journal {
-  return resolveJournal(resolvePath(path, "migrations"));
+  return localJournal(resolvePath(path, "migrations"));
 }
 
 export function toStoryForMigration(story: Story): StoryForMigration {
@@ -142,6 +161,24 @@ export function toStoryForMigration(story: Story): StoryForMigration {
  */
 export class DraftNotPublishedError extends Error {}
 
+/** Attempts after the first for a write that got no response, such as a timeout. */
+const WRITE_RETRIES = 2;
+
+/** Whether the API answered at all, as opposed to a timeout or a dropped connection. */
+function isAnswered(error: unknown): boolean {
+  return error instanceof APIError && Boolean(error.response?.status);
+}
+
+/** Whether a story holds what a write sent, published too when the write published. */
+function holdsWrite(
+  story: Story | undefined,
+  content: Record<string, unknown>,
+  publish: boolean,
+): boolean {
+  if (!story || !isDeepStrictEqual(story.content, content)) return false;
+  return !publish || (story.published === true && !story.unpublished_changes);
+}
+
 /**
  * Reads and writes the stories of one command run. A content write without the
  * story's name clears it, so each write carries the name its read returned.
@@ -156,39 +193,36 @@ export function storyAccess(space: string) {
     },
     /**
      * Throws {@link DraftNotPublishedError} when only the publish failed, since
-     * the API saves the draft before it validates the publish.
+     * the API saves the draft before it validates the publish. A write that
+     * gets no response may still have landed, so the story is read back before
+     * the write is repeated; writing the same content again is harmless.
      */
     async write(id: number, content: Record<string, unknown>, publish: boolean): Promise<void> {
-      try {
-        await updateStory(space, id, {
-          story: { content, name: names.get(id) },
-          force_update: "1",
-          ...(publish ? { publish: 1 } : {}),
-        });
-      } catch (maybeError) {
-        if (publish && (await draftHolds(space, id, content))) {
-          throw new DraftNotPublishedError(toError(maybeError).message);
+      for (let attempt = 0; ; attempt++) {
+        try {
+          await updateStory(space, id, {
+            story: { content, name: names.get(id) },
+            force_update: "1",
+            ...(publish ? { publish: 1 } : {}),
+          });
+          return;
+        } catch (maybeError) {
+          const story = await fetchStory(space, id).catch(() => undefined);
+          if (holdsWrite(story, content, publish)) return;
+          const draftSaved = holdsWrite(story, content, false);
+          if (isAnswered(maybeError) || attempt >= WRITE_RETRIES) {
+            if (publish && draftSaved) {
+              throw new DraftNotPublishedError(toError(maybeError).message);
+            }
+            throw maybeError;
+          }
         }
-        throw maybeError;
       }
     },
   };
 }
 
 export type StoryAccess = ReturnType<typeof storyAccess>;
-
-async function draftHolds(
-  space: string,
-  id: number,
-  content: Record<string, unknown>,
-): Promise<boolean> {
-  try {
-    const story = await fetchStory(space, id);
-    return isDeepStrictEqual(story?.content, content);
-  } catch {
-    return false;
-  }
-}
 
 /** The engine's errors are about the user's migrations or journal, not a CLI failure. */
 export function toMigrationCommandError(error: unknown): Error {
@@ -219,8 +253,8 @@ async function fetchReleases(space: string) {
  * is a warning rather than a reason to stop.
  */
 const RELEASE_CONSEQUENCES = {
-  apply: { subject: "This run doesn't change", object: "the stories it writes" },
-  undo: { subject: "This undo doesn't restore", object: "the stories it restores" },
+  run: { subject: "This run doesn't change", object: "the stories it writes" },
+  rollback: { subject: "This rollback doesn't restore", object: "the stories it restores" },
 } as const;
 
 export async function guardPendingReleases(

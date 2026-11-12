@@ -1,9 +1,6 @@
 ---
-import type {
-  StoryblokAstroRichTextRenderContext,
-  StoryblokRichTextTextNode,
-} from '../../';
-import { getInnerMarks } from '../../';
+import { type StoryblokRichTextTextNode, getInnerMarks } from '@storyblok/richtext';
+import type { StoryblokAstroRichTextRenderContext } from '../../richtext-helpers';
 import RenderTextNodeWithMarks from './RenderTextNodeWithMarks.astro';
 
 interface Props {

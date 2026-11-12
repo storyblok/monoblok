@@ -24,6 +24,10 @@ body:
         - "@storyblok/management-api-client"
         - "@storyblok/live-preview"
         - "@storyblok/migrations"
+        - "@storyblok/schema"
+        - "@storyblok/accessibility-checker"
+        - "@storyblok/experiments"
+        - "@storyblok/region-helper"
         - "Other / Unknown"
     validations:
       required: true

@@ -72,5 +72,5 @@ For bugs or feature requests, please
 
 ## License
 
-[MIT](/LICENSE). The package depends on [axe-core](https://github.com/dequelabs/axe-core), which is
+[MIT](./LICENSE). The package depends on [axe-core](https://github.com/dequelabs/axe-core), which is
 licensed under the [Mozilla Public License 2.0](https://www.mozilla.org/en-US/MPL/2.0/).

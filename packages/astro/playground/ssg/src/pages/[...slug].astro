@@ -1,15 +1,10 @@
 ---
-import { useStoryblokApi } from '@storyblok/astro';
-import StoryblokComponent from '@storyblok/astro/StoryblokComponent.astro';
-import BaseLayout from '@shared/components/BaseLayout.astro';
+import { client, StoryblokBlock } from "../storyblok";
+import BaseLayout from "../components/BaseLayout.astro";
 
 export async function getStaticPaths() {
-  const sbApi = useStoryblokApi();
-  const { data } = await sbApi.get('cdn/links', {
-    version: 'draft',
-  });
-  let linksObj = data.links;
-  let links = Object.values(linksObj ?? {});
+  const { data } = await client.links.list();
+  const links = Object.values(data?.links ?? {}).filter((link) => !link.is_folder);
 
   return links.map((link) => {
     return {
@@ -19,15 +14,20 @@ export async function getStaticPaths() {
 }
 const { slug } = Astro.params;
 
-const sbApi = useStoryblokApi();
-const { data } = await sbApi.get(`cdn/stories/${slug}`, {
-  version: 'draft',
-  resolve_relations: ['featured-articles.posts'],
+const { data } = await client.stories.get(slug, {
+  query: {
+    version: "draft",
+    resolve_relations: "featured-articles.posts",
+  },
 });
+
+if (!data?.story) {
+  throw new Error(`Story not found for slug "${slug}"`);
+}
 
 const story = data.story;
 ---
 
 <BaseLayout>
-  <StoryblokComponent blok={story.content} />
+  <StoryblokBlock block={story.content} />
 </BaseLayout>

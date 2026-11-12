@@ -69,7 +69,7 @@ export async function getMigrationFunction(
       isRecord(migrationModule.default) && Array.isArray(migrationModule.default.ops);
     getUI().error(
       contentMigration
-        ? `Migration file "${fileName}" is a content migration. Apply it with "storyblok migrations apply".`
+        ? `Migration file "${fileName}" is a content migration, but content migrations are named "<number>-<name>", for example "0001-${fileName}". Rename it so "storyblok migrations run" applies it.`
         : `Migration file "${fileName}" does not export a default function.`,
     );
     getLogger().error("Migration file does not export a default function", {

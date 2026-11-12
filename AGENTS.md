@@ -2,7 +2,9 @@
 
 We use `nx` and `pnpm` workspaces. Use commands like `pnpm nx build <package>` and
 `pnpm nx run-many` to build, test, lint, and run parallel CI checks across projects. E.g.,
-`pnpm nx build storyblok` or `pnpm nx lint:fix @storyblok/migrations`.
+`pnpm nx build storyblok` or `pnpm nx lint:fix @storyblok/migrations`. `pnpm build` and the CI build
+job skip the `blueprints/*` projects (tag `blueprint`); build one with
+`pnpm nx build blueprint-core-<framework>` (ADR-0023).
 
 - `packages/`: Public packages and integrations.
 - `tools/`: Internal development tools and scripts.
@@ -10,18 +12,15 @@ We use `nx` and `pnpm` workspaces. Use commands like `pnpm nx build <package>` a
   `storyblok-js-client`). Note that some folder names differ from their package names: `capi-client`
   → `@storyblok/api-client`, `mapi-client` → `@storyblok/management-api-client`, `cli` →
   `storyblok`, `js-client` → `storyblok-js-client`.
-- Packages use [Vite+](https://viteplus.dev) (`vp` CLI) as the unified toolchain:
-  `vp pack`/`vp build` for bundling (tsdown / Vite under the hood), `vp test` for testing (Vitest),
-  `vp lint` for linting (Oxlint via `@storyblok/lint-config`), and `vp fmt` for formatting (Oxfmt).
-  Formatting is run from the repo root (`pnpm format`), not per package.
+- Packages use Vite+ (`vp` CLI) as the unified toolchain: `vp pack`/`vp build` for bundling (tsdown
+  / Vite under the hood), `vp test` for testing (Vitest), `vp lint` for linting (Oxlint via
+  `@storyblok/lint-config`), and `vp fmt` for formatting (Oxfmt). Formatting is run from the repo
+  root (`pnpm format`), not per package.
 
 ## Rules
 
-- **Be concise** - Drop: filler, pleasantries, hedging.
-- **Plan first** - For non-trivial changes, write a plan before coding
-- **Verify always** - Run lint/typecheck/tests before considering work done
-- **Reuse first** - Before implementing, search for existing utilities, helpers, and modules in the
-  package. Prefer composing over writing new.
+- **Verify always** - Run `lint:fix`, `test`, and `test:types` on affected packages, e.g.
+  `pnpm nx test:types storyblok`, and fix remaining issues.
 - **Check versions** - Look up the latest version before installing a new npm package.
 - **IMPORTANT:** The Management API validates a component schema field's `type` against a closed
   list and rejects an unknown one outright. Everything else it treats as an opaque blob: the rest of
@@ -50,8 +49,6 @@ We use `nx` and `pnpm` workspaces. Use commands like `pnpm nx build <package>` a
   casts. Explicit return types on public APIs.
 - **Imports:** Group as external deps → workspace deps (`@storyblok/...`) → local (relative paths).
   Prefer named imports.
-- **Linting:** Always lint and type-check affected packages after making changes. Default to
-  `lint:fix` or `--fix` and fix remaining issues.
 
 ## OpenAPI codegen
 
@@ -73,7 +70,8 @@ working with OpenAPI specs.
 ## Architecture Decision Records
 
 When a significant architectural decision is made, add a concise new ADR in `adr/` following the
-existing numbering convention (`0001-`, `0002-`, …).
+existing numbering convention (`0001-`, `0002-`, …). Cite an ADR to explain why something was built
+a certain way, not as a reference for how it works now; point to the code or docs for that.
 
 ## Git
 
@@ -111,7 +109,5 @@ For more context, read relevant files in `docs/`:
   (package or repo root). Delete it before merge, and only once a docs platform PR has been created
   from it. Load when changes need reference docs, when versioning docs for a major release, or when
   adding a package to the site navigation.
-- `storyblok-kotlin.md` - Kotlin Multiplatform SDK (Ktor plugin). Load when touching the Kotlin SDK.
-- `storyblok-swift.md` - Swift SDK (URLSession extension). Load when touching the Swift SDK.
-- `testing-patterns.md` - Test stack, file layout, session mocking, and Windows gotchas. Load when
-  writing, debugging, or reviewing tests.
+- `testing-patterns.md` - Test principles, stack, file layout, mocking, and Windows gotchas. Load
+  before changing behavior or fixing a bug, and when writing, debugging, or reviewing tests.

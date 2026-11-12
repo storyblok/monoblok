@@ -1,0 +1,32 @@
+{
+	"name": "blueprint-core-svelte",
+	"private": true,
+	"version": "0.0.1",
+	"type": "module",
+	"scripts": {
+		"dev": "vite dev",
+		"build": "vite build",
+		"preview": "vite preview",
+		"prepare": "svelte-kit sync || echo ''"
+	},
+	"nx": {
+		"includedScripts": [
+			"build"
+		]
+	},
+	"devDependencies": {
+		"@sveltejs/adapter-auto": "^7.0.1",
+		"@sveltejs/kit": "^2.70.3",
+		"@sveltejs/vite-plugin-svelte": "^6.2.4",
+		"svelte": "^5.57.0",
+		"vite": "^7.3.6",
+		"vite-plugin-mkcert": "^2.1.0"
+	},
+	"dependencies": {
+		"@storyblok/js": "workspace:^",
+		"@storyblok/svelte": "workspace:^"
+	},
+	"overrides": {
+		"cookie": "^0.7.2"
+	}
+}

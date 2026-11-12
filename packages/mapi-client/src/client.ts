@@ -109,8 +109,8 @@ export type ManagementApiClientConfig<ThrowOnError extends boolean = false> = To
   spaceId?: number;
   /**
    * Storyblok region. Determines the base URL.
-   * @default the region `spaceId` encodes, else 'eu'. Older Chinese space IDs
-   * overlap with EU ones, so pass 'cn' for a space in China.
+   * @default the region `spaceId` encodes, else 'eu'. A Chinese space ID might
+   * resolve to 'eu', so pass 'cn' for a space in China.
    */
   region?: Region;
   /**

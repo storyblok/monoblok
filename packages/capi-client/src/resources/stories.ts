@@ -9,6 +9,7 @@ import type {
   ApplyRestrictions,
   AssetFieldValue,
   BlockContent as BlokContent,
+  ContentField,
   FieldValue,
   HasRestriction,
   MultilinkFieldValue,
@@ -244,11 +245,11 @@ type InlinedBlockContent<
   ? Prettify<
       { _uid: string; component: TBlock["name"]; _editable?: string } & Prettify<
         {
-          [F in TBlock["fields"][number] as F extends { required: true }
+          [F in ContentField<TBlock["fields"]> as F extends { required: true }
             ? F["name"]
             : never]: InlinedFieldValue<F, TBlock["name"], TBlocks, TPaths, TFieldPlugins>;
         } & {
-          [F in TBlock["fields"][number] as F extends { required: true }
+          [F in ContentField<TBlock["fields"]> as F extends { required: true }
             ? never
             : F["name"]]?: InlinedFieldValue<
             F,

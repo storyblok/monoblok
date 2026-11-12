@@ -36,9 +36,29 @@ type NoBlocks = false;
 type IsBaseBlock<T> = [Block] extends [T] ? true : false;
 
 /**
+ * Field types that only arrange other fields in the editor. They hold no value,
+ * so a story never stores anything under their key. The fields they list in
+ * `keys` are declared separately and keep their own keys.
+ *
+ * Derived from {@link FieldTypeValueMap}, where they map to `never`. The runtime
+ * list `LAYOUT_FIELD_TYPES` in `@storyblok/schema` is type-tested against this
+ * union, so a new layout type fails the type check until it is added there too.
+ */
+export type LayoutFieldType = {
+  [K in keyof FieldTypeValueMap]: [FieldTypeValueMap[K]] extends [never] ? K : never;
+}[keyof FieldTypeValueMap];
+
+/** Members of a block's `fields` that hold content, i.e. every field but the layout-only ones. */
+export type ContentField<TFields extends BlockFields> = Exclude<
+  TFields[number],
+  { type: LayoutFieldType }
+>;
+
+/**
  * Maps a block's ordered `fields` array to its read content object, splitting
- * required (`required: true`) from optional fields. Each `F` is a member of the
- * field union, so it provably satisfies `FieldValue`'s `Field` constraint.
+ * required (`required: true`) from optional fields and leaving out layout-only
+ * fields. Each `F` is a member of the field union, so it provably satisfies
+ * `FieldValue`'s `Field` constraint.
  */
 type ContentFields<
   TFields extends BlockFields,
@@ -46,13 +66,13 @@ type ContentFields<
   TFieldPlugins = Record<never, never>,
 > = Prettify<
   {
-    [F in TFields[number] as F extends { required: true } ? F["name"] : never]: FieldValue<
+    [F in ContentField<TFields> as F extends { required: true } ? F["name"] : never]: FieldValue<
       F,
       TBlocks,
       TFieldPlugins
     >;
   } & {
-    [F in TFields[number] as F extends { required: true } ? never : F["name"]]?: FieldValue<
+    [F in ContentField<TFields> as F extends { required: true } ? never : F["name"]]?: FieldValue<
       F,
       TBlocks,
       TFieldPlugins
@@ -67,17 +87,13 @@ type ContentFieldsInput<
   TFieldPlugins = Record<never, never>,
 > = Prettify<
   {
-    [F in TFields[number] as F extends { required: true } ? F["name"] : never]: FieldValueInput<
-      F,
-      TBlocks,
-      TFieldPlugins
-    >;
+    [F in ContentField<TFields> as F extends { required: true }
+      ? F["name"]
+      : never]: FieldValueInput<F, TBlocks, TFieldPlugins>;
   } & {
-    [F in TFields[number] as F extends { required: true } ? never : F["name"]]?: FieldValueInput<
-      F,
-      TBlocks,
-      TFieldPlugins
-    > | null;
+    [F in ContentField<TFields> as F extends { required: true }
+      ? never
+      : F["name"]]?: FieldValueInput<F, TBlocks, TFieldPlugins> | null;
   }
 >;
 

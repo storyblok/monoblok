@@ -1,6 +1,7 @@
 import { describe, expectTypeOf, it } from "vitest";
 import type { FieldValue } from "../generated/types/field";
 import { defineBlock } from "./define-block";
+import { hideWhen, requiredWhen } from "./define-condition";
 import { type CheckedField, defineField, type FieldInput } from "./define-field";
 import { defineFolder } from "./define-folder";
 
@@ -521,6 +522,30 @@ describe("defineField field option checking", () => {
     void defineField("tab-1", { type: "tab", required: true });
     // @ts-expect-error 'required' is not an option of 'group'
     void defineField("legacy", { type: "group", required: false });
+  });
+
+  it("should reject a conditional `required` on layout fields", () => {
+    // @ts-expect-error a layout field cannot be required conditionally
+    void defineField("details", {
+      type: "section",
+      conditional_settings: [requiredWhen({ field: "has_details", is: "not_empty" })],
+    });
+    // @ts-expect-error a layout field cannot be required conditionally
+    void defineField("tab-1", {
+      type: "tab",
+      conditional_settings: [{ rule_match: "any", modifications: [{ required: true }] }],
+    });
+  });
+
+  it("should accept a conditional `display` on layout fields", () => {
+    void defineField("details", {
+      type: "section",
+      conditional_settings: [hideWhen({ field: "has_details", is: "empty" })],
+    });
+    void defineField("tab-1", {
+      type: "tab",
+      conditional_settings: [{ modifications: [{ display: "hide" }] }],
+    });
   });
 
   it("should accept arbitrary plugin option keys on `custom` fields", () => {

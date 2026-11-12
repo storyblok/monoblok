@@ -7,12 +7,14 @@ import type {
   FieldType,
   FieldValue,
   FieldValueInput,
+  LayoutFieldType,
   MultilinkFieldValue,
   PluginFieldValue,
   RichTextFieldValue,
   RichtextFieldValue,
   TableFieldValue,
 } from "../generated/types/field";
+import type { ConditionalSetting } from "../generated/overlay/_internal.gen";
 import type { BlockFolder } from "./define-folder";
 import type { Prettify } from "../utils/prettify";
 import { DENIABLE_FIELD_TYPES, type DerivedRestrictionKey } from "../restrictions";
@@ -297,11 +299,30 @@ type DslInputFor<TVariant> = Pick<DslInputAll, Extract<DslKeysFor<TVariant>, key
  */
 export type FieldInput = FieldInputOf<Field>;
 
-type FieldInputOf<T> = T extends any
-  ? Omit<T, WireRestrictionKeys> &
-      Pick<WireRestrictionDocs, Extract<WireRestrictionKeys, keyof T>> &
-      DslInputFor<T>
-  : never;
+type FieldInputOf<T> = T extends { type: LayoutFieldType }
+  ? Omit<T, WireRestrictionKeys | "conditional_settings"> & {
+      conditional_settings?: LayoutConditionalSetting[];
+    }
+  : T extends any
+    ? Omit<T, WireRestrictionKeys> &
+        Pick<WireRestrictionDocs, Extract<WireRestrictionKeys, keyof T>> &
+        DslInputFor<T>
+    : never;
+
+type ConditionalModification = NonNullable<ConditionalSetting["modifications"]>[number];
+
+/**
+ * A conditional setting without the `required` modification. The Management API
+ * applies a conditional `required` to every field type, and a layout field never
+ * holds a value, so a matching condition would block publishing.
+ */
+type LayoutConditionalSetting = Omit<ConditionalSetting, "modifications"> & {
+  modifications?: Array<
+    Omit<ConditionalModification, "required"> & {
+      required?: Invalid<"a layout field holds no value, so it cannot be required">;
+    }
+  >;
+};
 
 declare const invalidKey: unique symbol;
 /**

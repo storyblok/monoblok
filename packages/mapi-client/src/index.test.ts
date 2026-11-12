@@ -65,6 +65,86 @@ describe("createManagementApiClient - region base URLs", () => {
   });
 });
 
+describe("createManagementApiClient - region from spaceId", () => {
+  const US_SPACE_ID = 564469716905585;
+  const LEGACY_AP_SPACE_ID = 3_500_000;
+  const SPACE_ID_WITHOUT_REGION = 5_000_000;
+
+  const captureHost = (host: string) => {
+    const captured = { url: "" };
+    server.use(
+      http.get(`https://${host}/v1/spaces`, ({ request }) => {
+        captured.url = request.url;
+        return HttpResponse.json({ spaces: [] });
+      }),
+    );
+    return captured;
+  };
+
+  it.each([
+    { spaceId: US_SPACE_ID, expectedHost: "api-us.storyblok.com" },
+    { spaceId: LEGACY_AP_SPACE_ID, expectedHost: "api-ap.storyblok.com" },
+  ])(
+    "should send requests for space $spaceId to $expectedHost when no region is given",
+    async ({ spaceId, expectedHost }) => {
+      const captured = captureHost(expectedHost);
+      const client = createManagementApiClient({
+        personalAccessToken: "test-token",
+        spaceId,
+        rateLimit: false,
+      });
+
+      await client.spaces.list();
+
+      expect(captured.url).toContain(expectedHost);
+    },
+  );
+
+  it("should prefer an explicit region over the one the spaceId encodes", async () => {
+    const captured = captureHost("mapi.storyblok.com");
+    const client = createManagementApiClient({
+      personalAccessToken: "test-token",
+      spaceId: US_SPACE_ID,
+      region: "eu",
+      rateLimit: false,
+    });
+
+    await client.spaces.list();
+
+    expect(captured.url).toContain("mapi.storyblok.com");
+  });
+
+  it("should prefer an explicit baseUrl over the region the spaceId encodes", async () => {
+    const captured = captureHost("custom.example.com");
+    const client = createManagementApiClient({
+      personalAccessToken: "test-token",
+      spaceId: US_SPACE_ID,
+      baseUrl: "https://custom.example.com",
+      rateLimit: false,
+    });
+
+    await client.spaces.list();
+
+    expect(captured.url).toContain("custom.example.com");
+  });
+
+  it.each([
+    { description: "no spaceId", spaceId: undefined },
+    { description: "a spaceId that encodes no region", spaceId: SPACE_ID_WITHOUT_REGION },
+  ])("should fall back to the EU host for $description", async ({ spaceId }) => {
+    const captured = captureHost("mapi.storyblok.com");
+    const client = createManagementApiClient({
+      personalAccessToken: "test-token",
+      spaceId,
+      rateLimit: false,
+    });
+
+    await client.spaces.list();
+
+    expect(captured.url).toContain("mapi.storyblok.com");
+  });
+});
+
 describe("createManagementApiClient - HTTP requests", () => {
   it("should retrieve spaces successfully", async () => {
     server.use(

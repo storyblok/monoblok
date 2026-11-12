@@ -134,7 +134,7 @@ schemaCommand
       if (droppedLayoutFieldOptions.length > 0) {
         ui.warn(
           [
-            "Dropped options that tab, section, and group fields hold no value for. The next schema push removes them from the space:",
+            "Dropped settings that tab, section, and group fields don't support. The next schema push removes them from the space:",
             ...droppedLayoutFieldOptions.map((entry) => `  - ${entry}`),
           ].join("\n"),
         );

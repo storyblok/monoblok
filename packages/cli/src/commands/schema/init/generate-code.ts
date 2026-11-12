@@ -1,4 +1,4 @@
-import { DENIABLE_FIELD_TYPES, type Field } from "@storyblok/schema";
+import { DENIABLE_FIELD_TYPES, type Field, LAYOUT_FIELD_TYPES } from "@storyblok/schema";
 import * as officialFieldPlugins from "@storyblok/schema/field-plugins";
 
 import type { Component, ComponentFolder, Datasource } from "../../../types";
@@ -42,33 +42,33 @@ const SECTION_KEYS = [...BASE_FIELD_KEYS, "keys", "fieldset"] as const;
 const TAB_KEYS = [...BASE_FIELD_KEYS, "keys"] as const;
 
 /**
- * Every key a layout field type owns. A space can hold more on one: the editor
- * keeps all keys when a field's type changes, so a required text field switched
- * to a section keeps `required`, `max_length` and the rest. `defineField` rejects
- * those, so they are dropped, and the next push clears them from the space.
+ * The editor keeps every key when a field's type changes, so a layout field in a
+ * space can carry keys its type doesn't own.
  */
-const LAYOUT_FIELD_KEYS: Record<string, ReadonlySet<string>> = {
-  section: new Set(SECTION_KEYS satisfies EveryKeyOf<FieldOfType<"section">, typeof SECTION_KEYS>),
-  tab: new Set(TAB_KEYS satisfies EveryKeyOf<FieldOfType<"tab">, typeof TAB_KEYS>),
-  group: new Set(
-    BASE_FIELD_KEYS satisfies EveryKeyOf<FieldOfType<"group">, typeof BASE_FIELD_KEYS>,
-  ),
-};
+const LAYOUT_FIELD_KEYS = new Map<string, ReadonlySet<string>>(
+  Object.entries({
+    section: new Set(
+      SECTION_KEYS satisfies EveryKeyOf<FieldOfType<"section">, typeof SECTION_KEYS>,
+    ),
+    tab: new Set(TAB_KEYS satisfies EveryKeyOf<FieldOfType<"tab">, typeof TAB_KEYS>),
+    group: new Set(
+      BASE_FIELD_KEYS satisfies EveryKeyOf<FieldOfType<"group">, typeof BASE_FIELD_KEYS>,
+    ),
+  } satisfies Record<(typeof LAYOUT_FIELD_TYPES)[number], ReadonlySet<string>>),
+);
 
-/** Reported in place of a key for a conditional `required` modification on a layout field. */
-const CONDITIONAL_REQUIRED = "conditional required";
+const BLOCKS_PUBLISHING = "(blocks publishing)";
 
 /**
- * Removes what `defineField` rejects on a layout field: keys the field type does
- * not own, and the `required` modification inside `conditional_settings`, which
- * blocks publishing because a layout field never holds a value. Returns the field
- * unchanged for any other field type.
+ * Removes what `defineField` rejects on a layout field: keys its type doesn't own
+ * and conditional `required: true` modifications. Other field types pass through
+ * unchanged.
  */
 function toLayoutDslField(field: Record<string, unknown>): {
   field: Record<string, unknown>;
   dropped: string[];
 } {
-  const ownedKeys = LAYOUT_FIELD_KEYS[String(field.type)];
+  const ownedKeys = LAYOUT_FIELD_KEYS.get(String(field.type));
   if (!ownedKeys) {
     return { field, dropped: [] };
   }
@@ -78,35 +78,40 @@ function toLayoutDslField(field: Record<string, unknown>): {
     if (ownedKeys.has(key)) {
       out[key] = value;
     } else {
-      dropped.push(key);
+      dropped.push(key === "required" && value === true ? `required ${BLOCKS_PUBLISHING}` : key);
     }
   }
   if (Array.isArray(out.conditional_settings)) {
     let droppedRequired = false;
-    out.conditional_settings = out.conditional_settings.map((setting: unknown) => {
+    const settings = out.conditional_settings.flatMap((setting: unknown) => {
       if (!isRecord(setting) || !Array.isArray(setting.modifications)) {
-        return setting;
+        return [setting];
       }
-      return {
-        ...setting,
-        modifications: setting.modifications.map((modification: unknown) => {
-          if (!isRecord(modification) || !("required" in modification)) {
-            return modification;
-          }
-          droppedRequired = true;
-          const { required: _required, ...rest } = modification;
-          return rest;
-        }),
-      };
+      const modifications = setting.modifications.flatMap((modification: unknown) => {
+        if (!isRecord(modification) || modification.required !== true) {
+          return [modification];
+        }
+        droppedRequired = true;
+        const { required: _required, ...rest } = modification;
+        return Object.keys(rest).length > 0 ? [rest] : [];
+      });
+      if (modifications.length === setting.modifications.length) {
+        return [setting];
+      }
+      return modifications.length > 0 ? [{ ...setting, modifications }] : [];
     });
     if (droppedRequired) {
-      dropped.push(CONDITIONAL_REQUIRED);
+      dropped.push(`conditional required ${BLOCKS_PUBLISHING}`);
+    }
+    if (settings.length > 0) {
+      out.conditional_settings = settings;
+    } else {
+      delete out.conditional_settings;
     }
   }
   return { field: out, dropped };
 }
 
-/** `<block>.<field>: <options>` for every layout field `schema init` strips options from. */
 export function collectDroppedLayoutFieldOptions(components: Component[]): string[] {
   const result: string[] = [];
   for (const component of components) {

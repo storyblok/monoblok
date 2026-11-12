@@ -948,8 +948,6 @@ describe("generateComponentFile", () => {
   });
 
   it("should drop options a layout field does not own", () => {
-    // The editor keeps every key when a field's type changes, so a required text
-    // field switched to a section keeps `required` and `max_length`.
     const component = {
       id: 1,
       name: "form",
@@ -982,7 +980,7 @@ describe("generateComponentFile", () => {
     });
   });
 
-  it("should drop a conditional required modification from a layout field", () => {
+  it("should drop conditional required modifications from a layout field", () => {
     const rule_conditions = [
       {
         validated_object: { type: "field", field_key: "show", field_attr: "value" },
@@ -999,11 +997,19 @@ describe("generateComponentFile", () => {
           conditional_settings: [
             { rule_match: "any", rule_conditions, modifications: [{ required: true }] },
             { rule_match: "any", rule_conditions, modifications: [{ display: "hide" }] },
+            { rule_match: "any", rule_conditions, modifications: [{ required: false }] },
+          ],
+        },
+        "tab-1": {
+          type: "tab",
+          pos: 1,
+          conditional_settings: [
+            { rule_match: "any", rule_conditions, modifications: [{ required: true }] },
           ],
         },
         title: {
           type: "text",
-          pos: 1,
+          pos: 2,
           conditional_settings: [
             { rule_match: "any", rule_conditions, modifications: [{ required: true }] },
           ],
@@ -1013,15 +1019,25 @@ describe("generateComponentFile", () => {
 
     const block = evaluateBlockFile(generateComponentFile(component as any));
 
-    expect(block).toMatchObject({
+    expect(block).toEqual({
+      name: "form",
       fields: [
         {
+          name: "details",
+          type: "section",
           conditional_settings: [
-            { rule_match: "any", rule_conditions, modifications: [{}] },
             { rule_match: "any", rule_conditions, modifications: [{ display: "hide" }] },
+            { rule_match: "any", rule_conditions, modifications: [{ required: false }] },
           ],
         },
-        { conditional_settings: [{ modifications: [{ required: true }] }] },
+        { name: "tab-1", type: "tab" },
+        {
+          name: "title",
+          type: "text",
+          conditional_settings: [
+            { rule_match: "any", rule_conditions, modifications: [{ required: true }] },
+          ],
+        },
       ],
     });
   });

@@ -427,7 +427,7 @@ describe("undoStories after a recorded run", () => {
       ],
     };
     const run = migrate(
-      [unwrapChildren({ block: "page", field: "body", unwrap: "grid", from: "items" })],
+      [unwrapChildren({ block: "page", field: "body", from: { block: "grid", field: "items" } })],
       structuredClone(original),
     );
 
@@ -443,7 +443,9 @@ describe("undoStories after a recorded run", () => {
       body: [{ _uid: "c", component: "card", title: "A" }],
       aside: [],
     };
-    const wrap = [wrapChildren({ block: "page", field: "body", in: "grid", into: "items" })];
+    const wrap = [
+      wrapChildren({ block: "page", field: "body", into: { block: "grid", field: "items" } }),
+    ];
 
     function wrapped() {
       const run = migrate(wrap, structuredClone(original));

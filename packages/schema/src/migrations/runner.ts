@@ -283,20 +283,20 @@ function applyOp(block: AnyBlock, op: MigrationOp): string | undefined {
       break;
     }
     case "fieldsToBlock": {
-      const moves = Object.entries(op.fields).flatMap(([from, to]) =>
+      const moves = Object.entries(op.into.fields).flatMap(([from, to]) =>
         [from, ...translationKeysFor(block, from)]
           .filter((key) => key in block)
           .map((key) => ({ key, target: `${to}${key.slice(from.length)}` })),
       );
       if (moves.length === 0) break;
       if (moves.some(({ key }) => !isEmptyValue(block[key]))) {
-        if (!isEmptyValue(block[op.into])) {
-          return `field "${op.into}" already holds a block, and moving ${moves.map(({ key }) => `"${key}"`).join(", ")} into a new one would drop either it or their values.`;
+        if (!isEmptyValue(block[op.field])) {
+          return `field "${op.field}" already holds a block, and moving ${moves.map(({ key }) => `"${key}"`).join(", ")} into a new one would drop either it or their values.`;
         }
-        const created: Record<string, unknown> = { component: op.component };
+        const created: Record<string, unknown> = { component: op.into.block };
         for (const { key, target } of moves) created[target] = block[key];
         // The uid is derived after the pass, like for any block a migration creates.
-        block[op.into] = [created];
+        block[op.field] = [created];
       }
       for (const { key } of moves) delete block[key];
       break;
@@ -310,12 +310,12 @@ function applyOp(block: AnyBlock, op: MigrationOp): string | undefined {
       // Derived from the parent and the field so a rerun produces the same
       // uid, saving has no reason to regenerate it, and two fields wrapped
       // into the same container block do not collide.
-      const wrapperUid = `${block._uid}-${op.field}-${op.in}`;
+      const wrapperUid = `${block._uid}-${op.field}-${op.into.block}`;
       // Already wrapped: a rerun must not add a second layer.
       if (
         children.length === 1 &&
         isBlock(children[0]) &&
-        children[0].component === op.in &&
+        children[0].component === op.into.block &&
         children[0]._uid === wrapperUid
       ) {
         break;
@@ -323,8 +323,8 @@ function applyOp(block: AnyBlock, op: MigrationOp): string | undefined {
       block[op.field] = [
         {
           _uid: wrapperUid,
-          component: op.in,
-          [op.into]: children,
+          component: op.into.block,
+          [op.into.field]: children,
         },
       ];
       break;
@@ -334,9 +334,9 @@ function applyOp(block: AnyBlock, op: MigrationOp): string | undefined {
       if (!Array.isArray(children)) break;
       let matchedAny = false;
       const flattened = children.flatMap((child) => {
-        if (!isBlock(child) || child.component !== op.unwrap) return [child];
+        if (!isBlock(child) || child.component !== op.from.block) return [child];
         matchedAny = true;
-        const inner = child[op.from];
+        const inner = child[op.from.field];
         return Array.isArray(inner) ? inner : [];
       });
       if (!matchedAny) break;

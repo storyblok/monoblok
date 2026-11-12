@@ -58,28 +58,29 @@ last sync, switches that check off. Re-running an old run does not work either, 
 expire after a day: start a new run. A blueprint that needs an SDK change that is not on npm yet
 fails the sync until the release: sync the others by name.
 
-Runs of a ref go one at a time. A run that waits for approval holds its place, and a newer run waits
-behind it. Of the runs waiting, only the newest stays, with its own inputs: a later run for one
-blueprint replaces a waiting `all`. Reject a run you no longer want, or it blocks the next ones until
-it times out.
+Runs of a ref go one at a time. Of the runs waiting behind a running sync, only the newest stays,
+with its own inputs: a later run for one blueprint replaces a waiting `all`.
 
 `publish.yaml` starts the sync after every publish on `main`, including one that had nothing new to
-publish, by dispatching `sync-blueprints.yaml` as a run of its own. Reject the approval for those.
-It is dispatched, not called: when it was called, `push` got an empty App key (the environment
-variable arrived, the environment secret did not). The sync run is not nested under the Publish run; the Publish
-run's summary links to the workflow.
+publish, by dispatching `sync-blueprints.yaml` as a run of its own, with no approval. It is
+dispatched, not called: when it was called, `push` got an empty App key (the environment variable
+arrived, the environment secret did not). The sync run is not nested under the Publish run; the
+Publish run's summary links to the workflow.
+
+A failed sync emails nobody, because the dispatched run's actor is `github-actions[bot]`, so check
+the **Sync blueprints** runs yourself (ADR-0026). To stop the sync, disable the workflow in the
+**Actions** tab; after you enable it again, run it by hand to catch up.
 
 ## GitHub settings
 
 The workflow cannot enforce these itself: a branch brings its own copy of the workflow file.
 
-| Environment      | Used by                | Holds                                                        | Settings                                |
-| ---------------- | ---------------------- | ------------------------------------------------------------ | --------------------------------------- |
-| `production`     | `approve`, `publish.yaml` | nothing the sync reads                                    | required reviewers, deploy from `main`  |
-| `blueprint-sync` | `push`                 | variable `BLUEPRINTS_APP_ID`, secret `BLUEPRINTS_APP_PRIVATE_KEY` | deploy from `main`                      |
+| Environment      | Used by | Holds                                                             | Settings           |
+| ---------------- | ------- | ----------------------------------------------------------------- | ------------------ |
+| `blueprint-sync` | `push`  | variable `BLUEPRINTS_APP_ID`, secret `BLUEPRINTS_APP_PRIVATE_KEY` | deploy from `main` |
 
-`approve` reuses `production` as a plain approval gate. `blueprint-sync` stays separate so the App
-key is never reachable from a job that runs under `production`.
+The sync uses no other environment and no reviewers. `publish.yaml` keeps its `production`
+reviewers, so a person still approves the release that starts the sync.
 
 - The App key is an environment secret, not a repository secret. In the App's settings, check that it
   is installed on the seven template repos only, with `contents: write` and no `workflows`.

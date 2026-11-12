@@ -2067,18 +2067,25 @@ describe("schema push command", () => {
     preconditions.hasRemoteTags([]);
     preconditions.canUpdateComponents();
 
-    await schemaCommand.parseAsync([
-      "node",
-      "test",
-      "push",
-      "schema.ts",
-      "--space",
-      DEFAULT_SPACE,
-      "--typed",
-      "--path",
-      "my project",
-      "--migrations",
-    ]);
+    // `--path` is a global option, so it lives on the root program.
+    const program = schemaCommand.parent;
+    if (!program) throw new Error("schema command is not registered on the program");
+    const previousPath: unknown = program.getOptionValue("path");
+    program.setOptionValue("path", "my project");
+    try {
+      await schemaCommand.parseAsync([
+        "node",
+        "test",
+        "push",
+        "schema.ts",
+        "--space",
+        DEFAULT_SPACE,
+        "--typed",
+        "--migrations",
+      ]);
+    } finally {
+      program.setOptionValue("path", previousPath);
+    }
 
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining(

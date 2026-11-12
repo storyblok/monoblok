@@ -1,6 +1,6 @@
 # ADR-0023: Sync Blueprints from the Monorepo
 
-**Status:** Accepted  
+**Status:** Accepted; the approval is superseded by ADR-0026  
 **Date:** 2026-10-15
 
 ## Context
@@ -46,6 +46,9 @@ flowchart LR
   V -->|tarball| P["push<br/>App token<br/>no install, no build"]
   S -.->|sha256| P
 ```
+
+> **Superseded by ADR-0026:** there's no `approve` job; the sync runs
+> `matrix → stage → verify → push`.
 
 - **Five jobs: `matrix → approve → stage → verify → push`.** `approve` waits for the reviewers of
   the `production` environment. It is one job so that reviewers are asked once, not once per
@@ -152,10 +155,10 @@ flowchart LR
 
 ### 5. Operate it
 
-- **Manual, from `main` only.** `publish.yaml` starts the sync after a publish on `main` by
-  dispatching the workflow, not by calling it: when it was called, `push` got an empty App key.
-  Other branches publish prereleases, which a template must never point at, so the workflow fails on
-  any other ref.
+- **Manual, from `main` only.** _Superseded by ADR-0026: no approval._ `publish.yaml` starts the
+  sync after a publish on `main` by dispatching the workflow, not by calling it: when it was called,
+  `push` got an empty App key. Other branches publish prereleases, which a template must never point
+  at, so the workflow fails on any other ref.
 - **One sync at a time.** Concurrency is scoped by ref and never cancels a running sync. A run
   waiting behind it is replaced by a newer one.
 
@@ -207,7 +210,8 @@ flowchart LR
   them.
 - The sync is live when `publish.yaml` merges: it asks for an approval after every publish on
   `main`, and has no off-switch. The first sync after the merge is run by hand: reject the first
-  approval that a publish starts.
+  approval that a publish starts. _Superseded by ADR-0026: no approval; disable the workflow to stop
+  it._
 
 **Known gaps**
 

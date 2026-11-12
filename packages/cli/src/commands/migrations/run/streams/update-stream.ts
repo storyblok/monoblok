@@ -10,6 +10,7 @@ import {
 import { getLogger } from "../../../../lib/logger/logger";
 import { createPipelineBackpressureLock } from "../../../../utils/backpressure-lock";
 import { ERROR_CODES } from "../constants";
+import { plural } from "../../content-migrations";
 import { toError } from "../../../../utils/error";
 
 export interface UpdateStreamOptions {
@@ -179,10 +180,11 @@ export class UpdateStream extends Writable {
       return `No stories required updates.`;
     }
 
-    let summary = `Update Results: ${successful.length} stories updated`;
+    const updated = this.options.dryRun ? "would be updated" : "updated";
+    let summary = `Update Results: ${plural(successful.length, "story", "stories")} ${updated}`;
 
     if (failed.length > 0) {
-      summary += `, ${failed.length} stories failed`;
+      summary += `, ${plural(failed.length, "story", "stories")} failed`;
     }
 
     summary += `.`;

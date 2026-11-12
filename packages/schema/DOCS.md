@@ -12,7 +12,9 @@ _Introduced in_ <Badge text="0.6.0" variant="success" />
 
 A **content migration** is an ordered list of operations (ops) that reshapes story content after a
 block schema changes, for example to rename a field or convert its values. The ops are typed against
-your schema, and a recorded run can be undone.
+your schema. The Storyblok CLI applies migrations with
+[`migrations run`](/docs/tooling/cli/migrations/run) and reverts a run with
+[`migrations rollback`](/docs/tooling/cli/migrations/rollback).
 
 ### Write a migration
 
@@ -120,7 +122,7 @@ accept `under` (see [Key ops and value ops](#key-ops-and-value-ops)):
 | `renameBlock({ block, to })`                               | Key   | Changes the `component` of every instance. Rename the block in the schema separately.                                                                                                                                              |
 | `wrapChildren({ block, field, into: { block, field } })`   | Key   | Moves all child blocks of `field` into the `into.field` of one new `into.block` block, which takes their place. The new block’s `_uid` derives from the parent, `field`, and `into.block`, so a rerun doesn’t add a second level.  |
 | `unwrapChildren({ block, field, from: { block, field } })` | Key   | Replaces each `from.block` block in `field` with the child blocks of its `from.field`. Drops the container’s own fields. Only an undo of a recorded run restores them.                                                             |
-| `alterField({ block, field, under? }, fn)`                 | Value | Sets the field to `fn(value, context)`, once for the base key and once per translation key.                                                                                                                                        |
+| `alterField({ block, field, under? }, fn)`                 | Value | Sets the field to `fn(value, context)`, once for the base key and once per translation key. Returning `undefined` leaves the key unchanged; use `removeField()` to remove a field.                                                 |
 | `alterBlock({ block, under? }, fn)`                        | Value | Passes a copy of the block to `fn`. Return the whole block, including `_uid` and `component` (spread the block into the result), or change the copy and return nothing. Refuses a story when the result lacks either key.          |
 | `expandBlock({ block, under? }, fn)`                       | Value | Replaces the block in its `bloks` field with the blocks `fn(block)` returns.                                                                                                                                                       |
 | `reorderField({ block, field, under? }, compare)`          | Value | Sorts the child blocks of a `bloks` field with `compare(a, b, { siblings, index })`. `siblings` is the list before sorting, and `index(child)` returns a block’s original position.                                                |
@@ -208,7 +210,7 @@ in the page. This op changes only the heroes inside an `enterprise_page`:
 
 ```ts
 alterField({ block: "hero", field: "headline_size", under: "enterprise_page" }, (size) =>
-  size === " " ? "normal" : size,
+  size === " " ? "normal" : undefined,
 );
 ```
 

@@ -11,6 +11,7 @@ import { applyMigrationToAllBlocks, getMigrationFunction } from "../actions";
 import { migrationTargetsComponent } from "../../migration-filename";
 import { hash } from "ohash";
 import { saveRollbackData } from "../../rollback/actions";
+import { plural } from "../../content-migrations";
 import { getLogger } from "../../../../lib/logger/logger";
 import { toError } from "../../../../utils/error";
 
@@ -21,6 +22,8 @@ export interface MigrationStreamOptions {
   sourceSpace: string;
   path: string;
   componentName?: string;
+  /** A dry run writes no rollback file, since it changes no story. */
+  dryRun?: boolean;
   onProgress: (current: number) => void;
   onTotal: (total: number) => void;
 }
@@ -190,20 +193,21 @@ export class MigrationStream extends Transform {
       const contentChanged = originalContentHash !== newContentHash;
 
       if (processed && contentChanged) {
-        // Save rollback data before applying migration
-        await saveRollbackData({
-          space: this.options.space,
-          path: this.options.path,
-          story: {
-            id: story.id,
-            name: story.name || "",
-            content: story.content as BlokContent,
-            published: story.published ?? undefined,
-            unpublished_changes: story.unpublished_changes ?? undefined,
-          },
-          migrationTimestamp: this.timestamp,
-          migrationNames,
-        });
+        if (!this.options.dryRun) {
+          await saveRollbackData({
+            space: this.options.space,
+            path: this.options.path,
+            story: {
+              id: story.id,
+              name: story.name || "",
+              content: story.content as BlokContent,
+              published: story.published ?? undefined,
+              unpublished_changes: story.unpublished_changes ?? undefined,
+            },
+            migrationTimestamp: this.timestamp,
+            migrationNames,
+          });
+        }
 
         this.results.successful.push({
           storyId: story.id,
@@ -282,7 +286,8 @@ export class MigrationStream extends Transform {
 
     const successfulStoryIds = new Set(successful.map((result) => result.storyId));
 
-    let summary = `Migration Results: ${successfulStoryIds.size} stories updated, ${skipped.length} stories skipped`;
+    const updated = this.options.dryRun ? "would be updated" : "updated";
+    let summary = `Migration Results: ${plural(successfulStoryIds.size, "story", "stories")} ${updated}, ${plural(skipped.length, "story", "stories")} skipped`;
 
     if (skipped.length > 0) {
       const skippedByReason = skipped.reduce(
@@ -304,7 +309,7 @@ export class MigrationStream extends Transform {
 
     if (failed.length > 0) {
       const failedStoryIds = new Set(failed.map((result) => result.storyId));
-      summary += `, ${failedStoryIds.size} stories failed`;
+      summary += `, ${plural(failedStoryIds.size, "story", "stories")} failed`;
     }
 
     summary += `.`;

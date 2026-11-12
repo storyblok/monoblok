@@ -8,7 +8,6 @@ import {
   type AlterFieldContext,
   type AnyChild,
   type CoercionTarget,
-  type ExpandBlockOp,
   isKeyOp,
   type MigrationOp,
   type ReorderContext,
@@ -188,7 +187,8 @@ function applyOp(block: AnyBlock, op: MigrationOp): string | undefined {
       for (const key of [op.field, ...translationKeysFor(block, op.field)]) {
         if (!(key in block)) continue;
         const context: AlterFieldContext = { key, language: languageOfKey(key) };
-        block[key] = op.fn(block[key] as never, context);
+        const value = op.fn(block[key] as never, context);
+        if (value !== undefined) block[key] = value;
       }
       break;
     }
@@ -209,11 +209,8 @@ function applyOp(block: AnyBlock, op: MigrationOp): string | undefined {
       // The callback works on a copy, so a refused result leaves the block as it was.
       const draft = structuredClone(block);
       const returned = op.fn(draft as never);
-      const next =
-        typeof returned === "object" && returned !== null
-          ? (returned as Record<string, unknown>)
-          : draft;
-      if (next._uid !== block._uid || typeof next.component !== "string") {
+      const next = returned === undefined ? draft : returned;
+      if (!isRecord(next) || next._uid !== block._uid || typeof next.component !== "string") {
         return "`alterBlock` has to return the whole block with its `_uid` and `component`; spread the block it receives into the result.";
       }
       for (const key of Object.keys(block)) {
@@ -364,7 +361,7 @@ function walkBlocks(
     for (const item of content) walkBlocks(item, chain, into);
     return into;
   }
-  if (typeof content === "object" && content !== null) {
+  if (isRecord(content)) {
     const nextChain = isBlock(content) ? [...chain, content.component] : chain;
     if (isBlock(content)) into.push({ block: content, chain });
     for (const value of Object.values(content)) walkBlocks(value, nextChain, into);
@@ -437,7 +434,7 @@ function comparableKeys(block: AnyBlock): Record<string, unknown> {
   return Object.fromEntries(Object.entries(block).filter(([key]) => key !== "_editable"));
 }
 
-type ScopedOp = { op: MigrationOp; index: number };
+type ScopedExpansion = { op: Extract<MigrationOp, { kind: "expandBlock" }>; index: number };
 
 /**
  * `expandBlock` is the one op that changes a block's siblings rather than the
@@ -453,7 +450,7 @@ type ScopedOp = { op: MigrationOp; index: number };
  */
 function expandBlocks(
   value: unknown,
-  ops: readonly ScopedOp[],
+  ops: readonly ScopedExpansion[],
   chain: readonly string[],
   report: PassReport,
 ): unknown {
@@ -476,7 +473,7 @@ function expandBlocks(
       report.matched.add(item._uid);
       let produced: unknown[];
       try {
-        produced = [...(match.op as ExpandBlockOp<never, never>).fn(item as never)];
+        produced = [...match.op.fn(item as never)];
       } catch (error) {
         report.refusedOps.push({ uid: item._uid, op: match.index, reason: thrown(error) });
         out.push(item);
@@ -489,13 +486,12 @@ function expandBlocks(
     return expanded ? out : items;
   }
 
-  if (typeof value === "object" && value !== null) {
-    const holder = value as Record<string, unknown>;
+  if (isRecord(value)) {
     const nextChain = isBlock(value) ? [...chain, value.component] : chain;
-    for (const key of Object.keys(holder)) {
-      holder[key] = expandBlocks(holder[key], ops, nextChain, report);
+    for (const key of Object.keys(value)) {
+      value[key] = expandBlocks(value[key], ops, nextChain, report);
     }
-    return holder;
+    return value;
   }
 
   return value;
@@ -560,9 +556,7 @@ function runPass(content: unknown, ops: readonly MigrationOp[]): PassReport {
     }
   });
 
-  const expansions = ops
-    .map((op, index) => ({ op, index }))
-    .filter(({ op }) => op.kind === "expandBlock");
+  const expansions = ops.flatMap((op, index) => (op.kind === "expandBlock" ? [{ op, index }] : []));
   if (expansions.length > 0) expandBlocks(content, expansions, [], report);
 
   return report;

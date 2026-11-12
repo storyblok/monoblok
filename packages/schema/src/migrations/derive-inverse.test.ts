@@ -19,8 +19,6 @@ import {
 import { runMigrationOnStory } from "./runner";
 import type { SchemaShape } from "./types";
 
-type AnySchema = SchemaShape;
-
 /** First word / rest, split at the first space — the fixture used throughout. */
 function splitOnFirstSpace(name: unknown): readonly [string, string] {
   const value = String(name);
@@ -35,7 +33,7 @@ function joinNonEmpty(values: readonly unknown[]): unknown {
 describe("deriveInverse", () => {
   it("inverts addField to a lossy removeField, since it also removes values that predate the run", () => {
     const derived = deriveInverse([
-      addField<AnySchema, AnySchema, "card">({ block: "card", field: "slug" }, () => "x"),
+      addField<SchemaShape, SchemaShape, "card">({ block: "card", field: "slug" }, () => "x"),
     ]);
 
     expect(derived.derivable).toBe(true);
@@ -45,7 +43,7 @@ describe("deriveInverse", () => {
 
   it("refuses to invert removeField", () => {
     const derived = deriveInverse([
-      removeField<AnySchema, AnySchema, "card">({ block: "card", field: "slug" }),
+      removeField<SchemaShape, SchemaShape, "card">({ block: "card", field: "slug" }),
     ]);
 
     expect(derived.derivable).toBe(false);
@@ -56,7 +54,7 @@ describe("deriveInverse", () => {
 
   it("refuses to invert fieldsToBlock", () => {
     const derived = deriveInverse([
-      fieldsToBlock<AnySchema, AnySchema, "form", string>({
+      fieldsToBlock<SchemaShape, SchemaShape, "form", string>({
         block: "form",
         fields: { turnstileTheme: "theme" },
         into: { block: "turnstile", field: "turnstile" },
@@ -69,8 +67,8 @@ describe("deriveInverse", () => {
 
   it("reverses the order of the derived ops", () => {
     const derived = deriveInverse([
-      renameField<AnySchema, AnySchema, "card">({ block: "card", field: "a", to: "b" }),
-      renameField<AnySchema, AnySchema, "card">({ block: "card", field: "c", to: "d" }),
+      renameField<SchemaShape, SchemaShape, "card">({ block: "card", field: "a", to: "b" }),
+      renameField<SchemaShape, SchemaShape, "card">({ block: "card", field: "c", to: "d" }),
     ]);
 
     expect(derived.ops).toEqual([
@@ -81,7 +79,7 @@ describe("deriveInverse", () => {
 
   it("inverts splitField to mergeFields when the counterpart is given", () => {
     const derived = deriveInverse([
-      splitField<AnySchema, AnySchema, "author">(
+      splitField<SchemaShape, SchemaShape, "author">(
         {
           block: "author",
           field: "name",
@@ -103,7 +101,7 @@ describe("deriveInverse", () => {
 
   it("refuses to invert splitField without a counterpart", () => {
     const derived = deriveInverse([
-      splitField<AnySchema, AnySchema, "author">(
+      splitField<SchemaShape, SchemaShape, "author">(
         { block: "author", field: "name", into: ["first_name", "last_name"] },
         (name) => String(name).split(" ", 2),
       ),
@@ -115,7 +113,7 @@ describe("deriveInverse", () => {
 
   it("marks a derivable splitField inverse as lossy", () => {
     const derived = deriveInverse([
-      splitField<AnySchema, AnySchema, "author">(
+      splitField<SchemaShape, SchemaShape, "author">(
         {
           block: "author",
           field: "name",
@@ -131,7 +129,7 @@ describe("deriveInverse", () => {
 
   it("inverts mergeFields to splitField when the counterpart is given", () => {
     const derived = deriveInverse([
-      mergeFields<AnySchema, AnySchema, "author">(
+      mergeFields<SchemaShape, SchemaShape, "author">(
         {
           block: "author",
           fields: ["first_name", "last_name"],
@@ -153,7 +151,7 @@ describe("deriveInverse", () => {
 
   it("refuses to invert mergeFields without a counterpart", () => {
     const derived = deriveInverse([
-      mergeFields<AnySchema, AnySchema, "author">(
+      mergeFields<SchemaShape, SchemaShape, "author">(
         { block: "author", fields: ["first_name", "last_name"], into: "name" },
         (values) => values.filter(Boolean).join(" "),
       ),
@@ -165,7 +163,7 @@ describe("deriveInverse", () => {
 
   it("marks a derivable mergeFields inverse as lossy", () => {
     const derived = deriveInverse([
-      mergeFields<AnySchema, AnySchema, "author">(
+      mergeFields<SchemaShape, SchemaShape, "author">(
         {
           block: "author",
           fields: ["first_name", "last_name"],
@@ -180,9 +178,9 @@ describe("deriveInverse", () => {
   });
 
   it("replays a derived mergeFields inverse after splitField, and shows where the round trip loses data", () => {
-    const forward = defineMigration<AnySchema>({
+    const forward = defineMigration<SchemaShape>({
       ops: [
-        splitField<AnySchema, AnySchema, "author">(
+        splitField<SchemaShape, SchemaShape, "author">(
           {
             block: "author",
             field: "name",
@@ -230,9 +228,9 @@ describe("deriveInverse", () => {
   });
 
   it("replays a derived splitField inverse after mergeFields, and shows where the round trip loses data", () => {
-    const forward = defineMigration<AnySchema>({
+    const forward = defineMigration<SchemaShape>({
       ops: [
-        mergeFields<AnySchema, AnySchema, "author">(
+        mergeFields<SchemaShape, SchemaShape, "author">(
           {
             block: "author",
             fields: ["first_name", "last_name"],
@@ -283,7 +281,7 @@ describe("deriveInverse", () => {
 
   it("inverts renameBlock", () => {
     const derived = deriveInverse([
-      renameBlock<AnySchema, AnySchema, "card">({ block: "card", to: "teaser" }),
+      renameBlock<SchemaShape, SchemaShape, "card">({ block: "card", to: "teaser" }),
     ]);
 
     expect(derived.derivable).toBe(true);
@@ -295,15 +293,15 @@ describe("deriveInverse", () => {
   // the derived ops.
   it("targets the renamed block's new name, not the forward migration's target", () => {
     const derived = deriveInverse([
-      renameBlock<AnySchema, AnySchema, "card">({ block: "card", to: "teaser" }),
+      renameBlock<SchemaShape, SchemaShape, "card">({ block: "card", to: "teaser" }),
     ]);
 
     expect(derived.targets).toEqual(["teaser"]);
   });
 
   it("replays a derived renameBlock inverse and restores the original component name", () => {
-    const forward = defineMigration<AnySchema>({
-      ops: [renameBlock<AnySchema, AnySchema, "card">({ block: "card", to: "teaser" })],
+    const forward = defineMigration<SchemaShape>({
+      ops: [renameBlock<SchemaShape, SchemaShape, "card">({ block: "card", to: "teaser" })],
     });
 
     const original = {
@@ -332,9 +330,13 @@ describe("deriveInverse", () => {
   });
 
   it("addresses the inverse of a later op to the name a renameBlock gave the block", () => {
-    const forward = defineMigration<AnySchema>([
-      renameBlock<AnySchema, AnySchema, "card">({ block: "card", to: "teaser" }),
-      renameField<AnySchema, AnySchema, "card">({ block: "card", field: "title", to: "heading" }),
+    const forward = defineMigration<SchemaShape>([
+      renameBlock<SchemaShape, SchemaShape, "card">({ block: "card", to: "teaser" }),
+      renameField<SchemaShape, SchemaShape, "card">({
+        block: "card",
+        field: "title",
+        to: "heading",
+      }),
     ]);
     const original = {
       _uid: "root",
@@ -354,7 +356,7 @@ describe("deriveInverse", () => {
   });
 
   it("inverts wrapChildren to unwrapChildren and back", () => {
-    const wrap = wrapChildren<AnySchema, AnySchema, "page">({
+    const wrap = wrapChildren<SchemaShape, SchemaShape, "page">({
       block: "page",
       field: "body",
       into: { block: "section", field: "items" },
@@ -369,7 +371,7 @@ describe("deriveInverse", () => {
       },
     ]);
 
-    const unwrap = unwrapChildren<AnySchema, AnySchema, "page">({
+    const unwrap = unwrapChildren<SchemaShape, SchemaShape, "page">({
       block: "page",
       field: "body",
       from: { block: "section", field: "items" },
@@ -386,14 +388,14 @@ describe("deriveInverse", () => {
   });
 
   it("marks wrapChildren's inverse exact and unwrapChildren's inverse lossy", () => {
-    const wrap = wrapChildren<AnySchema, AnySchema, "page">({
+    const wrap = wrapChildren<SchemaShape, SchemaShape, "page">({
       block: "page",
       field: "body",
       into: { block: "section", field: "items" },
     });
     expect(deriveInverse([wrap]).lossy).toEqual([]);
 
-    const unwrap = unwrapChildren<AnySchema, AnySchema, "page">({
+    const unwrap = unwrapChildren<SchemaShape, SchemaShape, "page">({
       block: "page",
       field: "body",
       from: { block: "section", field: "items" },
@@ -402,9 +404,9 @@ describe("deriveInverse", () => {
   });
 
   it("replays a derived unwrapChildren inverse after wrapChildren and restores the original content", () => {
-    const forward = defineMigration<AnySchema>({
+    const forward = defineMigration<SchemaShape>({
       ops: [
-        wrapChildren<AnySchema, AnySchema, "page">({
+        wrapChildren<SchemaShape, SchemaShape, "page">({
           block: "page",
           field: "body",
           into: { block: "section", field: "items" },
@@ -435,9 +437,9 @@ describe("deriveInverse", () => {
   });
 
   it("replays a derived wrapChildren inverse after unwrapChildren, and shows where the round trip loses data", () => {
-    const forward = defineMigration<AnySchema>({
+    const forward = defineMigration<SchemaShape>({
       ops: [
-        unwrapChildren<AnySchema, AnySchema, "page">({
+        unwrapChildren<SchemaShape, SchemaShape, "page">({
           block: "page",
           field: "body",
           from: { block: "section", field: "items" },

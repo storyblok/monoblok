@@ -11,8 +11,16 @@ stories in your Storyblok space.
 ## Basic Usage
 
 ```bash
-storyblok migrations rollback MIGRATION_FILE --space YOUR_SPACE_ID
+# Roll back the most recent content migration run
+storyblok migrations rollback --space YOUR_SPACE_ID
+
+# Roll back a content migration run or a rollback file, as `migrations list` prints it
+storyblok migrations rollback RUN --space YOUR_SPACE_ID
 ```
+
+A content migration run is rolled back block by block: blocks with fields changed since the run are
+left as they are unless you pass `--force`. A rollback file of migration functions restores whole
+stories.
 
 This will rollback the specified migration file:
 
@@ -26,10 +34,12 @@ This will rollback the specified migration file:
 
 ## Options
 
-| Option                | Description                                              | Default                 |
-| --------------------- | -------------------------------------------------------- | ----------------------- |
-| `-s, --space <space>` | (Required) The ID of the space to rollback migrations in | -                       |
-| `-p, --path <path>`   | Custom path to read migration files from                 | `.storyblok/migrations` |
+| Option                     | Description                                              | Default                 |
+| -------------------------- | -------------------------------------------------------- | ----------------------- |
+| `-s, --space <space>`      | (Required) The ID of the space to rollback migrations in | -                       |
+| `--force`                  | Overwrite blocks changed since a content migration run   | `false`                 |
+| `--allow-pending-releases` | Roll back while releases are pending                     | `false`                 |
+| `-p, --path <path>`        | Custom path to read migration files from                 | `.storyblok/migrations` |
 
 ## Examples
 

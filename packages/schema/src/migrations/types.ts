@@ -3,6 +3,7 @@
  * block names and `block.field` paths from a `@storyblok/schema` schema type.
  */
 import type { Block, BlockContent } from "../index";
+import type { ContentField } from "../generated/types/field";
 
 /**
  * The `blocks`/`fieldPlugins` members of a `Schema<typeof schema>`. Not
@@ -15,16 +16,10 @@ export interface SchemaShape {
 }
 
 /**
- * Field types that carry no content value. They exist only to lay out the
- * editor form, so addressing one in a migration can never do anything.
+ * The fields of a block that hold a content value. Layout fields only arrange
+ * the editor form, so addressing one in a migration can never do anything.
  */
-export type NonContentFieldType = "section" | "tab";
-
-/** The fields of a block that actually hold a content value. */
-type ContentFields<TBlock extends Block> = Exclude<
-  TBlock["fields"][number],
-  { type: NonContentFieldType }
->;
+type ContentFields<TBlock extends Block> = ContentField<TBlock["fields"]>;
 
 export type BlockNameOf<TSchema extends SchemaShape> = TSchema["blocks"]["name"];
 

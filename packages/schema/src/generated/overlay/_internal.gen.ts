@@ -3,29 +3,7 @@
 /**
  * A component schema field. Discriminated by the literal `type` enum on each variant.
  */
-export type Field =
-  | TextField
-  | TextareaField
-  | RichtextField
-  | MarkdownField
-  | NumberField
-  | DatetimeField
-  | BooleanField
-  | OptionField
-  | OptionsField
-  | AssetField
-  | MultiassetField
-  | ImageField
-  | FileField
-  | MultilinkField
-  | LinkField
-  | BloksField
-  | TableField
-  | SectionField
-  | TabField
-  | GroupField
-  | CommerceField
-  | CustomField;
+export type Field = TextField | TextareaField | RichtextField | MarkdownField | NumberField | DatetimeField | BooleanField | OptionField | OptionsField | AssetField | MultiassetField | ImageField | FileField | MultilinkField | LinkField | BloksField | TableField | SectionField | TabField | GroupField | CommerceField | CustomField;
 
 export type AssetFieldValue = AssetFieldValue2;
 
@@ -41,12 +19,11 @@ export type RichTextFieldValue = RichTextFieldValue2;
 
 export type TableFieldValue = TableFieldValue2;
 
-export type TextField = BaseField &
-  ValueField & {
+export type TextField = BaseField & ValueField & {
     /**
      * Field type discriminant
      */
-    type: "text";
+    type: 'text';
     /**
      * Default value for the field
      */
@@ -74,14 +51,13 @@ export type TextField = BaseField &
      * Whether to enable right-to-left text direction
      */
     rtl?: boolean;
-  };
+};
 
-export type TextareaField = BaseField &
-  ValueField & {
+export type TextareaField = BaseField & ValueField & {
     /**
      * Field type discriminant
      */
-    type: "textarea";
+    type: 'textarea';
     /**
      * Default value for the field
      */
@@ -117,14 +93,13 @@ export type TextareaField = BaseField &
      * Whether markdown is enabled
      */
     markdown?: boolean;
-  };
+};
 
-export type RichtextField = BaseField &
-  ValueField & {
+export type RichtextField = BaseField & ValueField & {
     /**
      * Field type discriminant
      */
-    type: "richtext";
+    type: 'richtext';
     /**
      * Default value for the field
      */
@@ -136,67 +111,14 @@ export type RichtextField = BaseField &
     /**
      * Array of enabled toolbar elements
      */
-    toolbar?: Array<
-      | "ai-complete"
-      | "ai-shorten"
-      | "ai-extend"
-      | "ai-rephrase"
-      | "ai-summarize"
-      | "ai-simplify"
-      | "ai-tone"
-      | "ai-emoji"
-      | "ai-translate"
-      | "ai-tldr"
-      | "ai-spelling"
-      | "blok"
-      | "ltr"
-      | "rtl"
-      | "export"
-      | "import"
-      | "bold"
-      | "list"
-      | "inlinecode"
-      | "code"
-      | "color"
-      | "copy"
-      | "cut"
-      | "emoji"
-      | "h1"
-      | "h2"
-      | "h3"
-      | "h4"
-      | "h5"
-      | "h6"
-      | "highlight"
-      | "unset"
-      | "hrule"
-      | "image"
-      | "italic"
-      | "link"
-      | "anchor"
-      | "olist"
-      | "paragraph"
-      | "paste-action"
-      | "paste"
-      | "quote"
-      | "redo"
-      | "strike"
-      | "subscript"
-      | "superscript"
-      | "underline"
-      | "undo"
-      | "align-left"
-      | "align-center"
-      | "align-right"
-      | "align-justify"
-    >;
+    toolbar?: Array<'ai-complete' | 'ai-shorten' | 'ai-extend' | 'ai-rephrase' | 'ai-summarize' | 'ai-simplify' | 'ai-tone' | 'ai-emoji' | 'ai-translate' | 'ai-tldr' | 'ai-spelling' | 'blok' | 'ltr' | 'rtl' | 'export' | 'import' | 'bold' | 'list' | 'inlinecode' | 'code' | 'color' | 'copy' | 'cut' | 'emoji' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'highlight' | 'unset' | 'hrule' | 'image' | 'italic' | 'link' | 'anchor' | 'olist' | 'paragraph' | 'paste-action' | 'paste' | 'quote' | 'redo' | 'strike' | 'subscript' | 'superscript' | 'underline' | 'undo' | 'align-left' | 'align-center' | 'align-right' | 'align-justify'>;
     /**
      * Custom CSS styles for the rich text field
      */
     style_options?: Array<{
-      _uid?: string;
-      name?: string;
-      value?: string;
+        _uid?: string;
+        name?: string;
+        value?: string;
     }>;
     /**
      * Restriction type for component selection (groups, tags, or empty for specific blocks)
@@ -262,14 +184,13 @@ export type RichtextField = BaseField &
      *
      */
     rtl?: boolean;
-  };
+};
 
-export type MarkdownField = BaseField &
-  ValueField & {
+export type MarkdownField = BaseField & ValueField & {
     /**
      * Field type discriminant
      */
-    type: "markdown";
+    type: 'markdown';
     /**
      * Default value for the field
      */
@@ -289,30 +210,7 @@ export type MarkdownField = BaseField &
     /**
      * Array of enabled toolbar elements
      */
-    toolbar?: Array<
-      | "bold"
-      | "italic"
-      | "inlinecode"
-      | "code"
-      | "h1"
-      | "h2"
-      | "h3"
-      | "h4"
-      | "h5"
-      | "h6"
-      | "list"
-      | "olist"
-      | "quote"
-      | "hrule"
-      | "link"
-      | "image"
-      | "paragraph"
-      | "help"
-      | "toggle-richtext"
-      | "auto"
-      | "ltr"
-      | "rtl"
-    >;
+    toolbar?: Array<'bold' | 'italic' | 'inlinecode' | 'code' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'list' | 'olist' | 'quote' | 'hrule' | 'link' | 'image' | 'paragraph' | 'help' | 'toggle-richtext' | 'auto' | 'ltr' | 'rtl'>;
     /**
      * Whether to allow empty paragraphs
      */
@@ -324,14 +222,13 @@ export type MarkdownField = BaseField &
      *
      */
     max_length?: number | string;
-  };
+};
 
-export type NumberField = BaseField &
-  ValueField & {
+export type NumberField = BaseField & ValueField & {
     /**
      * Field type discriminant
      */
-    type: "number";
+    type: 'number';
     /**
      * Default value for the field
      */
@@ -352,14 +249,13 @@ export type NumberField = BaseField &
      * Step size for the number input
      */
     steps?: number;
-  };
+};
 
-export type DatetimeField = BaseField &
-  ValueField & {
+export type DatetimeField = BaseField & ValueField & {
     /**
      * Field type discriminant
      */
-    type: "datetime";
+    type: 'datetime';
     /**
      * Default value for the field
      */
@@ -368,14 +264,13 @@ export type DatetimeField = BaseField &
      * Whether to disable time selection (date-only mode)
      */
     disable_time?: boolean;
-  };
+};
 
-export type BooleanField = BaseField &
-  ValueField & {
+export type BooleanField = BaseField & ValueField & {
     /**
      * Field type discriminant
      */
-    type: "boolean";
+    type: 'boolean';
     /**
      * Default value for the field
      */
@@ -384,14 +279,13 @@ export type BooleanField = BaseField &
      * Whether to display the label next to the toggle
      */
     inline_label?: boolean;
-  };
+};
 
-export type OptionField = BaseField &
-  ValueField & {
+export type OptionField = BaseField & ValueField & {
     /**
      * Field type discriminant
      */
-    type: "option";
+    type: 'option';
     /**
      * Default value for the field
      */
@@ -400,9 +294,9 @@ export type OptionField = BaseField &
      * Array of selectable options
      */
     options?: ReadonlyArray<{
-      _uid?: string;
-      name?: string;
-      value?: string;
+        _uid?: string;
+        name?: string;
+        value?: string;
     }>;
     /**
      * Source of the options (undefined=self, internal_stories, internal_languages, external, internal)
@@ -456,14 +350,13 @@ export type OptionField = BaseField &
      * Whether multiple values are allowed
      */
     multiple?: boolean;
-  };
+};
 
-export type OptionsField = BaseField &
-  ValueField & {
+export type OptionsField = BaseField & ValueField & {
     /**
      * Field type discriminant
      */
-    type: "options";
+    type: 'options';
     /**
      * Default value for the field: either a space-separated list of option
      * values or the array of values itself.
@@ -474,9 +367,9 @@ export type OptionsField = BaseField &
      * Array of selectable options
      */
     options?: ReadonlyArray<{
-      _uid?: string;
-      name?: string;
-      value?: string;
+        _uid?: string;
+        name?: string;
+        value?: string;
     }>;
     /**
      * Source of the options (undefined=self, internal_stories, internal_languages, external, internal)
@@ -530,14 +423,13 @@ export type OptionsField = BaseField &
      * Whether multiple values are allowed
      */
     multiple?: boolean;
-  };
+};
 
-export type AssetField = BaseField &
-  ValueField & {
+export type AssetField = BaseField & ValueField & {
     /**
      * Field type discriminant
      */
-    type: "asset";
+    type: 'asset';
     /**
      * Default value for the field
      */
@@ -570,14 +462,13 @@ export type AssetField = BaseField &
      * List of allowed asset types
      */
     asset_whitelist?: Array<string>;
-  };
+};
 
-export type MultiassetField = BaseField &
-  ValueField & {
+export type MultiassetField = BaseField & ValueField & {
     /**
      * Field type discriminant
      */
-    type: "multiasset";
+    type: 'multiasset';
     /**
      * Default value for the field
      */
@@ -618,14 +509,13 @@ export type MultiassetField = BaseField &
      * Minimum number of entries
      */
     minimum_entries?: number;
-  };
+};
 
-export type ImageField = BaseField &
-  ValueField & {
+export type ImageField = BaseField & ValueField & {
     /**
      * Field type discriminant
      */
-    type: "image";
+    type: 'image';
     /**
      * Default value for the field
      */
@@ -660,14 +550,13 @@ export type ImageField = BaseField &
      * Numeric ID of the allowed asset folder
      */
     asset_folder_id?: number;
-  };
+};
 
-export type FileField = BaseField &
-  ValueField & {
+export type FileField = BaseField & ValueField & {
     /**
      * Field type discriminant
      */
-    type: "file";
+    type: 'file';
     /**
      * Default value for the field
      */
@@ -680,14 +569,13 @@ export type FileField = BaseField &
      * Numeric ID of the allowed asset folder
      */
     asset_folder_id?: number;
-  };
+};
 
-export type MultilinkField = BaseField &
-  ValueField & {
+export type MultilinkField = BaseField & ValueField & {
     /**
      * Field type discriminant
      */
-    type: "multilink";
+    type: 'multilink';
     /**
      * Default value for the field
      */
@@ -728,36 +616,32 @@ export type MultilinkField = BaseField &
      * Whether to allow specifying an asset URL
      */
     asset_link_type?: boolean;
-  };
+};
 
-export type LinkField = BaseField &
-  ValueField & {
+export type LinkField = BaseField & ValueField & {
     /**
      * Field type discriminant
      */
-    type: "link";
+    type: 'link';
     /**
      * Default value for the field
      */
     default_value?: string;
-  };
+};
 
-export type BloksField = BaseField &
-  ValueField & {
+export type BloksField = BaseField & ValueField & {
     /**
      * Field type discriminant
      */
-    type: "bloks";
+    type: 'bloks';
     /**
      * Default value for the field: either a JSON-encoded array of blocks or
      * the array itself.
      *
      */
-    default_value?:
-      | string
-      | Array<{
-          [key: string]: unknown;
-        }>;
+    default_value?: string | Array<{
+        [key: string]: unknown;
+    }>;
     /**
      * Restriction type for component selection (groups, tags, or empty for specific blocks)
      */
@@ -806,84 +690,81 @@ export type BloksField = BaseField &
      * Minimum number of entries
      */
     minimum_entries?: number;
-  };
+};
 
-export type TableField = BaseField &
-  ValueField & {
+export type TableField = BaseField & ValueField & {
     /**
      * Field type discriminant
      */
-    type: "table";
+    type: 'table';
     /**
      * Default value for the field
      */
     default_value?: string;
-  };
+};
 
 export type SectionField = BaseField & {
-  /**
-   * Field type discriminant
-   */
-  type: "section";
-  /**
-   * Field keys that belong to this section
-   */
-  keys?: Array<string>;
-  /**
-   * Fieldset configuration
-   */
-  fieldset?: {
     /**
-     * Fieldset title
+     * Field type discriminant
      */
-    title?: string;
+    type: 'section';
     /**
-     * Fieldset description
+     * Field keys that belong to this section
      */
-    description?: string;
+    keys?: Array<string>;
     /**
-     * Whether the fieldset is collapsible
+     * Fieldset configuration
      */
-    collapsible?: boolean;
-    /**
-     * Whether the fieldset is collapsed by default
-     */
-    collapsed?: boolean;
-  };
+    fieldset?: {
+        /**
+         * Fieldset title
+         */
+        title?: string;
+        /**
+         * Fieldset description
+         */
+        description?: string;
+        /**
+         * Whether the fieldset is collapsible
+         */
+        collapsible?: boolean;
+        /**
+         * Whether the fieldset is collapsed by default
+         */
+        collapsed?: boolean;
+    };
 };
 
 export type TabField = BaseField & {
-  /**
-   * Field type discriminant
-   */
-  type: "tab";
-  /**
-   * Field keys that belong to this tab
-   */
-  keys?: Array<string>;
+    /**
+     * Field type discriminant
+     */
+    type: 'tab';
+    /**
+     * Field keys that belong to this tab
+     */
+    keys?: Array<string>;
 };
 
 export type GroupField = BaseField & {
-  /**
-   * Field type discriminant
-   */
-  type: "group";
+    /**
+     * Field type discriminant
+     */
+    type: 'group';
 };
 
-export type CommerceField = BaseField &
-  ValueField & {
+export type CommerceField = BaseField & ValueField & {
     /**
      * Field type discriminant
      */
-    type: "commerce";
-  };
+    type: 'commerce';
+};
 
-export type CustomField = BaseField &
-  ValueField & {
+export type CustomField = BaseField & ValueField & {
     /**
      * Field type discriminant
      */
-    type: "custom";
+    type: 'custom';
     /**
      * Default value for the field
      */
@@ -896,8 +777,8 @@ export type CustomField = BaseField &
      * Plugin-specific options
      */
     options?: ReadonlyArray<{
-      name?: string;
-      value?: string;
+        name?: string;
+        value?: string;
     }>;
     /**
      * Comma-separated list of required field names in the plugin
@@ -906,7 +787,7 @@ export type CustomField = BaseField &
     /**
      * Source for plugin-provided options (`self` or `internal` for datasource)
      */
-    source?: "self" | "internal";
+    source?: 'self' | 'internal';
     /**
      * Slug of the internal datasource when `source` is `internal`
      */
@@ -915,118 +796,96 @@ export type CustomField = BaseField &
      * URL to an external datasource when `source` is set accordingly
      */
     external_datasource?: string;
-  };
+};
 
 /**
  * Asset field type - single asset (image, video, audio, or document)
  */
 export type AssetFieldValue2 = {
-  /**
-   * Identifies this as an asset field
-   */
-  fieldtype: "asset";
-  /**
-   * Numeric ID of the asset
-   */
-  id: number | null;
-  /**
-   * Alternative text for the asset
-   */
-  alt: string | null;
-  /**
-   * Name of the asset
-   */
-  name?: string;
-  /**
-   * Focal point coordinates for cropping (format "123x456:789x1011")
-   */
-  focus?: string | null;
-  /**
-   * Title of the asset
-   */
-  title?: string | null;
-  /**
-   * Source attribution for the asset
-   */
-  source?: string | null;
-  /**
-   * URL to the asset file
-   */
-  filename: string;
-  /**
-   * Copyright information
-   */
-  copyright?: string | null;
-  /**
-   * Additional metadata for the asset
-   */
-  meta_data?: {
-    [key: string]: unknown;
-  };
-  /**
-   * Whether the asset is hosted externally
-   */
-  is_external_url?: boolean;
+    /**
+     * Identifies this as an asset field
+     */
+    fieldtype: 'asset';
+    /**
+     * Numeric ID of the asset
+     */
+    id: number | null;
+    /**
+     * Alternative text for the asset
+     */
+    alt: string | null;
+    /**
+     * Name of the asset
+     */
+    name?: string;
+    /**
+     * Focal point coordinates for cropping (format "123x456:789x1011")
+     */
+    focus?: string | null;
+    /**
+     * Title of the asset
+     */
+    title?: string | null;
+    /**
+     * Source attribution for the asset
+     */
+    source?: string | null;
+    /**
+     * URL to the asset file
+     */
+    filename: string;
+    /**
+     * Copyright information
+     */
+    copyright?: string | null;
+    /**
+     * Additional metadata for the asset
+     */
+    meta_data?: {
+        [key: string]: unknown;
+    };
+    /**
+     * Whether the asset is hosted externally
+     */
+    is_external_url?: boolean;
 };
 
 /**
  * Content object representing a component instance. Contains a _uid, a component technical name, and dynamic fields whose values depend on the component's schema field types (text, textarea, richtext, markdown, number, datetime, boolean, option, options, asset, multiasset, multilink, bloks, table, section, custom/plugin).
  */
 export type BlockContent2 = {
-  /**
-   * Unique identifier for this component instance
-   */
-  _uid: string;
-  /**
-   * Technical name of the component (content type or nestable block)
-   */
-  component: string;
-  /**
-   * Storyblok editor markup string for inline editing (present in draft/preview mode)
-   */
-  _editable?: string;
-  [key: string]:
-    | null
-    | string
-    | number
-    | boolean
-    | Array<string | AssetFieldValue2 | BlockContent2>
-    | AssetFieldValue2
-    | MultilinkFieldValue2
-    | TableFieldValue2
-    | RichTextFieldValue2
-    | PluginFieldValue2
-    | undefined;
+    /**
+     * Unique identifier for this component instance
+     */
+    _uid: string;
+    /**
+     * Technical name of the component (content type or nestable block)
+     */
+    component: string;
+    /**
+     * Storyblok editor markup string for inline editing (present in draft/preview mode)
+     */
+    _editable?: string;
+    [key: string]: null | string | number | boolean | Array<string | AssetFieldValue2 | BlockContent2> | AssetFieldValue2 | MultilinkFieldValue2 | TableFieldValue2 | RichTextFieldValue2 | PluginFieldValue2 | undefined;
 };
 
 /**
  * Content object for creating or updating a component instance. Contains a component technical name and dynamic fields whose values depend on the component's schema field types. The _uid is optional — Storyblok will auto-generate one if not provided.
  */
 export type BlockContentInput2 = {
-  /**
-   * Unique identifier for this component instance (auto-generated when omitted)
-   */
-  _uid?: string;
-  /**
-   * Technical name of the component (content type or nestable block)
-   */
-  component: string;
-  /**
-   * Storyblok editor markup string for inline editing (present in draft/preview mode)
-   */
-  _editable?: string;
-  [key: string]:
-    | null
-    | string
-    | number
-    | boolean
-    | Array<string | AssetFieldValue2 | BlockContentInput2>
-    | AssetFieldValue2
-    | MultilinkFieldValue2
-    | TableFieldValue2
-    | RichTextFieldValue2
-    | PluginFieldValue2
-    | undefined;
+    /**
+     * Unique identifier for this component instance (auto-generated when omitted)
+     */
+    _uid?: string;
+    /**
+     * Technical name of the component (content type or nestable block)
+     */
+    component: string;
+    /**
+     * Storyblok editor markup string for inline editing (present in draft/preview mode)
+     */
+    _editable?: string;
+    [key: string]: null | string | number | boolean | Array<string | AssetFieldValue2 | BlockContentInput2> | AssetFieldValue2 | MultilinkFieldValue2 | TableFieldValue2 | RichTextFieldValue2 | PluginFieldValue2 | undefined;
 };
 
 /**
@@ -1037,102 +896,96 @@ export type MultilinkFieldValue2 = StoryLink | UrlLink | EmailLink | AssetLink;
 /**
  * Custom field value stored by a field plugin. Any JSON value.
  */
-export type PluginFieldValue2 =
-  | null
-  | string
-  | number
-  | boolean
-  | Array<PluginFieldValue2>
-  | {
-      [key: string]: PluginFieldValue2;
-    };
+export type PluginFieldValue2 = null | string | number | boolean | Array<PluginFieldValue2> | {
+    [key: string]: PluginFieldValue2;
+};
 
 /**
  * Rich text field type - structured rich text document (ProseMirror/Tiptap format)
  */
 export type RichTextFieldValue2 = {
-  /**
-   * Root node type — always "doc"
-   */
-  type: "doc";
-  /**
-   * Top-level rich text nodes
-   */
-  content: Array<RichTextFieldValueRichTextNode>;
+    /**
+     * Root node type — always "doc"
+     */
+    type: 'doc';
+    /**
+     * Top-level rich text nodes
+     */
+    content: Array<RichTextFieldValueRichTextNode>;
 };
 
 /**
  * Table field type - structured table data
  */
 export type TableFieldValue2 = {
-  /**
-   * Table header cells
-   */
-  thead: Array<{
-    _uid?: string;
-    component?: "_table_head";
     /**
-     * Header cell content
+     * Table header cells
      */
-    value?: string;
-  }>;
-  /**
-   * Table body rows
-   */
-  tbody: Array<{
-    _uid?: string;
-    component?: "_table_row";
-    /**
-     * Cells in this row
-     */
-    body?: Array<{
-      _uid?: string;
-      component?: "_table_col";
-      /**
-       * Cell content
-       */
-      value?: string;
+    thead: Array<{
+        _uid?: string;
+        component?: '_table_head';
+        /**
+         * Header cell content
+         */
+        value?: string;
     }>;
-  }>;
+    /**
+     * Table body rows
+     */
+    tbody: Array<{
+        _uid?: string;
+        component?: '_table_row';
+        /**
+         * Cells in this row
+         */
+        body?: Array<{
+            _uid?: string;
+            component?: '_table_col';
+            /**
+             * Cell content
+             */
+            value?: string;
+        }>;
+    }>;
 };
 
 /**
  * Universal identity and display properties shared by every field type
  */
 export type BaseField = {
-  /**
-   * Field type discriminant
-   */
-  type?: string;
-  /**
-   * The ID of the field
-   */
-  id?: string;
-  /**
-   * Human-readable display name
-   */
-  display_name?: string;
-  /**
-   * Field description displayed in the editor
-   */
-  description?: string;
-  /**
-   * Whether to display the description as a tooltip
-   */
-  tooltip?: boolean;
-  /**
-   * Position of the field within the block
-   */
-  pos?: number;
-  /**
-   * Conditions set on the field for conditional visibility. The editor writes
-   * one setting and reads only the first, so an extra entry is invisible to it.
-   * It is not inert server-side: the conditional-required check requires every
-   * setting to match, so a second entry can only make a field harder to leave
-   * empty. Write one setting unless you mean that.
-   *
-   */
-  conditional_settings?: Array<ConditionalSetting>;
+    /**
+     * Field type discriminant
+     */
+    type?: string;
+    /**
+     * The ID of the field
+     */
+    id?: string;
+    /**
+     * Human-readable display name
+     */
+    display_name?: string;
+    /**
+     * Field description displayed in the editor
+     */
+    description?: string;
+    /**
+     * Whether to display the description as a tooltip
+     */
+    tooltip?: boolean;
+    /**
+     * Position of the field within the block
+     */
+    pos?: number;
+    /**
+     * Conditions set on the field for conditional visibility. The editor writes
+     * one setting and reads only the first, so an extra entry is invisible to it.
+     * It is not inert server-side: the conditional-required check requires every
+     * setting to match, so a second entry can only make a field harder to leave
+     * empty. Write one setting unless you mean that.
+     *
+     */
+    conditional_settings?: Array<ConditionalSetting>;
 };
 
 /**
@@ -1146,117 +999,100 @@ export type BaseField = {
  *
  */
 export type ValueField = {
-  /**
-   * Whether the field is required
-   */
-  required?: boolean;
-  /**
-   * Regular expression for validation
-   */
-  regex?: string;
-  /**
-   * Whether the field is translatable
-   */
-  translatable?: boolean;
-  /**
-   * Exclude the field from translation exports
-   */
-  no_translate?: boolean;
-  /**
-   * Exclude the field from AI translations
-   */
-  exclude_from_ai_translation?: boolean;
-  /**
-   * Exclude the field when merging (Dimensions App)
-   */
-  exclude_from_merge?: boolean;
-  /**
-   * Exclude the field when overwriting (Dimensions App)
-   */
-  exclude_from_overwrite?: boolean;
-  /**
-   * Overwrite the field when merging (Dimensions App)
-   */
-  force_merge?: boolean;
+    /**
+     * Whether the field is required
+     */
+    required?: boolean;
+    /**
+     * Regular expression for validation
+     */
+    regex?: string;
+    /**
+     * Whether the field is translatable
+     */
+    translatable?: boolean;
+    /**
+     * Exclude the field from translation exports
+     */
+    no_translate?: boolean;
+    /**
+     * Exclude the field from AI translations
+     */
+    exclude_from_ai_translation?: boolean;
+    /**
+     * Exclude the field when merging (Dimensions App)
+     */
+    exclude_from_merge?: boolean;
+    /**
+     * Exclude the field when overwriting (Dimensions App)
+     */
+    exclude_from_overwrite?: boolean;
+    /**
+     * Overwrite the field when merging (Dimensions App)
+     */
+    force_merge?: boolean;
 };
 
 /**
  * Link to an internal Storyblok story.
  */
 export type StoryLink = SharedLink & {
-  linktype: "story";
-  /**
-   * Anchor/fragment identifier for the story link
-   */
-  anchor?: string | null;
-  /**
-   * Link relationship attribute
-   */
-  rel?: string;
-  /**
-   * Link title attribute
-   */
-  title?: string;
+    linktype: 'story';
+    /**
+     * Anchor/fragment identifier for the story link
+     */
+    anchor?: string | null;
+    /**
+     * Link relationship attribute
+     */
+    rel?: string;
+    /**
+     * Link title attribute
+     */
+    title?: string;
 } & {
-  [key: string]: string | null;
+    [key: string]: string | null;
 };
 
 /**
  * Link to an external URL.
  */
 export type UrlLink = SharedLink & {
-  linktype: "url";
-  /**
-   * Link relationship attribute
-   */
-  rel?: string;
-  /**
-   * Link title attribute
-   */
-  title?: string;
+    linktype: 'url';
+    /**
+     * Link relationship attribute
+     */
+    rel?: string;
+    /**
+     * Link title attribute
+     */
+    title?: string;
 } & {
-  [key: string]: string;
+    [key: string]: string;
 };
 
 /**
  * Link to an email address.
  */
 export type EmailLink = SharedLink & {
-  linktype: "email";
-  /**
-   * Email address
-   */
-  email?: string;
+    linktype: 'email';
+    /**
+     * Email address
+     */
+    email?: string;
 };
 
 /**
  * Link to a Storyblok asset.
  */
 export type AssetLink = SharedLink & {
-  linktype: "asset";
+    linktype: 'asset';
 };
 
 /**
  * A rich text document node
  */
-export type RichTextFieldValueRichTextNode =
-  | ParagraphNode
-  | TextNode
-  | HeadingNode
-  | BlockquoteNode
-  | BulletListNode
-  | OrderedListNode
-  | ListItemNode
-  | CodeBlockNode
-  | HardBreakNode
-  | HorizontalRuleNode
-  | ImageNode
-  | EmojiNode
-  | TableNode
-  | TableRowNode
-  | TableCellNode
-  | TableHeaderNode
-  | BlockNode;
+export type RichTextFieldValueRichTextNode = ParagraphNode | TextNode | HeadingNode | BlockquoteNode | BulletListNode | OrderedListNode | ListItemNode | CodeBlockNode | HardBreakNode | HorizontalRuleNode | ImageNode | EmojiNode | TableNode | TableRowNode | TableCellNode | TableHeaderNode | BlockNode;
 
 /**
  * A conditional rule attached to a field: when `rule_conditions` match the
@@ -1268,430 +1104,418 @@ export type RichTextFieldValueRichTextNode =
  *
  */
 export type ConditionalSetting = {
-  /**
-   * Whether every condition must match (`all`) or any one of them (`any`).
-   * A setting the editor creates starts out as `any`.
-   *
-   */
-  rule_match?: "all" | "any";
-  /**
-   * The conditions evaluated against the block's content
-   */
-  rule_conditions?: Array<{
     /**
-     * The field this condition reads. `null` until the operator picks one.
+     * Whether every condition must match (`all`) or any one of them (`any`).
+     * A setting the editor creates starts out as `any`.
      *
      */
-    validated_object?: {
-      /**
-       * What the condition reads; only a sibling field is supported
-       */
-      type?: "field";
-      /**
-       * Key of the sibling field within the same block
-       */
-      field_key?: string;
-      /**
-       * Which attribute of that field is compared
-       */
-      field_attr?: "value";
-    } | null;
+    rule_match?: 'all' | 'any';
     /**
-     * The comparison to run. `null` until the operator picks one.
-     * `gt`/`lt` compare numbers, or dates when both sides parse as
-     * `YYYY-MM-DD HH:mm`.
+     * The conditions evaluated against the block's content
+     */
+    rule_conditions?: Array<{
+        /**
+         * The field this condition reads. `null` until the operator picks one.
+         *
+         */
+        validated_object?: {
+            /**
+             * What the condition reads; only a sibling field is supported
+             */
+            type?: 'field';
+            /**
+             * Key of the sibling field within the same block
+             */
+            field_key?: string;
+            /**
+             * Which attribute of that field is compared
+             */
+            field_attr?: 'value';
+        } | null;
+        /**
+         * The comparison to run. `null` until the operator picks one.
+         * `gt`/`lt` compare numbers, or dates when both sides parse as
+         * `YYYY-MM-DD HH:mm`.
+         *
+         */
+        validation?: 'equals' | 'not_equals' | 'empty' | 'not_empty' | 'gt' | 'lt' | null;
+        /**
+         * The value compared against. Its shape follows the validated field:
+         * a string, number or boolean for most types, an asset object for an
+         * `asset` field, and `null` for `empty`/`not_empty`, which ignore it.
+         *
+         */
+        value?: unknown;
+    }>;
+    /**
+     * What to apply to this field when the conditions match. The editor writes
+     * one entry and reads only the first.
      *
      */
-    validation?: "equals" | "not_equals" | "empty" | "not_empty" | "gt" | "lt" | null;
-    /**
-     * The value compared against. Its shape follows the validated field:
-     * a string, number or boolean for most types, an asset object for an
-     * `asset` field, and `null` for `empty`/`not_empty`, which ignore it.
-     *
-     */
-    value?: unknown;
-  }>;
-  /**
-   * What to apply to this field when the conditions match. The editor writes
-   * one entry and reads only the first.
-   *
-   */
-  modifications?: Array<{
-    /**
-     * Hides the field. Both spellings are live: the editor writes `hide`
-     * and reads it back, while the server's conditional-required check
-     * recognizes only `hidden`. Neither side accepts the other's value, so
-     * a rule authored through the API with `hidden` hides nothing in the
-     * editor, and one authored in the editor does not relax a required
-     * field on save. Both are declared because real spaces hold both;
-     * prefer `hide` for anything the editor will open.
-     *
-     */
-    display?: "hide" | "hidden";
-    /**
-     * `true` makes the field required, `false` makes it explicitly not
-     * required. Setting it alongside `display` is ambiguous rather than
-     * layered: the editor lets `display` win, while the server only skips
-     * the required check for the `hidden` spelling. Set one or the other.
-     *
-     */
-    required?: boolean;
-  }>;
+    modifications?: Array<{
+        /**
+         * Hides the field. Both spellings are live: the editor writes `hide`
+         * and reads it back, while the server's conditional-required check
+         * recognizes only `hidden`. Neither side accepts the other's value, so
+         * a rule authored through the API with `hidden` hides nothing in the
+         * editor, and one authored in the editor does not relax a required
+         * field on save. Both are declared because real spaces hold both;
+         * prefer `hide` for anything the editor will open.
+         *
+         */
+        display?: 'hide' | 'hidden';
+        /**
+         * `true` makes the field required, `false` makes it explicitly not
+         * required. Setting it alongside `display` is ambiguous rather than
+         * layered: the editor lets `display` win, while the server only skips
+         * the required check for the `hidden` spelling. Set one or the other.
+         *
+         */
+        required?: boolean;
+    }>;
 };
 
 export type SharedLink = {
-  /**
-   * Identifies this as a multilink field
-   */
-  fieldtype: "multilink";
-  /**
-   * Type of link
-   */
-  linktype: string;
-  /**
-   * UUID of the linked story for internal links
-   */
-  id: string;
-  /**
-   * URL for external links
-   */
-  url: string;
-  /**
-   * Cached URL path for the linked story
-   */
-  cached_url: string;
-  /**
-   * Link target attribute
-   */
-  target?: "_self" | "_blank";
+    /**
+     * Identifies this as a multilink field
+     */
+    fieldtype: 'multilink';
+    /**
+     * Type of link
+     */
+    linktype: string;
+    /**
+     * UUID of the linked story for internal links
+     */
+    id: string;
+    /**
+     * URL for external links
+     */
+    url: string;
+    /**
+     * Cached URL path for the linked story
+     */
+    cached_url: string;
+    /**
+     * Link target attribute
+     */
+    target?: '_self' | '_blank';
 };
 
 export type ParagraphNode = {
-  type: "paragraph";
-  attrs?: {
-    /**
-     * Text alignment
-     */
-    textAlign: "left" | "center" | "right" | "justify" | null;
-    /**
-     * Text direction
-     */
-    dir?: "ltr" | "rtl" | null;
-  };
-  content?: Array<RichTextFieldValueRichTextNode>;
-  marks?: Array<RichTextFieldValueRichTextMark>;
+    type: 'paragraph';
+    attrs?: {
+        /**
+         * Text alignment
+         */
+        textAlign: 'left' | 'center' | 'right' | 'justify' | null;
+        /**
+         * Text direction
+         */
+        dir?: 'ltr' | 'rtl' | null;
+    };
+    content?: Array<RichTextFieldValueRichTextNode>;
+    marks?: Array<RichTextFieldValueRichTextMark>;
 };
 
 export type TextNode = {
-  type: "text";
-  /**
-   * The text content
-   */
-  text: string;
-  marks?: Array<RichTextFieldValueRichTextMark>;
+    type: 'text';
+    /**
+     * The text content
+     */
+    text: string;
+    marks?: Array<RichTextFieldValueRichTextMark>;
 };
 
 export type HeadingNode = {
-  type: "heading";
-  attrs: {
-    /**
-     * Heading level (h1–h6)
-     */
-    level: 1 | 2 | 3 | 4 | 5 | 6 | null;
-    /**
-     * Text alignment
-     */
-    textAlign: "left" | "center" | "right" | "justify" | null;
-    /**
-     * Text direction
-     */
-    dir?: "ltr" | "rtl" | null;
-  };
-  content?: Array<RichTextFieldValueRichTextNode>;
-  marks?: Array<RichTextFieldValueRichTextMark>;
+    type: 'heading';
+    attrs: {
+        /**
+         * Heading level (h1–h6)
+         */
+        level: 1 | 2 | 3 | 4 | 5 | 6 | null;
+        /**
+         * Text alignment
+         */
+        textAlign: 'left' | 'center' | 'right' | 'justify' | null;
+        /**
+         * Text direction
+         */
+        dir?: 'ltr' | 'rtl' | null;
+    };
+    content?: Array<RichTextFieldValueRichTextNode>;
+    marks?: Array<RichTextFieldValueRichTextMark>;
 };
 
 export type BlockquoteNode = {
-  type: "blockquote";
-  attrs?: {
-    /**
-     * Text direction
-     */
-    dir?: "ltr" | "rtl" | null;
-  };
-  content?: Array<RichTextFieldValueRichTextNode>;
-  marks?: Array<RichTextFieldValueRichTextMark>;
+    type: 'blockquote';
+    attrs?: {
+        /**
+         * Text direction
+         */
+        dir?: 'ltr' | 'rtl' | null;
+    };
+    content?: Array<RichTextFieldValueRichTextNode>;
+    marks?: Array<RichTextFieldValueRichTextMark>;
 };
 
 export type BulletListNode = {
-  type: "bullet_list";
-  content?: Array<RichTextFieldValueRichTextNode>;
-  marks?: Array<RichTextFieldValueRichTextMark>;
+    type: 'bullet_list';
+    content?: Array<RichTextFieldValueRichTextNode>;
+    marks?: Array<RichTextFieldValueRichTextMark>;
 };
 
 export type OrderedListNode = {
-  type: "ordered_list";
-  attrs: {
-    /**
-     * Starting number for the ordered list
-     */
-    order?: number;
-  };
-  content?: Array<RichTextFieldValueRichTextNode>;
-  marks?: Array<RichTextFieldValueRichTextMark>;
+    type: 'ordered_list';
+    attrs: {
+        /**
+         * Starting number for the ordered list
+         */
+        order?: number;
+    };
+    content?: Array<RichTextFieldValueRichTextNode>;
+    marks?: Array<RichTextFieldValueRichTextMark>;
 };
 
 export type ListItemNode = {
-  type: "list_item";
-  attrs?: {
-    /**
-     * Text direction
-     */
-    dir?: "ltr" | "rtl" | null;
-  };
-  content?: Array<RichTextFieldValueRichTextNode>;
-  marks?: Array<RichTextFieldValueRichTextMark>;
+    type: 'list_item';
+    attrs?: {
+        /**
+         * Text direction
+         */
+        dir?: 'ltr' | 'rtl' | null;
+    };
+    content?: Array<RichTextFieldValueRichTextNode>;
+    marks?: Array<RichTextFieldValueRichTextMark>;
 };
 
 export type CodeBlockNode = {
-  type: "code_block";
-  attrs: {
-    /**
-     * Language class (e.g. "language-typescript")
-     */
-    class: string | null;
-    /**
-     * Text direction
-     */
-    dir?: "ltr" | "rtl" | null;
-  };
-  content?: Array<RichTextFieldValueRichTextNode>;
-  marks?: Array<RichTextFieldValueRichTextMark>;
+    type: 'code_block';
+    attrs: {
+        /**
+         * Language class (e.g. "language-typescript")
+         */
+        class: string | null;
+        /**
+         * Text direction
+         */
+        dir?: 'ltr' | 'rtl' | null;
+    };
+    content?: Array<RichTextFieldValueRichTextNode>;
+    marks?: Array<RichTextFieldValueRichTextMark>;
 };
 
 export type HardBreakNode = {
-  type: "hard_break";
+    type: 'hard_break';
 };
 
 export type HorizontalRuleNode = {
-  type: "horizontal_rule";
+    type: 'horizontal_rule';
 };
 
 export type ImageNode = {
-  type: "image";
-  attrs: {
-    /**
-     * Storyblok asset ID
-     */
-    id: number | null;
-    /**
-     * Image URL
-     */
-    src: string | null;
-    /**
-     * Alternative text
-     */
-    alt: string | null;
-    title: string | null;
-    source: string | null;
-    copyright: string | null;
-    /**
-     * Asset metadata
-     */
-    meta_data: {
-      alt?: string | null;
-      title?: string | null;
-      source?: string | null;
-      copyright?: string | null;
-      [key: string]: string | null | undefined;
-    } | null;
-  };
+    type: 'image';
+    attrs: {
+        /**
+         * Storyblok asset ID
+         */
+        id: number | null;
+        /**
+         * Image URL
+         */
+        src: string | null;
+        /**
+         * Alternative text
+         */
+        alt: string | null;
+        title: string | null;
+        source: string | null;
+        copyright: string | null;
+        /**
+         * Asset metadata
+         */
+        meta_data: {
+            alt?: string | null;
+            title?: string | null;
+            source?: string | null;
+            copyright?: string | null;
+            [key: string]: string | null | undefined;
+        } | null;
+    };
 };
 
 export type EmojiNode = {
-  type: "emoji";
-  attrs: {
-    /**
-     * Emoji name/slug
-     */
-    name: string;
-    /**
-     * Emoji character
-     */
-    emoji: string;
-    /**
-     * URL to a fallback image for unsupported environments
-     */
-    fallbackImage: string;
-  };
+    type: 'emoji';
+    attrs: {
+        /**
+         * Emoji name/slug
+         */
+        name: string;
+        /**
+         * Emoji character
+         */
+        emoji: string;
+        /**
+         * URL to a fallback image for unsupported environments
+         */
+        fallbackImage: string;
+    };
 };
 
 export type TableNode = {
-  type: "table";
-  content?: Array<RichTextFieldValueRichTextNode>;
+    type: 'table';
+    content?: Array<RichTextFieldValueRichTextNode>;
 };
 
 export type TableRowNode = {
-  type: "tableRow";
-  content?: Array<RichTextFieldValueRichTextNode>;
+    type: 'tableRow';
+    content?: Array<RichTextFieldValueRichTextNode>;
 };
 
 export type TableCellNode = {
-  type: "tableCell";
-  attrs: {
-    colspan?: number;
-    rowspan?: number;
-    /**
-     * Column widths in pixels
-     */
-    colwidth?: Array<number> | null;
-    backgroundColor?: string | null;
-  };
-  content?: Array<RichTextFieldValueRichTextNode>;
+    type: 'tableCell';
+    attrs: {
+        colspan?: number;
+        rowspan?: number;
+        /**
+         * Column widths in pixels
+         */
+        colwidth?: Array<number> | null;
+        backgroundColor?: string | null;
+    };
+    content?: Array<RichTextFieldValueRichTextNode>;
 };
 
 export type TableHeaderNode = {
-  type: "tableHeader";
-  attrs: {
-    colspan?: number;
-    rowspan?: number;
-    /**
-     * Column widths in pixels
-     */
-    colwidth?: Array<number> | null;
-  };
-  content?: Array<RichTextFieldValueRichTextNode>;
+    type: 'tableHeader';
+    attrs: {
+        colspan?: number;
+        rowspan?: number;
+        /**
+         * Column widths in pixels
+         */
+        colwidth?: Array<number> | null;
+    };
+    content?: Array<RichTextFieldValueRichTextNode>;
 };
 
 export type BlockNode = {
-  type: "blok";
-  attrs: {
-    /**
-     * Block instance ID
-     */
-    id: string | null;
-    /**
-     * Array of embedded component instances
-     */
-    body: Array<BlockContentInput2> | null;
-  };
+    type: 'blok';
+    attrs: {
+        /**
+         * Block instance ID
+         */
+        id: string | null;
+        /**
+         * Array of embedded component instances
+         */
+        body: Array<BlockContentInput2> | null;
+    };
 };
 
 /**
  * Inline formatting mark applied to a text node
  */
-export type RichTextFieldValueRichTextMark =
-  | LinkMark
-  | BoldMark
-  | ItalicMark
-  | StrikeMark
-  | UnderlineMark
-  | CodeMark
-  | SuperscriptMark
-  | SubscriptMark
-  | HighlightMark
-  | TextStyleMark
-  | AnchorMark
-  | StyledMark;
+export type RichTextFieldValueRichTextMark = LinkMark | BoldMark | ItalicMark | StrikeMark | UnderlineMark | CodeMark | SuperscriptMark | SubscriptMark | HighlightMark | TextStyleMark | AnchorMark | StyledMark;
 
 export type LinkMark = {
-  type: "link";
-  /**
-   * Link attributes
-   */
-  attrs: {
+    type: 'link';
     /**
-     * Link URL
+     * Link attributes
      */
-    href: string | null;
-    /**
-     * UUID of the linked story (for internal links)
-     */
-    uuid: string | null;
-    /**
-     * Anchor/fragment identifier
-     */
-    anchor: string | null;
-    /**
-     * Link target attribute
-     */
-    target: "_self" | "_blank" | "_parent" | "_top" | null;
-    /**
-     * Type of link
-     */
-    linktype: "story" | "url" | "email" | "asset" | null;
-    /**
-     * Custom link attributes
-     */
-    custom?: {
-      [key: string]: unknown;
-    } | null;
-  };
+    attrs: {
+        /**
+         * Link URL
+         */
+        href: string | null;
+        /**
+         * UUID of the linked story (for internal links)
+         */
+        uuid: string | null;
+        /**
+         * Anchor/fragment identifier
+         */
+        anchor: string | null;
+        /**
+         * Link target attribute
+         */
+        target: '_self' | '_blank' | '_parent' | '_top' | null;
+        /**
+         * Type of link
+         */
+        linktype: 'story' | 'url' | 'email' | 'asset' | null;
+        /**
+         * Custom link attributes
+         */
+        custom?: {
+            [key: string]: unknown;
+        } | null;
+    };
 };
 
 export type BoldMark = {
-  type: "bold";
+    type: 'bold';
 };
 
 export type ItalicMark = {
-  type: "italic";
+    type: 'italic';
 };
 
 export type StrikeMark = {
-  type: "strike";
+    type: 'strike';
 };
 
 export type UnderlineMark = {
-  type: "underline";
+    type: 'underline';
 };
 
 export type CodeMark = {
-  type: "code";
+    type: 'code';
 };
 
 export type SuperscriptMark = {
-  type: "superscript";
+    type: 'superscript';
 };
 
 export type SubscriptMark = {
-  type: "subscript";
+    type: 'subscript';
 };
 
 export type HighlightMark = {
-  type: "highlight";
-  attrs: {
-    /**
-     * Highlight color (CSS color value)
-     */
-    color: string | null;
-  };
+    type: 'highlight';
+    attrs: {
+        /**
+         * Highlight color (CSS color value)
+         */
+        color: string | null;
+    };
 };
 
 export type TextStyleMark = {
-  type: "textStyle";
-  attrs: {
-    color?: string | null;
-    id?: string | null;
-    class?: string | null;
-  };
+    type: 'textStyle';
+    attrs: {
+        color?: string | null;
+        id?: string | null;
+        class?: string | null;
+    };
 };
 
 export type AnchorMark = {
-  type: "anchor";
-  attrs: {
-    /**
-     * Anchor identifier
-     */
-    id: string;
-  };
+    type: 'anchor';
+    attrs: {
+        /**
+         * Anchor identifier
+         */
+        id: string;
+    };
 };
 
 export type StyledMark = {
-  type: "styled";
-  attrs: {
-    /**
-     * CSS class name
-     */
-    class: string | null;
-  };
+    type: 'styled';
+    attrs: {
+        /**
+         * CSS class name
+         */
+        class: string | null;
+    };
 };

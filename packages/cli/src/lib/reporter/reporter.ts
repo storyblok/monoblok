@@ -46,6 +46,7 @@ export class Reporter {
   private enabled: boolean;
   private startedAt: Date = new Date();
   private maxFiles?: number;
+  private statusOverride?: Report["status"];
   private report: Report = {
     status: REPORT_STATUS.unfinished,
     meta: {
@@ -70,6 +71,16 @@ export class Reporter {
     return this;
   }
 
+  /**
+   * Sets the status instead of deriving it from the summary counts. For a
+   * command whose summaries count the same items in several stages, where
+   * adding them up says nothing about the outcome.
+   */
+  public setStatus(status: Report["status"]) {
+    this.statusOverride = status;
+    return this;
+  }
+
   public finalize() {
     if (!this.enabled) {
       return;
@@ -78,7 +89,11 @@ export class Reporter {
     const endedAt = new Date();
     this.report.meta.endedAt = endedAt.toISOString();
     this.report.meta.durationMs = endedAt.getTime() - this.startedAt.getTime();
-    this.updateStatus();
+    if (this.statusOverride) {
+      this.report.status = this.statusOverride;
+    } else {
+      this.updateStatus();
+    }
 
     saveToFileSync(this.filePath, JSON.stringify(this.report, null, 2));
 

@@ -11,6 +11,7 @@ import { getLogger } from "../../../../lib/logger/logger";
 import { createPipelineBackpressureLock } from "../../../../utils/backpressure-lock";
 import { ERROR_CODES } from "../constants";
 import { toError } from "../../../../utils/error";
+import { formatFailedStories, isSystemicError } from "../failed-stories";
 
 export interface UpdateStreamOptions {
   space: string;
@@ -62,9 +63,30 @@ export class UpdateStream extends Writable {
     try {
       await this.semaphore.acquire();
 
-      this.updateStory(chunk).finally(() => {
-        this.semaphore.release();
-      });
+      this.updateStory(chunk)
+        .catch((maybeError) => {
+          // `updateStory` records its own failures. This only keeps anything
+          // it couldn't handle from becoming an unhandled rejection, which
+          // would end the process in the middle of the run.
+          const error = toError(maybeError);
+          const storyName = chunk.name || chunk.storyId.toString();
+          const isRecorded = [...this.results.successful, ...this.results.failed].some(
+            (story) => story.storyId === chunk.storyId,
+          );
+          if (!isRecorded) {
+            this.results.failed.push({ storyId: chunk.storyId, name: storyName, error });
+            this.results.totalProcessed++;
+          }
+          getLogger().error(error.message, {
+            storyId: chunk.storyId,
+            storyName,
+            error,
+            errorCode: ERROR_CODES.MIGRATION_STORY_UPDATE_ERROR,
+          });
+        })
+        .finally(() => {
+          this.semaphore.release();
+        });
 
       callback();
     } catch (error) {
@@ -129,6 +151,7 @@ export class UpdateStream extends Writable {
         this.options.onProgress?.(this.results.totalProcessed);
         getLogger().error(`Failed to update story: ${error.message}`, {
           storyId,
+          storyName,
           errorCode: ERROR_CODES.MIGRATION_STORY_UPDATE_NULL,
         });
       }
@@ -143,9 +166,14 @@ export class UpdateStream extends Writable {
       this.options.onProgress?.(this.results.totalProcessed);
       getLogger().error(error.message, {
         storyId,
+        storyName,
         error,
         errorCode: ERROR_CODES.MIGRATION_STORY_UPDATE_ERROR,
       });
+      if (isSystemicError(error)) {
+        // Every remaining story would fail the same way, so stop the run.
+        this.destroy(error);
+      }
     }
   }
 
@@ -153,7 +181,6 @@ export class UpdateStream extends Writable {
     try {
       // Process any remaining items
       await this.semaphore.drain();
-      callback();
     } catch (batchError) {
       callback(batchError as Error);
       return;
@@ -186,6 +213,11 @@ export class UpdateStream extends Writable {
     }
 
     summary += `.`;
+
+    if (failed.length > 0) {
+      summary += `\n${formatFailedStories(failed)}`;
+    }
+
     return summary;
   }
 }

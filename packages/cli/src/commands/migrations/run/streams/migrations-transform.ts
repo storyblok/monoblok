@@ -3,6 +3,7 @@ import type { BlokContent, Story } from "../../../stories/constants";
 import {
   ERROR_CODES,
   type FailedMigration,
+  type FailedStory,
   type MigrationFile,
   type SkippedMigration,
   type SuccessfulMigration,
@@ -13,6 +14,7 @@ import { hash } from "ohash";
 import { saveRollbackData } from "../../rollback/actions";
 import { getLogger } from "../../../../lib/logger/logger";
 import { toError } from "../../../../utils/error";
+import { formatFailedStories } from "../failed-stories";
 
 export interface MigrationStreamOptions {
   migrationFiles: MigrationFile[];
@@ -96,6 +98,30 @@ export class MigrationStream extends Transform {
     return migrationFunction;
   }
 
+  /**
+   * Records a story that couldn't be fetched, so it counts as a failed
+   * migration and shows up in the summary.
+   */
+  recordFetchFailure({ storyId, name, error }: FailedStory): void {
+    this.results.failed.push({
+      storyId,
+      name,
+      migrationNames: this.getRelevantMigrations().map((m) => m.name),
+      error: new Error(`Failed to fetch story: ${error.message}`),
+    });
+    this.results.totalProcessed++;
+    this.options.onProgress?.(this.results.totalProcessed);
+  }
+
+  private getRelevantMigrations(): MigrationFile[] {
+    // Filter migrations based on component name if provided
+    return this.options.componentName
+      ? this.options.migrationFiles.filter((file) =>
+          migrationTargetsComponent(file.name, this.options.componentName),
+        )
+      : this.options.migrationFiles;
+  }
+
   private async processStory(story: Story): Promise<
     Array<{
       storyId: number;
@@ -105,16 +131,12 @@ export class MigrationStream extends Transform {
       unpublished_changes?: boolean;
     }>
   > {
-    // Filter migrations based on component name if provided
-    const relevantMigrations = this.options.componentName
-      ? this.options.migrationFiles.filter((file) =>
-          migrationTargetsComponent(file.name, this.options.componentName),
-        )
-      : this.options.migrationFiles;
+    const relevantMigrations = this.getRelevantMigrations();
 
     if (!story.content) {
       this.results.failed.push({
         storyId: story.id,
+        name: story.name,
         migrationNames: relevantMigrations.map((m) => m.name),
         error: new Error("Story content is missing"),
       });
@@ -167,6 +189,7 @@ export class MigrationStream extends Transform {
           );
           this.results.failed.push({
             storyId: story.id,
+            name: story.name,
             migrationNames,
             error,
           });
@@ -250,6 +273,7 @@ export class MigrationStream extends Transform {
       const error = toError(maybeError);
       this.results.failed.push({
         storyId: story.id,
+        name: story.name,
         migrationNames,
         error,
       });
@@ -308,6 +332,11 @@ export class MigrationStream extends Transform {
     }
 
     summary += `.`;
+
+    if (failed.length > 0) {
+      summary += `\n${formatFailedStories(failed)}`;
+    }
+
     return summary;
   }
 }

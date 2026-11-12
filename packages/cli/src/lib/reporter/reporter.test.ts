@@ -112,3 +112,16 @@ it("should return the number of deleted files when keep is negative", () => {
 
   expect(Reporter.pruneReportFiles(".", -1)).toBe(2);
 });
+
+it("should use the status that was set instead of deriving it", () => {
+  const reporter = new Reporter({ enabled: true, filePath: "./set-status.json" });
+  reporter.addSummary("jobs", { total: 2, succeeded: 1, failed: 1 });
+  reporter.setStatus(REPORT_STATUS.failure);
+  reporter.finalize();
+
+  const files = vol.toJSON();
+  const report = JSON.parse(
+    String(files[Object.keys(files).find((k) => k.includes("set-status.json"))!]),
+  );
+  expect(report.status).toBe(REPORT_STATUS.failure);
+});

@@ -5,7 +5,8 @@ import type { StoriesQueryParams, Story } from "../../../stories/constants";
 import { handleAPIError, toError } from "../../../../utils/error";
 import { getLogger } from "../../../../lib/logger/logger";
 import { createPipelineBackpressureLock } from "../../../../utils/backpressure-lock";
-import { ERROR_CODES } from "../constants";
+import { ERROR_CODES, type FailedStory } from "../constants";
+import { isSystemicError } from "../failed-stories";
 
 /**
  * CLI-level migration filter params. Includes the ad-hoc input `componentName`,
@@ -86,6 +87,9 @@ export async function* storiesIterator(
 /**
  * Given a stream of stories, fetches the content for each story and streams the full story.
  * This is necessary because the content is not included in the stories stream.
+ * A story that can't be fetched is reported through `onError` and skipped, so
+ * it doesn't stop the remaining stories from being migrated. An error that
+ * would fail every remaining story too (e.g. revoked credentials) stops the run.
  */
 class StoriesStream extends Transform {
   private semaphore: Sema;
@@ -93,6 +97,7 @@ class StoriesStream extends Transform {
   constructor(
     private spaceId: string,
     private onProgress?: () => void,
+    private onError?: (failedStory: FailedStory) => void,
   ) {
     super({
       objectMode: true,
@@ -117,10 +122,12 @@ class StoriesStream extends Transform {
       const error = toError(maybeError);
       getLogger().error(error.message, {
         storyId: chunk.id,
+        storyName: chunk.name,
         error,
         errorCode: ERROR_CODES.MIGRATION_STORY_FETCH_ERROR,
       });
-      callback(error);
+      this.onError?.({ storyId: chunk.id, name: chunk.name, error });
+      callback(isSystemicError(error) ? error : null);
     } finally {
       this.semaphore.release();
     }
@@ -142,15 +149,17 @@ export const createStoriesStream = async ({
   params,
   onTotal,
   onProgress,
+  onError,
 }: {
   spaceId: string;
   params: MigrationStoriesParams;
   onTotal: (total: number) => void;
   onProgress: () => void;
+  onError?: (failedStory: FailedStory) => void;
 }): Promise<Readable> => {
   const iterator = storiesIterator(spaceId, params, onTotal);
   const listStoriesStream = Readable.from(iterator);
-  return pipeline(listStoriesStream, new StoriesStream(spaceId, onProgress), (err) => {
+  return pipeline(listStoriesStream, new StoriesStream(spaceId, onProgress, onError), (err) => {
     if (err) {
       getLogger().error(err.message, {
         error: err,

@@ -95,3 +95,16 @@ it("should not write a report when disabled", () => {
   const files = Object.keys(vol.toJSON());
   expect(files).toHaveLength(0);
 });
+
+it("should use the status that was set instead of deriving it", () => {
+  const reporter = new Reporter({ enabled: true, filePath: "./set-status.json" });
+  reporter.addSummary("jobs", { total: 2, succeeded: 1, failed: 1 });
+  reporter.setStatus(REPORT_STATUS.failure);
+  reporter.finalize();
+
+  const files = vol.toJSON();
+  const report = JSON.parse(
+    String(files[Object.keys(files).find((k) => k.includes("set-status.json"))!]),
+  );
+  expect(report.status).toBe(REPORT_STATUS.failure);
+});

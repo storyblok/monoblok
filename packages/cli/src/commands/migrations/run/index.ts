@@ -2,9 +2,14 @@ import type { Command } from "commander";
 import chalk from "chalk";
 import { getUI } from "../../../lib/ui";
 import { getLogger } from "../../../lib/logger/logger";
-import { getReporter } from "../../../lib/reporter/reporter";
+import { getReporter, REPORT_STATUS } from "../../../lib/reporter/reporter";
 import { colorPalette, commands } from "../../../constants";
-import { CommandError, handleError, requireAuthentication } from "../../../utils";
+import {
+  CommandError,
+  EXIT_CODE_RUNTIME_ERROR,
+  handleError,
+  requireAuthentication,
+} from "../../../utils";
 import { session } from "../../../session";
 import type { MigrationsRunOptions } from "./constants";
 import { migrationsCommand } from "../command";
@@ -117,21 +122,6 @@ runCmd.action(
       const migrationsProgress = ui.createProgressBar({ title: "Applying Migrations".padEnd(19) });
       const updateProgress = ui.createProgressBar({ title: "Updating Stories...".padEnd(19) });
 
-      const storiesStream = await createStoriesStream({
-        spaceId: space,
-        params: {
-          componentName,
-          ...buildStoryScopeParams({ startsWith, query }),
-        },
-        onTotal: (total) => {
-          storiesProgress.setTotal(total);
-          migrationsProgress.setTotal(total);
-        },
-        onProgress: () => {
-          storiesProgress.increment();
-        },
-      });
-
       const migrationStream = new MigrationStream({
         migrationFiles: filteredMigrations,
         space,
@@ -146,6 +136,25 @@ runCmd.action(
         },
       });
 
+      const storiesStream = await createStoriesStream({
+        spaceId: space,
+        params: {
+          componentName,
+          ...buildStoryScopeParams({ startsWith, query }),
+        },
+        onTotal: (total) => {
+          storiesProgress.setTotal(total);
+          migrationsProgress.setTotal(total);
+        },
+        onProgress: () => {
+          storiesProgress.increment();
+        },
+        onError: (failedStory) => {
+          storiesProgress.increment();
+          migrationStream.recordFetchFailure(failedStory);
+        },
+      });
+
       const updateStream = new UpdateStream({
         space,
         publish,
@@ -155,13 +164,11 @@ runCmd.action(
         },
       });
 
-      await new Promise<void>((resolve, reject) => {
+      // An error that stops the run (e.g. revoked credentials) is reported
+      // after the summary of what happened until then.
+      const fatalError = await new Promise<Error | null>((resolve) => {
         pipeline(storiesStream, migrationStream, updateStream, (err) => {
-          if (err) {
-            reject(err);
-            return;
-          }
-          resolve();
+          resolve(err ?? null);
         });
       });
 
@@ -195,7 +202,23 @@ runCmd.action(
       });
       reporter.addSummary("migrationResults", migrationResults);
       reporter.addSummary("updateResults", updateResults);
+
+      // Every story that was migrated is counted again by the update, so the
+      // status follows each story's final outcome instead of adding up both.
+      const failedStories = migrationResults.failed + updateResults.failed;
+      const succeededStories = updateResults.succeeded + migrationResults.skipped;
+      if (fatalError || failedStories > 0) {
+        reporter.setStatus(
+          succeededStories > 0 ? REPORT_STATUS.partialSuccess : REPORT_STATUS.failure,
+        );
+      }
       reporter.finalize();
+
+      if (fatalError) {
+        handleError(fatalError, verbose);
+        return;
+      }
+      process.exitCode = failedStories > 0 ? EXIT_CODE_RUNTIME_ERROR : 0;
     } catch (error) {
       handleError(error as Error, verbose);
     }

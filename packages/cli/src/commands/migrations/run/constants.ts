@@ -36,10 +36,15 @@ export interface SuccessfulMigration {
   content: BlokContent;
 }
 
-export interface FailedMigration {
+/** A story that couldn't be fetched, migrated, or updated during a migration run. */
+export interface FailedStory {
   storyId: number;
+  name: string | undefined;
+  error: Error;
+}
+
+export interface FailedMigration extends FailedStory {
   migrationNames: string[];
-  error: unknown;
 }
 
 export interface SkippedMigration {

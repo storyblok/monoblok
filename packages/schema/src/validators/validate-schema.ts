@@ -8,25 +8,33 @@ import { isRecord, toValues } from "./shapes";
 const FIELD_TYPE_LIST = FIELD_TYPES.map((value) => `"${value}"`).join(", ");
 const LAYOUT_FIELD_TYPE_SET: ReadonlySet<FieldType> = new Set<FieldType>(LAYOUT_FIELD_TYPES);
 
-/**
- * The key that makes a layout field required, if any. The Management API checks
- * `required` on every field type, and a layout field never holds a value, so
- * publishing any story that uses the block fails. `defineField` rejects both
- * keys at compile time.
- */
-function requiredLayoutFieldKey(
-  field: SchemaFieldLike,
-): "required" | "conditional_settings" | undefined {
+function isConditionallyRequired(field: SchemaFieldLike): boolean {
+  const settings: unknown = field.conditional_settings;
+  return (
+    Array.isArray(settings) &&
+    settings.some(
+      (setting: unknown) =>
+        isRecord(setting) &&
+        Array.isArray(setting.modifications) &&
+        setting.modifications.some(
+          (modification: unknown) => isRecord(modification) && modification.required === true,
+        ),
+    )
+  );
+}
+
+function requiredLayoutFieldKeys(field: SchemaFieldLike): ("required" | "conditional_settings")[] {
+  const keys: ("required" | "conditional_settings")[] = [];
   if (!LAYOUT_FIELD_TYPE_SET.has(field.type)) {
-    return undefined;
+    return keys;
   }
   if (field.required === true) {
-    return "required";
+    keys.push("required");
   }
-  const conditionallyRequired = field.conditional_settings?.some((setting) =>
-    setting?.modifications?.some((modification) => modification?.required === true),
-  );
-  return conditionallyRequired ? "conditional_settings" : undefined;
+  if (isConditionallyRequired(field)) {
+    keys.push("conditional_settings");
+  }
+  return keys;
 }
 
 /**
@@ -336,14 +344,16 @@ export function validateSchema(schema: SchemaLike): ValidationResult {
         });
       }
 
-      const layoutRequiredKey = requiredLayoutFieldKey(field);
-      if (layoutRequiredKey !== undefined) {
+      for (const layoutRequiredKey of requiredLayoutFieldKeys(field)) {
         issues.push({
           severity: "error",
           code: "required_layout_field",
           path: ["blocks", blockKey, fieldName ?? index, layoutRequiredKey],
           entity: blockEntity,
-          message: `${fieldLabel} in ${blockLabel} is a "${field.type}" field set to required${layoutRequiredKey === "conditional_settings" ? " by a condition" : ""}. It holds no value, so publishing any story that uses the block fails. Remove the required setting.`,
+          message:
+            layoutRequiredKey === "required"
+              ? `${fieldLabel} in ${blockLabel} is a "${field.type}" field marked "required". Layout fields hold no value, so publishing a story that uses this block fails. Remove "required".`
+              : `${fieldLabel} in ${blockLabel} is a "${field.type}" field required by a condition. Layout fields hold no value, so publishing fails once the condition matches. Remove the "required" condition.`,
         });
       }
 

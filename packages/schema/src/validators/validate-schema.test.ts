@@ -212,8 +212,7 @@ describe("validateSchema", () => {
     }
   });
 
-  // Plain objects: `defineField` rejects `required` on layout fields, but a
-  // schema from a space can carry it.
+  // `defineField` rejects this shape; a schema read from a space can still carry it.
   it.each(["section", "tab", "group"] as const)("flags a required %s field", (type) => {
     const block = defineBlock({
       name: "page",
@@ -250,7 +249,39 @@ describe("validateSchema", () => {
     ]);
   });
 
-  it("accepts a layout field that is explicitly not required or only hidden by a condition", () => {
+  it("flags both a static and a conditional `required` on the same layout field", () => {
+    const block = defineBlock({
+      name: "page",
+      fields: [
+        {
+          name: "details",
+          type: "section",
+          required: true,
+          conditional_settings: [{ modifications: [{ required: true }] }],
+        },
+      ],
+    });
+    expect(validateSchema({ blocks: [block] }).issues).toEqual([
+      expect.objectContaining({ path: ["blocks", "page", "details", "required"] }),
+      expect.objectContaining({ path: ["blocks", "page", "details", "conditional_settings"] }),
+    ]);
+  });
+
+  it("does not throw on malformed conditional settings", () => {
+    const block = {
+      name: "page",
+      fields: [
+        {
+          name: "details",
+          type: "section",
+          conditional_settings: [{ modifications: { required: true } }],
+        },
+      ],
+    } as unknown as SchemaBlockLike;
+    expect(() => validateSchema({ blocks: [block] })).not.toThrow();
+  });
+
+  it("accepts layout fields with required false or a hide condition", () => {
     const block = defineBlock({
       name: "page",
       fields: [

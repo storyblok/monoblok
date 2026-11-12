@@ -44,12 +44,14 @@ export async function rollbackContentMigrationRun({
   let id = requestedRun;
   if (!id) {
     const runs = await journal.list(space);
-    const latest = runs.findLast((run) => !run.undoneAt);
+    const latest = runs.findLast((run) => !run.undoneAt && run.stories > 0);
     if (!latest) {
       throw new CommandError(
         runs.length === 0
           ? `No content migration runs recorded for space ${space}. Name a rollback file to roll back a run of migration functions; list them with "storyblok migrations list --space ${space}".`
-          : `Every content migration run recorded for space ${space} is already rolled back.`,
+          : runs.every((run) => run.undoneAt)
+            ? `Every content migration run recorded for space ${space} is already rolled back.`
+            : `No content migration run recorded for space ${space} has changes left to roll back. The runs not rolled back changed no stories.`,
       );
     }
     id = latest.id;

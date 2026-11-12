@@ -10,7 +10,8 @@ updating component structures or content.
 - [`run`](./run/README.md): Run migration functions and typed content migrations on the stories in
   your space.
 - [`rollback`](./rollback/README.md): Revert a migration run.
-- `list`: List the migration runs that can be rolled back.
+- `list`: List the migration runs recorded on this machine, and the content migrations without one
+  (`--pending` lists only those).
 
 Typed content migrations are `.ts`, `.js`, or `.mjs` files named `<number>-<name>` that
 default-export `defineMigration()` from `@storyblok/schema`. A `.js` file is told apart from a

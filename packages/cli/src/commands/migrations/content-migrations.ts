@@ -1,10 +1,16 @@
 /**
- * What `run`, `list`, and `rollback` share for content migrations: where a
- * space's content migrations and their journal live, the story fields the
- * engine reads, and the guard against pending releases.
+ * What `run`, `list`, `rollback`, and the commands that write content
+ * migrations share: where a space's content migrations and their journal live,
+ * writing a new one, the story fields the engine reads, and the guard against
+ * pending releases.
  */
+import { rm } from "node:fs/promises";
 import { isDeepStrictEqual } from "node:util";
 import chalk from "chalk";
+import { dirname, join, relative, resolve } from "pathe";
+import { generateMigrationSource, generateSnapshot } from "@storyblok/schema/codegen";
+import type { MigrationOpSource, WireComponent } from "@storyblok/schema/codegen";
+import { nextMigrationId } from "@storyblok/schema/internal/codegen";
 import {
   checkPendingReleases,
   discoverMigrations,
@@ -16,7 +22,7 @@ import { getMapiClient } from "../../api";
 import { getUI } from "../../lib/ui";
 import { CommandError, toError } from "../../utils";
 import { APIError, handleAPIError } from "../../utils/error/api-error";
-import { importModule, resolvePath } from "../../utils/filesystem";
+import { fileExists, importModule, resolvePath, saveToFile } from "../../utils/filesystem";
 import { fetchStory, updateStory } from "../stories/actions";
 import type { Story } from "../stories/constants";
 
@@ -25,32 +31,113 @@ export function migrationsDirectory(path: string | undefined, space: string): st
 }
 
 /**
- * Whether a `.js` file the engine discovers is a migration function rather
- * than a content migration. A file that fails to load here is left to the
- * content migration loader, which reports the failure.
+ * The content migrations in a space's migrations directory. A `.js` file whose
+ * name fits the pattern may still be a migration function, told apart by its
+ * function default export. A file that fails to load counts as a content
+ * migration, so the content migration loader reports the failure.
  */
-async function exportsMigrationFunction(file: string): Promise<boolean> {
-  try {
-    const module = await importModule(file);
-    return typeof module.default === "function";
-  } catch {
-    return false;
-  }
+export async function discoverContentMigrations(directory: string): Promise<MigrationFile[]> {
+  const files = await discoverMigrations(directory);
+  const isContentMigration = await Promise.all(
+    files.map(async ({ file }) => {
+      if (!file.endsWith(".js")) return true;
+      const module = await importModule(file).catch(() => undefined);
+      return typeof module?.default !== "function";
+    }),
+  );
+  return files.filter((_, index) => isContentMigration[index]);
 }
 
 /**
- * The content migrations in a migrations directory. A file's format is its
- * default export, so a `.js` migration function named like a content
- * migration is left out.
+ * The path relative to the current directory, or absolute when it lies outside
+ * and the relative form would be a chain of `..` segments.
  */
-export async function discoverContentMigrations(directory: string): Promise<MigrationFile[]> {
-  const content: MigrationFile[] = [];
-  for (const migration of await discoverMigrations(directory)) {
-    if (!migration.file.endsWith(".js") || !(await exportsMigrationFunction(migration.file))) {
-      content.push(migration);
+export function displayPath(file: string): string {
+  const relativePath = relative(process.cwd(), file);
+  return relativePath.startsWith("..") ? file : relativePath;
+}
+
+export type WriteContentMigrationOptions = {
+  path: string | undefined;
+  space: string;
+  /** Free text the filename slug is derived from. */
+  name: string;
+  /** The schema entry file, as given on the command line. */
+  schemaEntry: string;
+  ops: readonly MigrationOpSource[];
+  title?: string;
+  /**
+   * The space's components before the migration and the blocks it reads, for
+   * the `.before.ts` snapshot; omit to skip the snapshot.
+   */
+  before?: { components: readonly WireComponent[]; blocks: readonly string[] };
+};
+
+export type WrittenContentMigration = { migrationPath: string; beforePath?: string };
+
+const TS_TO_JS_EXTENSION: Record<string, string> = {
+  ".ts": ".js",
+  ".tsx": ".js",
+  ".mts": ".mjs",
+  ".cts": ".cjs",
+};
+
+/**
+ * The module specifier a file in `fromDirectory` imports `file` by. TypeScript
+ * resolves a `.js` specifier to its `.ts` source under every module resolution
+ * mode, including `nodenext`, which rejects one without an extension.
+ */
+function importSpecifier(fromDirectory: string, file: string): string {
+  const specifier = relative(fromDirectory, resolve(file)).replace(
+    /\.(?:tsx?|mts|cts)$/,
+    (extension) => TS_TO_JS_EXTENSION[extension] ?? extension,
+  );
+  return specifier.startsWith("../") ? specifier : `./${specifier}`;
+}
+
+/**
+ * Writes a `defineMigration` file named after its creation time, plus its
+ * `.before.ts` snapshot. Refuses to overwrite either, including a snapshot the
+ * migration would not write.
+ */
+export async function writeContentMigration(
+  options: WriteContentMigrationOptions,
+): Promise<WrittenContentMigration> {
+  const directory = migrationsDirectory(options.path, options.space);
+  const existing = await discoverMigrations(directory);
+  const id = nextMigrationId(
+    existing.map((migration) => migration.id),
+    options.name,
+  );
+  const migrationPath = join(directory, `${id}.ts`);
+  const beforePath = join(directory, `${id}.before.ts`);
+
+  for (const file of [migrationPath, beforePath]) {
+    if (await fileExists(file)) {
+      throw new CommandError(
+        `${displayPath(file)} already exists. Move or delete it, then run again.`,
+      );
     }
   }
-  return content;
+
+  const source = generateMigrationSource({
+    schemaImport: importSpecifier(dirname(migrationPath), options.schemaEntry),
+    beforeImport: options.before ? `./${id}.before.js` : undefined,
+    title: options.title,
+    ops: options.ops,
+  });
+  if (options.before) {
+    await saveToFile(beforePath, generateSnapshot({ ...options.before, migrationId: id }));
+  }
+  try {
+    await saveToFile(migrationPath, source);
+  } catch (error) {
+    // A snapshot left behind would block a retry within the same second.
+    await rm(beforePath, { force: true });
+    throw error;
+  }
+
+  return options.before ? { migrationPath, beforePath } : { migrationPath };
 }
 
 /** Runs are recorded in each space's `rollbacks` directory, beside the legacy rollback files. */

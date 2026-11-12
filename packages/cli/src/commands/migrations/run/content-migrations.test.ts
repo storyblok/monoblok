@@ -3,11 +3,18 @@ import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { vol } from "memfs";
 import {
+  addField,
+  alterField,
+  coerceField,
   defineBlock,
   defineField,
   defineMigration,
+  fieldsToBlock,
+  mergeFields,
+  removeField,
   renameBlock,
   renameField,
+  splitField,
   wrapChildren,
 } from "@storyblok/schema";
 import "../index";
@@ -123,6 +130,271 @@ describe("migrations run command for content migrations", () => {
         publish: false,
       },
     ]);
+  });
+
+  it("should skip ops on a field a later migration renamed when every migration reruns", async () => {
+    space.hasMigrations(
+      [
+        "0001-add-noindex",
+        defineMigration([addField({ block: "page", field: "noindex" }, () => false)]),
+      ],
+      [
+        "0002-rename-noindex",
+        defineMigration([renameField({ block: "page", field: "noindex", to: "hide" })]),
+      ],
+    );
+    space.hasBlocks({ page: ["body", "hide"] });
+    space.hasStories(
+      storyWithCard({ content: { _uid: "root", component: "page", body: [], hide: false } }),
+    );
+    space.canUpdateStories();
+    const warn = vi.spyOn(getUI(), "warn");
+    process.exitCode = undefined;
+
+    await apply();
+
+    expect(space.writes).toEqual([]);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'addField page.noindex skipped: the page block in the space has no field "noindex".',
+      ),
+    );
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  it("should skip moving fields into a block while the space holds the fields again", async () => {
+    space.hasMigrations([
+      "0001-card-meta",
+      defineMigration([
+        fieldsToBlock({
+          block: "card",
+          fields: { title: "og_title" },
+          into: { block: "meta", field: "meta" },
+        }),
+      ]),
+    ]);
+    space.hasBlocks({ card: ["title", "meta"], page: ["body"] });
+    space.hasStories(storyWithCard());
+    space.canUpdateStories();
+    const warn = vi.spyOn(getUI(), "warn");
+
+    await apply();
+
+    expect(space.writes).toEqual([]);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'fieldsToBlock card skipped: the card block in the space has the field "title" again.',
+      ),
+    );
+  });
+
+  it("should skip a block rename while the space still holds the block under its old name", async () => {
+    space.hasMigrations(["0001-rename-card-to-teaser", renameCardToTeaser]);
+    space.hasBlocks({ card: ["title"], page: ["body"] });
+    space.hasStories(storyWithCard());
+    space.canUpdateStories();
+    const warn = vi.spyOn(getUI(), "warn");
+    const info = vi.spyOn(getUI(), "info");
+
+    await apply();
+
+    expect(space.writes).toEqual([]);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "renameBlock card skipped: the space has no teaser block. Push the schema that renames it first",
+      ),
+    );
+    expect(info).toHaveBeenCalledWith(
+      expect.stringContaining("Push the schema the migration was written for, then run it again."),
+    );
+  });
+
+  it("should say a migration without ops has none, instead of blaming the space's blocks", async () => {
+    space.hasMigrations(["0001-card", defineMigration([])]);
+    space.hasBlocks({ card: ["title"], page: ["body"] });
+    space.hasStories(storyWithCard());
+    space.canUpdateStories();
+    const info = vi.spyOn(getUI(), "info");
+
+    await apply();
+
+    expect(space.writes).toEqual([]);
+    expect(info).toHaveBeenCalledWith("0001-card: has no ops yet, so nothing was applied.");
+    expect(info).not.toHaveBeenCalledWith(expect.stringContaining("Push the schema"));
+  });
+
+  it("should record a first run that changes nothing, so the migration is no longer pending", async () => {
+    space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    space.hasStories(
+      storyWithCard({
+        content: {
+          _uid: "root",
+          component: "page",
+          body: [{ _uid: "card-1", component: "card", headline: "Hi" }],
+        },
+      }),
+    );
+    space.canUpdateStories();
+
+    await apply();
+    await apply();
+    const stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    await migrationsCommand.parseAsync([
+      "node",
+      "test",
+      "list",
+      "--pending",
+      "--space",
+      DEFAULT_SPACE,
+    ]);
+
+    expect(space.writes).toEqual([]);
+    expect(journalEntries()).toEqual([expect.objectContaining({ stories: 0, blocks: 0 })]);
+    expect(stdout).not.toHaveBeenCalled();
+  });
+
+  it("should alter a field a later migration split, in stories that still hold it", async () => {
+    space.hasMigrations(
+      [
+        "0001-trim-name",
+        defineMigration([
+          alterField({ block: "card", field: "name" }, (name) => String(name).trim()),
+        ]),
+      ],
+      [
+        "0002-split-name",
+        defineMigration([
+          splitField({ block: "card", field: "name", into: ["first", "last"] }, (name) =>
+            String(name).split(" "),
+          ),
+        ]),
+      ],
+    );
+    space.hasBlocks({ card: ["first", "last"] });
+    space.hasStories(
+      storyWithCard({
+        content: {
+          _uid: "root",
+          component: "page",
+          body: [{ _uid: "card-1", component: "card", name: " Ada Lovelace " }],
+        },
+      }),
+    );
+    space.canUpdateStories();
+
+    await apply();
+
+    expect(space.story(1)?.content.body).toEqual([
+      { _uid: "card-1", component: "card", first: "Ada", last: "Lovelace" },
+    ]);
+  });
+
+  it("should warn about folders that still name a block the migration renamed", async () => {
+    space.hasMigrations(["0001-rename-card-to-teaser", renameCardToTeaser]);
+    space.hasStories(storyWithCard(), {
+      id: 9,
+      name: "Cards",
+      slug: "cards",
+      full_slug: "cards",
+      is_folder: true,
+      default_root: "card",
+      content: { content_types: ["card"], lock_subfolders_content_types: false },
+    });
+    space.canUpdateStories();
+    const warn = vi.spyOn(getUI(), "warn");
+
+    await apply();
+
+    expect(warn).toHaveBeenCalledWith(
+      "Folder cards still names card as a content type. Change it to teaser, or schema push renames it when it renames the block.",
+    );
+  });
+
+  it("should keep a field a later schema change added back", async () => {
+    space.hasMigrations([
+      "0001-remove-accent",
+      defineMigration([removeField({ block: "card", field: "accent" })]),
+    ]);
+    space.hasBlocks({ card: ["title", "accent"] });
+    space.hasStories(
+      storyWithCard({
+        content: {
+          _uid: "root",
+          component: "page",
+          body: [{ _uid: "card-1", component: "card", title: "Hi", accent: "green" }],
+        },
+      }),
+    );
+    space.canUpdateStories();
+
+    await apply();
+
+    expect(space.writes).toEqual([]);
+    expect(space.story(1)?.content.body).toEqual([
+      { _uid: "card-1", component: "card", title: "Hi", accent: "green" },
+    ]);
+  });
+
+  it("should keep a field a later schema change added back after a merge", async () => {
+    space.hasMigrations([
+      "0001-merge-name",
+      defineMigration([
+        mergeFields({ block: "card", fields: ["first", "last"], into: "name" }, (values) =>
+          values.join(" "),
+        ),
+      ]),
+    ]);
+    space.hasBlocks({ card: ["name", "first"] });
+    space.hasStories(
+      storyWithCard({
+        content: {
+          _uid: "root",
+          component: "page",
+          body: [{ _uid: "card-1", component: "card", name: "Ada Lovelace", first: "Ada" }],
+        },
+      }),
+    );
+    space.canUpdateStories();
+
+    await apply();
+
+    expect(space.writes).toEqual([]);
+  });
+
+  it("should skip a coercion to a type the field no longer has", async () => {
+    space.hasMigrations(
+      [
+        "0001-price-to-number",
+        defineMigration([coerceField({ block: "card", field: "price", to: "number" })]),
+      ],
+      [
+        "0002-price-to-text",
+        defineMigration([coerceField({ block: "card", field: "price", to: "string" })]),
+      ],
+    );
+    space.hasBlocks({ card: { price: "text" } });
+    space.hasStories(
+      storyWithCard({
+        content: {
+          _uid: "root",
+          component: "page",
+          body: [{ _uid: "card-1", component: "card", price: "about 5 EUR" }],
+        },
+      }),
+    );
+    space.canUpdateStories();
+    const warn = vi.spyOn(getUI(), "warn");
+    process.exitCode = undefined;
+
+    await apply();
+
+    expect(space.writes).toEqual([]);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'coerceField card.price skipped: the card block in the space has "price" as a text field.',
+      ),
+    );
+    expect(process.exitCode).toBeUndefined();
   });
 
   it("should apply migrations in the order of their numeric prefix", async () => {
@@ -626,6 +898,24 @@ describe("migrations run command for content migrations", () => {
       );
     });
 
+    it("should read the name-only blocks of a snapshot passed as the schema", async () => {
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      space.hasMigrations([
+        "0001-rename-teaser-title",
+        defineMigration([renameField({ block: "teaser", field: "title", to: "headline" })]),
+      ]);
+      schemaModule = {
+        teaser: defineBlock({ name: "teaser", fields: [] }),
+        nameOnlyBlocks: ["teaser"],
+      };
+      server.resetHandlers();
+
+      await apply("--schema", "0001-rename-teaser-title.before.ts");
+
+      expect(space.writes).toEqual([]);
+      expect(error.mock.calls.flat().join("\n")).toContain('Block "teaser" is listed by name only');
+    });
+
     it("should apply a migration the schema defines", async () => {
       space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
       space.hasStories(storyWithCard());
@@ -763,6 +1053,22 @@ describe("migrations run command for content migrations", () => {
       expect(warn.mock.calls.flat().join("\n")).toContain(
         '0001-wrap-page-body: op 0: Block "grid" already exists but is listed by name only',
       );
+    });
+
+    it("should refuse a snapshot in a format newer than the CLI reads", async () => {
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+      hasSnapshot("0001-rename-card-title");
+      snapshotModules["0001-rename-card-title"] = { card: cardBlock, snapshotFormat: 2 };
+      server.resetHandlers();
+
+      await apply();
+
+      expect(space.writes).toEqual([]);
+      expect(error.mock.calls.flat().join("\n")).toContain(
+        "has snapshot format 2, but this version of the Storyblok CLI reads up to format 1. Update the Storyblok CLI.",
+      );
+      expect(process.exitCode).toBe(2);
     });
 
     it("should name the migration and its snapshot when the snapshot can't be loaded", async () => {

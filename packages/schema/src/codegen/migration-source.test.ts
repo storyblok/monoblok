@@ -1,0 +1,472 @@
+import path from "node:path";
+import { format } from "oxfmt";
+import { describe, expect, it } from "vitest";
+
+import { applyMigration } from "../migrations/apply-migration";
+import type { CompiledMigration } from "../migrations/define-migration";
+import { writeModules } from "./__tests__/generated-modules";
+import { generateMigrationSource } from "./migration-source";
+import type { MigrationOpSource } from "./migration-source";
+
+const SCHEMA = [
+  "import { defineBlock, defineField, defineSchema } from '@storyblok/schema';",
+  "import type { Schema as InferSchema } from '@storyblok/schema';",
+  "const hero = defineBlock({ name: 'hero', fields: [",
+  "  defineField('title', { type: 'text' }),",
+  "  defineField('count', { type: 'number' }),",
+  "  defineField('subtitle', { type: 'text', required: true }),",
+  "  defineField('cta-label', { type: 'text', required: true }),",
+  "  defineField('link', { type: 'multilink' }),",
+  "] });",
+  "const schema = defineSchema({ blocks: { hero } });",
+  "export type Schema = InferSchema<typeof schema>;",
+].join("\n");
+
+const OPS: MigrationOpSource[] = [
+  { kind: "renameField", block: "hero", field: "headline", to: "title" },
+  { kind: "removeField", block: "hero", field: "legacy", todo: ["Removed field: legacy"] },
+  { kind: "coerceField", block: "hero", field: "count", from: "string", to: "number" },
+  { kind: "addField", block: "hero", field: "subtitle", value: "" },
+  { kind: "fillField", block: "hero", field: "cta-label", value: "Read more" },
+];
+
+async function loadGenerated(
+  options: Parameters<typeof generateMigrationSource>[0],
+): Promise<{ migration: CompiledMigration; typeErrors: string[] }> {
+  const modules = await writeModules({
+    "schema.ts": SCHEMA,
+    "0001-update-hero.ts": generateMigrationSource(options),
+  });
+  try {
+    const { default: migration } = await import(
+      path.join(modules.directory, "0001-update-hero.ts")
+    );
+    return { migration, typeErrors: modules.typeErrors() };
+  } finally {
+    await modules.cleanup();
+  }
+}
+
+describe("generateMigrationSource", () => {
+  it("should generate a migration that typechecks and migrates content", async () => {
+    const { migration, typeErrors } = await loadGenerated({
+      schemaImport: "./schema",
+      title: "Update hero",
+      ops: OPS,
+    });
+
+    expect(typeErrors).toEqual([]);
+    expect(migration.title).toBe("Update hero");
+
+    const outcome = applyMigration({
+      migration,
+      id: "0001-update-hero",
+      space: "1",
+      stories: [
+        {
+          id: 1,
+          slug: "home",
+          content: {
+            _uid: "a",
+            component: "hero",
+            headline: "Hi",
+            legacy: "x",
+            count: 3,
+            "cta-label": null,
+          },
+        },
+      ],
+    });
+
+    expect(outcome.writes[0].content).toEqual({
+      _uid: "a",
+      component: "hero",
+      title: "Hi",
+      count: "3",
+      subtitle: "",
+      "cta-label": "Read more",
+    });
+  });
+
+  it("should backfill an object value", async () => {
+    const link = {
+      id: "",
+      url: "https://example.com",
+      linktype: "url",
+      fieldtype: "multilink",
+      cached_url: "https://example.com",
+    };
+    const { migration, typeErrors } = await loadGenerated({
+      schemaImport: "./schema",
+      ops: [{ kind: "addField", block: "hero", field: "link", value: link }],
+    });
+
+    expect(typeErrors).toEqual([]);
+
+    const outcome = applyMigration({
+      migration,
+      id: "0001-update-hero",
+      space: "1",
+      stories: [{ id: 1, slug: "home", content: { _uid: "a", component: "hero" } }],
+    });
+
+    expect(outcome.writes[0].content).toEqual({ _uid: "a", component: "hero", link });
+  });
+
+  it("should fill an empty string when the field stores a string", async () => {
+    const { migration, typeErrors } = await loadGenerated({
+      schemaImport: "./schema",
+      ops: [
+        { kind: "fillField", block: "hero", field: "subtitle", value: "Hi", fillEmptyString: true },
+        { kind: "fillField", block: "hero", field: "count", value: "0", fillEmptyString: true },
+      ],
+    });
+
+    expect(typeErrors).toEqual([]);
+
+    const outcome = applyMigration({
+      migration,
+      id: "0001-update-hero",
+      space: "1",
+      stories: [
+        { id: 1, slug: "home", content: { _uid: "a", component: "hero", subtitle: "", count: "" } },
+        { id: 2, slug: "about", content: { _uid: "b", component: "hero", subtitle: "Kept" } },
+      ],
+    });
+
+    expect(outcome.writes.map((write) => write.content)).toEqual([
+      { _uid: "a", component: "hero", subtitle: "Hi", count: "0" },
+      { _uid: "b", component: "hero", subtitle: "Kept", count: "0" },
+    ]);
+  });
+
+  it("should refuse an empty string while the fill is a placeholder", async () => {
+    const { migration } = await loadGenerated({
+      schemaImport: "./schema",
+      ops: [{ kind: "fillField", block: "hero", field: "subtitle", fillEmptyString: true }],
+    });
+
+    const outcome = applyMigration({
+      migration,
+      id: "0001-update-hero",
+      space: "1",
+      stories: [{ id: 1, slug: "home", content: { _uid: "a", component: "hero", subtitle: "" } }],
+    });
+
+    expect(outcome.refusals[0].reason).toContain("hero.subtitle");
+  });
+
+  it("should leave translations as they are when filling a field", async () => {
+    const { migration } = await loadGenerated({
+      schemaImport: "./schema",
+      ops: [
+        { kind: "fillField", block: "hero", field: "subtitle", value: "Hi", fillEmptyString: true },
+      ],
+    });
+
+    const outcome = applyMigration({
+      migration,
+      id: "0001-update-hero",
+      space: "1",
+      stories: [
+        {
+          id: 1,
+          slug: "home",
+          content: { _uid: "a", component: "hero", subtitle: "", subtitle__i18n__de: "" },
+        },
+      ],
+    });
+
+    expect(outcome.writes.map((write) => write.content)).toEqual([
+      { _uid: "a", component: "hero", subtitle: "Hi", subtitle__i18n__de: "" },
+    ]);
+  });
+
+  it("should fill a field that changed type and became required in a migration that typechecks", async () => {
+    const schema = [
+      "import { defineBlock, defineField, defineSchema } from '@storyblok/schema';",
+      "import type { Schema as InferSchema } from '@storyblok/schema';",
+      "const hero = defineBlock({ name: 'hero', fields: [",
+      "  defineField('featured', { type: 'boolean', required: true }),",
+      "] });",
+      "const schema = defineSchema({ blocks: { hero } });",
+      "export type Schema = InferSchema<typeof schema>;",
+    ].join("\n");
+    const before = [
+      "import { defineBlock, defineField, defineSchema } from '@storyblok/schema';",
+      "import type { Schema } from '@storyblok/schema';",
+      "const hero = defineBlock({ name: 'hero', fields: [",
+      "  defineField('featured', { type: 'number' }),",
+      "] });",
+      "export const schema = defineSchema({ blocks: { hero } });",
+      "export type Before = Schema<typeof schema>;",
+    ].join("\n");
+    const modules = await writeModules({
+      "schema.ts": schema,
+      "0001.before.ts": before,
+      "0001.ts": generateMigrationSource({
+        schemaImport: "./schema",
+        beforeImport: "./0001.before",
+        ops: [{ kind: "fillField", block: "hero", field: "featured", value: false }],
+      }),
+    });
+
+    try {
+      expect(modules.typeErrors()).toEqual([]);
+    } finally {
+      await modules.cleanup();
+    }
+  });
+
+  it("should generate a placeholder migration when there are no ops", async () => {
+    const { migration, typeErrors } = await loadGenerated({ schemaImport: "./schema", ops: [] });
+
+    expect(typeErrors).toEqual([]);
+    expect(migration.ops).toEqual([]);
+  });
+
+  it("should generate a placeholder for a conversion it cannot write that compiles and refuses the op", async () => {
+    const before = [
+      "import { defineBlock, defineField, defineSchema } from '@storyblok/schema';",
+      "import type { Schema } from '@storyblok/schema';",
+      "const hero = defineBlock({ name: 'hero', fields: [",
+      "  defineField('title', { type: 'text' }),",
+      "  defineField('count', { type: 'boolean' }),",
+      "  defineField('subtitle', { type: 'text' }),",
+      "] });",
+      "export const schema = defineSchema({ blocks: { hero } });",
+      "export type Before = Schema<typeof schema>;",
+    ].join("\n");
+    const modules = await writeModules({
+      "schema.ts": SCHEMA,
+      "0001.before.ts": before,
+      "0001.ts": generateMigrationSource({
+        schemaImport: "./schema",
+        beforeImport: "./0001.before",
+        ops: [
+          { kind: "alterField", block: "hero", field: "count" },
+          { kind: "addField", block: "hero", field: "link" },
+          { kind: "fillField", block: "hero", field: "subtitle" },
+        ],
+      }),
+    });
+
+    try {
+      expect(modules.typeErrors()).toEqual([]);
+      const { default: migration } = await import(path.join(modules.directory, "0001.ts"));
+      const outcome = applyMigration({
+        migration,
+        id: "0001",
+        space: "1",
+        stories: [{ id: 1, slug: "home", content: { _uid: "a", component: "hero", count: true } }],
+      });
+
+      expect(outcome.writes).toEqual([]);
+      expect(outcome.refusals).toHaveLength(1);
+      expect(outcome.refusals[0].reason).toContain(
+        "Replace this placeholder for hero.count before applying the migration.",
+      );
+      expect(outcome.refusals[0].reason).toContain("hero.link");
+      expect(outcome.refusals[0].reason).toContain("hero.subtitle");
+    } finally {
+      await modules.cleanup();
+    }
+  });
+
+  it("should generate a placeholder that refuses only the option values the schema removed", async () => {
+    const schema = [
+      "import { defineBlock, defineField, defineSchema } from '@storyblok/schema';",
+      "import type { Schema as InferSchema } from '@storyblok/schema';",
+      "const hero = defineBlock({ name: 'hero', fields: [",
+      "  defineField('size', { type: 'option', options: [{ name: 'Normal', value: 'normal' }] }),",
+      "  defineField('tags', { type: 'options', options: [{ name: 'New', value: 'new' }] }),",
+      "] });",
+      "const schema = defineSchema({ blocks: { hero } });",
+      "export type Schema = InferSchema<typeof schema>;",
+    ].join("\n");
+    const before = [
+      "import { defineBlock, defineField, defineSchema } from '@storyblok/schema';",
+      "import type { Schema } from '@storyblok/schema';",
+      "const hero = defineBlock({ name: 'hero', fields: [",
+      "  defineField('size', { type: 'option', options: [",
+      "    { name: 'Normal', value: ' ' }, { name: 'Huge', value: 'huge' },",
+      "    { name: 'Normal', value: 'normal' },",
+      "  ] }),",
+      "  defineField('tags', { type: 'options', options: [",
+      "    { name: 'Old', value: 'old' }, { name: 'New', value: 'new' },",
+      "  ] }),",
+      "] });",
+      "export const schema = defineSchema({ blocks: { hero } });",
+      "export type Before = Schema<typeof schema>;",
+    ].join("\n");
+    const modules = await writeModules({
+      "schema.ts": schema,
+      "0001.before.ts": before,
+      "0001.ts": generateMigrationSource({
+        schemaImport: "./schema",
+        beforeImport: "./0001.before",
+        ops: [
+          { kind: "alterField", block: "hero", field: "size", removedValues: [" ", "huge"] },
+          {
+            kind: "alterField",
+            block: "hero",
+            field: "tags",
+            removedValues: ["old"],
+            multiple: true,
+          },
+        ],
+      }),
+    });
+
+    try {
+      expect(modules.typeErrors()).toEqual([]);
+      const { default: migration } = await import(path.join(modules.directory, "0001.ts"));
+      const story = (id: number, content: Record<string, unknown>) => ({
+        id,
+        slug: `s${id}`,
+        content: { _uid: `u${id}`, component: "hero", ...content },
+      });
+      const outcome = applyMigration({
+        migration,
+        id: "0001",
+        space: "1",
+        stories: [
+          story(1, { size: "normal", tags: ["new"] }),
+          story(2, { size: " " }),
+          story(3, { size: "huge" }),
+          story(4, { tags: ["new", "old"] }),
+        ],
+      });
+
+      expect(outcome.writes).toEqual([]);
+      expect(outcome.refusals.map((refusal) => refusal.slug)).toEqual(["s2", "s3", "s4"]);
+      expect(outcome.refusals[0].reason).toContain(
+        "Replace this placeholder for hero.size before applying the migration.",
+      );
+    } finally {
+      await modules.cleanup();
+    }
+  });
+
+  it("should rename a block after changing its fields under the name it had before", async () => {
+    const before = [
+      "import { defineBlock, defineField, defineSchema } from '@storyblok/schema';",
+      "import type { Schema } from '@storyblok/schema';",
+      "const banner = defineBlock({ name: 'banner', fields: [",
+      "  defineField('headline', { type: 'text' }),",
+      "] });",
+      "export const schema = defineSchema({ blocks: { banner } });",
+      "export type Before = Schema<typeof schema>;",
+    ].join("\n");
+    const modules = await writeModules({
+      "schema.ts": SCHEMA,
+      "0001.before.ts": before,
+      "0001.ts": generateMigrationSource({
+        schemaImport: "./schema",
+        beforeImport: "./0001.before",
+        ops: [
+          { kind: "renameField", block: "banner", field: "headline", to: "title" },
+          { kind: "renameBlock", block: "banner", to: "hero" },
+        ],
+      }),
+    });
+
+    try {
+      expect(modules.typeErrors()).toEqual([]);
+      const { default: migration } = await import(path.join(modules.directory, "0001.ts"));
+      const outcome = applyMigration({
+        migration,
+        id: "0001",
+        space: "1",
+        stories: [
+          { id: 1, slug: "home", content: { _uid: "a", component: "banner", headline: "Hi" } },
+        ],
+      });
+
+      expect(outcome.writes[0].content).toEqual({ _uid: "a", component: "hero", title: "Hi" });
+    } finally {
+      await modules.cleanup();
+    }
+  });
+
+  it("should throw on an op kind it does not know", () => {
+    expect(() =>
+      generateMigrationSource({
+        schemaImport: "./schema",
+        // A JavaScript caller is not held to the op union.
+        ops: [JSON.parse('{ "kind": "bogus", "block": "hero", "field": "a" }')],
+      }),
+    ).toThrow(/Unknown migration op kind/);
+  });
+
+  it("should write source a formatter leaves unchanged, wrapping what doesn't fit in 100 columns", async () => {
+    const block = "enterprise_landing_page";
+    const source = generateMigrationSource({
+      schemaImport: "../../../src/schema/schema.js",
+      beforeImport: "./20261103093215-update-enterprise-landing-page-and-author.before.js",
+      title:
+        "Update enterprise_landing_page: rename hero_background_image, require newsletter_headline",
+      ops: [
+        { kind: "renameField", block: "author", field: "bluesky_account", to: "bluesky_handle" },
+        { kind: "renameField", block, field: "hero_background_image", to: "hero_background_asset" },
+        {
+          kind: "removeField",
+          block: "author",
+          field: "x_account",
+          todo: [
+            "TODO: if 'x_account' was renamed to 'x_handle', replace this removeField with renameField; if it was renamed to 'role', replace this removeField and the addField of 'role' with renameField. Otherwise, the content of 'x_account' is lost.",
+          ],
+        },
+        { kind: "coerceField", block, field: "hero_rating_value", from: "string", to: "number" },
+        { kind: "alterField", block, field: "hero_background_video" },
+        {
+          kind: "alterField",
+          block: "hero",
+          field: "headline_size",
+          removedValues: ["large", "extra_large", "huge_size", "giant"],
+        },
+        {
+          kind: "alterField",
+          block: "hero",
+          field: "tags",
+          removedValues: ["large", "extra_large", "huge_size", "giant"],
+          multiple: true,
+        },
+        { kind: "addField", block, field: "show_newsletter_signup_on_page", value: false },
+        { kind: "addField", block, field: "newsletter_signup_defaults", value: { title: "Join" } },
+        { kind: "fillField", block, field: "newsletter_headline", fillEmptyString: true },
+        { kind: "fillField", block: "author", field: "show", value: false },
+        {
+          kind: "renameBlock",
+          block: "enterprise_landing_page_v2",
+          to: "enterprise_landing_page_v3",
+        },
+      ],
+    });
+
+    const formatted = await format("migration.ts", source, { printWidth: 100, singleQuote: true });
+
+    expect(formatted.errors).toEqual([]);
+    expect(source).toBe(formatted.code);
+    const comments = source.split("\n").filter((line) => line.trimStart().startsWith("//"));
+    expect(comments.length).toBeGreaterThan(1);
+    expect(comments.filter((line) => line.length > 100)).toEqual([]);
+  });
+
+  it("should keep a todo with line breaks inside its comment", async () => {
+    const { migration } = await loadGenerated({
+      schemaImport: "./schema",
+      ops: [
+        {
+          kind: "alterField",
+          block: "hero",
+          field: "title",
+          todo: ["convert 'x\nglobalThis.injected = true; //'"],
+        },
+      ],
+    });
+
+    expect(migration.ops).toHaveLength(1);
+    expect(Reflect.get(globalThis, "injected")).toBeUndefined();
+  });
+});

@@ -28,6 +28,10 @@ import {
   toStoryForMigration,
 } from "../content-migrations";
 import type { StoryAccess } from "../content-migrations";
+import { fetchComponents } from "../../components";
+import { describeFolder, foldersNaming } from "../../schema/push/story-folders";
+import { withoutStaleOps } from "./stale-ops";
+import type { LiveFields } from "./stale-ops";
 
 const PER_PAGE = 100;
 const MIGRATION_EXTENSION = /\.(?:ts|js|mjs)$/;
@@ -71,6 +75,42 @@ async function findCandidateStories(
   }
 
   return [...ids];
+}
+
+async function liveFields(space: string): Promise<LiveFields> {
+  const components = (await fetchComponents(space)) ?? [];
+  return new Map(
+    components.map((component) => [
+      component.name,
+      new Map(Object.entries(component.schema ?? {}).map(([name, field]) => [name, field.type])),
+    ]),
+  );
+}
+
+/**
+ * Folders name their default and allowed content types by block name, and a
+ * migration only changes story content, so a folder can keep naming a block
+ * after its stories were renamed away from it.
+ */
+async function warnAboutFoldersNaming(
+  space: string,
+  renamedBlocks: ReadonlyMap<string, string>,
+): Promise<void> {
+  if (renamedBlocks.size === 0) return;
+  try {
+    const folders = await foldersNaming(space, new Set(renamedBlocks.keys()));
+    for (const folder of folders) {
+      for (const name of new Set([folder.defaultRoot, ...folder.contentTypes])) {
+        const to = name === undefined ? undefined : renamedBlocks.get(name);
+        if (to === undefined) continue;
+        getUI().warn(
+          `Folder ${describeFolder(folder)} still names ${name} as a content type. Change it to ${to}, or schema push renames it when it renames the block.`,
+        );
+      }
+    }
+  } catch (maybeError) {
+    getLogger().warn("Failed to check folders for renamed blocks", { error: toError(maybeError) });
+  }
 }
 
 function changeSummary(run: MigrationRun): string {
@@ -214,6 +254,20 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
+/** The newest `snapshotFormat` this CLI reads. */
+const SUPPORTED_SNAPSHOT_FORMAT = 1;
+
+/** The `nameOnlyBlocks` of a snapshot, refusing a format this CLI cannot read. */
+async function loadNameOnlyBlocks(file: string): Promise<readonly string[] | undefined> {
+  const { nameOnlyBlocks, snapshotFormat } = await loadSchemaModule(file);
+  if (typeof snapshotFormat === "number" && snapshotFormat > SUPPORTED_SNAPSHOT_FORMAT) {
+    throw new CommandError(
+      `${relative(process.cwd(), file)} has snapshot format ${snapshotFormat}, but this version of the Storyblok CLI reads up to format ${SUPPORTED_SNAPSHOT_FORMAT}. Update the Storyblok CLI.`,
+    );
+  }
+  return isStringArray(nameOnlyBlocks) ? nameOnlyBlocks : undefined;
+}
+
 /** The `.before.ts` snapshot of the schema a migration was written against. */
 async function findBeforeSnapshot(file: string): Promise<string | undefined> {
   const snapshot = file.replace(MIGRATION_EXTENSION, ".before.ts");
@@ -227,12 +281,7 @@ async function loadSnapshotCheck(
 ): Promise<SchemaCheck | string> {
   try {
     const { schema } = await loadSchemaEntry(snapshot, { requireBlocks: true });
-    const { nameOnlyBlocks } = await loadSchemaModule(snapshot);
-    return {
-      entry,
-      schema,
-      nameOnlyBlocks: isStringArray(nameOnlyBlocks) ? nameOnlyBlocks : undefined,
-    };
+    return { entry, schema, nameOnlyBlocks: await loadNameOnlyBlocks(snapshot) };
   } catch (maybeError) {
     const [reason] = toError(maybeError).message.split("\n");
     return `${entry.id}: the schema snapshot ${relative(process.cwd(), snapshot)} could not be loaded: ${reason.trim()}`;
@@ -321,7 +370,8 @@ export async function assertContentMigrationsMatchSchema({
       );
     }
     const { schema } = await loadSchemaEntry(schemaEntry, { requireBlocks: true });
-    assertMatchesSchemas([{ entry: migrations[0], schema }]);
+    const nameOnlyBlocks = await loadNameOnlyBlocks(schemaEntry);
+    assertMatchesSchemas([{ entry: migrations[0], schema, nameOnlyBlocks }]);
   } else if (validate) {
     const unchecked = await assertMatchesSnapshots(migrations);
     if (unchecked.length > 0) {
@@ -359,7 +409,12 @@ export async function applyContentMigrations({
   const ui = getUI();
   const logger = getLogger();
 
+  const live = await liveFields(space);
   const journal = contentJournal(path);
+  /** Migrations with a run still in place, so a run that changes nothing need not be recorded. */
+  const inPlace = new Set(
+    (await journal.list(space)).filter((run) => !run.undoneAt).map((run) => run.migration),
+  );
   const access = storyAccess(space);
   const cache = storyCache(space, access);
   const writes = storyWrites();
@@ -368,19 +423,37 @@ export async function applyContentMigrations({
   const refusedEverything: string[] = [];
   let failed = 0;
   let appliedAt: Date | undefined;
+  const renamedBlocks = new Map<string, string>();
 
   for (const entry of selected) {
+    if (entry.migration.ops.length === 0) {
+      ui.info(`${entry.id}: has no ops yet, so nothing was applied.`);
+      continue;
+    }
+    const { migration, stale } = withoutStaleOps(entry.migration, live);
+    for (const op of migration.ops) {
+      if (op.kind === "renameBlock") renamedBlocks.set(op.block, op.to);
+    }
+    for (const { reason } of stale) {
+      ui.warn(`${entry.id}: ${reason}`);
+    }
+    if (migration.ops.length === 0) {
+      ui.info(
+        `${entry.id}: every op was skipped because the space's blocks don't match it, so nothing was applied. Push the schema the migration was written for, then run it again.`,
+      );
+      continue;
+    }
     const spinner = ui.createSpinner(`${entry.id}: fetching stories...`);
-    const candidates = await findCandidateStories(space, entry.migration.targets, scope);
+    const candidates = await findCandidateStories(space, migration.targets, scope);
     const { stories, unread } = await cache.storiesFor(candidates);
     failed += unread;
     spinner.succeed(
-      `${entry.id}: ${plural(candidates.length, "story contains", "stories contain")} ${entry.migration.targets.join(", ")}`,
+      `${entry.id}: ${plural(candidates.length, "story contains", "stories contain")} ${migration.targets.join(", ")}`,
     );
 
     appliedAt = nextAppliedAt(appliedAt);
     const outcome = applyMigration({
-      migration: entry.migration,
+      migration,
       id: entry.id,
       space,
       stories,
@@ -420,6 +493,14 @@ export async function applyContentMigrations({
     }
 
     if (outcome.writes.length === 0) {
+      // A first run with nothing to change is recorded, so the migration no
+      // longer shows as pending; an empty run is never the one rolled back.
+      if (outcome.refusals.length === 0 && !inPlace.has(entry.id)) {
+        await journal.record(outcome.run, []);
+        inPlace.add(entry.id);
+        ui.info(`${entry.id}: changed no stories, recorded as ${chalk.bold(outcome.run.id)}.`);
+        continue;
+      }
       ui.info(`${entry.id}: changed no stories, so nothing was recorded.`);
       continue;
     }
@@ -477,6 +558,8 @@ export async function applyContentMigrations({
       ui.info(`${id}: changed ${changeSummary(run)}, recorded as ${chalk.bold(run.id)}.`);
     }
   }
+
+  await warnAboutFoldersNaming(space, renamedBlocks);
 
   const problems = [
     ...refusedEverything.map((id) => `${id} refused every story it matched`),

@@ -20,6 +20,8 @@ export type RemoteStory = {
   published?: boolean;
   unpublished_changes?: boolean;
   deleted_at?: string | null;
+  is_folder?: boolean;
+  default_root?: string;
   content: Record<string, unknown>;
 };
 
@@ -66,6 +68,9 @@ export function createRemoteSpace(server: SetupServerApi) {
     default: jsExports.get(file.split("/").pop() ?? ""),
   }));
 
+  // No components by default, so no op is checked against the space's schema.
+  server.use(http.get(`${MAPI}/components`, () => HttpResponse.json({ components: [] })));
+
   vi.mocked(importUserModuleDefault).mockImplementation(async (file) => {
     const id =
       file
@@ -96,6 +101,22 @@ export function createRemoteSpace(server: SetupServerApi) {
         vol.fromJSON({ [`${MIGRATIONS_DIRECTORY}/${id}.ts`]: "export default {};" });
       }
     },
+    /** The space's blocks, which ops are checked against. A field given by name only is a text field. */
+    hasBlocks(blocks: Record<string, string[] | Record<string, string>>) {
+      const components = Object.entries(blocks).map(([name, fields], id) => {
+        const types = Array.isArray(fields)
+          ? Object.fromEntries(fields.map((field) => [field, "text"]))
+          : fields;
+        return {
+          id: id + 1,
+          name,
+          schema: Object.fromEntries(
+            Object.entries(types).map(([field, type], pos) => [field, { type, pos }]),
+          ),
+        };
+      });
+      server.use(http.get(`${MAPI}/components`, () => HttpResponse.json({ components })));
+    },
     /** A content migration in a `.js` file, which a migration function could also be. */
     hasJsContentMigration(id: string, migration: CompiledMigration) {
       migrations.set(id, migration);
@@ -119,9 +140,11 @@ export function createRemoteSpace(server: SetupServerApi) {
         http.get(`${MAPI}/stories`, ({ request }) => {
           const params = new URL(request.url).searchParams;
           const component = params.get("contain_component");
+          const folderOnly = params.get("folder_only") === "true";
           const startsWith = params.get("starts_with");
           const matching = [...stories.values()].filter(
             (story) =>
+              Boolean(story.is_folder) === folderOnly &&
               (!component || componentsIn(story.content).has(component)) &&
               (!startsWith || story.full_slug.startsWith(startsWith)),
           );

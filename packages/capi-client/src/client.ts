@@ -46,6 +46,11 @@ export type ApiResponse<
 
 export type HttpRequestOptions = Omit<RequestOptions, "method" | "security" | "url">;
 
+/** Options for `client.get()`, with `throwOnError` typed so a per-call override narrows the response. */
+type GetRequestOptions<ThrowOnError extends boolean> = Omit<HttpRequestOptions, "throwOnError"> & {
+  throwOnError?: ThrowOnError;
+};
+
 /** Past this, a slow discovering read costs more than the redirects it saves. */
 const MAX_CV_DISCOVERY_WAIT_MS = 2000;
 
@@ -249,7 +254,10 @@ type ApiClientBaseResult<
   datasources: ReturnType<typeof createDatasourcesResource<ThrowOnError>>;
   experiments: ReturnType<typeof createExperimentsResource<ThrowOnError>>;
   flushCache: () => Promise<void>;
-  get: (path: string, options?: HttpRequestOptions) => Promise<ApiResponse>;
+  get: <TData = unknown, T extends boolean = ThrowOnError>(
+    path: string,
+    options?: GetRequestOptions<T>,
+  ) => Promise<ApiResponse<TData, T>>;
   interceptors: Client["interceptors"];
   links: ReturnType<typeof createLinksResource<ThrowOnError>>;
   spaces: ReturnType<typeof createSpacesResource<ThrowOnError>>;
@@ -560,13 +568,13 @@ export const createApiClientBase = <
       };
     });
 
-  const requestNetwork = (
+  const requestNetwork = <TData, T extends boolean>(
     method: "GET",
     path: string,
     query: Record<string, unknown>,
-    options: HttpRequestOptions,
-  ): Promise<ApiResponse> =>
-    asApiResponse(
+    options: GetRequestOptions<T>,
+  ): Promise<ApiResponse<TData, T>> =>
+    asApiResponse<TData, T>(
       client.request<unknown, ClientError, boolean>({
         ...options,
         method,
@@ -726,22 +734,25 @@ export const createApiClientBase = <
     });
   };
 
-  const request = async (
+  const request = async <TData, T extends boolean>(
     method: "GET",
     path: string,
-    options: HttpRequestOptions = {},
-  ): Promise<ApiResponse> => {
+    options: GetRequestOptions<T> = {},
+  ): Promise<ApiResponse<TData, T>> => {
     const rawQuery = options.query || {};
 
     return requestWithCache(method, path, rawQuery, (query) => {
       return throttleManager.execute(path, rawQuery, () =>
-        requestNetwork(method, path, query, options),
+        requestNetwork<TData, T>(method, path, query, options),
       );
     });
   };
 
-  const getRequest = (path: string, options: HttpRequestOptions = {}) => {
-    return request("GET", path, options);
+  const getRequest = <TData = unknown, T extends boolean = ThrowOnError>(
+    path: string,
+    options: GetRequestOptions<T> = {},
+  ) => {
+    return request<TData, T>("GET", path, options);
   };
 
   const resourceDeps: ResourceDeps<ThrowOnError> = {

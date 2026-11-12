@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { createApiClient } from "./client";
 import type { RateLimitContext, RateLimiter } from "./utils/limiter";
 
@@ -91,5 +91,50 @@ describe("createApiClient rate limiting", () => {
     }
 
     expect(stub).toHaveBeenCalled();
+  });
+});
+
+describe("createApiClient get()", () => {
+  type Links = { links: Record<string, unknown> };
+  const linksResponse = () =>
+    new Response(JSON.stringify({ links: { a: {} } }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+
+  it("should type data with the given type argument", async () => {
+    const client = createApiClient({ accessToken: "token", fetch: async () => linksResponse() });
+
+    const result = await client.get<Links>("/v2/cdn/links");
+
+    expectTypeOf(result.data).toEqualTypeOf<Links | undefined>();
+    expect(result.data?.links).toEqual({ a: {} });
+  });
+
+  it("should type data as non-optional when throwOnError is enabled", async () => {
+    const client = createApiClient({
+      accessToken: "token",
+      throwOnError: true,
+      fetch: async () => linksResponse(),
+    });
+
+    const result = await client.get<Links>("/v2/cdn/links");
+
+    expectTypeOf(result.data).toEqualTypeOf<Links>();
+    expect(result.data.links).toEqual({ a: {} });
+  });
+
+  it("should type data as optional when a call overrides throwOnError", async () => {
+    const client = createApiClient({
+      accessToken: "token",
+      throwOnError: true,
+      fetch: async () => new Response(null, { status: 404 }),
+    });
+
+    const result = await client.get<Links, false>("/v2/cdn/links", { throwOnError: false });
+
+    expectTypeOf(result.data).toEqualTypeOf<Links | undefined>();
+    expect(result.data).toBeUndefined();
+    expect(result.error).toBeDefined();
   });
 });

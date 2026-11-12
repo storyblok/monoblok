@@ -105,7 +105,7 @@ describe("applyMigration", () => {
     );
   });
 
-  it("should refuse a story whose reshaped field is translated and write nothing for it", () => {
+  it("should write a story whose split field is translated", () => {
     const splitName = defineMigration([
       splitField({ block: "author", field: "name", into: ["first_name", "last_name"] }, (value) =>
         String(value).split(" "),
@@ -136,11 +136,21 @@ describe("applyMigration", () => {
       ],
     });
 
-    expect(outcome.writes).toEqual([]);
-    expect(outcome.refusals).toEqual([
+    expect(outcome.refusals).toEqual([]);
+    expect(outcome.writes.map((write) => write.content)).toEqual([
       {
-        slug: "home",
-        reason: expect.stringContaining('field "name" of block a (author) has de translations'),
+        _uid: "r1",
+        component: "page",
+        body: [
+          {
+            _uid: "a",
+            component: "author",
+            first_name: "Ada",
+            last_name: "Lovelace",
+            first_name__i18n__de: "Ada",
+            last_name__i18n__de: "von",
+          },
+        ],
       },
     ]);
   });

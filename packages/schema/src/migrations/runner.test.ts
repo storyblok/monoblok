@@ -1277,6 +1277,81 @@ describe("uid instability the content already had", () => {
 });
 
 describe("addField", () => {
+  it("should add a translation for every language the block holds when the field is translatable", () => {
+    const migration = defineMigration<TestSchema>([
+      addField({ block: "card", field: "slug", translatable: true }, (block, { key }) =>
+        String(block[key.replace("slug", "title")] ?? "").toLowerCase(),
+      ),
+    ]);
+
+    const result = runMigrationOnStory(migration, {
+      _uid: "root",
+      component: "page",
+      body: [
+        {
+          _uid: "a",
+          component: "card",
+          title: "Hello",
+          title__i18n__de: "Hallo",
+          slug__i18n__fr: "kept",
+        },
+      ],
+    });
+
+    expect(result.content).toEqual({
+      _uid: "root",
+      component: "page",
+      body: [
+        {
+          _uid: "a",
+          component: "card",
+          title: "Hello",
+          title__i18n__de: "Hallo",
+          slug__i18n__fr: "kept",
+          slug: "hello",
+          slug__i18n__de: "hallo",
+        },
+      ],
+    });
+    expect(result.nonIdempotent).toEqual([]);
+  });
+
+  it("should pass the language of the key being added", () => {
+    const languages: (string | undefined)[] = [];
+    const migration = defineMigration<TestSchema>([
+      addField({ block: "card", field: "slug", translatable: true }, (_block, { language }) => {
+        languages.push(language);
+        return undefined;
+      }),
+    ]);
+
+    runMigrationOnStory(migration, {
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "card", title__i18n__pt_br: "Olá" }],
+    });
+
+    expect(new Set(languages)).toEqual(new Set([undefined, "pt-br"]));
+  });
+
+  it("should add only the base key when the field is not translatable", () => {
+    const migration = defineMigration<TestSchema>([
+      addField({ block: "card", field: "featured" }, () => false),
+    ]);
+
+    const result = runMigrationOnStory(migration, {
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "card", title__i18n__de: "Hallo" }],
+    });
+
+    expect(result.content).toEqual({
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "card", title__i18n__de: "Hallo", featured: false }],
+    });
+  });
+
   it("should add the field with the computed value", () => {
     const migration = defineMigration<FixtureSchema>({
       ops: [
@@ -1507,8 +1582,8 @@ describe("splitField", () => {
     });
   });
 
-  it("should report a source field that carries translations instead of stranding them", () => {
-    const result = runMigrationOnStory(splitName, {
+  it("should split every translation with the same callback", () => {
+    const original = {
       _uid: "root",
       component: "page",
       body: [
@@ -1517,29 +1592,38 @@ describe("splitField", () => {
           component: "author",
           name: "Ada Lovelace",
           name__i18n__de: "Ada von Lovelace",
+          name__i18n__pt_br: "Ada",
+        },
+      ],
+    };
+    const result = runMigrationOnStory(splitName, original);
+
+    expect(result.refusedOps).toEqual([]);
+    expect(result.content).toEqual({
+      _uid: "root",
+      component: "page",
+      body: [
+        {
+          _uid: "a",
+          component: "author",
+          first_name: "Ada",
+          last_name: "Lovelace",
+          first_name__i18n__de: "Ada",
+          last_name__i18n__de: "von Lovelace",
+          first_name__i18n__pt_br: "Ada",
+          last_name__i18n__pt_br: "",
         },
       ],
     });
 
-    expect(result.translatedReshapes).toEqual([
-      { uid: "a", op: 0, field: "name", languages: ["de"] },
-    ]);
+    const rolledBack = structuredClone(result.content);
+    expect(applyPatches(rolledBack, result.inverse).conflicts).toEqual([]);
+    expect(rolledBack).toEqual(original);
   });
 
-  it("should report nothing for a source field that carries no translations", () => {
-    const result = runMigrationOnStory(splitName, {
-      _uid: "root",
-      component: "page",
-      body: [{ _uid: "a", component: "author", name: "Ada Lovelace" }],
-    });
-
-    expect(result.translatedReshapes).toEqual([]);
-  });
-
-  // A target that keeps its translations is the same corruption one field over:
-  // the stale sibling is then read as the translation of the part that landed
-  // on it.
-  it("should report a target field that already carries translations", () => {
+  // A stale sibling left on a target would be read as the translation of the
+  // part that landed on it.
+  it("should drop translations a target field held that the source does not replace", () => {
     const result = runMigrationOnStory(splitName, {
       _uid: "root",
       component: "page",
@@ -1553,9 +1637,11 @@ describe("splitField", () => {
       ],
     });
 
-    expect(result.translatedReshapes).toEqual([
-      { uid: "a", op: 0, field: "first_name", languages: ["de"] },
-    ]);
+    expect(result.content).toEqual({
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "author", first_name: "Ada", last_name: "Lovelace" }],
+    });
   });
 });
 
@@ -1639,8 +1725,10 @@ describe("mergeFields", () => {
     });
   });
 
-  it("should report a source field that carries translations instead of stranding them", () => {
-    const result = runMigrationOnStory(mergeName, {
+  // A language without its own key shows the default language value, so that
+  // is what the merge reads for it.
+  it("should merge every language, reading the default value where a language has no translation", () => {
+    const original = {
       _uid: "root",
       component: "page",
       body: [
@@ -1652,24 +1740,29 @@ describe("mergeFields", () => {
           last_name__i18n__de: "von Lovelace",
         },
       ],
-    });
+    };
+    const result = runMigrationOnStory(mergeName, original);
 
-    expect(result.translatedReshapes).toEqual([
-      { uid: "a", op: 0, field: "last_name", languages: ["de"] },
-    ]);
-  });
-
-  it("should report nothing for source fields that carry no translations", () => {
-    const result = runMigrationOnStory(mergeName, {
+    expect(result.refusedOps).toEqual([]);
+    expect(result.content).toEqual({
       _uid: "root",
       component: "page",
-      body: [{ _uid: "a", component: "author", first_name: "Ada", last_name: "Lovelace" }],
+      body: [
+        {
+          _uid: "a",
+          component: "author",
+          name: "Ada Lovelace",
+          name__i18n__de: "Ada von Lovelace",
+        },
+      ],
     });
 
-    expect(result.translatedReshapes).toEqual([]);
+    const rolledBack = structuredClone(result.content);
+    expect(applyPatches(rolledBack, result.inverse).conflicts).toEqual([]);
+    expect(rolledBack).toEqual(original);
   });
 
-  it("should report a target field that already carries translations", () => {
+  it("should drop translations the target field held that no source replaces", () => {
     const result = runMigrationOnStory(mergeName, {
       _uid: "root",
       component: "page",
@@ -1684,9 +1777,11 @@ describe("mergeFields", () => {
       ],
     });
 
-    expect(result.translatedReshapes).toEqual([
-      { uid: "a", op: 0, field: "name", languages: ["de"] },
-    ]);
+    expect(result.content).toEqual({
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "author", name: "Ada Lovelace" }],
+    });
   });
 });
 

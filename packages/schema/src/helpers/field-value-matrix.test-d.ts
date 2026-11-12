@@ -4,6 +4,7 @@ import type { BlockContentBase } from "../generated/overlay/_internal.gen";
 import type {
   AssetFieldValue,
   BlockContent,
+  BlockContentInput,
   FieldValue,
   FieldValueInput,
   MultilinkFieldValue,
@@ -41,6 +42,7 @@ const _f = {
   table: defineField("a", { type: "table" }),
   section: defineField("a", { type: "section" }),
   tab: defineField("a", { type: "tab" }),
+  group: defineField("a", { type: "group" }),
   custom: defineField("a", { type: "custom", field_type: "unregistered" }),
 };
 
@@ -74,10 +76,11 @@ describe("FieldValue resolution per field type", () => {
   });
 
   it("resolves the layout-only field types to `never`", () => {
-    // `section` and `tab` group other fields in the editor and carry no content
-    // value, so they must never appear in a content object.
+    // `section`, `tab` and `group` arrange other fields in the editor and carry
+    // no content value, so they must never appear in a content object.
     expectTypeOf<FieldValue<typeof _f.section>>().toEqualTypeOf<never>();
     expectTypeOf<FieldValue<typeof _f.tab>>().toEqualTypeOf<never>();
+    expectTypeOf<FieldValue<typeof _f.group>>().toEqualTypeOf<never>();
   });
 });
 
@@ -95,6 +98,7 @@ describe("FieldValueInput resolution per field type", () => {
     expectTypeOf<FieldValueInput<typeof _f.options>>().toEqualTypeOf<string[]>();
     expectTypeOf<FieldValueInput<typeof _f.section>>().toEqualTypeOf<never>();
     expectTypeOf<FieldValueInput<typeof _f.tab>>().toEqualTypeOf<never>();
+    expectTypeOf<FieldValueInput<typeof _f.group>>().toEqualTypeOf<never>();
   });
 });
 
@@ -208,6 +212,87 @@ describe("option narrowing through a block's content type", () => {
     // Optional fields are also nullable.
     expectTypeOf<Hero["alignment"]>().toEqualTypeOf<"" | "left" | "center" | null | undefined>();
     expectTypeOf<Hero["tags"]>().toEqualTypeOf<("left" | "center")[]>();
+  });
+});
+
+describe("layout fields in a block's content type", () => {
+  const formBlock = defineBlock({
+    name: "form",
+    fields: [
+      defineField("tab-303dc898-0e4b-4a7e-9b0f-3a1f5f0b6c2d", {
+        type: "tab",
+        display_name: "Settings",
+        keys: ["title", "subtitle"],
+      }),
+      defineField("contact_details", { type: "section", keys: ["email"] }),
+      defineField("legacy_group", { type: "group" }),
+      defineField("title", { type: "text", required: true }),
+      defineField("subtitle", { type: "text" }),
+      defineField("email", { type: "text" }),
+    ],
+  });
+
+  type Form = BlockContent<typeof formBlock, typeof formBlock>;
+  type FormInput = BlockContentInput<typeof formBlock, typeof formBlock>;
+
+  it("leaves tab, section and group keys out of the read content type", () => {
+    // Layout fields hold no value, so a story never stores anything under their key.
+    expectTypeOf<keyof Form>().toEqualTypeOf<
+      "_uid" | "component" | "_editable" | "title" | "subtitle" | "email"
+    >();
+  });
+
+  it("leaves tab, section and group keys out of the input content type", () => {
+    expectTypeOf<keyof FormInput>().toEqualTypeOf<
+      "_uid" | "component" | "_editable" | "title" | "subtitle" | "email"
+    >();
+  });
+
+  it("keeps the fields a layout field arranges, with their required/optional shape", () => {
+    expectTypeOf<Form["title"]>().toEqualTypeOf<string>();
+    expectTypeOf<Form["subtitle"]>().toEqualTypeOf<string | null | undefined>();
+    expectTypeOf<Form["email"]>().toEqualTypeOf<string | null | undefined>();
+    expectTypeOf<FormInput["title"]>().toEqualTypeOf<string>();
+    expectTypeOf<FormInput["subtitle"]>().toEqualTypeOf<string | null | undefined>();
+    expectTypeOf<FormInput>().toExtend<{ title: string; subtitle?: string | null }>();
+  });
+
+  it("leaves layout keys out of nested blocks resolved through a registry", () => {
+    const childBlock = defineBlock({
+      name: "child",
+      fields: [
+        defineField("child_tab", { type: "tab", keys: ["label"] }),
+        defineField("label", { type: "text", required: true }),
+      ],
+    });
+    const parentBlock = defineBlock({
+      name: "parent",
+      fields: [
+        defineField("parent_section", { type: "section", keys: ["items"] }),
+        defineField("items", { type: "bloks", allow: ["child"] }),
+      ],
+    });
+    type Registry = typeof childBlock | typeof parentBlock;
+    type Item = NonNullable<BlockContent<typeof parentBlock, Registry>["items"]>[number];
+    type ItemInput = NonNullable<BlockContentInput<typeof parentBlock, Registry>["items"]>[number];
+
+    expectTypeOf<keyof Item>().toEqualTypeOf<"_uid" | "component" | "_editable" | "label">();
+    expectTypeOf<keyof ItemInput>().toEqualTypeOf<"_uid" | "component" | "_editable" | "label">();
+  });
+
+  it("keeps the base keys when a layout field reuses their name", () => {
+    const oddBlock = defineBlock({
+      name: "odd",
+      fields: [
+        defineField("component", { type: "tab", keys: ["title"] }),
+        defineField("_uid", { type: "section" }),
+        defineField("title", { type: "text" }),
+      ],
+    });
+    type Odd = BlockContent<typeof oddBlock, typeof oddBlock>;
+
+    expectTypeOf<Odd["component"]>().toEqualTypeOf<"odd">();
+    expectTypeOf<Odd["_uid"]>().toEqualTypeOf<string>();
   });
 });
 

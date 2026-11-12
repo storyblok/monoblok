@@ -1,7 +1,7 @@
 import type { Client, ResolvedRequestOptions } from "./generated/mapi/client";
 import type { Middleware } from "./generated/mapi/client/utils.gen";
 import { createClient, createConfig } from "./generated/mapi/client";
-import { getManagementBaseUrl } from "@storyblok/region-helper";
+import { getManagementBaseUrl, getRegion } from "@storyblok/region-helper";
 import type { Region } from "@storyblok/region-helper";
 import type { RetryOptions } from "ky";
 import type { Block } from "./generated/types/block";
@@ -103,12 +103,14 @@ type TokenConfig =
 export type ManagementApiClientConfig<ThrowOnError extends boolean = false> = TokenConfig & {
   /**
    * The Storyblok space ID. Used as the default for space-scoped endpoints.
-   * You can also override it per request via `path.space_id`.
+   * You can also override it per request via `path.space_id`; requests still
+   * go to the client's region.
    */
   spaceId?: number;
   /**
    * Storyblok region. Determines the base URL.
-   * @default 'eu'
+   * @default the region `spaceId` encodes, else 'eu'. Older Chinese space IDs
+   * overlap with EU ones, so pass 'cn' for a space in China.
    */
   region?: Region;
   /**
@@ -170,7 +172,7 @@ const createManagementApiClientBase = <DefaultThrowOnError extends boolean = fal
 } => {
   const {
     spaceId,
-    region = "eu",
+    region = (spaceId === undefined ? undefined : getRegion(spaceId)) ?? "eu",
     baseUrl,
     headers = {},
     throwOnError = false,

@@ -11,15 +11,15 @@ on:
         required: true
         default: all
   # publish.yaml dispatches this after every publish on main, including one that published nothing.
-  # The approval below still applies. It is dispatched, not called: when it was called, `push` got
-  # an empty App key.
+  # It runs without an approval (ADR-0026). It is dispatched, not called: when it was called, `push`
+  # got an empty App key.
 
 permissions:
   contents: read
 
-# One sync at a time per ref, and a run that waits is replaced by a newer one. A run for an older
-# commit is also refused by `push`. A run on another ref cannot replace a waiting run on main (it
-# fails at `Require main` anyway).
+# One sync at a time per ref, and a run waiting behind it is replaced by a newer one. A run for an
+# older commit is also refused by `push`. A run on another ref cannot replace a waiting run on main
+# (it fails at `Require main` anyway).
 concurrency:
   group: sync-blueprints-${{ github.ref }}
   cancel-in-progress: false
@@ -71,14 +71,6 @@ jobs:
           done
           echo "matrix=$(echo "$names" | jq -R . | jq -sc '{blueprint: .}')" >> "$GITHUB_OUTPUT"
 
-  # Reviewers on the matrix job's environment would ask once per blueprint; this asks once per run.
-  approve:
-    needs: matrix
-    runs-on: ubuntu-latest
-    environment: production
-    steps:
-      - run: echo "Approved"
-
   # Stages every selected blueprint and resolves its lockfile. Runs no blueprint code and has no
   # secrets: `--ignore-scripts` keeps install scripts from running while the lockfile is written.
   # The tarballs' sha256 goes out as a job output, which only this job can set. `verify` and `push`
@@ -86,7 +78,7 @@ jobs:
   # against that output. It is one job, not one per blueprint, because the outputs of matrix legs
   # overwrite each other.
   stage:
-    needs: [matrix, approve]
+    needs: matrix
     runs-on: ubuntu-latest
     timeout-minutes: 20
     outputs:

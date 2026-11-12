@@ -559,21 +559,17 @@ describe("value typing of a path", () => {
 });
 
 describe("content shape of a block", () => {
-  it("should keep a section (UI-only) pseudo field out of the migratable paths", () => {
-    // `section` lays out the editor form and holds no value, so addressing it
-    // in a migration could never do anything.
+  it("should keep a layout field out of the migratable paths and the content", () => {
     expectTypeOf<
       "probe_kitchen_sink.settings_section" extends FieldPathOf<ProbeFieldTypesSchema>
         ? true
         : false
     >().toEqualTypeOf<false>();
-    // It remains a key on the content type — that is `@storyblok/schema`'s
-    // `BlockContent`, which the migration DSL does not own.
     expectTypeOf<
       "settings_section" extends keyof ContentOf<ProbeFieldTypesSchema, "probe_kitchen_sink">
         ? true
         : false
-    >().toEqualTypeOf<true>();
+    >().toEqualTypeOf<false>();
   });
 
   it("should give an empty-fields block only the envelope keys", () => {

@@ -9,6 +9,7 @@ import {
   defineBlock,
   defineField,
   defineMigration,
+  fieldsToBlock,
   mergeFields,
   removeField,
   renameBlock,
@@ -159,6 +160,33 @@ describe("migrations run command for content migrations", () => {
       ),
     );
     expect(process.exitCode).toBeUndefined();
+  });
+
+  it("should skip moving fields into a block while the space holds the fields again", async () => {
+    space.hasMigrations([
+      "0001-card-meta",
+      defineMigration([
+        fieldsToBlock({
+          block: "card",
+          fields: { title: "og_title" },
+          into: "meta",
+          component: "meta",
+        }),
+      ]),
+    ]);
+    space.hasBlocks({ card: ["title", "meta"], page: ["body"] });
+    space.hasStories(storyWithCard());
+    space.canUpdateStories();
+    const warn = vi.spyOn(getUI(), "warn");
+
+    await apply();
+
+    expect(space.writes).toEqual([]);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'fieldsToBlock card skipped: the card block in the space has the field "title" again.',
+      ),
+    );
   });
 
   it("should skip a block rename while the space still holds the block under its old name", async () => {

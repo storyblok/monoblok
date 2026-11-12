@@ -77,10 +77,12 @@ The type arguments of `defineMigration()` decide which names the ops accept:
 | --------------------------------- | ------------------------------------------ | --------------------------------- |
 | `defineMigration<Schema>`         | Names from `Schema`, plus any other string | Names from `Schema`               |
 | `defineMigration<Schema, Before>` | Names from `Before` only                   | Names from `Schema`               |
+| `defineMigration`                 | Any string                                 | Any string                        |
 
 Without `Before`, a field the migration renames away no longer exists in any type, so reads accept
 any string, and a typo in a name an op reads compiles. Callbacks receive values typed from `Before`,
-and `alterBlock()` returns content typed from `Schema`.
+and `alterBlock()` returns content typed from `Schema`. Without type arguments, callbacks receive
+blocks as plain records and values as `unknown`.
 
 Ops infer their types from the `defineMigration()` call they’re passed to. An op created outside
 that call, for example in a variable, fails to compile. Pass the types and the block name, or
@@ -242,6 +244,31 @@ the base key plus all its translation keys:
 
 Languages come from the keys a block holds, not from the schema, so one migration works across
 spaces with different languages.
+
+### Scripted migrations
+
+To reshape content with your own code instead of ops, write a migration with one `alterBlock()` op
+per block. The callback receives a copy of each instance of the block, at any depth, and changes it
+or returns the block as it should be. A recorded run keeps each changed block as it was, so
+[Undo](#undo) restores it. This migration fills an empty link label of every `teaser` block:
+
+```ts title=".storyblok/migrations/12345/20261112090000-fill-teaser-link-labels.ts"
+import { alterBlock, defineMigration } from "@storyblok/schema";
+
+export default defineMigration([
+  alterBlock({ block: "teaser" }, (teaser) => {
+    if (teaser.link_label) return;
+    teaser.link_label = teaser.style === "button" ? "Learn more" : teaser.headline;
+  }),
+]);
+```
+
+Without type arguments, the callback receives the block as a plain record. Pass `<Schema, Before>`
+to type it, as described in [Schema types](#schema-types). The callback receives translation keys as
+they’re stored, such as `link_label__i18n__de`.
+
+A second pass of the migration over its own output must leave the story unchanged, or the story is
+refused. Check for the result before writing it, as the `if` in the example does.
 
 ### Refused stories
 

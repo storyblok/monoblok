@@ -362,6 +362,34 @@ describe("alterField() typing", () => {
   });
 });
 
+describe("without schema types", () => {
+  it("should hand alterBlock the block as a plain record and accept any record back", () => {
+    defineMigration([
+      alterBlock({ block: "hero" }, (block) => {
+        expectTypeOf(block).toEqualTypeOf<Record<string, unknown>>();
+        return { ...block, title: String(block.headline ?? "") };
+      }),
+    ]);
+  });
+
+  it("should type the other callbacks as loosely", () => {
+    defineMigration([
+      addField({ block: "hero", field: "subtitle" }, (block) => {
+        expectTypeOf(block).toEqualTypeOf<Record<string, unknown>>();
+        return "";
+      }),
+      alterField({ block: "hero", field: "headline" }, (value) => {
+        expectTypeOf(value).toBeUnknown();
+        return undefined;
+      }),
+      expandBlock({ block: "hero" }, (block) => {
+        expectTypeOf(block).toEqualTypeOf<Record<string, unknown>>();
+        return [block];
+      }),
+    ]);
+  });
+});
+
 describe("call shapes", () => {
   it("should accept a bare array", () => {
     defineMigration<FixtureSchema>([removeField({ block: "card", field: "description" })]);

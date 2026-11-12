@@ -257,8 +257,7 @@ describe("the under rule", () => {
     const wrapSpec = {
       block: "section",
       field: "items",
-      in: "card",
-      into: "items",
+      into: { block: "card", field: "items" },
       under: "page",
     } as const;
     defineMigration<FixtureSchema>([
@@ -269,8 +268,7 @@ describe("the under rule", () => {
     const unwrapSpec = {
       block: "section",
       field: "items",
-      unwrap: "card",
-      from: "meta",
+      from: { block: "card", field: "meta" },
       under: "page",
     } as const;
     defineMigration<FixtureSchema>([
@@ -609,37 +607,40 @@ describe("under on a key op, past the object literal", () => {
 });
 
 describe("fieldsToBlock", () => {
-  it("should accept fields of the block moved to fields of the component", () => {
+  it("should accept fields of the block moved to fields of the new block", () => {
     defineMigration<FixtureSchema>([
       fieldsToBlock({
         block: "card",
-        fields: { title: "og_title", old_slug: "author" },
-        into: "meta",
-        component: "meta",
+        field: "meta",
+        into: { block: "meta", fields: { title: "og_title", old_slug: "author" } },
       }),
     ]);
   });
 
-  it("should reject a target field the component does not define", () => {
+  it("should reject a target field the new block does not define", () => {
     defineMigration<FixtureSchema>([
       fieldsToBlock({
         block: "card",
-        // @ts-expect-error meta has no field "headline"
-        fields: { title: "headline" },
-        into: "meta",
-        component: "meta",
+        field: "meta",
+        into: {
+          block: "meta",
+          // @ts-expect-error meta has no field "headline"
+          fields: { title: "headline" },
+        },
       }),
     ]);
   });
 
-  it("should reject a component the schema does not define", () => {
+  it("should reject a new block the schema does not define", () => {
     defineMigration<FixtureSchema>([
       fieldsToBlock({
         block: "card",
-        fields: { title: "og_title" },
-        into: "meta",
-        // @ts-expect-error there is no block "turnstile"
-        component: "turnstile",
+        field: "meta",
+        into: {
+          // @ts-expect-error there is no block "turnstile"
+          block: "turnstile",
+          fields: { title: "og_title" },
+        },
       }),
     ]);
   });
@@ -648,10 +649,12 @@ describe("fieldsToBlock", () => {
     defineMigration<AfterRenameArticleAuthor, FixtureSchema>([
       fieldsToBlock({
         block: "card",
-        // @ts-expect-error card has no field "titel"
-        fields: { titel: "og_title" },
-        into: "meta",
-        component: "meta",
+        field: "meta",
+        into: {
+          block: "meta",
+          // @ts-expect-error card has no field "titel"
+          fields: { titel: "og_title" },
+        },
       }),
     ]);
   });
@@ -660,9 +663,8 @@ describe("fieldsToBlock", () => {
     defineMigration<FixtureSchema>([
       fieldsToBlock({
         block: "card",
-        fields: { title: "og_title" },
-        into: "meta",
-        component: "meta",
+        field: "meta",
+        into: { block: "meta", fields: { title: "og_title" } },
         // @ts-expect-error a key op applies to every instance
         under: "section",
       }),

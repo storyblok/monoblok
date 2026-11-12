@@ -1539,6 +1539,9 @@ describe("schema push command", () => {
       expect(migration).toContain(
         "splitField({ block: 'quote', field: 'full_name', into: ['given_name', 'family_name'] }",
       );
+      expect(migration).toContain(
+        "title: 'Update quote: split full_name into given_name and family_name'",
+      );
       expect(migration).not.toContain("renameField({");
     });
 

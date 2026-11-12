@@ -301,6 +301,8 @@ function describeChange(change: BreakingChange): string {
       return `rename ${change.oldField} to ${change.field}`;
     case "removed":
       return `remove ${change.field}`;
+    case "split":
+      return `split ${change.field} into ${listFormat.format(change.into)}`;
     case "type_changed":
       return `convert ${change.field} to ${change.newType}`;
     case "required_added":

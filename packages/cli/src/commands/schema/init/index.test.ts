@@ -558,6 +558,36 @@ describe("schema init command", () => {
     expect(files.some((f) => f.includes(".storyblok/schema/blocks/hero.ts"))).toBe(true);
   });
 
+  describe("layout fields", () => {
+    let diskDir: string | undefined;
+
+    afterEach(async () => {
+      if (diskDir) {
+        await fs.rm(diskDir, { recursive: true, force: true });
+        diskDir = undefined;
+      }
+      process.exitCode = undefined;
+    });
+
+    it("should drop a required setting on a layout field so the initialized schema validates", async () => {
+      const comp = makeMockComponent({
+        name: "form",
+        is_root: true,
+        schema: {
+          details: { type: "section", keys: ["title"], required: true, max_length: 10, pos: 0 },
+          title: { type: "text", required: true, pos: 1 },
+        },
+      });
+      preconditions.hasRemoteSchema({ components: [comp] });
+      diskDir = await initToDisk();
+
+      await schemaCommand.parseAsync(["node", "test", "validate", join(diskDir, "schema.ts")]);
+
+      expect(process.exitCode).toBe(0);
+      expect(warnings()).toContain("form.details: required, max_length");
+    });
+  });
+
   describe("custom field plugins", () => {
     let diskDir: string | undefined;
 

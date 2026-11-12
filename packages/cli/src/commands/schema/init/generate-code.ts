@@ -1,4 +1,4 @@
-import { DENIABLE_FIELD_TYPES } from "@storyblok/schema";
+import { DENIABLE_FIELD_TYPES, type Field } from "@storyblok/schema";
 import * as officialFieldPlugins from "@storyblok/schema/field-plugins";
 
 import type { Component, ComponentFolder, Datasource } from "../../../types";
@@ -19,6 +19,109 @@ import {
 
 /** Fields to strip from individual schema field entries (`pos` is implicit in array order). */
 const FIELD_STRIP_KEYS = new Set(["id", "pos"]);
+
+type FieldOfType<TType> = Extract<Field, { type: TType }>;
+
+/** `TKeys` when it lists every key `TField` owns, else `never`, so a missed key fails to compile. */
+type EveryKeyOf<TField, TKeys extends readonly (keyof TField)[]> = [
+  Exclude<keyof TField, TKeys[number]>,
+] extends [never]
+  ? TKeys
+  : never;
+
+const BASE_FIELD_KEYS = [
+  "type",
+  "id",
+  "display_name",
+  "description",
+  "tooltip",
+  "pos",
+  "conditional_settings",
+] as const;
+const SECTION_KEYS = [...BASE_FIELD_KEYS, "keys", "fieldset"] as const;
+const TAB_KEYS = [...BASE_FIELD_KEYS, "keys"] as const;
+
+/**
+ * Every key a layout field type owns. A space can hold more on one: the editor
+ * keeps all keys when a field's type changes, so a required text field switched
+ * to a section keeps `required`, `max_length` and the rest. `defineField` rejects
+ * those, so they are dropped, and the next push clears them from the space.
+ */
+const LAYOUT_FIELD_KEYS: Record<string, ReadonlySet<string>> = {
+  section: new Set(SECTION_KEYS satisfies EveryKeyOf<FieldOfType<"section">, typeof SECTION_KEYS>),
+  tab: new Set(TAB_KEYS satisfies EveryKeyOf<FieldOfType<"tab">, typeof TAB_KEYS>),
+  group: new Set(
+    BASE_FIELD_KEYS satisfies EveryKeyOf<FieldOfType<"group">, typeof BASE_FIELD_KEYS>,
+  ),
+};
+
+/** Reported in place of a key for a conditional `required` modification on a layout field. */
+const CONDITIONAL_REQUIRED = "conditional required";
+
+/**
+ * Removes what `defineField` rejects on a layout field: keys the field type does
+ * not own, and the `required` modification inside `conditional_settings`, which
+ * blocks publishing because a layout field never holds a value. Returns the field
+ * unchanged for any other field type.
+ */
+function toLayoutDslField(field: Record<string, unknown>): {
+  field: Record<string, unknown>;
+  dropped: string[];
+} {
+  const ownedKeys = LAYOUT_FIELD_KEYS[String(field.type)];
+  if (!ownedKeys) {
+    return { field, dropped: [] };
+  }
+  const out: Record<string, unknown> = {};
+  const dropped: string[] = [];
+  for (const [key, value] of Object.entries(field)) {
+    if (ownedKeys.has(key)) {
+      out[key] = value;
+    } else {
+      dropped.push(key);
+    }
+  }
+  if (Array.isArray(out.conditional_settings)) {
+    let droppedRequired = false;
+    out.conditional_settings = out.conditional_settings.map((setting: unknown) => {
+      if (!isRecord(setting) || !Array.isArray(setting.modifications)) {
+        return setting;
+      }
+      return {
+        ...setting,
+        modifications: setting.modifications.map((modification: unknown) => {
+          if (!isRecord(modification) || !("required" in modification)) {
+            return modification;
+          }
+          droppedRequired = true;
+          const { required: _required, ...rest } = modification;
+          return rest;
+        }),
+      };
+    });
+    if (droppedRequired) {
+      dropped.push(CONDITIONAL_REQUIRED);
+    }
+  }
+  return { field: out, dropped };
+}
+
+/** `<block>.<field>: <options>` for every layout field `schema init` strips options from. */
+export function collectDroppedLayoutFieldOptions(components: Component[]): string[] {
+  const result: string[] = [];
+  for (const component of components) {
+    for (const [fieldName, field] of Object.entries(component.schema ?? {})) {
+      if (!isRecord(field)) {
+        continue;
+      }
+      const { dropped } = toLayoutDslField(stripKeys(field, FIELD_STRIP_KEYS));
+      if (dropped.length > 0) {
+        result.push(`${component.name}.${fieldName}: ${dropped.join(", ")}`);
+      }
+    }
+  }
+  return result;
+}
 
 /**
  * Converts an arbitrary name into a valid camelCase JS identifier.
@@ -739,9 +842,8 @@ function generateFieldCode(
   folderVarByUuid?: Map<string, string>,
   tagNameById?: Map<string, string>,
 ): string {
-  const clean = omitEmptyArrays(
-    toDslField(stripKeys(fieldData, FIELD_STRIP_KEYS), folderVarByUuid, tagNameById),
-  );
+  const { field } = toLayoutDslField(stripKeys(fieldData, FIELD_STRIP_KEYS));
+  const clean = omitEmptyArrays(toDslField(field, folderVarByUuid, tagNameById));
   return `defineField(${quoteString(fieldName)}, ${formatValue(clean, depth)})`;
 }
 

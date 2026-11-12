@@ -91,14 +91,18 @@ schemaCommand
       const writeSpinner = ui.createSpinner(
         `Generating TypeScript files to ${targetDisplayPath}...`,
       );
-      const { writtenFiles, placeholderFieldPlugins, fieldsWithoutFieldType } =
-        await writeSchemaFiles(
-          targetPath,
-          rawComponents,
-          rawComponentFolders,
-          rawDatasources,
-          rawInternalTags,
-        );
+      const {
+        writtenFiles,
+        placeholderFieldPlugins,
+        fieldsWithoutFieldType,
+        droppedLayoutFieldOptions,
+      } = await writeSchemaFiles(
+        targetPath,
+        rawComponents,
+        rawComponentFolders,
+        rawDatasources,
+        rawInternalTags,
+      );
 
       summary.total = writtenFiles.length;
       summary.succeeded = writtenFiles.length;
@@ -123,6 +127,15 @@ schemaCommand
           [
             "Skipped custom fields that name no field plugin:",
             ...fieldsWithoutFieldType.map((field) => `  - ${field}`),
+          ].join("\n"),
+        );
+      }
+
+      if (droppedLayoutFieldOptions.length > 0) {
+        ui.warn(
+          [
+            "Dropped options that tab, section, and group fields hold no value for. The next schema push removes them from the space:",
+            ...droppedLayoutFieldOptions.map((entry) => `  - ${entry}`),
           ].join("\n"),
         );
       }

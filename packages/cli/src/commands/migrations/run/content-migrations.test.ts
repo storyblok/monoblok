@@ -54,7 +54,7 @@ const renameCardTitle = defineMigration([
 ]);
 const renameCardToTeaser = defineMigration([renameBlock({ block: "card", to: "teaser" })]);
 const wrapPageBody = defineMigration([
-  wrapChildren({ block: "page", field: "body", in: "grid", into: "items" }),
+  wrapChildren({ block: "page", field: "body", into: { block: "grid", field: "items" } }),
 ]);
 const cardBlock = defineBlock({ name: "card", fields: [defineField("title", { type: "text" })] });
 const pageBlock = defineBlock({ name: "page", fields: [defineField("body", { type: "bloks" })] });

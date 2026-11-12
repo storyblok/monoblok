@@ -97,7 +97,6 @@ function invert(op: MigrationOp, block: string): MigrationOp | string {
         kind: "unwrapChildren",
         block,
         field: op.field,
-        unwrap: op.in,
         from: op.into,
       };
     case "unwrapChildren":
@@ -105,7 +104,6 @@ function invert(op: MigrationOp, block: string): MigrationOp | string {
         kind: "wrapChildren",
         block,
         field: op.field,
-        in: op.unwrap,
         into: op.from,
       };
   }

@@ -363,7 +363,7 @@ describe("schema-aware validation", () => {
 
   it("should reject wrapping children into an existing block that lacks the target field", () => {
     const migration = defineMigration<TestSchema>([
-      wrapChildren({ block: "page", field: "body", in: "card", into: "items" }),
+      wrapChildren({ block: "page", field: "body", into: { block: "card", field: "items" } }),
     ]);
     const issues = validateMigration(migration, schemaLike);
     expect(issues).toHaveLength(1);
@@ -372,21 +372,21 @@ describe("schema-aware validation", () => {
 
   it("should accept wrapping children into an existing block that declares the target field", () => {
     const migration = defineMigration<TestSchema>([
-      wrapChildren({ block: "page", field: "body", in: "section", into: "items" }),
+      wrapChildren({ block: "page", field: "body", into: { block: "section", field: "items" } }),
     ]);
     expect(validateMigration(migration, schemaLike)).toEqual([]);
   });
 
   it("should accept wrapping children into a block the schema does not define yet", () => {
     const migration = defineMigration<TestSchema>([
-      wrapChildren({ block: "page", field: "body", in: "grid", into: "columns" }),
+      wrapChildren({ block: "page", field: "body", into: { block: "grid", field: "columns" } }),
     ]);
     expect(validateMigration(migration, schemaLike)).toEqual([]);
   });
 
   it("should reject wrapping children into an existing block that has no fields", () => {
     const migration = defineMigration<TestSchema>([
-      wrapChildren({ block: "page", field: "body", in: "grid", into: "columns" }),
+      wrapChildren({ block: "page", field: "body", into: { block: "grid", field: "columns" } }),
     ]);
     const schema = { blocks: [...schemaLike.blocks, { name: "grid", fields: [] }] };
     expect(validateMigration(migration, schema)).toMatchObject([
@@ -406,7 +406,7 @@ describe("schema-aware validation", () => {
 
     it("should warn instead of reject when wrapping children into a name-only block", () => {
       const migration = defineMigration<TestSchema>([
-        wrapChildren({ block: "page", field: "body", in: "grid", into: "columns" }),
+        wrapChildren({ block: "page", field: "body", into: { block: "grid", field: "columns" } }),
       ]);
       expect(validateMigration(migration, schema, { nameOnlyBlocks })).toMatchObject([
         { severity: "warning", message: expect.stringContaining('"grid" already exists') },
@@ -869,7 +869,7 @@ describe("idempotency check", () => {
     // to cover this, or a migration that never settles is written without a
     // word.
     const unwrap = defineMigration<TestSchema>([
-      unwrapChildren({ block: "page", field: "body", unwrap: "section", from: "items" }),
+      unwrapChildren({ block: "page", field: "body", from: { block: "section", field: "items" } }),
     ]);
 
     const run = runMigrationOnStory(unwrap, {
@@ -896,7 +896,7 @@ describe("idempotency check", () => {
 
   it("should report nothing for an unwrap whose containers do not nest", () => {
     const unwrap = defineMigration<TestSchema>([
-      unwrapChildren({ block: "page", field: "body", unwrap: "section", from: "items" }),
+      unwrapChildren({ block: "page", field: "body", from: { block: "section", field: "items" } }),
     ]);
 
     const run = runMigrationOnStory(unwrap, {
@@ -917,7 +917,7 @@ describe("idempotency check", () => {
 
   it("should report nothing for a wrap, which recognises the wrapper it made", () => {
     const wrap = defineMigration<TestSchema>([
-      wrapChildren({ block: "page", field: "body", in: "section", into: "items" }),
+      wrapChildren({ block: "page", field: "body", into: { block: "section", field: "items" } }),
     ]);
 
     const run = runMigrationOnStory(wrap, {
@@ -1159,15 +1159,13 @@ describe("under smuggled onto a key op", () => {
       wrapChildren({
         block: "section",
         field: "items",
-        in: "card",
-        into: "items",
+        into: { block: "card", field: "items" },
         under,
       }),
       unwrapChildren({
         block: "section",
         field: "items",
-        unwrap: "card",
-        from: "meta",
+        from: { block: "card", field: "meta" },
         under,
       }),
     ]);
@@ -1909,7 +1907,9 @@ describe("renameBlock", () => {
 
 describe("wrapChildren", () => {
   const migration = defineMigration<TestSchema>({
-    ops: [wrapChildren({ block: "page", field: "body", in: "section", into: "items" })],
+    ops: [
+      wrapChildren({ block: "page", field: "body", into: { block: "section", field: "items" } }),
+    ],
   });
 
   it("should move the children into a new container", () => {
@@ -1941,8 +1941,12 @@ describe("wrapChildren", () => {
   it("should derive the wrapper uid from the parent and the field, so two fields wrapped into the same container component do not collide", () => {
     const twoFieldMigration = defineMigration<TestSchema>({
       ops: [
-        wrapChildren({ block: "page", field: "body", in: "section", into: "items" }),
-        wrapChildren({ block: "page", field: "footer", in: "section", into: "items" }),
+        wrapChildren({ block: "page", field: "body", into: { block: "section", field: "items" } }),
+        wrapChildren({
+          block: "page",
+          field: "footer",
+          into: { block: "section", field: "items" },
+        }),
       ],
     });
 
@@ -2024,7 +2028,9 @@ describe("wrapChildren", () => {
 
 describe("unwrapChildren", () => {
   const migration = defineMigration<TestSchema>({
-    ops: [unwrapChildren({ block: "page", field: "body", unwrap: "section", from: "items" })],
+    ops: [
+      unwrapChildren({ block: "page", field: "body", from: { block: "section", field: "items" } }),
+    ],
   });
 
   it("should splice the container's children into the parent in place", () => {
@@ -2280,9 +2286,8 @@ describe("fieldsToBlock", () => {
   const migration = defineMigration<TestSchema>([
     fieldsToBlock({
       block: "form",
-      fields: { turnstileTheme: "theme", turnstileSize: "size" },
-      into: "turnstile",
-      component: "turnstile",
+      field: "turnstile",
+      into: { block: "turnstile", fields: { turnstileTheme: "theme", turnstileSize: "size" } },
     }),
   ]);
 
@@ -2407,7 +2412,7 @@ describe("validateMigration over an op sequence", () => {
 
   it("should reject an unwrap of a block the schema does not define", () => {
     const migration = defineMigration<TestSchema>([
-      unwrapChildren({ block: "page", field: "body", unwrap: "nope", from: "items" }),
+      unwrapChildren({ block: "page", field: "body", from: { block: "nope", field: "items" } }),
     ]);
 
     expect(validateMigration(migration, schemaLike)[0]?.message).toContain(
@@ -2417,7 +2422,11 @@ describe("validateMigration over an op sequence", () => {
 
   it("should reject a fieldsToBlock source field the block does not define", () => {
     const migration = defineMigration<TestSchema>([
-      fieldsToBlock({ block: "card", fields: { nope: "title" }, into: "meta", component: "meta" }),
+      fieldsToBlock({
+        block: "card",
+        field: "meta",
+        into: { block: "meta", fields: { nope: "title" } },
+      }),
     ]);
 
     expect(validateMigration(migration, schemaLike)[0]?.message).toContain(
@@ -2425,9 +2434,13 @@ describe("validateMigration over an op sequence", () => {
     );
   });
 
-  it("should reject a fieldsToBlock target field an existing component does not define", () => {
+  it("should reject a fieldsToBlock target field an existing block does not define", () => {
     const migration = defineMigration<TestSchema>([
-      fieldsToBlock({ block: "card", fields: { title: "nope" }, into: "meta", component: "meta" }),
+      fieldsToBlock({
+        block: "card",
+        field: "meta",
+        into: { block: "meta", fields: { title: "nope" } },
+      }),
     ]);
 
     expect(validateMigration(migration, schemaLike)[0]?.message).toContain(
@@ -2435,13 +2448,12 @@ describe("validateMigration over an op sequence", () => {
     );
   });
 
-  it("should accept a fieldsToBlock into a component the migration introduces", () => {
+  it("should accept a fieldsToBlock into a block the migration introduces", () => {
     const migration = defineMigration<TestSchema>([
       fieldsToBlock({
         block: "card",
-        fields: { title: "label" },
-        into: "badge",
-        component: "badge",
+        field: "badge",
+        into: { block: "badge", fields: { title: "label" } },
       }),
       alterField({ block: "card", field: "badge" }, (value) => value),
     ]);

@@ -56,9 +56,8 @@ describe("deriveInverse", () => {
     const derived = deriveInverse([
       fieldsToBlock<SchemaShape, SchemaShape, "form", string>({
         block: "form",
-        fields: { turnstileTheme: "theme" },
-        into: "turnstile",
-        component: "turnstile",
+        field: "turnstile",
+        into: { block: "turnstile", fields: { turnstileTheme: "theme" } },
       }),
     ]);
 
@@ -360,23 +359,31 @@ describe("deriveInverse", () => {
     const wrap = wrapChildren<SchemaShape, SchemaShape, "page">({
       block: "page",
       field: "body",
-      in: "section",
-      into: "items",
+      into: { block: "section", field: "items" },
     });
 
     expect(deriveInverse([wrap]).ops).toEqual([
-      { kind: "unwrapChildren", block: "page", field: "body", unwrap: "section", from: "items" },
+      {
+        kind: "unwrapChildren",
+        block: "page",
+        field: "body",
+        from: { block: "section", field: "items" },
+      },
     ]);
 
     const unwrap = unwrapChildren<SchemaShape, SchemaShape, "page">({
       block: "page",
       field: "body",
-      unwrap: "section",
-      from: "items",
+      from: { block: "section", field: "items" },
     });
 
     expect(deriveInverse([unwrap]).ops).toEqual([
-      { kind: "wrapChildren", block: "page", field: "body", in: "section", into: "items" },
+      {
+        kind: "wrapChildren",
+        block: "page",
+        field: "body",
+        into: { block: "section", field: "items" },
+      },
     ]);
   });
 
@@ -384,16 +391,14 @@ describe("deriveInverse", () => {
     const wrap = wrapChildren<SchemaShape, SchemaShape, "page">({
       block: "page",
       field: "body",
-      in: "section",
-      into: "items",
+      into: { block: "section", field: "items" },
     });
     expect(deriveInverse([wrap]).lossy).toEqual([]);
 
     const unwrap = unwrapChildren<SchemaShape, SchemaShape, "page">({
       block: "page",
       field: "body",
-      unwrap: "section",
-      from: "items",
+      from: { block: "section", field: "items" },
     });
     expect(deriveInverse([unwrap]).lossy).toEqual([0]);
   });
@@ -404,8 +409,7 @@ describe("deriveInverse", () => {
         wrapChildren<SchemaShape, SchemaShape, "page">({
           block: "page",
           field: "body",
-          in: "section",
-          into: "items",
+          into: { block: "section", field: "items" },
         }),
       ],
     });
@@ -438,8 +442,7 @@ describe("deriveInverse", () => {
         unwrapChildren<SchemaShape, SchemaShape, "page">({
           block: "page",
           field: "body",
-          unwrap: "section",
-          from: "items",
+          from: { block: "section", field: "items" },
         }),
       ],
     });

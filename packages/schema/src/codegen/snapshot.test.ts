@@ -363,7 +363,11 @@ describe("generateSnapshot", () => {
       expect(
         check(
           defineMigration([
-            wrapChildren({ block: "article", field: "body", in: "card", into: "items" }),
+            wrapChildren({
+              block: "article",
+              field: "body",
+              into: { block: "card", field: "items" },
+            }),
           ]),
         ),
       ).toMatchObject([{ severity: "warning" }]);

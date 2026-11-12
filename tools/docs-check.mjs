@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { existsSync, readdirSync, readFileSync } from "fs";
-import { join, relative } from "path";
+import { dirname, join, relative, resolve } from "path";
 import { fileURLToPath } from "url";
 
 /**
@@ -15,24 +15,35 @@ import { fileURLToPath } from "url";
  * Both ship in the npm package (add `docs` to `files`) and are synced to the
  * docs platform when the package is published. See `docs/docs-platform.md`.
  *
+ * Errors are things that break the page on the docs platform or on GitHub
+ * and npm. Warnings are about the template's shape: worth fixing, but they
+ * don't fail CI.
+ *
+ * The template itself is in `docs/library-reference-template.md`.
+ *
  * Usage: node tools/docs-check.mjs [file ...] (defaults to every package)
  */
 
-// H2s every reference.md has, in this order, before the API sections.
-// Optional ones may be left out.
-const LEADING = [
-  { title: "Requirements", optional: true },
-  { title: "Installation" },
-  { title: "Usage" },
-  { title: "TypeScript", optional: true },
-];
+// Sections reference.md usually opens with, in this order. Anything after
+// them is free: API, topic sections, TypeScript.
+const LEADING = ["Requirements", "Installation", "Usage"];
 const TRAILING = "Further resources";
 const ALERTS = new Set(["NOTE", "TIP", "IMPORTANT", "WARNING", "CAUTION"]);
+// A version line under a heading, rendered as a badge on the docs platform.
+const BADGE = /^_(Introduced in|Updated in|Deprecated since)\b(.*)_\s*$/;
 
-export function checkFile(path, raw) {
+/**
+ * @param {string} path
+ * @param {string} raw
+ * @param {{ version?: string }} [pkg] The package.json version, for the badge check.
+ * @returns {{ level: "error" | "warning", line: number, message: string }[]}
+ */
+export function checkFile(path, raw, pkg = {}) {
   const text = raw.replace(/\r\n?/g, "\n");
   const errors = [];
-  const error = (line, message) => errors.push({ line, message });
+  const error = (line, message) => errors.push({ level: "error", line, message });
+  const warn = (line, message) => errors.push({ level: "warning", line, message });
+  const major = pkg.version && Number(pkg.version.split(".")[0]);
   const lines = text.split("\n");
   const isReference = path.endsWith("reference.md");
 
@@ -72,6 +83,8 @@ export function checkFile(path, raw) {
   // Walk the body outside code fences.
   const headings = [];
   let fence = null;
+  let previous = "";
+  let comment = false;
   for (let i = bodyStart; i < lines.length; i++) {
     const line = lines[i];
     const n = i + 1;
@@ -92,9 +105,33 @@ export function checkFile(path, raw) {
       }
       continue;
     }
+    // HTML comments are notes for authors, dropped on the docs platform.
+    if (comment || /^\s*<!--/.test(line)) {
+      comment = !line.includes("-->");
+      continue;
+    }
     const heading = /^(#{1,6})\s+(.*)$/.exec(line);
     if (heading) {
       headings.push({ depth: heading[1].length, line: n, text: heading[2].trim() });
+    }
+
+    const badge = BADGE.exec(line.trim());
+    if (badge) {
+      const version = badge[2].trim();
+      if (!/^\d+\.\d+\.\d+$/.test(version)) {
+        error(n, `Write the version as X.Y.Z, for example "_${badge[1]} 8.1.0_".`);
+      } else if (major && Number(version.split(".")[0]) !== major) {
+        warn(
+          n,
+          `Remove "${badge[1]} ${version}". Badges only mark changes within the current major (${major}.x).`,
+        );
+      }
+      if (!/^#{2,6}\s/.test(previous)) {
+        warn(n, `Put "_${badge[1]} ${version}_" right under the heading it belongs to.`);
+      }
+    }
+    if (line.trim()) {
+      previous = line;
     }
 
     const prose = line.replace(/`[^`]*`/g, "");
@@ -145,41 +182,35 @@ export function checkFile(path, raw) {
     }
   }
 
-  // Template order for reference.md.
+  // Template shape for reference.md. Only "Further resources" is an error,
+  // because the docs platform turns that section into cards and can't if
+  // anything follows it.
   if (isReference) {
     const h2s = headings.filter((h) => h.depth === 2);
-    let next = 0;
-    for (const [i, h] of h2s.entries()) {
-      const known = LEADING.findIndex((s) => s.title === h.text);
-      if (known >= 0) {
-        if (known < next) {
-          error(
-            h.line,
-            `Move "${h.text}" up. The order is ${LEADING.map((s) => s.title).join(", ")}.`,
-          );
-        }
-        next = known + 1;
-      } else if (h.text === TRAILING) {
-        if (i !== h2s.length - 1) {
-          error(h.line, `Make "${TRAILING}" the last section.`);
-        }
-      } else if (next < LEADING.length) {
-        const missing = LEADING.slice(next).filter(
-          (s) => !s.optional && !h2s.some((x) => x.text === s.title),
+    const position = (title) => h2s.findIndex((h) => h.text === title);
+    if (position("Installation") < 0) {
+      warn(bodyStart + 1, 'Add an "Installation" section.');
+    }
+    const present = LEADING.filter((title) => position(title) >= 0);
+    for (let i = 1; i < present.length; i++) {
+      if (position(present[i]) < position(present[i - 1])) {
+        const h = h2s[position(present[i - 1])];
+        warn(
+          h.line,
+          `Move "${present[i - 1]}" above "${present[i]}". The order is ${LEADING.join(", ")}.`,
         );
-        if (missing.length) {
-          error(
-            h.line,
-            `Add ${missing.map((s) => `"${s.title}"`).join(" and ")} before "${h.text}".`,
-          );
-        }
-        next = LEADING.length;
       }
     }
-    for (const s of LEADING) {
-      if (!s.optional && !h2s.some((h) => h.text === s.title)) {
-        error(bodyStart + 1, `Add a "${s.title}" section.`);
-      }
+    const trailing = position(TRAILING);
+    if (trailing >= 0 && trailing !== h2s.length - 1) {
+      error(h2s[trailing].line, `Make "${TRAILING}" the last section.`);
+    }
+    const previousVersions = h2s.find((h) => h.text === "Previous versions");
+    if (previousVersions) {
+      warn(
+        previousVersions.line,
+        'Remove "Previous versions". The docs platform adds a version switcher to every library page.',
+      );
     }
   }
 
@@ -206,6 +237,19 @@ export function checkFile(path, raw) {
   return errors.toSorted((a, b) => a.line - b.line);
 }
 
+// The version in the package.json of the package that owns a docs file.
+function packageVersion(file) {
+  let dir = dirname(resolve(file));
+  while (dir !== dirname(dir)) {
+    const manifest = join(dir, "package.json");
+    if (existsSync(manifest)) {
+      return JSON.parse(readFileSync(manifest, "utf-8")).version;
+    }
+    dir = dirname(dir);
+  }
+  return undefined;
+}
+
 function packageDocs(packagesDir = "packages") {
   const files = [];
   for (const entry of readdirSync(packagesDir).toSorted()) {
@@ -229,20 +273,22 @@ function packageDocs(packagesDir = "packages") {
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const files = process.argv.length > 2 ? process.argv.slice(2) : packageDocs();
   let failed = 0;
+  let warnings = 0;
   for (const file of files) {
-    const errors = checkFile(file, readFileSync(file, "utf-8"));
-    for (const e of errors) {
-      const path = relative(process.cwd(), file);
+    const results = checkFile(file, readFileSync(file, "utf-8"), { version: packageVersion(file) });
+    const path = relative(process.cwd(), file);
+    for (const r of results) {
       console.log(
         process.env.GITHUB_ACTIONS
-          ? `::error file=${path},line=${e.line}::${e.message}`
-          : `${path}:${e.line}  ${e.message}`,
+          ? `::${r.level} file=${path},line=${r.line}::${r.message}`
+          : `${path}:${r.line}  ${r.level}  ${r.message}`,
       );
     }
-    if (errors.length) {
+    if (results.some((r) => r.level === "error")) {
       failed++;
     }
+    warnings += results.filter((r) => r.level === "warning").length;
   }
-  console.log(`${files.length} file(s) checked, ${failed} with errors.`);
+  console.log(`${files.length} file(s) checked, ${failed} with errors, ${warnings} warning(s).`);
   process.exit(failed ? 1 : 0);
 }

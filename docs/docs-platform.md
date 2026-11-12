@@ -21,14 +21,22 @@ docs platform when the package is published:
 
 - **Location:** `packages/<pkg>/docs/reference.md`, plus `docs/migrations/<slug>.md` for each
   migration guide. One file per package, not per version: the release tag pins the version.
-- **Template:** Frontmatter with `title` and `description`, an H1 that matches the title, an intro,
-  then `Requirements` (optional), `Installation`, `Usage`, `TypeScript` (optional), the API
-  sections, and `Further resources` (optional, a list of `- [Title](url)—Description`).
+- **Template:** Copy [`library-reference-template.md`](library-reference-template.md). Frontmatter
+  with `title` and `description`, an H1 that matches the title, an intro, then `Requirements`
+  (optional), `Installation`, `Usage` (recommended), `API` with an H3 per export, any topic
+  sections, and `Further resources` (optional, last, a list of `- [Title](url)—Description`).
+- **Version badges:** Mark something added or changed in a minor release with a line right under its
+  heading: `_Introduced in 8.1.0_`, `_Updated in 8.1.0_`, or `_Deprecated since 8.1.0_`. The docs
+  platform renders it as a badge. Only use versions of the current major, and remove them all on the
+  next major.
 - **Markdown only:** No HTML or MDX components. Use GitHub alerts (`> [!NOTE]`) for asides and
   absolute `https://www.storyblok.com/docs/...` URLs for links, so the file reads the same on
   GitHub, on npm, and on the docs site.
-- **Checks:** `node tools/docs-check.mjs` checks the template. CI also runs Vale with the docs
-  platform's config. Both run in the `library-docs` job.
+- **Checks:** `node tools/docs-check.mjs` checks the files. It fails on what breaks the page
+  (frontmatter, HTML or MDX, relative links, broken anchors, code blocks without a language,
+  malformed badges, anything after `Further resources`) and only warns about the template's shape
+  (section order, a missing `Installation`, badges from an older major). CI also runs Vale with the
+  docs platform's config. Both run in the `library-docs` job.
 - **Shipping:** Add `docs` to `files` in `package.json`. After the Publish workflow publishes a
   package with a `docs/reference.md`, it notifies the docs platform, which reads the docs from the
   npm tarball and opens a PR with the regenerated pages.

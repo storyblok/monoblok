@@ -1,5 +1,7 @@
 import { z } from "zod";
 import type { StandardSchemaV1 } from "@standard-schema/spec";
+import { LAYOUT_FIELD_TYPES } from "../field-types";
+import type { FieldType } from "../generated/types/field";
 import type { SchemaBlockLike, SchemaFieldLike, SchemaLike } from "./shapes";
 import type { ValidationIssue, ValidationResult } from "./types";
 import {
@@ -13,6 +15,9 @@ import { slugifyFolderPath } from "../utils/slugify-folder-path";
 
 /** Field-content keys that are not user-defined fields. */
 const RESERVED_KEYS = new Set(["_uid", "component", "_editable"]);
+
+/** Field types that hold no value; see {@link LAYOUT_FIELD_TYPES}. */
+const LAYOUT_FIELD_TYPE_SET: ReadonlySet<FieldType> = new Set<FieldType>(LAYOUT_FIELD_TYPES);
 
 /** Separator the CMS puts between a field name and a locale for field-level translations. */
 const I18N_SEPARATOR = "__i18n__";
@@ -433,7 +438,8 @@ function validateFieldValue(
     case "section":
     case "tab":
     case "group":
-      // Layout-only field types carry no content value.
+      // Unreachable: `validateBlokContent` skips layout fields before it
+      // validates values. Listed so the exhaustiveness guard below holds.
       break;
     case "commerce":
       // A commerce integration owns both the schema options and the stored
@@ -834,7 +840,20 @@ function validateBlokContent(
       continue;
     }
     const fieldName = baseFieldName(key);
-    if (!fieldsByName.has(fieldName)) {
+    const field = fieldsByName.get(fieldName);
+    if (field && LAYOUT_FIELD_TYPE_SET.has(field.type)) {
+      if (!isUnset(content[key])) {
+        issues.push({
+          severity: "warning",
+          code: "layout_field_value",
+          path: [...path, key],
+          entity,
+          message: `Field "${key}" on component "${block.name}" only arranges other fields in the editor and holds no value. Remove "${key}" from the content.`,
+        });
+      }
+      continue;
+    }
+    if (!field) {
       issues.push({
         severity: "warning",
         code: "unknown_field",
@@ -855,6 +874,11 @@ function validateBlokContent(
   }
 
   for (const field of fields) {
+    // Layout fields hold no value, so there is nothing to require or validate.
+    // A value stored under their key is reported by the key loop above.
+    if (LAYOUT_FIELD_TYPE_SET.has(field.type)) {
+      continue;
+    }
     const value = content[field.name];
     // The backend's required check is `field_value.blank?`, and `''.blank?` is
     // true, so an empty string is unset rather than a value. That matters most

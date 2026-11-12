@@ -22,6 +22,7 @@ import {
   indexBlocks,
   isBlock,
   languageOfKey,
+  TRANSLATION_SEPARATOR,
   translationKeysFor,
 } from "./patch";
 
@@ -58,46 +59,29 @@ export interface StoryMigrationResult {
    * A runner must refuse the story.
    */
   refusedOps: { uid: string; op: number; reason: string }[];
-  /**
-   * Reshaping ops that touch a field carrying translations. `splitField` and
-   * `mergeFields` produce a value out of one or more others, and there is no
-   * answer the engine can pick for what a split of a German value should be:
-   * the base key and its `__i18n__` siblings hold different text, and the
-   * halves of one are not the halves of the other. Guessing would leave the
-   * translations addressed to a field name that no longer exists, which the
-   * delivery API then drops. So they are reported and a runner must refuse
-   * them, rather than migrated on a rule nobody chose.
-   */
-  translatedReshapes: { uid: string; op: number; field: string; languages: string[] }[];
 }
 
 /**
- * The field of a reshaping op that carries translations in this block, or
- * `undefined` when there is none. Only `splitField` and `mergeFields` can land
- * here: every other op that names a field moves the whole family.
- *
- * Targets count as much as sources. A target that already holds translations
- * keeps them when the merged or split value lands on it, where they are then
- * read as translations of a value they never translated — the same hazard
- * `renameFieldFamily` clears the target's family to avoid.
+ * The `__i18n__<lang>` suffixes of every language the block holds a
+ * translation for, in any field. The schema does not know the space's
+ * languages, so the block's own keys are the only source.
  */
-function translatedReshapeField(
-  block: AnyBlock,
-  op: MigrationOp,
-): { field: string; languages: string[] } | undefined {
-  const fields =
-    op.kind === "splitField"
-      ? [op.field, ...op.into]
-      : op.kind === "mergeFields"
-        ? [...op.fields, op.into]
-        : [];
-  for (const field of fields) {
-    const keys = translationKeysFor(block, field);
-    if (keys.length > 0) {
-      return { field, languages: keys.map((key) => languageOfKey(key) ?? key) };
-    }
+function translationSuffixes(block: AnyBlock): string[] {
+  const suffixes = new Set<string>();
+  for (const key of Object.keys(block)) {
+    const at = key.indexOf(TRANSLATION_SEPARATOR);
+    if (at !== -1) suffixes.add(key.slice(at));
   }
-  return undefined;
+  return [...suffixes];
+}
+
+/** The base key and translation keys of a field that the block holds. */
+function familyKeys(block: AnyBlock, field: string): string[] {
+  return [field, ...translationKeysFor(block, field)].filter((key) => key in block);
+}
+
+function deleteTranslations(block: AnyBlock, field: string): void {
+  for (const key of translationKeysFor(block, field)) delete block[key];
 }
 
 const DECIMAL = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i;
@@ -239,34 +223,63 @@ function applyOp(block: AnyBlock, op: MigrationOp): string | undefined {
       break;
     }
     case "addField": {
-      if (op.field in block) break;
-      const value = op.fn(block as never);
-      if (value === undefined) break;
-      block[op.field] = value;
+      const keys = op.translatable
+        ? [op.field, ...translationSuffixes(block).map((suffix) => `${op.field}${suffix}`)]
+        : [op.field];
+      for (const key of keys) {
+        if (key in block) continue;
+        const value = op.fn(block as never, { key, language: languageOfKey(key) });
+        if (value !== undefined) block[key] = value;
+      }
       break;
     }
     case "splitField": {
-      const value = block[op.field];
-      if (value === undefined || value === null) break;
-      const parts = op.split(value as never);
-      // The source goes first: `into` may name the source itself, and deleting
+      // Each language is split on its own value, with the same callback.
+      const sources = familyKeys(block, op.field).filter(
+        (key) => block[key] !== undefined && block[key] !== null,
+      );
+      if (sources.length === 0) break;
+      const parts = sources.map((key) => ({
+        suffix: key.slice(op.field.length),
+        values: op.split(block[key] as never),
+      }));
+      // The sources go first: `into` may name the source itself, and deleting
       // afterwards would take the part that landed on it with it. The op does
       // not become usable that way — a part sitting on the source name is split
       // again on the next pass, so the idempotency probe reports it and a
       // runner refuses it — but a loud refusal is not silent data loss.
-      delete block[op.field];
-      op.into.forEach((name, at) => {
-        block[name] = parts[at];
-      });
+      for (const key of familyKeys(block, op.field)) delete block[key];
+      // A translation a target kept would read as a translation of the new part.
+      for (const name of op.into) deleteTranslations(block, name);
+      for (const { suffix, values } of parts) {
+        op.into.forEach((name, at) => {
+          block[`${name}${suffix}`] = values[at];
+        });
+      }
       break;
     }
     case "mergeFields": {
-      if (!op.fields.some((name) => name in block)) break;
-      const merged = op.merge(op.fields.map((name) => block[name]));
+      if (!op.fields.some((name) => familyKeys(block, name).length > 0)) break;
+      const suffixes = new Set([""]);
+      for (const name of op.fields) {
+        for (const key of translationKeysFor(block, name)) suffixes.add(key.slice(name.length));
+      }
+      // A language without its own key shows the default language value.
+      const valueIn = (name: string, suffix: string) => {
+        const key = `${name}${suffix}`;
+        return key in block ? block[key] : block[name];
+      };
+      const merged = [...suffixes].map((suffix) => ({
+        suffix,
+        value: op.merge(op.fields.map((name) => valueIn(name, suffix))),
+      }));
       // Same reason as `splitField`: `into` may be one of the sources, so the
-      // sources are cleared before the merged value lands on the target.
-      for (const name of op.fields) delete block[name];
-      block[op.into] = merged;
+      // sources are cleared before the merged values land on the target.
+      for (const name of op.fields) {
+        for (const key of familyKeys(block, name)) delete block[key];
+      }
+      deleteTranslations(block, op.into);
+      for (const { suffix, value } of merged) block[`${op.into}${suffix}`] = value;
       break;
     }
     case "fieldsToBlock": {
@@ -492,7 +505,6 @@ type PassReport = {
   matched: Set<string>;
   changed: { uid: string; op: number }[];
   refusedOps: StoryMigrationResult["refusedOps"];
-  translatedReshapes: StoryMigrationResult["translatedReshapes"];
 };
 
 function thrown(error: unknown): string {
@@ -516,7 +528,6 @@ function runPass(content: unknown, ops: readonly MigrationOp[]): PassReport {
     matched: new Set(),
     changed: [],
     refusedOps: [],
-    translatedReshapes: [],
   };
 
   type Origin = { component: string; chain: readonly string[] };
@@ -534,10 +545,6 @@ function runPass(content: unknown, ops: readonly MigrationOp[]): PassReport {
       const origin = byObject.get(block) ?? byUid.get(block._uid);
       if (!origin || op.block !== origin.component || !inScope(op, origin.chain)) continue;
       report.matched.add(block._uid);
-      const translated = translatedReshapeField(block, op);
-      if (translated !== undefined) {
-        report.translatedReshapes.push({ uid: block._uid, op: index, ...translated });
-      }
       const before = structuredClone(comparableKeys(block));
       let refusal: string | undefined;
       try {
@@ -658,6 +665,5 @@ export function runMigrationOnStory(
     unstableUids: instabilityCausedBy(unstableBefore, findUnstableUids(after)),
     nonIdempotent,
     refusedOps: pass.refusedOps,
-    translatedReshapes: pass.translatedReshapes,
   };
 }

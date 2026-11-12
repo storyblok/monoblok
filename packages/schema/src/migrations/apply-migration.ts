@@ -101,15 +101,6 @@ function refusalReason(
         : `${result.unstableUids.missing} block(s) without an id`;
     return `The migration left this story with ${detail}; they would be renumbered on write, stranding the record needed to roll back the run.`;
   }
-  if (result.translatedReshapes.length > 0) {
-    const translated = result.translatedReshapes
-      .map(
-        (entry) =>
-          `field "${entry.field}" of block ${entry.uid} (${migration.ops[entry.op]?.block}) has ${entry.languages.join(", ")} translations`,
-      )
-      .join("; ");
-    return `Splitting or merging a translated field would leave its translations under the old field, where no field reads them: ${translated}. Reshape it with \`alterBlock\`, where the translated keys can be handled explicitly.`;
-  }
   if (result.refusedOps.length > 0) {
     return result.refusedOps
       .map((entry) => `${opLabel(entry)} was refused: ${entry.reason}`)

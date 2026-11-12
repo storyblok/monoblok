@@ -26,11 +26,6 @@ export interface ConditionOptions {
 /** The wire form of a single condition inside `rule_conditions`. */
 type RuleCondition = NonNullable<ConditionalSetting["rule_conditions"]>[number];
 
-/** Keeps `required: true` literal so `defineField` can reject it on layout fields. */
-type RequiredSetting = Omit<ConditionalSetting, "modifications"> & {
-  modifications: [{ required: true }];
-};
-
 function toRuleConditions(conditions: FieldCondition | FieldCondition[]): RuleCondition[] {
   const list = Array.isArray(conditions) ? conditions : [conditions];
 
@@ -82,7 +77,7 @@ export function hideWhen(
 export function requiredWhen(
   conditions: FieldCondition | FieldCondition[],
   options: ConditionOptions = {},
-): RequiredSetting {
+): ConditionalSetting {
   return {
     modifications: [{ required: true }],
     rule_match: options.match ?? "all",

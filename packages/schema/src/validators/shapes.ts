@@ -17,7 +17,7 @@ export interface SchemaFieldLike {
   /** `custom`: the field plugin discriminant, matched against registered `fieldPlugins`. */
   field_type?: string;
   required?: boolean;
-  /** `validateSchema` reads only `modifications[].required`. */
+  /** `validateSchema` reads only `required`; `display` keeps hide-only modifications assignable. */
   conditional_settings?: readonly {
     modifications?: readonly { display?: string; required?: boolean }[];
   }[];

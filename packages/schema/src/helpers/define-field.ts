@@ -250,6 +250,7 @@ type DslInputAll = {
    */
   deny?: BlockRef | FolderRef | TagRef | readonly (BlockRef | FolderRef | TagRef)[];
   datasource?: DatasourceRef;
+  required?: boolean;
 };
 
 /**
@@ -267,10 +268,12 @@ type DslInputAll = {
  * exempting all three on every variant would leave a hole in the middle of the
  * check.
  *
- * `name` is universal because `defineField` stamps it.
+ * `name` and `required` stay universal. `defineField` stamps `name` itself, and
+ * the layout-only `section`/`tab` variants do not declare `required`.
  */
 type DslKeysFor<TVariant> =
   | "name"
+  | "required"
   | ("component_whitelist" extends keyof TVariant ? "allow" : never)
   | ("component_denylist" extends keyof TVariant ? "deny" : never)
   | ("datasource_slug" extends keyof TVariant ? "datasource" : never);
@@ -330,40 +333,24 @@ type MemberFor<T> = T extends { type: infer TType } ? Extract<Field, { type: TTy
 type NoExtraKeys<T> = T extends { type: "custom" }
   ? unknown
   : {
-      [K in Exclude<keyof T, keyof MemberFor<T> | DslKeysFor<MemberFor<T>>>]: Invalid<
-        K extends "required"
-          ? T extends { type: LayoutFieldType }
-            ? LayoutRequiredReason
-            : `unknown option "${K}" for this field type`
-          : `unknown option "${K & string}" for this field type`
-      >;
+      [K in Exclude<
+        keyof T,
+        keyof MemberFor<T> | DslKeysFor<MemberFor<T>>
+      >]: Invalid<`unknown option "${K & string}" for this field type`>;
     };
 
 /**
- * The Management API enforces `required`, static or conditional, on layout fields
- * too, and they never hold a value, so publishing a story that uses the block fails.
+ * Rejects `required` that can be `true` on a layout field, including a `type`
+ * union with a layout member. The Management API enforces it there too, and a
+ * layout field never holds a value, so publishing a story that uses the block
+ * fails. `required: false` has no effect, so it passes.
  */
-type LayoutRequiredReason = "a layout field holds no value, so it cannot be required";
-
-type HasRequiredModification<TSettings> = TSettings extends readonly (infer TSetting)[]
-  ? TSetting extends { modifications?: readonly (infer TModification)[] }
-    ? TModification extends { required: true }
-      ? true
-      : never
-    : never
-  : never;
-
-/**
- * Rejects a conditional `required: true` on a layout field. `required: false` is
- * the editor's "Not Required" and has no effect, so it passes.
- */
-type NoLayoutRequired<T> = T extends {
-  type: LayoutFieldType;
-  conditional_settings: infer TSettings;
-}
-  ? [HasRequiredModification<TSettings>] extends [never]
+type NoLayoutRequired<T> = T extends { type: infer TType; required: infer TRequired }
+  ? [Extract<TType, LayoutFieldType>] extends [never]
     ? unknown
-    : { conditional_settings: Invalid<LayoutRequiredReason> }
+    : true extends TRequired
+      ? { required: Invalid<"a layout field holds no value, so it cannot be required"> }
+      : unknown
   : unknown;
 
 /**

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { storyblokColorField } from "../field-plugins/storyblok-color-field";
 import { defineBlock } from "../helpers/define-block";
+import { hideWhen, requiredWhen } from "../helpers/define-condition";
 import { defineDatasource } from "../helpers/define-datasource";
 import { defineField } from "../helpers/define-field";
 import { defineFolder } from "../helpers/define-folder";
@@ -279,6 +280,29 @@ describe("validateSchema", () => {
       ],
     } as unknown as SchemaBlockLike;
     expect(() => validateSchema({ blocks: [block] })).not.toThrow();
+  });
+
+  it("ignores a conditional `required` the publish check does not read", () => {
+    const block = defineBlock({
+      name: "page",
+      fields: [
+        {
+          name: "details",
+          type: "section",
+          conditional_settings: [
+            hideWhen({ field: "title", is: "empty" }),
+            requiredWhen({ field: "title", is: "not_empty" }),
+          ],
+        },
+        {
+          name: "tab-1",
+          type: "tab",
+          conditional_settings: [{ modifications: [{ display: "hide" }, { required: true }] }],
+        },
+        defineField("title", { type: "text" }),
+      ],
+    });
+    expect(validateSchema({ blocks: [block] }).issues).toEqual([]);
   });
 
   it("accepts layout fields with required false or a hide condition", () => {

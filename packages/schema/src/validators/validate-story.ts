@@ -1,7 +1,6 @@
 import { z } from "zod";
 import type { StandardSchemaV1 } from "@standard-schema/spec";
-import { LAYOUT_FIELD_TYPES } from "../field-types";
-import type { FieldType } from "../generated/types/field";
+import { isLayoutFieldType } from "../field-types";
 import type { SchemaBlockLike, SchemaFieldLike, SchemaLike } from "./shapes";
 import type { ValidationIssue, ValidationResult } from "./types";
 import {
@@ -15,9 +14,6 @@ import { slugifyFolderPath } from "../utils/slugify-folder-path";
 
 /** Field-content keys that are not user-defined fields. */
 const RESERVED_KEYS = new Set(["_uid", "component", "_editable"]);
-
-/** Field types that hold no value; see {@link LAYOUT_FIELD_TYPES}. */
-const LAYOUT_FIELD_TYPE_SET: ReadonlySet<FieldType> = new Set<FieldType>(LAYOUT_FIELD_TYPES);
 
 /** Separator the CMS puts between a field name and a locale for field-level translations. */
 const I18N_SEPARATOR = "__i18n__";
@@ -841,7 +837,7 @@ function validateBlokContent(
     }
     const fieldName = baseFieldName(key);
     const field = fieldsByName.get(fieldName);
-    if (field && LAYOUT_FIELD_TYPE_SET.has(field.type)) {
+    if (field && isLayoutFieldType(field.type)) {
       if (!isUnset(content[key])) {
         issues.push({
           severity: "warning",
@@ -876,7 +872,7 @@ function validateBlokContent(
   for (const field of fields) {
     // Layout fields hold no value, so there is nothing to require or validate.
     // A value stored under their key is reported by the key loop above.
-    if (LAYOUT_FIELD_TYPE_SET.has(field.type)) {
+    if (isLayoutFieldType(field.type)) {
       continue;
     }
     const value = content[field.name];

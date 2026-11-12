@@ -2,7 +2,7 @@ import { describe, expectTypeOf, it } from "vitest";
 import type { ConditionalSetting } from "../generated/overlay/_internal.gen";
 import type { FieldValue } from "../generated/types/field";
 import { defineBlock } from "./define-block";
-import { hideWhen, requiredWhen } from "./define-condition";
+import { hideWhen } from "./define-condition";
 import { type CheckedField, defineField, type FieldInput } from "./define-field";
 import { defineFolder } from "./define-folder";
 
@@ -509,42 +509,32 @@ describe("defineField field option checking", () => {
     void defineField("body", { type: "bloks", max_length: 10 });
   });
 
-  it("should accept DSL keys alongside the field type's own options", () => {
+  it("should accept the DSL keys on every field type", () => {
     void defineField("title", { type: "text", max_length: 10, required: true });
     void defineField("theme", { type: "option", source: "internal", datasource: "colors" });
+    // `required` is not declared on the layout-only variants, but the DSL takes it
+    void defineField("divider", { type: "section", required: false });
   });
 
-  it("should reject `required` on layout fields", () => {
-    // @ts-expect-error 'required' is not an option of 'section'
+  it("should reject a `required` that can be `true` on layout fields", () => {
+    const flag = Math.random() > 0.5;
+    // @ts-expect-error a layout field holds no value, so it cannot be required
     void defineField("details", { type: "section", required: true });
-    // @ts-expect-error 'required' is not an option of 'tab'
+    // @ts-expect-error a layout field holds no value, so it cannot be required
     void defineField("tab-1", { type: "tab", required: true });
-    // @ts-expect-error 'required' is not an option of 'group'
+    // @ts-expect-error a layout field holds no value, so it cannot be required
+    void defineField("legacy", { type: "group", required: flag });
+    const type: "text" | "tab" = flag ? "text" : "tab";
+    // @ts-expect-error a layout field holds no value, so it cannot be required
+    void defineField("either", { type, required: true });
+  });
+
+  it("should accept a `required` that is never `true` on layout fields", () => {
+    void defineField("tab-1", { type: "tab", required: undefined });
     void defineField("legacy", { type: "group", required: false });
   });
 
-  it("should reject a conditional `required` on layout fields", () => {
-    void defineField("details", {
-      type: "section",
-      // @ts-expect-error a layout field holds no value, so it cannot be required
-      conditional_settings: [requiredWhen({ field: "has_details", is: "not_empty" })],
-    });
-    void defineField("tab-1", {
-      type: "tab",
-      // @ts-expect-error a layout field holds no value, so it cannot be required
-      conditional_settings: [{ rule_match: "any", modifications: [{ required: true }] }],
-    });
-    void defineField("details", {
-      type: "section",
-      // @ts-expect-error a layout field holds no value, so it cannot be required
-      conditional_settings: [
-        hideWhen({ field: "has_details", is: "empty" }),
-        requiredWhen({ field: "has_details", is: "not_empty" }),
-      ],
-    });
-  });
-
-  it("should accept conditional settings on layout fields that do not make them required", () => {
+  it("should accept conditional settings on layout fields", () => {
     void defineField("details", {
       type: "section",
       conditional_settings: [hideWhen({ field: "has_details", is: "empty" })],

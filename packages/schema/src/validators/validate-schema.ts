@@ -1,31 +1,32 @@
 import type { SchemaFieldLike, SchemaLike } from "./shapes";
 import type { ValidationIssue, ValidationResult } from "./types";
-import type { FieldType } from "../generated/types/field";
-import { FIELD_TYPES, LAYOUT_FIELD_TYPES } from "../field-types";
+import { FIELD_TYPES, isLayoutFieldType } from "../field-types";
 import { DERIVED_RESTRICTION_KEYS, EDITOR_RESTRICT_TYPES } from "../restrictions";
 import { isRecord, toValues } from "./shapes";
 
 const FIELD_TYPE_LIST = FIELD_TYPES.map((value) => `"${value}"`).join(", ");
-const LAYOUT_FIELD_TYPE_SET: ReadonlySet<FieldType> = new Set<FieldType>(LAYOUT_FIELD_TYPES);
-
+/**
+ * Mirrors the Management API's publish check, which reads only the first
+ * modification of the first setting that has any.
+ */
 function isConditionallyRequired(field: SchemaFieldLike): boolean {
   const settings: unknown = field.conditional_settings;
-  return (
-    Array.isArray(settings) &&
-    settings.some(
-      (setting: unknown) =>
-        isRecord(setting) &&
-        Array.isArray(setting.modifications) &&
-        setting.modifications.some(
-          (modification: unknown) => isRecord(modification) && modification.required === true,
-        ),
-    )
+  if (!Array.isArray(settings)) {
+    return false;
+  }
+  const setting: unknown = settings.find(
+    (candidate: unknown) => isRecord(candidate) && Array.isArray(candidate.modifications),
   );
+  const modification: unknown =
+    isRecord(setting) && Array.isArray(setting.modifications)
+      ? setting.modifications[0]
+      : undefined;
+  return isRecord(modification) && modification.required === true;
 }
 
 function requiredLayoutFieldKeys(field: SchemaFieldLike): ("required" | "conditional_settings")[] {
   const keys: ("required" | "conditional_settings")[] = [];
-  if (!LAYOUT_FIELD_TYPE_SET.has(field.type)) {
+  if (!isLayoutFieldType(field.type)) {
     return keys;
   }
   if (field.required === true) {
@@ -353,7 +354,7 @@ export function validateSchema(schema: SchemaLike): ValidationResult {
           message:
             layoutRequiredKey === "required"
               ? `${fieldLabel} in ${blockLabel} is a "${field.type}" field marked "required". Layout fields hold no value, so publishing a story that uses this block fails. Remove "required".`
-              : `${fieldLabel} in ${blockLabel} is a "${field.type}" field required by a condition. Layout fields hold no value, so publishing fails once the condition matches. Remove the "required" condition.`,
+              : `${fieldLabel} in ${blockLabel} is a "${field.type}" field required by a condition. Layout fields hold no value, so publishing can fail once the condition matches. Remove the condition that makes it required.`,
         });
       }
 

@@ -1556,7 +1556,6 @@ describe("validateStory — layout fields", () => {
   });
   const layoutSchema = { blocks: { form } };
 
-  // No content can satisfy it; `validateSchema` reports it instead.
   it("leaves a required layout field to validateSchema", () => {
     const result = validateStory({ content: { component: "form", title: "Hi" } }, layoutSchema);
     expect(result.ok).toBe(true);

@@ -43,6 +43,8 @@ function sourceFieldsOf(op: MigrationOp): readonly string[] {
       return [];
     case "mergeFields":
       return op.fields;
+    case "fieldsToBlock":
+      return Object.keys(op.fields);
     default:
       return [op.field];
   }
@@ -68,6 +70,10 @@ function applyToFields(op: MigrationOp, fields: Set<string>): void {
       break;
     case "mergeFields":
       for (const field of op.fields) fields.delete(field);
+      fields.add(op.into);
+      break;
+    case "fieldsToBlock":
+      for (const field of Object.keys(op.fields)) fields.delete(field);
       fields.add(op.into);
       break;
     default:
@@ -166,6 +172,23 @@ export function validateMigration(
         issue(
           `Block "${op.in}" already exists and has no field "${op.into}"; wrapping into it would leave the children under a field its schema does not define.`,
         );
+      }
+    }
+    if (op.kind === "fieldsToBlock") {
+      // An unknown component is a block the migration introduces.
+      const component = fields.get(op.component);
+      if (nameOnly.has(op.component)) {
+        warning(
+          `Block "${op.component}" already exists but is listed by name only, so whether it defines the fields moved into it can't be checked.`,
+        );
+      } else if (component) {
+        for (const field of Object.values(op.fields)) {
+          if (!component.has(field)) {
+            issue(
+              `Block "${op.component}" has no field "${field}"; moving a value into it would leave the value under a field its schema does not define.`,
+            );
+          }
+        }
       }
     }
     if (op.kind === "unwrapChildren") {

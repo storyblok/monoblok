@@ -10,6 +10,7 @@ import {
   mergeFields,
   removeField,
   renameBlock,
+  fieldsToBlock,
   renameField,
   splitField,
   unwrapChildren,
@@ -49,6 +50,20 @@ describe("deriveInverse", () => {
     expect(derived.blocked).toEqual([
       { index: 0, kind: "removeField", reason: "the values are gone" },
     ]);
+  });
+
+  it("refuses to invert fieldsToBlock", () => {
+    const derived = deriveInverse([
+      fieldsToBlock<AnySchema, AnySchema, "form", string>({
+        block: "form",
+        fields: { turnstileTheme: "theme" },
+        into: "turnstile",
+        component: "turnstile",
+      }),
+    ]);
+
+    expect(derived.derivable).toBe(false);
+    expect(derived.blocked[0]).toMatchObject({ index: 0, kind: "fieldsToBlock" });
   });
 
   it("reverses the order of the derived ops", () => {

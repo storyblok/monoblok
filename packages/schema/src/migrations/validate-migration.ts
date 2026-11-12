@@ -44,7 +44,7 @@ function sourceFieldsOf(op: MigrationOp): readonly string[] {
     case "mergeFields":
       return op.fields;
     case "fieldsToBlock":
-      return Object.keys(op.into.fields);
+      return Object.keys(op.fields);
     default:
       return [op.field];
   }
@@ -73,8 +73,8 @@ function applyToFields(op: MigrationOp, fields: Set<string>): void {
       fields.add(op.into);
       break;
     case "fieldsToBlock":
-      for (const field of Object.keys(op.into.fields)) fields.delete(field);
-      fields.add(op.field);
+      for (const field of Object.keys(op.fields)) fields.delete(field);
+      fields.add(op.into.field);
       break;
     default:
       break;
@@ -182,7 +182,7 @@ export function validateMigration(
           `Block "${op.into.block}" already exists but is listed by name only, so whether it defines the fields moved into it can't be checked.`,
         );
       } else if (newBlock) {
-        for (const field of Object.values(op.into.fields)) {
+        for (const field of Object.values(op.fields)) {
           if (!newBlock.has(field)) {
             issue(
               `Block "${op.into.block}" has no field "${field}"; moving a value into it would leave the value under a field its schema does not define.`,

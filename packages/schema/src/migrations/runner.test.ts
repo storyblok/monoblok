@@ -2286,8 +2286,8 @@ describe("fieldsToBlock", () => {
   const migration = defineMigration<TestSchema>([
     fieldsToBlock({
       block: "form",
-      field: "turnstile",
-      into: { block: "turnstile", fields: { turnstileTheme: "theme", turnstileSize: "size" } },
+      fields: { turnstileTheme: "theme", turnstileSize: "size" },
+      into: { block: "turnstile", field: "turnstile" },
     }),
   ]);
 
@@ -2424,8 +2424,8 @@ describe("validateMigration over an op sequence", () => {
     const migration = defineMigration<TestSchema>([
       fieldsToBlock({
         block: "card",
-        field: "meta",
-        into: { block: "meta", fields: { nope: "title" } },
+        fields: { nope: "title" },
+        into: { block: "meta", field: "meta" },
       }),
     ]);
 
@@ -2438,8 +2438,8 @@ describe("validateMigration over an op sequence", () => {
     const migration = defineMigration<TestSchema>([
       fieldsToBlock({
         block: "card",
-        field: "meta",
-        into: { block: "meta", fields: { title: "nope" } },
+        fields: { title: "nope" },
+        into: { block: "meta", field: "meta" },
       }),
     ]);
 
@@ -2452,8 +2452,8 @@ describe("validateMigration over an op sequence", () => {
     const migration = defineMigration<TestSchema>([
       fieldsToBlock({
         block: "card",
-        field: "badge",
-        into: { block: "badge", fields: { title: "label" } },
+        fields: { title: "label" },
+        into: { block: "badge", field: "badge" },
       }),
       alterField({ block: "card", field: "badge" }, (value) => value),
     ]);

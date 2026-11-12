@@ -14,6 +14,7 @@ import {
   expandBlock,
   alterField,
   coerceField,
+  fieldsToBlock,
   mergeFields,
   moveField,
   removeField,
@@ -474,5 +475,67 @@ describe("under on a key op, past the object literal", () => {
 
   it("should keep accepting a value op built the same way", () => {
     defineMigration<FixtureSchema>([alterBlock({ block: "meta", ...scoped }, () => {})]);
+  });
+});
+
+describe("fieldsToBlock", () => {
+  it("should accept fields of the block moved to fields of the component", () => {
+    defineMigration<FixtureSchema>([
+      fieldsToBlock({
+        block: "card",
+        fields: { title: "og_title", old_slug: "author" },
+        into: "meta",
+        component: "meta",
+      }),
+    ]);
+  });
+
+  it("should reject a target field the component does not define", () => {
+    defineMigration<FixtureSchema>([
+      // @ts-expect-error meta has no field "headline"
+      fieldsToBlock({
+        block: "card",
+        fields: { title: "headline" },
+        into: "meta",
+        component: "meta",
+      }),
+    ]);
+  });
+
+  it("should reject a component the schema does not define", () => {
+    defineMigration<FixtureSchema>([
+      // @ts-expect-error there is no block "turnstile"
+      fieldsToBlock({
+        block: "card",
+        fields: { title: "x" },
+        into: "meta",
+        component: "turnstile",
+      }),
+    ]);
+  });
+
+  it("should reject a source field the pre-migration block does not define", () => {
+    defineMigration<AfterRenameArticleAuthor, FixtureSchema>([
+      fieldsToBlock({
+        block: "card",
+        // @ts-expect-error card has no field "titel"
+        fields: { titel: "og_title" },
+        into: "meta",
+        component: "meta",
+      }),
+    ]);
+  });
+
+  it("should reject `under`, since it is a key op", () => {
+    defineMigration<FixtureSchema>([
+      fieldsToBlock({
+        block: "card",
+        fields: { title: "og_title" },
+        into: "meta",
+        component: "meta",
+        // @ts-expect-error a key op applies to every instance
+        under: "section",
+      }),
+    ]);
   });
 });

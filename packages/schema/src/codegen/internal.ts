@@ -16,4 +16,5 @@ export {
   sortSchemaByPos,
 } from "./field";
 export type { TagRef } from "./field";
+export { partitionFieldOptions } from "./field-options";
 export { componentVarName, resolveVarNames, toCamelCaseIdentifier } from "./names";

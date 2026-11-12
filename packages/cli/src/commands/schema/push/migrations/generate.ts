@@ -108,6 +108,16 @@ export function renderMigrationCode(changes: BreakingChange[]): string {
         break;
       }
 
+      case "split":
+        lines.push(
+          `  // TODO: '${change.field}' was likely split into ${change.into.map((f) => `'${f}'`).join(" and ")}; fill them from it.`,
+        );
+        for (const into of change.into) {
+          lines.push(`  // block.${into} = <part of block.${change.field}>;`);
+        }
+        lines.push(`  delete block.${change.field};`);
+        break;
+
       case "block_renamed":
         lines.push(`  // Block renamed: ${change.from} → ${change.to}`);
         lines.push(`  block.component = '${change.to}';`);
@@ -229,6 +239,18 @@ export function toMigrationOps(block: string, changes: BreakingChange[]): Migrat
           },
         ];
       }
+      case "split":
+        return [
+          {
+            kind: "splitField",
+            block,
+            field: change.field,
+            into: change.into,
+            todo: [
+              `TODO: '${change.field}' was likely split into ${change.into.map((f) => `'${f}'`).join(" and ")}. Write the split, or replace it with renameField or removeField. A rerun passes already-split values.`,
+            ],
+          },
+        ];
       case "block_renamed":
         return [{ kind: "renameBlock", block, to: change.to }];
       case "options_removed":
@@ -279,6 +301,8 @@ function describeChange(change: BreakingChange): string {
       return `rename ${change.oldField} to ${change.field}`;
     case "removed":
       return `remove ${change.field}`;
+    case "split":
+      return `split ${change.field} into ${listFormat.format(change.into)}`;
     case "type_changed":
       return `convert ${change.field} to ${change.newType}`;
     case "required_added":

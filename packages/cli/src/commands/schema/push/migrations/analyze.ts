@@ -81,6 +81,8 @@ export function classifyFieldChanges(
 /** Result of rename detection for a set of removed and added fields. */
 export interface RenameDetectionResult {
   renames: RenameMatch[];
+  /** A removed field whose content most likely moved into several new fields. */
+  splits: { field: string; into: string[] }[];
   unmatchedRemoved: FieldClassification["removed"];
   unmatchedAdded: FieldClassification["added"];
 }
@@ -120,6 +122,9 @@ function nameSimilarity(a: string, b: string): number {
   return longestCommonSubstring(a, b) / longer;
 }
 
+/** How close the second-best candidate's name has to come to the best one's for a split. */
+const SPLIT_SCORE_RATIO = 0.8;
+
 /**
  * Matches removed and added fields as likely renames using type equality as
  * the primary signal and name similarity as a tiebreaker.
@@ -137,6 +142,7 @@ export function detectRenames(
   added: FieldClassification["added"],
 ): RenameDetectionResult {
   const renames: RenameMatch[] = [];
+  const splits: RenameDetectionResult["splits"] = [];
   const usedRemoved = new Set<string>();
   const usedAdded = new Set<string>();
 
@@ -158,18 +164,30 @@ export function detectRenames(
       continue;
     }
 
-    // Pick the candidate with the highest name similarity
-    let bestCandidate = availableCandidates[0];
-    let bestScore = nameSimilarity(removedField.field, bestCandidate.field);
-    for (let i = 1; i < availableCandidates.length; i++) {
-      const score = nameSimilarity(removedField.field, availableCandidates[i].field);
-      if (score > bestScore) {
-        bestScore = score;
-        bestCandidate = availableCandidates[i];
-      }
-    }
+    const ranked = availableCandidates
+      .map((candidate) => ({
+        field: candidate.field,
+        score: nameSimilarity(removedField.field, candidate.field),
+      }))
+      .sort((a, b) => b.score - a.score);
+    const [best] = ranked;
+    const bestCandidate = { field: best.field };
+    const bestScore = best.score;
 
     if (!isSinglePair && bestScore < 0.3) {
+      continue;
+    }
+
+    // Several new fields named about as closely as the best one, such as
+    // `full_name` → `given_name` and `family_name`, are more likely a split
+    // than a rename of one of them.
+    const comparable = ranked.filter(
+      (candidate) => candidate.score >= 0.3 && candidate.score >= bestScore * SPLIT_SCORE_RATIO,
+    );
+    if (comparable.length > 1) {
+      splits.push({ field: removedField.field, into: comparable.map((c) => c.field) });
+      usedRemoved.add(removedField.field);
+      for (const candidate of comparable) usedAdded.add(candidate.field);
       continue;
     }
 
@@ -185,7 +203,7 @@ export function detectRenames(
   const unmatchedRemoved = removed.filter((r) => !usedRemoved.has(r.field));
   const unmatchedAdded = added.filter((a) => !usedAdded.has(a.field));
 
-  return { renames, unmatchedRemoved, unmatchedAdded };
+  return { renames, splits, unmatchedRemoved, unmatchedAdded };
 }
 
 /** Text, textarea, and markdown all store a string, so switching among them keeps content valid. */
@@ -267,13 +285,16 @@ export function analyzeBreakingChanges(
 
     // Detect renames from removed+added pairs (non-required only — required
     // additions signal developer intent for a new field, not a rename)
-    const { renames, unmatchedRemoved, unmatchedAdded } = detectRenames(
+    const { renames, splits, unmatchedRemoved, unmatchedAdded } = detectRenames(
       classification.removed,
       classification.added,
     );
 
     for (const rename of renames) {
       changes.push({ kind: "rename", field: rename.newField, oldField: rename.oldField });
+    }
+    for (const split of splits) {
+      changes.push({ kind: "split", field: split.field, into: split.into });
     }
 
     // A rename the detection could not pair, or one onto a required field it

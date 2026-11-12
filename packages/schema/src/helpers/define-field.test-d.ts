@@ -508,14 +508,12 @@ describe("defineField field option checking", () => {
     void defineField("body", { type: "bloks", max_length: 10 });
   });
 
-  it("should accept the DSL keys on every field type", () => {
+  it("should accept DSL keys alongside the field type's own options", () => {
     void defineField("title", { type: "text", max_length: 10, required: true });
     void defineField("theme", { type: "option", source: "internal", datasource: "colors" });
   });
 
   it("should reject `required` on layout fields", () => {
-    // A layout field holds no value, so a required one blocks publishing every
-    // story that uses the block.
     // @ts-expect-error 'required' is not an option of 'section'
     void defineField("details", { type: "section", required: true });
     // @ts-expect-error 'required' is not an option of 'tab'

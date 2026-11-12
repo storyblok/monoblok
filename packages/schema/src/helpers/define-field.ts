@@ -268,7 +268,7 @@ type DslInputAll = {
  * exempting all three on every variant would leave a hole in the middle of the
  * check.
  *
- * `name` stays universal because `defineField` stamps it itself.
+ * `name` is universal because `defineField` stamps it.
  */
 type DslKeysFor<TVariant> =
   | "name"

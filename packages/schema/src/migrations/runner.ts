@@ -2,6 +2,7 @@
  * Applies a compiled migration to one story's content and returns the patch it
  * produced plus the inverse patch an undo would replay.
  */
+import { isRecord } from "../utils/is-record";
 import type { CompiledMigration } from "./define-migration";
 import {
   type AlterFieldContext,
@@ -266,6 +267,25 @@ function applyOp(block: AnyBlock, op: MigrationOp): string | undefined {
       // sources are cleared before the merged value lands on the target.
       for (const name of op.fields) delete block[name];
       block[op.into] = merged;
+      break;
+    }
+    case "fieldsToBlock": {
+      const moves = Object.entries(op.fields).flatMap(([from, to]) =>
+        [from, ...translationKeysFor(block, from)]
+          .filter((key) => key in block)
+          .map((key) => ({ key, target: `${to}${key.slice(from.length)}` })),
+      );
+      if (moves.length === 0) break;
+      if (moves.some(({ key }) => !isEmptyValue(block[key]))) {
+        if (!isEmptyValue(block[op.into])) {
+          return `field "${op.into}" already holds a block, and moving ${moves.map(({ key }) => `"${key}"`).join(", ")} into a new one would drop either it or their values.`;
+        }
+        const created: Record<string, unknown> = { component: op.component };
+        for (const { key, target } of moves) created[target] = block[key];
+        // The uid is derived after the pass, like for any block a migration creates.
+        block[op.into] = [created];
+      }
+      for (const { key } of moves) delete block[key];
       break;
     }
     case "renameBlock":
@@ -541,6 +561,49 @@ function runPass(content: unknown, ops: readonly MigrationOp[]): PassReport {
   return report;
 }
 
+function usedUids(content: unknown, into = new Set<string>()): Set<string> {
+  if (Array.isArray(content)) {
+    for (const item of content) usedUids(item, into);
+  } else if (isRecord(content)) {
+    if (typeof content._uid === "string" && content._uid !== "") into.add(content._uid);
+    for (const value of Object.values(content)) usedUids(value, into);
+  }
+  return into;
+}
+
+/**
+ * Gives every block without a `_uid` one derived from the path to it from the
+ * nearest block above that has one, such as `<parent uid>-meta-0`. Saving would
+ * otherwise mint a random uid the run's record never saw, leaving an undo
+ * unable to address the block. Deriving it keeps a dry run, the real run, and
+ * the idempotency probe in agreement.
+ */
+function assignMissingUids(content: unknown): void {
+  const taken = usedUids(content);
+  const visit = (node: unknown, anchor: string, path: readonly string[]): void => {
+    if (Array.isArray(node)) {
+      node.forEach((item, at) => visit(item, anchor, [...path, String(at)]));
+      return;
+    }
+    if (!isRecord(node)) return;
+    let nextAnchor = anchor;
+    let nextPath = path;
+    if (typeof node.component === "string") {
+      if (typeof node._uid !== "string" || node._uid === "") {
+        const base = [anchor, ...path].join("-");
+        let uid = base;
+        for (let suffix = 1; taken.has(uid); suffix++) uid = `${base}-${suffix}`;
+        taken.add(uid);
+        node._uid = uid;
+      }
+      nextAnchor = node._uid as string;
+      nextPath = [];
+    }
+    for (const [key, value] of Object.entries(node)) visit(value, nextAnchor, [...nextPath, key]);
+  };
+  visit(content, "", []);
+}
+
 export function runMigrationOnStory(
   migration: CompiledMigration,
   content: unknown,
@@ -551,6 +614,7 @@ export function runMigrationOnStory(
   const beforeIndex = indexBlocks(before);
   const unstableBefore = findUnstableUids(before);
   const pass = runPass(after, migration.ops);
+  assignMissingUids(after);
 
   // The whole migration runs a second time over its own output, which is what
   // makes a rerun safe by construction rather than by convention. Anything

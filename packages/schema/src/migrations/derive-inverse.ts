@@ -88,6 +88,8 @@ function invert(op: MigrationOp, block: string): MigrationOp | string {
             split: op.split,
             ...(op.merge === undefined ? {} : { merge: op.merge }),
           };
+    case "fieldsToBlock":
+      return "no op takes the values back out of the block it created";
     case "renameBlock":
       return { kind: "renameBlock", block, to: op.block };
     case "wrapChildren":

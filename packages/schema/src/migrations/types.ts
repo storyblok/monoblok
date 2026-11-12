@@ -65,6 +65,30 @@ export type ContentOf<
   TName extends BlockNameOf<TSchema>,
 > = BlockContent<BlockByName<TSchema, TName>, TSchema["blocks"], TSchema["fieldPlugins"]>;
 
+/**
+ * True for a migration written without schema types, such as
+ * `defineMigration([...])` in plain TypeScript: every block name is possible,
+ * so no block's content is knowable.
+ */
+export type IsUntypedSchema<TSchema extends SchemaShape> =
+  string extends BlockNameOf<TSchema> ? true : false;
+
+/** A block as a callback reads it: its pre-migration content, or a plain record when unknowable. */
+export type SourceContent<TBefore extends SchemaShape, TBlock extends string> =
+  IsUntypedSchema<TBefore> extends true
+    ? Record<string, unknown>
+    : TBlock extends BlockNameOf<TBefore>
+      ? ContentOf<TBefore, TBlock>
+      : Record<string, unknown>;
+
+/** A block as a callback returns it: its post-migration content, or a plain record without schema types. */
+export type TargetContent<TAfter extends SchemaShape, TBlock extends string> =
+  IsUntypedSchema<TAfter> extends true
+    ? Record<string, unknown>
+    : TBlock extends BlockNameOf<TAfter>
+      ? ContentOf<TAfter, TBlock>
+      : never;
+
 /** Value type of one `"block.field"` path. */
 export type ValueOfPath<TSchema extends SchemaShape, TPath extends FieldPathOf<TSchema>> =
   BlockOfPath<TPath> extends BlockNameOf<TSchema>

@@ -611,8 +611,8 @@ describe("fieldsToBlock", () => {
     defineMigration<FixtureSchema>([
       fieldsToBlock({
         block: "card",
-        field: "meta",
-        into: { block: "meta", fields: { title: "og_title", old_slug: "author" } },
+        fields: { title: "og_title", old_slug: "author" },
+        into: { block: "meta", field: "meta" },
       }),
     ]);
   });
@@ -621,12 +621,9 @@ describe("fieldsToBlock", () => {
     defineMigration<FixtureSchema>([
       fieldsToBlock({
         block: "card",
-        field: "meta",
-        into: {
-          block: "meta",
-          // @ts-expect-error meta has no field "headline"
-          fields: { title: "headline" },
-        },
+        // @ts-expect-error meta has no field "headline"
+        fields: { title: "headline" },
+        into: { block: "meta", field: "meta" },
       }),
     ]);
   });
@@ -635,11 +632,11 @@ describe("fieldsToBlock", () => {
     defineMigration<FixtureSchema>([
       fieldsToBlock({
         block: "card",
-        field: "meta",
+        fields: { title: "og_title" },
         into: {
           // @ts-expect-error there is no block "turnstile"
           block: "turnstile",
-          fields: { title: "og_title" },
+          field: "meta",
         },
       }),
     ]);
@@ -649,12 +646,9 @@ describe("fieldsToBlock", () => {
     defineMigration<AfterRenameArticleAuthor, FixtureSchema>([
       fieldsToBlock({
         block: "card",
-        field: "meta",
-        into: {
-          block: "meta",
-          // @ts-expect-error card has no field "titel"
-          fields: { titel: "og_title" },
-        },
+        // @ts-expect-error card has no field "titel"
+        fields: { titel: "og_title" },
+        into: { block: "meta", field: "meta" },
       }),
     ]);
   });
@@ -663,8 +657,8 @@ describe("fieldsToBlock", () => {
     defineMigration<FixtureSchema>([
       fieldsToBlock({
         block: "card",
-        field: "meta",
-        into: { block: "meta", fields: { title: "og_title" } },
+        fields: { title: "og_title" },
+        into: { block: "meta", field: "meta" },
         // @ts-expect-error a key op applies to every instance
         under: "section",
       }),

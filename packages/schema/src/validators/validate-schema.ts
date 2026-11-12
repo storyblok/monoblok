@@ -1,10 +1,33 @@
-import type { SchemaLike } from "./shapes";
+import type { SchemaFieldLike, SchemaLike } from "./shapes";
 import type { ValidationIssue, ValidationResult } from "./types";
-import { FIELD_TYPES } from "../field-types";
+import type { FieldType } from "../generated/types/field";
+import { FIELD_TYPES, LAYOUT_FIELD_TYPES } from "../field-types";
 import { DERIVED_RESTRICTION_KEYS, EDITOR_RESTRICT_TYPES } from "../restrictions";
 import { isRecord, toValues } from "./shapes";
 
 const FIELD_TYPE_LIST = FIELD_TYPES.map((value) => `"${value}"`).join(", ");
+const LAYOUT_FIELD_TYPE_SET: ReadonlySet<FieldType> = new Set<FieldType>(LAYOUT_FIELD_TYPES);
+
+/**
+ * The key that makes a layout field required, if any. The Management API checks
+ * `required` on every field type, and a layout field never holds a value, so
+ * publishing any story that uses the block fails. `defineField` rejects both
+ * keys at compile time.
+ */
+function requiredLayoutFieldKey(
+  field: SchemaFieldLike,
+): "required" | "conditional_settings" | undefined {
+  if (!LAYOUT_FIELD_TYPE_SET.has(field.type)) {
+    return undefined;
+  }
+  if (field.required === true) {
+    return "required";
+  }
+  const conditionallyRequired = field.conditional_settings?.some((setting) =>
+    setting?.modifications?.some((modification) => modification?.required === true),
+  );
+  return conditionallyRequired ? "conditional_settings" : undefined;
+}
 
 /**
  * Validates a schema definition without throwing. Checks structural identity
@@ -12,7 +35,8 @@ const FIELD_TYPE_LIST = FIELD_TYPES.map((value) => `"${value}"`).join(", ");
  * (every `allow` entry resolves to a defined block; every field `datasource`
  * resolves to a defined datasource; every field declares a known `type`;
  * every `custom` field's `field_type` resolves to a registered field plugin; no
- * field mixes `allow`/`deny` with the wire restriction keys they derive).
+ * field mixes `allow`/`deny` with the wire restriction keys they derive; no
+ * layout field is required, statically or by a condition).
  *
  * @example
  * const result = validateSchema({ blocks: { hero }, datasources: { colors } });
@@ -309,6 +333,17 @@ export function validateSchema(schema: SchemaLike): ValidationResult {
           entity: blockEntity,
           // `JSON.stringify` so `123` and `"123"` read as different mistakes.
           message: `${fieldLabel} in ${blockLabel} has unknown type ${JSON.stringify(fieldTypeValue)}. Expected one of ${FIELD_TYPE_LIST}.`,
+        });
+      }
+
+      const layoutRequiredKey = requiredLayoutFieldKey(field);
+      if (layoutRequiredKey !== undefined) {
+        issues.push({
+          severity: "error",
+          code: "required_layout_field",
+          path: ["blocks", blockKey, fieldName ?? index, layoutRequiredKey],
+          entity: blockEntity,
+          message: `${fieldLabel} in ${blockLabel} is a "${field.type}" field set to required${layoutRequiredKey === "conditional_settings" ? " by a condition" : ""}. It holds no value, so publishing any story that uses the block fails. Remove the required setting.`,
         });
       }
 

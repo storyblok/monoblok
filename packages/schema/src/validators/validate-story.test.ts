@@ -1543,9 +1543,8 @@ describe("validateStory — deny entries", () => {
 });
 
 describe("validateStory — layout fields", () => {
-  // `defineField` rejects `required` on layout fields, so this is the
-  // plain-object form a schema pulled from a space or written without the
-  // helpers takes.
+  // Plain objects: `defineField` rejects `required` here, but a schema from a
+  // space can carry it.
   const form = defineBlock({
     name: "form",
     is_root: true,
@@ -1558,7 +1557,9 @@ describe("validateStory — layout fields", () => {
   });
   const layoutSchema = { blocks: { form } };
 
-  it("does not require a layout field marked required, since it holds no value", () => {
+  // Publishing this story fails, but no content can fix it, so the schema is at
+  // fault: `validateSchema` reports it as `required_layout_field`.
+  it("leaves a required layout field to validateSchema", () => {
     const result = validateStory({ content: { component: "form", title: "Hi" } }, layoutSchema);
     expect(result.ok).toBe(true);
     expect(result.issues).toEqual([]);

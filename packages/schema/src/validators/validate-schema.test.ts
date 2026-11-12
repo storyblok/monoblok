@@ -212,6 +212,60 @@ describe("validateSchema", () => {
     }
   });
 
+  // Plain objects: `defineField` rejects `required` on layout fields, but a
+  // schema from a space can carry it.
+  it.each(["section", "tab", "group"] as const)("flags a required %s field", (type) => {
+    const block = defineBlock({
+      name: "page",
+      fields: [{ name: "layout", type, required: true }],
+    });
+    const result = validateSchema({ blocks: [block] });
+    expect(result.ok).toBe(false);
+    expect(result.issues).toEqual([
+      expect.objectContaining({
+        code: "required_layout_field",
+        path: ["blocks", "page", "layout", "required"],
+      }),
+    ]);
+  });
+
+  it("flags a layout field required by a condition", () => {
+    const block = defineBlock({
+      name: "page",
+      fields: [
+        {
+          name: "details",
+          type: "section",
+          conditional_settings: [{ rule_match: "any", modifications: [{ required: true }] }],
+        },
+      ],
+    });
+    const result = validateSchema({ blocks: [block] });
+    expect(result.ok).toBe(false);
+    expect(result.issues).toEqual([
+      expect.objectContaining({
+        code: "required_layout_field",
+        path: ["blocks", "page", "details", "conditional_settings"],
+      }),
+    ]);
+  });
+
+  it("accepts a layout field that is explicitly not required or only hidden by a condition", () => {
+    const block = defineBlock({
+      name: "page",
+      fields: [
+        { name: "tab-1", type: "tab", required: false },
+        {
+          name: "details",
+          type: "section",
+          conditional_settings: [{ modifications: [{ display: "hide" }, { required: false }] }],
+        },
+        defineField("title", { type: "text", required: true }),
+      ],
+    });
+    expect(validateSchema({ blocks: [block] }).issues).toEqual([]);
+  });
+
   it("flags a deny reference to an unknown block", () => {
     const block = defineBlock({
       name: "page",

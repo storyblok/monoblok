@@ -17,6 +17,10 @@ export interface SchemaFieldLike {
   /** `custom`: the field plugin discriminant, matched against registered `fieldPlugins`. */
   field_type?: string;
   required?: boolean;
+  /** Conditional modifications; `validateSchema` reads only `required`. */
+  conditional_settings?: readonly {
+    modifications?: readonly { display?: string; required?: boolean }[];
+  }[];
   /** Normalized block-name, folder-path, or tag-name references for `bloks` fields. */
   allow?: readonly (string | { folder: string } | { tag: string })[];
   /**

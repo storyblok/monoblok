@@ -79,8 +79,8 @@ function changeSummary(run: MigrationRun): string {
 
 /**
  * The stories of one command run, each read at most once and kept up to date
- * with what the run wrote, or in a dry run would have written, so a later
- * migration sees an earlier one's output.
+ * with what the run's earlier migrations changed, so a later migration sees an
+ * earlier one's output.
  */
 function storyCache(space: string, access: StoryAccess) {
   const known = new Map<number, StoryForMigration>();
@@ -129,26 +129,55 @@ function storyCache(space: string, access: StoryAccess) {
       const stories = [...ids].flatMap((id) => known.get(id) ?? []);
       return { stories, unread };
     },
-    /** The draft now holds `content`, published too when `published` is set. */
-    wrote(story: StoryForMigration, content: Record<string, unknown>, published: boolean): void {
-      changed.add(story.id);
-      known.set(story.id, {
-        ...story,
-        content,
-        published: story.published === true || published,
-        unpublished_changes: !published && story.published === true,
-      });
-    },
-    /** What a dry run would have written, with the publish state left as it is. */
+    /**
+     * What a migration changed. The publish state stays as it was read: the run
+     * writes each story once, after its last migration, so every migration
+     * decides about publishing from the same state.
+     */
     planned(story: StoryForMigration, content: Record<string, unknown>): void {
       changed.add(story.id);
       known.set(story.id, { ...story, content });
     },
-    /** A write that failed leaves the story in a state the run can't tell, so it is read again. */
-    forget(id: number): void {
-      known.delete(id);
-    },
   };
+}
+
+/** The one write a story gets, holding what every migration of the run changed. */
+type StoryWrite = {
+  story: StoryForMigration;
+  content: Record<string, unknown>;
+  publish: boolean;
+  migrations: string[];
+};
+
+/**
+ * Collects each story's write across migrations: the content the last one left,
+ * published when any of them publishes.
+ */
+function storyWrites() {
+  const byStory = new Map<number, StoryWrite>();
+  return {
+    add(id: string, outcome: ApplyMigrationOutcome): void {
+      for (const write of outcome.writes) {
+        const known = byStory.get(write.story.id);
+        byStory.set(write.story.id, {
+          story: known?.story ?? write.story,
+          content: write.content,
+          publish: (known?.publish ?? false) || write.publish,
+          migrations: [...(known?.migrations ?? []), id],
+        });
+      }
+    },
+    all: (): StoryWrite[] => [...byStory.values()],
+  };
+}
+
+/**
+ * The next run's time, later than the previous one's, so run ids, which sort
+ * by time, keep the order the migrations ran in.
+ */
+function nextAppliedAt(previous: Date | undefined): Date {
+  const now = new Date();
+  return previous && now.getTime() <= previous.getTime() ? new Date(previous.getTime() + 1) : now;
 }
 
 type SchemaCheck = {
@@ -315,8 +344,9 @@ export type ApplyContentMigrationsOptions = {
 
 /**
  * Applies content migrations in order and records each run so it can be rolled
- * back. Throws a {@link CommandError} naming every problem once all migrations
- * ran.
+ * back. Every migration runs in memory first, so a story several of them change
+ * is written once. Throws a {@link CommandError} naming every problem once all
+ * migrations ran.
  */
 export async function applyContentMigrations({
   space,
@@ -332,9 +362,12 @@ export async function applyContentMigrations({
   const journal = contentJournal(path);
   const access = storyAccess(space);
   const cache = storyCache(space, access);
+  const writes = storyWrites();
+  /** Migrations that changed at least one story, in the order they ran. */
+  const applied: { id: string; outcome: ApplyMigrationOutcome }[] = [];
   const refusedEverything: string[] = [];
   let failed = 0;
-  const notPublished: string[] = [];
+  let appliedAt: Date | undefined;
 
   for (const entry of selected) {
     const spinner = ui.createSpinner(`${entry.id}: fetching stories...`);
@@ -345,12 +378,14 @@ export async function applyContentMigrations({
       `${entry.id}: ${plural(candidates.length, "story contains", "stories contain")} ${entry.migration.targets.join(", ")}`,
     );
 
+    appliedAt = nextAppliedAt(appliedAt);
     const outcome = applyMigration({
       migration: entry.migration,
       id: entry.id,
       space,
       stories,
       publish,
+      appliedAt,
     });
 
     for (const refusal of outcome.refusals) {
@@ -364,10 +399,12 @@ export async function applyContentMigrations({
 
     warnPublishedDraftOnly(entry.id, outcome, { dryRun: Boolean(dryRun), publish });
 
+    for (const write of outcome.writes) {
+      cache.planned(write.story, write.content);
+    }
+    writes.add(entry.id, outcome);
+
     if (dryRun) {
-      for (const write of outcome.writes) {
-        cache.planned(write.story, write.content);
-      }
       ui.info(
         outcome.writes.length === 0
           ? `${entry.id}: would change no stories.`
@@ -386,59 +423,59 @@ export async function applyContentMigrations({
       ui.info(`${entry.id}: changed no stories, so nothing was recorded.`);
       continue;
     }
+    applied.push({ id: entry.id, outcome });
+  }
 
+  const notPublished: string[] = [];
+  if (!dryRun && applied.length > 0) {
     // Recorded before the first write, so a run that stops partway can still
     // be rolled back. A rollback skips stories whose content never changed.
-    await journal.record({ ...outcome.run, interrupted: true }, outcome.inverse);
+    for (const { outcome } of applied) {
+      await journal.record({ ...outcome.run, interrupted: true }, outcome.inverse);
+    }
 
-    const landed: LandedWrite[] = [];
-    for (const write of outcome.writes) {
+    /** Whether each story's write landed published, by story id. */
+    const landed = new Map<number, boolean>();
+    for (const write of writes.all()) {
+      const context = { storyId: write.story.id, migrations: write.migrations, space };
       try {
         await access.write(write.story.id, write.content, write.publish);
-        landed.push({ story: write.story.id, published: write.publish });
-        cache.wrote(write.story, write.content, write.publish);
-        logger.info("Story migrated", { storyId: write.story.id, migration: entry.id, space });
+        landed.set(write.story.id, write.publish);
+        logger.info("Story migrated", context);
       } catch (maybeError) {
-        // The draft changed, so the run records it and a rollback can restore it.
+        // The draft changed, so the runs record it and a rollback can restore it.
         if (maybeError instanceof DraftNotPublishedError) {
-          landed.push({ story: write.story.id, published: false });
-          cache.wrote(write.story, write.content, false);
+          landed.set(write.story.id, false);
           notPublished.push(write.story.slug);
           ui.warn(
             `${chalk.bold(write.story.slug)}: the draft was migrated, but publishing it failed: ${maybeError.message}`,
           );
-          logger.error("Failed to publish migrated story", {
-            storyId: write.story.id,
-            migration: entry.id,
-            space,
-            error: maybeError,
-          });
+          logger.error("Failed to publish migrated story", { ...context, error: maybeError });
           continue;
         }
         failed++;
-        cache.forget(write.story.id);
         const error = toError(maybeError);
         ui.warn(`${chalk.bold(write.story.slug)} could not be written: ${error.message}`);
-        logger.error("Failed to migrate story", {
-          storyId: write.story.id,
-          migration: entry.id,
-          space,
-          error,
-        });
+        logger.error("Failed to migrate story", { ...context, error });
       }
     }
 
-    // An entry for a run that changed nothing would become the most recent
-    // run, which `rollback` picks by default, leaving the real work applied.
-    if (landed.length === 0) {
-      await journal.remove(outcome.run.id);
-      ui.info(`${entry.id}: changed no stories, so nothing was recorded.`);
-      continue;
+    for (const { id, outcome } of applied) {
+      const landedWrites: LandedWrite[] = outcome.writes.flatMap((write) => {
+        const published = landed.get(write.story.id);
+        return published === undefined ? [] : [{ story: write.story.id, published }];
+      });
+      // An entry for a run that changed nothing would become the most recent
+      // run, which `rollback` picks by default, leaving the real work applied.
+      if (landedWrites.length === 0) {
+        await journal.remove(outcome.run.id);
+        ui.info(`${id}: changed no stories, so nothing was recorded.`);
+        continue;
+      }
+      const { run, inverse } = settleRun(outcome, landedWrites);
+      await journal.record(run, inverse);
+      ui.info(`${id}: changed ${changeSummary(run)}, recorded as ${chalk.bold(run.id)}.`);
     }
-
-    const { run, inverse } = settleRun(outcome, landed);
-    await journal.record(run, inverse);
-    ui.info(`${entry.id}: changed ${changeSummary(run)}, recorded as ${chalk.bold(run.id)}.`);
   }
 
   const problems = [

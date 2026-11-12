@@ -99,6 +99,9 @@ The command exits with an error when a content migration skipped every story tha
 blocks, or when a story couldn’t be read or written. When a write gets no response, the command
 reads the story back, and writes it again up to twice if the write didn’t land.
 
+The command applies every selected content migration before it writes, so a story that several of
+them change is written once.
+
 Before the first write, the command records each content migration run in
 `.storyblok/migrations/<space-id>/rollbacks/`, so a run that stops partway can still be rolled back.
 It then narrows the record to the stories that changed.

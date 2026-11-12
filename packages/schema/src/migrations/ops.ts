@@ -14,9 +14,12 @@
 import type {
   BlockNameOf,
   ContentOf,
+  IsUntypedSchema,
   SchemaShape,
   SourceBlockName,
+  SourceContent,
   SourceFieldName,
+  TargetContent,
   TargetFieldName,
 } from "./types";
 
@@ -298,11 +301,13 @@ interface ValueOpSpec<
 
 /** The pre-migration value type of `<block>.<field>`, or `unknown` when unknowable. */
 type SourceValue<TBefore extends SchemaShape, TBlock extends string, TField> =
-  TBlock extends BlockNameOf<TBefore>
-    ? TField extends keyof ContentOf<TBefore, TBlock>
-      ? ContentOf<TBefore, TBlock>[TField]
-      : unknown
-    : unknown;
+  IsUntypedSchema<TBefore> extends true
+    ? unknown
+    : TBlock extends BlockNameOf<TBefore>
+      ? TField extends keyof ContentOf<TBefore, TBlock>
+        ? ContentOf<TBefore, TBlock>[TField]
+        : unknown
+      : unknown;
 
 /**
  * A key op never honors `under`, but it carries one through when a caller
@@ -430,11 +435,7 @@ export function alterBlock<
   const TBlock extends SourceBlockName<TAfter, TBefore>,
 >(
   spec: { block: TBlock; under?: UnderOf<TBefore> },
-  fn: (
-    block: TBlock extends BlockNameOf<TBefore>
-      ? ContentOf<TBefore, TBlock>
-      : Record<string, unknown>,
-  ) => void | (TBlock extends BlockNameOf<TAfter> ? ContentOf<TAfter, TBlock> : never),
+  fn: (block: SourceContent<TBefore, TBlock>) => void | TargetContent<TAfter, TBlock>,
 ): AlterBlockOp<TAfter, TBefore> {
   return {
     kind: "alterBlock",
@@ -469,11 +470,7 @@ export function expandBlock<
   const TBlock extends SourceBlockName<TAfter, TBefore>,
 >(
   spec: { block: TBlock; under?: UnderOf<TBefore> },
-  fn: (
-    block: TBlock extends BlockNameOf<TBefore>
-      ? ContentOf<TBefore, TBlock>
-      : Record<string, unknown>,
-  ) => readonly unknown[],
+  fn: (block: SourceContent<TBefore, TBlock>) => readonly unknown[],
 ): ExpandBlockOp<TAfter, TBefore> {
   return {
     kind: "expandBlock",
@@ -504,12 +501,7 @@ export function addField<
     translatable?: boolean;
     under?: KeyOpUnder;
   },
-  fn: (
-    block: TBlock extends BlockNameOf<TBefore>
-      ? ContentOf<TBefore, TBlock>
-      : Record<string, unknown>,
-    context: AlterFieldContext,
-  ) => unknown,
+  fn: (block: SourceContent<TBefore, TBlock>, context: AlterFieldContext) => unknown,
 ): AddFieldOp<TAfter, TBefore> {
   return {
     kind: "addField",
@@ -526,11 +518,8 @@ export function addField<
  * optional, and stating it lets the op be undone without
  * recorded patches, on any machine.
  *
- * The one op pair that cannot carry a field's translations along: how a German
- * value splits is not something the split of the default language can answer.
- * A field this op reads or writes that holds `__i18n__` siblings is reported by
- * the runner and refused, and the reshape has to be written as an `alterBlock`,
- * where the translated keys are visible and the author decides.
+ * Splits each translation on its own, into the same translation of every
+ * `into` field.
  */
 export function splitField<
   TAfter extends SchemaShape,
@@ -567,8 +556,11 @@ export function splitField<
 }
 
 /**
- * Several fields into one. `split` is the counterpart, on the same terms, and
- * so is the refusal of a translated source field described on `splitField`.
+ * Several fields into one. `split` is the counterpart, on the same terms.
+ *
+ * Merges once per language any source field holds a translation for; a source
+ * field without that translation contributes its default-language value, which
+ * is what the language shows.
  */
 export function mergeFields<
   TAfter extends SchemaShape,

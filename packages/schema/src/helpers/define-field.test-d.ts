@@ -1,4 +1,5 @@
 import { describe, expectTypeOf, it } from "vitest";
+import type { ConditionalSetting } from "../generated/overlay/_internal.gen";
 import type { FieldValue } from "../generated/types/field";
 import { defineBlock } from "./define-block";
 import { hideWhen, requiredWhen } from "./define-condition";
@@ -523,27 +524,37 @@ describe("defineField field option checking", () => {
   });
 
   it("should reject a conditional `required` on layout fields", () => {
-    // @ts-expect-error a layout field cannot be required conditionally
     void defineField("details", {
       type: "section",
+      // @ts-expect-error a layout field holds no value, so it cannot be required
       conditional_settings: [requiredWhen({ field: "has_details", is: "not_empty" })],
     });
-    // @ts-expect-error a layout field cannot be required conditionally
     void defineField("tab-1", {
       type: "tab",
+      // @ts-expect-error a layout field holds no value, so it cannot be required
       conditional_settings: [{ rule_match: "any", modifications: [{ required: true }] }],
+    });
+    void defineField("details", {
+      type: "section",
+      // @ts-expect-error a layout field holds no value, so it cannot be required
+      conditional_settings: [
+        hideWhen({ field: "has_details", is: "empty" }),
+        requiredWhen({ field: "has_details", is: "not_empty" }),
+      ],
     });
   });
 
-  it("should accept a conditional `display` on layout fields", () => {
+  it("should accept conditional settings on layout fields that do not make them required", () => {
     void defineField("details", {
       type: "section",
       conditional_settings: [hideWhen({ field: "has_details", is: "empty" })],
     });
     void defineField("tab-1", {
       type: "tab",
-      conditional_settings: [{ modifications: [{ display: "hide" }] }],
+      conditional_settings: [{ modifications: [{ display: "hide" }, { required: false }] }],
     });
+    const sharedRules: ConditionalSetting[] = [hideWhen({ field: "has_details", is: "empty" })];
+    void defineField("details", { type: "section", conditional_settings: sharedRules });
   });
 
   it("should accept arbitrary plugin option keys on `custom` fields", () => {
@@ -654,6 +665,11 @@ describe("defineField field option checking", () => {
     void defineField("f", commerce);
     const custom: FieldInput = { type: "custom", field_type: "unregistered" };
     void defineField("f", custom);
+  });
+
+  it("should accept a field built by a wrapper that takes `FieldInput`", () => {
+    const field = (name: string, input: FieldInput) => defineField(name, input);
+    void defineBlock({ name: "teaser", fields: [field("title", { type: "text" })] });
   });
 
   it("should reject a DSL reference key on a field type with no wire key behind it", () => {

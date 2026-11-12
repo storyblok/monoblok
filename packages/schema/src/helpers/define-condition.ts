@@ -26,16 +26,8 @@ export interface ConditionOptions {
 /** The wire form of a single condition inside `rule_conditions`. */
 type RuleCondition = NonNullable<ConditionalSetting["rule_conditions"]>[number];
 
-/** The setting {@link hideWhen} returns. */
-export type HideSetting = Omit<ConditionalSetting, "modifications"> & {
-  modifications: [{ display: "hide" }];
-};
-
-/**
- * The setting {@link requiredWhen} returns. Narrower than `ConditionalSetting`
- * so `defineField` can reject it on layout fields, which never hold a value.
- */
-export type RequiredSetting = Omit<ConditionalSetting, "modifications"> & {
+/** Keeps `required: true` literal so `defineField` can reject it on layout fields. */
+type RequiredSetting = Omit<ConditionalSetting, "modifications"> & {
   modifications: [{ required: true }];
 };
 
@@ -65,7 +57,7 @@ function toRuleConditions(conditions: FieldCondition | FieldCondition[]): RuleCo
 export function hideWhen(
   conditions: FieldCondition | FieldCondition[],
   options: ConditionOptions = {},
-): HideSetting {
+): ConditionalSetting {
   return {
     modifications: [{ display: "hide" }],
     rule_match: options.match ?? "all",

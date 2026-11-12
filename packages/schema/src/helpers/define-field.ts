@@ -14,7 +14,6 @@ import type {
   RichtextFieldValue,
   TableFieldValue,
 } from "../generated/types/field";
-import type { ConditionalSetting } from "../generated/overlay/_internal.gen";
 import type { BlockFolder } from "./define-folder";
 import type { Prettify } from "../utils/prettify";
 import { DENIABLE_FIELD_TYPES, type DerivedRestrictionKey } from "../restrictions";
@@ -299,30 +298,11 @@ type DslInputFor<TVariant> = Pick<DslInputAll, Extract<DslKeysFor<TVariant>, key
  */
 export type FieldInput = FieldInputOf<Field>;
 
-type FieldInputOf<T> = T extends { type: LayoutFieldType }
-  ? Omit<T, WireRestrictionKeys | "conditional_settings"> & {
-      conditional_settings?: LayoutConditionalSetting[];
-    }
-  : T extends any
-    ? Omit<T, WireRestrictionKeys> &
-        Pick<WireRestrictionDocs, Extract<WireRestrictionKeys, keyof T>> &
-        DslInputFor<T>
-    : never;
-
-type ConditionalModification = NonNullable<ConditionalSetting["modifications"]>[number];
-
-/**
- * A conditional setting without the `required` modification. The Management API
- * applies a conditional `required` to every field type, and a layout field never
- * holds a value, so a matching condition would block publishing.
- */
-type LayoutConditionalSetting = Omit<ConditionalSetting, "modifications"> & {
-  modifications?: Array<
-    Omit<ConditionalModification, "required"> & {
-      required?: Invalid<"a layout field holds no value, so it cannot be required">;
-    }
-  >;
-};
+type FieldInputOf<T> = T extends any
+  ? Omit<T, WireRestrictionKeys> &
+      Pick<WireRestrictionDocs, Extract<WireRestrictionKeys, keyof T>> &
+      DslInputFor<T>
+  : never;
 
 declare const invalidKey: unique symbol;
 /**
@@ -350,11 +330,41 @@ type MemberFor<T> = T extends { type: infer TType } ? Extract<Field, { type: TTy
 type NoExtraKeys<T> = T extends { type: "custom" }
   ? unknown
   : {
-      [K in Exclude<
-        keyof T,
-        keyof MemberFor<T> | DslKeysFor<MemberFor<T>>
-      >]: Invalid<`unknown option "${K & string}" for this field type`>;
+      [K in Exclude<keyof T, keyof MemberFor<T> | DslKeysFor<MemberFor<T>>>]: Invalid<
+        K extends "required"
+          ? T extends { type: LayoutFieldType }
+            ? LayoutRequiredReason
+            : `unknown option "${K}" for this field type`
+          : `unknown option "${K & string}" for this field type`
+      >;
     };
+
+/**
+ * The Management API enforces `required`, static or conditional, on layout fields
+ * too, and they never hold a value, so publishing a story that uses the block fails.
+ */
+type LayoutRequiredReason = "a layout field holds no value, so it cannot be required";
+
+type HasRequiredModification<TSettings> = TSettings extends readonly (infer TSetting)[]
+  ? TSetting extends { modifications?: readonly (infer TModification)[] }
+    ? TModification extends { required: true }
+      ? true
+      : never
+    : never
+  : never;
+
+/**
+ * Rejects a conditional `required: true` on a layout field. `required: false` is
+ * the editor's "Not Required" and has no effect, so it passes.
+ */
+type NoLayoutRequired<T> = T extends {
+  type: LayoutFieldType;
+  conditional_settings: infer TSettings;
+}
+  ? [HasRequiredModification<TSettings>] extends [never]
+    ? unknown
+    : { conditional_settings: Invalid<LayoutRequiredReason> }
+  : unknown;
 
 /**
  * Rejects the wire restriction keys on a field that also uses `allow` / `deny`.
@@ -374,7 +384,7 @@ type NoRestrictionConflict<T> = T extends { allow: {} } | { deny: {} }
   : unknown;
 
 /**
- * A field literal plus the two option checks {@link defineField} applies.
+ * A field literal plus the option checks {@link defineField} applies.
  *
  * Needed to write a wrapper around `defineField`. The checks are mapped types
  * over the type parameter, and TypeScript cannot prove `T` satisfies a mapped
@@ -390,7 +400,8 @@ type NoRestrictionConflict<T> = T extends { allow: {} } | { deny: {} }
  */
 export type CheckedField<TField extends FieldInput> = TField &
   NoExtraKeys<TField> &
-  NoRestrictionConflict<TField>;
+  NoRestrictionConflict<TField> &
+  NoLayoutRequired<TField>;
 
 /** Result of {@link defineField}: the field stamped with `name`, with refs normalized to strings. */
 export type DefinedField<TName extends string, TField extends FieldInput> = Prettify<

@@ -19,7 +19,6 @@ import type {
   SourceBlockName,
   SourceContent,
   SourceFieldName,
-  TargetContent,
   TargetFieldName,
 } from "./types";
 
@@ -435,7 +434,15 @@ export function alterBlock<
   const TBlock extends SourceBlockName<TAfter, TBefore>,
 >(
   spec: { block: TBlock; under?: UnderOf<TBefore> },
-  fn: (block: SourceContent<TBefore, TBlock>) => void | TargetContent<TAfter, TBlock>,
+  fn: (
+    block: SourceContent<TBefore, TBlock>,
+  ) =>
+    | void
+    | (TBlock extends BlockNameOf<TAfter>
+        ? IsUntypedSchema<TAfter> extends true
+          ? Record<string, unknown>
+          : ContentOf<TAfter, TBlock>
+        : never),
 ): AlterBlockOp<TAfter, TBefore> {
   return {
     kind: "alterBlock",

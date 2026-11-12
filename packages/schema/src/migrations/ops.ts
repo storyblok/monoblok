@@ -205,13 +205,13 @@ export interface MergeFieldsOp<TAfter extends SchemaShape, TBefore extends Schem
 export interface FieldsToBlockOp<TAfter extends SchemaShape, TBefore extends SchemaShape> {
   kind: "fieldsToBlock";
   block: string;
-  /** The `bloks` field of `block` that holds the new block. */
-  field: string;
+  /** Field of `block` → the field of the new block it moves to. */
+  fields: Readonly<Record<string, string>>;
   into: {
     /** The new block's name. */
     block: string;
-    /** Field of `block` → the field of the new block it moves to. */
-    fields: Readonly<Record<string, string>>;
+    /** The `bloks` field of `block` that holds the new block. */
+    field: string;
   };
   readonly [schemaBrand]?: [TAfter, TBefore];
 }
@@ -674,10 +674,11 @@ export function mergeFields<
 }
 
 /**
- * Moves fields of a block into one new `into.block` block in its `field`,
+ * Moves fields of a block into one new `into.block` block in its `into.field`,
  * translations included, and removes them from the block. Creates the block
- * only where a moved field holds a value, and refuses a block whose `field`
- * already holds one, since moving would drop either it or the values.
+ * only where a moved field holds a value, and refuses a block whose
+ * `into.field` already holds one, since moving would drop either it or the
+ * values.
  */
 export function fieldsToBlock<
   TAfter extends SchemaShape,
@@ -686,27 +687,21 @@ export function fieldsToBlock<
   const TNewBlock extends BlockNameOf<TAfter>,
 >(spec: {
   block: TBlock;
-  field: TargetFieldName<TAfter, TBlock>;
-  into: {
-    block: TNewBlock;
-    fields: Partial<
-      Record<SourceFieldName<TAfter, TBefore, TBlock>, TargetFieldName<TAfter, TNewBlock>>
-    >;
-  };
+  fields: Partial<
+    Record<SourceFieldName<TAfter, TBefore, TBlock>, TargetFieldName<TAfter, TNewBlock>>
+  >;
+  into: { block: TNewBlock; field: TargetFieldName<TAfter, TBlock> };
   under?: KeyOpUnder;
 }): FieldsToBlockOp<TAfter, TBefore> {
   return {
     kind: "fieldsToBlock",
     block: spec.block,
-    field: spec.field,
-    into: {
-      block: spec.into.block,
-      fields: Object.fromEntries(
-        Object.entries(spec.into.fields).filter(
-          (entry): entry is [string, string] => typeof entry[1] === "string",
-        ),
+    fields: Object.fromEntries(
+      Object.entries(spec.fields).filter(
+        (entry): entry is [string, string] => typeof entry[1] === "string",
       ),
-    },
+    ),
+    into: { block: spec.into.block, field: spec.into.field },
     ...carriedUnder(spec),
   };
 }

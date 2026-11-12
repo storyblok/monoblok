@@ -823,3 +823,22 @@ describe("createApiClient with .withTypes() — field plugins", () => {
     }
   });
 });
+
+describe("WithInlinedRelations layout fields", () => {
+  it("should leave tab, section and group fields out of inlined block content", () => {
+    const _formComponent = defineBlock({
+      name: "form",
+      fields: [
+        defineField("tab-1", { type: "tab", keys: ["title", "author"] }),
+        defineField("details", { type: "section", keys: ["title"] }),
+        defineField("legacy", { type: "group" }),
+        defineField("title", { type: "text", required: true }),
+        defineField("author", { type: "option" }),
+      ],
+    });
+    type Form = WithInlinedRelations<typeof _formComponent, "form.author", typeof _formComponent>;
+    expectTypeOf<keyof Form>().toEqualTypeOf<
+      "_uid" | "component" | "_editable" | "title" | "author"
+    >();
+  });
+});

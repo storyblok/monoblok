@@ -93,8 +93,9 @@ jobs:
         shell: bash
 
   # Starts the blueprint sync once the packages are on npm, so the sync resolves `latest` to what
-  # was just published. Every publish on main starts one, including a publish that had nothing new:
-  # the approval is where a run is rejected. See blueprints/README.md.
+  # was just published. Every publish on main starts one, including a publish that had nothing new,
+  # and it runs without an approval: a sync with nothing to change pushes nothing. See
+  # blueprints/README.md and ADR-0026.
   #
   # The sync is dispatched as a run of its own, not called with `uses:`. When it was called, `push`
   # got an empty App key (the environment variable arrived, the environment secret did not).
@@ -114,4 +115,4 @@ jobs:
           REF: ${{ github.ref_name }}
         run: |
           gh workflow run sync-blueprints.yaml --repo "$GITHUB_REPOSITORY" --ref "$REF" -f blueprints=all
-          echo "Started the **Sync blueprints** workflow on \`$REF\`. It waits for approval in the Actions tab: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/workflows/sync-blueprints.yaml" >> "$GITHUB_STEP_SUMMARY"
+          echo "Started the **Sync blueprints** workflow on \`$REF\`. Follow it in the Actions tab: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/workflows/sync-blueprints.yaml" >> "$GITHUB_STEP_SUMMARY"

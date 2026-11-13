@@ -1,15 +1,14 @@
-/** @type {import('./$types').PageLoad} */
-export async function load({ params, parent }) {
-	const { storyblokAPI } = await parent();
+import { error } from '@sveltejs/kit';
+import { apiClient } from '$lib/storyblok';
 
-	const response = await storyblokAPI.get(
-		`cdn/stories/${params.slug || 'home'}`,
-		{
-			version: 'draft',
-		},
-	);
+/** @type {import('./$types').PageLoad} */
+export async function load({ params }) {
+	const { data } = await apiClient.stories.get(params.slug || 'home', {
+		query: { version: 'draft' },
+	});
+	if (!data) error(404, 'Story not found');
 
 	return {
-		story: response.data.story,
+		story: data.story,
 	};
 }

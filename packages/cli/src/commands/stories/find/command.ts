@@ -20,6 +20,13 @@ import {
 import { prepareCapiFilter } from "./pipeline";
 import { runFind } from "./run";
 import { runCheckReferences } from "./check-references";
+import {
+  assertSemanticCompatibleOptions,
+  assertSemanticOptions,
+  buildStrataQuery,
+  formatSemanticHelp,
+  searchStrata,
+} from "./semantic";
 import type { FindOptions } from "./types";
 
 function collectValues(value: string, previous: string[]): string[] {
@@ -31,8 +38,19 @@ const findCmd = storiesCommand
   .description(
     "Find stories matching filters and print them to stdout as JSONL, one story per line, or as a table in a terminal. Filters combine with AND.",
   )
-  .argument("[text]", "full-text search over story name, slug and content (case-insensitive)")
+  .argument(
+    "[text]",
+    "full-text search over story name, slug and content (case-insensitive), or a search by meaning with --mode semantic",
+  )
   .option("-s, --space <space>", "space ID")
+  .addOption(
+    new Option(
+      "--mode <mode>",
+      "how [text] matches: 'fulltext', or 'semantic' to rank stories by meaning with Strata",
+    )
+      .choices(["fulltext", "semantic"])
+      .default("fulltext"),
+  )
   .addOption(
     new Option("--entry-type <type>", "filter by entry type")
       .choices(["all", "story", "folder"])
@@ -106,7 +124,7 @@ const findCmd = storiesCommand
   )
   .option(
     "--capi-params <params>",
-    "extra CDN query params for --capi-filter, e.g. 'version=published' or 'language=de'",
+    "extra CDN query params for --capi-filter, e.g. 'version=published' or 'language=de'. With --mode semantic, only 'version'",
   );
 
 findCmd.action(async (text: string | undefined, options: FindOptions, command) => {
@@ -131,13 +149,32 @@ findCmd.action(async (text: string | undefined, options: FindOptions, command) =
     return;
   }
 
+  const semantic = options.mode === "semantic";
+  if (semantic) {
+    // A usage error that names the incompatible flag, followed by the help the
+    // user would need next: the same command, narrowed to what this mode takes.
+    try {
+      assertSemanticCompatibleOptions(command);
+    } catch (maybeError) {
+      handleError(toError(maybeError), verbose);
+      ui.br();
+      ui.log(formatSemanticHelp(command));
+      return;
+    }
+  }
+
   try {
     // Validate and compile everything before the first request, so a bad flag or
     // a malformed JSONPath fails as a usage error instead of mid-stream.
+    if (semantic) {
+      assertSemanticOptions(text, options);
+    }
     assertSupportedOptions(options);
+    const strataQuery = semantic && text ? buildStrataQuery(text, options) : undefined;
     // One clock for every date flag, so `--created 7d --updated 7d` share a "now".
     const now = new Date();
-    const params = buildQueryParams(text, options, now);
+    // In semantic mode the text goes to Strata, not to the full-text search.
+    const params = buildQueryParams(semantic ? undefined : text, options, now);
     // Decidable from the listing alone, so they narrow before any content is fetched.
     const preContentFilters = [
       ...buildPublishStatusFilters(options),
@@ -148,6 +185,26 @@ findCmd.action(async (text: string | undefined, options: FindOptions, command) =
     const issueTypes = parseIssueTypes(options.checkReferences);
 
     const context = { spaceId: space, params, ui, logger, reporter, verbose };
+
+    if (strataQuery) {
+      const ranking = await searchStrata({
+        spaceId: space,
+        region: state.region,
+        query: strataQuery,
+        ui,
+      });
+      // Hydrating Strata's matches is one listing request: at most 100 stories.
+      await runFind({
+        ...context,
+        params: { ...params, by_ids: [...ranking.keys()].join(",") },
+        preContentFilters,
+        filters: whereFilters,
+        skipContent: options.skipContent === true,
+        limit,
+        ranking,
+      });
+      return;
+    }
 
     const capi = options.capiFilter
       ? await prepareCapiFilter({

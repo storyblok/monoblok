@@ -32,6 +32,7 @@ import { createDatasourcesResource } from "./resources/datasources";
 import { createDatasourceEntriesResource } from "./resources/datasource-entries";
 import { createSpacesResource } from "./resources/spaces";
 import { createExperimentsResource } from "./resources/experiments";
+import { createStrataResource } from "./resources/strata";
 
 // ---------------------------------------------------------------------------
 // Client types (co-located with runtime)
@@ -256,6 +257,7 @@ type ApiClientBaseResult<
   stories: ReturnType<
     typeof createStoriesResource<Component, Record<never, never>, InlineRelations, ThrowOnError>
   >;
+  strata: ReturnType<typeof createStrataResource<ThrowOnError>>;
   tags: ReturnType<typeof createTagsResource<ThrowOnError>>;
 };
 
@@ -769,6 +771,7 @@ export const createApiClientBase = <
     links: createLinksResource(resourceDeps),
     spaces: createSpacesResource(resourceDeps),
     stories,
+    strata: createStrataResource(resourceDeps),
     tags: createTagsResource(resourceDeps),
   };
 };

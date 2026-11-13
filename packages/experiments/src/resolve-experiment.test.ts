@@ -121,8 +121,10 @@ describe("resolveExperiment", () => {
           story_mappings: [
             {
               original_story_id: 1,
+              original_uuid: "00000000-0000-4000-8000-000000000001",
               original_slug: "home",
               variant_story_id: 3,
+              variant_uuid: "00000000-0000-4000-8000-000000000003",
               variant_slug: "home-c",
             },
           ],
@@ -149,8 +151,10 @@ describe("resolveExperiment", () => {
           story_mappings: [
             {
               original_story_id: 1,
+              original_uuid: "00000000-0000-4000-8000-000000000001",
               original_slug: "home",
               variant_story_id: null,
+              variant_uuid: null,
               variant_slug: null,
             },
           ],

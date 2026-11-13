@@ -2,9 +2,9 @@
 
 ## Perform tests
 
-- Run CLI commands with `./dist/index.mjs` (for available commands, run `./dist/index.mjs --help`).
-- Review command documentation in `./src/commands/COMMAND/README.md` or
-  `./src/commands/COMMAND/ACTION/README.md`.
+- Run CLI commands with `./dist/index.mjs`. For a command's options, run
+  `./dist/index.mjs <command> --help` or read the
+  [CLI docs](https://www.storyblok.com/docs/tooling/cli).
 - Verify changes in the local file system or the Storyblok space.
 - Many commands require files in `./.storyblok/COMMAND_DIR/$STORYBLOK_SPACE_ID` to perform a test.
   Create files in this directory when necessary. For example, when pushing a story, create it in
@@ -29,9 +29,9 @@
 
 ### Scenario seeds
 
-Use the provided [scenarios](./scenarios/SCENARIOS.md) to quickly seed QA spaces with predictable
-data for manual testing. Scenarios expect a clean space, so run cleanup first when you want a fresh
-start.
+Seed QA spaces with the CLI scenarios (`packages/cli/test/scenarios/SCENARIOS.md`). Cleanup and
+other options are documented in the `qa-engineer-manual` skill
+(`.agents/skills/qa-engineer-manual/SKILL.md`).
 
 ```bash
 bash .agents/skills/qa-engineer-manual/scripts/seed-scenario.sh \
@@ -92,9 +92,13 @@ bash .agents/skills/qa-engineer-manual/scripts/cleanup-remote.sh --shared --libr
 
 ## Schema command
 
-The `schema` command uses TypeScript entry files (not JSON). When test files live outside a
-workspace package (e.g. `.claude/tmp/`), they can't resolve `@storyblok/schema` — rewrite the
-imports to absolute source paths before pushing.
+The `schema` command uses TypeScript entry files (not JSON). Files outside a workspace package (for
+example `.claude/tmp/`) can't resolve `@storyblok/schema`. Rewrite such imports to the absolute
+source path before pushing:
+
+```ts
+import { defineBlock, defineFolder } from "/abs/path/to/monoblok/packages/schema/src/index";
+```
 
 ### Test patterns
 
@@ -105,12 +109,7 @@ imports to absolute source paths before pushing.
 # 2. Init
 node ./dist/index.mjs schema init --space "$STORYBLOK_SPACE_ID" --out-dir ../../.claude/tmp/schema-test
 
-# 3. Rewrite @storyblok/schema imports to absolute source paths (only needed when
-#    the generated files live outside a workspace package, e.g. .claude/tmp/):
-#    import { defineBlock } from '@storyblok/schema'
-#    -> import { defineBlock } from '/abs/path/to/monoblok/packages/schema/src/index'
-#    import { defineFolder } from '@storyblok/schema'
-#    -> import { defineFolder } from '/abs/path/to/monoblok/packages/schema/src/index'
+# 3. Rewrite @storyblok/schema imports (see above)
 
 # 4. Push back — should show all entities as "unchanged"
 node ./dist/index.mjs schema push ../../.claude/tmp/schema-test/schema.ts --space "$STORYBLOK_SPACE_ID" --dry-run --no-migrations
@@ -165,13 +164,8 @@ by UUID. The CLI resolves paths to group UUIDs at push time. To test:
 4. Push the schema. `schema push` creates missing groups parent-first, resolves membership to UUIDs,
    and (with `--delete`) removes stale groups children-first.
 
-See `adr/0007-block-folder-identity-by-name-path.md` for the identity model.
-
 ## Known quirks
 
-- **Progress bar titles show `{title}` literally** — all progress bars render the raw `{title}`
-  placeholder instead of the actual label. This is a known rendering issue and does not affect
-  functionality. Ignore it when reading command output.
 - **Spinner continues after error in `migrations run`** — when `readMigrationFiles` throws (e.g.,
   missing directory), the spinner is not stopped before the error handler runs. The error message is
   still displayed correctly.

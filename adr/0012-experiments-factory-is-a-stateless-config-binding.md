@@ -1,6 +1,7 @@
 # ADR-0012: The Experiments Factory Is a Stateless Config Binding
 
-**Status:** Accepted **Date:** 2026-08-04
+**Status:** Accepted  
+**Date:** 2026-08-04
 
 ## Context
 

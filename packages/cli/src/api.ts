@@ -13,7 +13,17 @@ function configsAreEqual(
   config1: ManagementApiClientConfig,
   config2: ManagementApiClientConfig,
 ): boolean {
-  return JSON.stringify(config1) === JSON.stringify(config2);
+  const keys = new Set([...Object.keys(config1), ...Object.keys(config2)]);
+  return [...keys].every((key) => {
+    const value1 = config1[key as keyof ManagementApiClientConfig];
+    const value2 = config2[key as keyof ManagementApiClientConfig];
+    // JSON.stringify drops functions, which would make every token provider look
+    // identical and hand back a client bound to the previous session's credential.
+    if (typeof value1 === "function" || typeof value2 === "function") {
+      return value1 === value2;
+    }
+    return JSON.stringify(value1) === JSON.stringify(value2);
+  });
 }
 
 export function createMapiClient(options: ManagementApiClientConfig) {

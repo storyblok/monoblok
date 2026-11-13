@@ -6,7 +6,7 @@ import { getProgram } from "../../program";
 import { CommandError, handleError, isRegion } from "../../utils";
 import { loginWithToken } from "./actions";
 import { session } from "../../session";
-import { performInteractiveLogin } from "./helpers";
+import { performInteractiveLogin, performOAuthLoginStrategy } from "./helpers";
 import { type CLISpinner, getUI, stderrPromptContext } from "../../lib/ui";
 
 const program = getProgram(); // Get the shared singleton instance
@@ -24,7 +24,8 @@ export const loginCommand = program
     "-r, --region <region>",
     `The region you would like to work in. Please keep in mind that the region must match the region of your space. This region flag will be used for the other cli's commands. You can use the values: ${allRegionsText}.`,
   )
-  .action(async (options: { token: string; region: RegionCode }) => {
+  .option("--oauth", "Login with OAuth (opens your browser for consent)")
+  .action(async (options: { token: string; region: RegionCode; oauth?: boolean }) => {
     const ui = getUI();
     ui.title(`${commands.LOGIN}`, colorPalette.LOGIN);
     // Global options
@@ -47,6 +48,22 @@ export const loginCommand = program
           `The provided region: ${region} is not valid. Please use one of the following values: ${Object.values(regions).join(" | ")}`,
         ),
       );
+      return;
+    }
+
+    if (options.oauth && token) {
+      handleError(
+        new CommandError(
+          "`--oauth` and `--token` are two different login methods. Pass `--oauth` for browser consent, or `--token <token>` for a personal access token.",
+        ),
+      );
+      return;
+    }
+
+    if (options.oauth) {
+      const userRegion = region || regions.EU;
+      await performOAuthLoginStrategy({ region: userRegion, verbose });
+      ui.br();
       return;
     }
 

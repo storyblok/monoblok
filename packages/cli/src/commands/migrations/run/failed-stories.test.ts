@@ -1,31 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { formatFailedStories, MAX_LISTED_FAILED_STORIES } from "./failed-stories";
-import type { FailedStory } from "./constants";
+import { listFailedStories } from "./failed-stories";
 
-const failedStory = (storyId: number): FailedStory => ({
-  storyId,
-  name: `Story ${storyId}`,
-  error: new Error("You are not allowed to publish at this workflow stage."),
-});
+const WORKFLOW_STAGE_ERROR =
+  "Update failed: You are not allowed to publish at this workflow stage.";
 
-describe("formatFailedStories", () => {
-  it("should list each failed story with its reason", () => {
-    expect(formatFailedStories([failedStory(1), { ...failedStory(2), name: undefined }])).toBe(
-      [
-        "  - Story 1 (id 1): You are not allowed to publish at this workflow stage.",
-        "  - id 2: You are not allowed to publish at this workflow stage.",
-      ].join("\n"),
+describe("listFailedStories", () => {
+  it("should name a single failed story with its reason", () => {
+    expect(listFailedStories([{ storyId: 1, name: "Home", reason: WORKFLOW_STAGE_ERROR }])).toEqual(
+      [`Failed to migrate "Home (id 1)": ${WORKFLOW_STAGE_ERROR}`],
     );
   });
 
-  it("should point to the log file instead of listing every story of a long list", () => {
-    const failed = Array.from({ length: MAX_LISTED_FAILED_STORIES + 290 }, (_, i) =>
-      failedStory(i + 1),
-    );
+  it("should group stories that failed for the same reason", () => {
+    const failed = Array.from({ length: 300 }, (_, i) => ({
+      storyId: i + 1,
+      name: i === 1 ? undefined : `Story ${i + 1}`,
+      reason: WORKFLOW_STAGE_ERROR,
+    }));
 
-    const lines = formatFailedStories(failed).split("\n");
-
-    expect(lines).toHaveLength(MAX_LISTED_FAILED_STORIES + 1);
-    expect(lines.at(-1)).toBe("  … and 290 more, listed in the log file.");
+    expect(listFailedStories(failed)).toEqual([
+      `Failed to migrate 300 stories — ${WORKFLOW_STAGE_ERROR} (e.g. "Story 1 (id 1)", "id 2", "Story 3 (id 3)")`,
+    ]);
   });
 });

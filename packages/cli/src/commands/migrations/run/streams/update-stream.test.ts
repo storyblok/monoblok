@@ -377,19 +377,25 @@ describe("updateStream", () => {
       expect(results.failed[0]?.error.message).toBe(WORKFLOW_STAGE_ERROR);
     });
 
-    it("should list each failed story with the reason in the summary", async () => {
+    it("should report each failed story with the reason", async () => {
       vi.mocked(updateStory).mockImplementation((_space, storyId) =>
         storyId === 2
           ? rejectsWithWorkflowStageError()
           : Promise.resolve({ ...mockUpdatedStory, id: storyId }),
       );
-      const updateStream = new UpdateStream({ space: "12345", publish: "all" });
+      const onError = vi.fn();
+      const updateStream = new UpdateStream({ space: "12345", publish: "all", onError });
 
       await writeStories(updateStream);
 
-      const summary = updateStream.getSummary();
-      expect(summary).toContain("2 stories updated, 1 stories failed");
-      expect(summary).toContain(`About (id 2): ${WORKFLOW_STAGE_ERROR}`);
+      expect(updateStream.getSummary()).toBe(
+        "Update Results: 2 stories updated, 1 stories failed.",
+      );
+      expect(onError).toHaveBeenCalledExactlyOnceWith({
+        storyId: 2,
+        name: "About",
+        error: expect.objectContaining({ message: WORKFLOW_STAGE_ERROR }),
+      });
     });
 
     it("should finish the run when every log transport throws", async () => {
@@ -464,6 +470,39 @@ describe("updateStream", () => {
       expect(updateStream.getResults().failed).toEqual([
         { storyId: 1, name: "Home", error: expect.objectContaining({ errorId: "unauthorized" }) },
       ]);
+    });
+
+    it("should not start an update that waited for a slot when the credentials were rejected", async () => {
+      const pending: Array<{ resolve: (story: Story) => void; reject: (error: unknown) => void }> =
+        [];
+      vi.mocked(updateStory).mockImplementation(
+        () => new Promise((resolve, reject) => pending.push({ resolve, reject })),
+      );
+      const updateStream = new UpdateStream({ space: "12345", publish: "all" });
+      updateStream.on("error", () => {});
+      const tick = () => new Promise((resolve) => setImmediate(resolve));
+
+      // One more story than there are slots, so the last one waits.
+      for (let storyId = 1; storyId <= 13; storyId++) {
+        updateStream.write({ storyId, name: `Story ${storyId}`, content });
+      }
+      await tick();
+      expect(updateStory).toHaveBeenCalledTimes(12);
+
+      pending[0]?.reject(
+        new APIError(
+          "unauthorized",
+          "update_story",
+          new FetchError("Unauthorized", { status: 401, statusText: "Unauthorized" }),
+        ),
+      );
+      await tick();
+      for (const { resolve } of pending.slice(1)) {
+        resolve(mockUpdatedStory);
+      }
+      await tick();
+
+      expect(updateStory).toHaveBeenCalledTimes(12);
     });
   });
 });

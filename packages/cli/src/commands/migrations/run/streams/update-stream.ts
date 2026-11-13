@@ -9,9 +9,9 @@ import {
 } from "../../../stories/utils";
 import { getLogger } from "../../../../lib/logger/logger";
 import { createPipelineBackpressureLock } from "../../../../utils/backpressure-lock";
-import { ERROR_CODES } from "../constants";
+import { ERROR_CODES, type FailedStory } from "../constants";
 import { toError } from "../../../../utils/error";
-import { formatFailedStories, isSystemicError } from "../failed-stories";
+import { isSystemicError } from "../failed-stories";
 
 export interface UpdateStreamOptions {
   space: string;
@@ -19,6 +19,7 @@ export interface UpdateStreamOptions {
   dryRun?: boolean;
   onProgress?: (current: number) => void;
   onTotal?: (total: number) => void;
+  onError?: (failed: FailedStory) => void;
 }
 
 export interface UpdateStreamResult {
@@ -62,6 +63,12 @@ export class UpdateStream extends Writable {
   ) {
     try {
       await this.semaphore.acquire();
+      if (this.destroyed) {
+        // The run was stopped while this story waited for a slot.
+        this.semaphore.release();
+        callback();
+        return;
+      }
 
       this.updateStory(chunk)
         .catch((maybeError) => {
@@ -74,8 +81,7 @@ export class UpdateStream extends Writable {
             (story) => story.storyId === chunk.storyId,
           );
           if (!isRecorded) {
-            this.results.failed.push({ storyId: chunk.storyId, name: storyName, error });
-            this.results.totalProcessed++;
+            this.recordFailure({ storyId: chunk.storyId, name: storyName, error });
           }
           getLogger().error(error.message, {
             storyId: chunk.storyId,
@@ -142,13 +148,7 @@ export class UpdateStream extends Writable {
         getLogger().info("Updated story", { storyId });
       } else {
         const error = new Error("Update returned null");
-        this.results.failed.push({
-          storyId,
-          name: storyName,
-          error,
-        });
-        this.results.totalProcessed++;
-        this.options.onProgress?.(this.results.totalProcessed);
+        this.recordFailure({ storyId, name: storyName, error });
         getLogger().error(`Failed to update story: ${error.message}`, {
           storyId,
           storyName,
@@ -157,13 +157,7 @@ export class UpdateStream extends Writable {
       }
     } catch (maybeError) {
       const error = toError(maybeError);
-      this.results.failed.push({
-        storyId,
-        name: storyName,
-        error,
-      });
-      this.results.totalProcessed++;
-      this.options.onProgress?.(this.results.totalProcessed);
+      this.recordFailure({ storyId, name: storyName, error });
       getLogger().error(error.message, {
         storyId,
         storyName,
@@ -175,6 +169,13 @@ export class UpdateStream extends Writable {
         this.destroy(error);
       }
     }
+  }
+
+  private recordFailure(failed: { storyId: number; name: string; error: Error }): void {
+    this.results.failed.push(failed);
+    this.results.totalProcessed++;
+    this.options.onProgress?.(this.results.totalProcessed);
+    this.options.onError?.(failed);
   }
 
   async _destroy(error: Error | null, callback: (error?: Error | null) => void) {
@@ -213,11 +214,6 @@ export class UpdateStream extends Writable {
     }
 
     summary += `.`;
-
-    if (failed.length > 0) {
-      summary += `\n${formatFailedStories(failed)}`;
-    }
-
     return summary;
   }
 }

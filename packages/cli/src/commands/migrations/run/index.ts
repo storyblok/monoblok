@@ -2,7 +2,7 @@ import type { Command } from "commander";
 import chalk from "chalk";
 import { getUI } from "../../../lib/ui";
 import { getLogger } from "../../../lib/logger/logger";
-import { getReporter, REPORT_STATUS } from "../../../lib/reporter/reporter";
+import { getReporter } from "../../../lib/reporter/reporter";
 import { colorPalette, commands } from "../../../constants";
 import {
   CommandError,
@@ -20,6 +20,7 @@ import { MigrationStream } from "./streams/migrations-transform";
 import { isLegacyMigrationFilename, migrationTargetsComponent } from "../migration-filename";
 import { UpdateStream } from "./streams/update-stream";
 import { pipeline } from "node:stream";
+import { type FailedStoryReport, listFailedStories } from "./failed-stories";
 
 const runCmd = migrationsCommand
   .command("run [componentName]")
@@ -122,6 +123,37 @@ runCmd.action(
       const migrationsProgress = ui.createProgressBar({ title: "Applying Migrations".padEnd(19) });
       const updateProgress = ui.createProgressBar({ title: "Updating Stories...".padEnd(19) });
 
+      // Every stage reports its failed stories here, so the summary lists them
+      // once, grouped by reason, whichever stage they failed in.
+      const failedStories: FailedStoryReport[] = [];
+      let listedStories = 0;
+      let fetchedStories = 0;
+      let fetchFailedStories = 0;
+
+      const storiesStream = await createStoriesStream({
+        spaceId: space,
+        params: {
+          componentName,
+          ...buildStoryScopeParams({ startsWith, query }),
+        },
+        onTotal: (total) => {
+          listedStories = total;
+          storiesProgress.setTotal(total);
+          migrationsProgress.setTotal(total);
+        },
+        onProgress: () => {
+          fetchedStories++;
+          storiesProgress.increment();
+        },
+        onError: ({ storyId, name, error }) => {
+          fetchFailedStories++;
+          storiesProgress.increment();
+          // The story never reaches the migration stage, which would count it.
+          migrationsProgress.increment();
+          failedStories.push({ storyId, name, reason: `Fetch failed: ${error.message}` });
+        },
+      });
+
       const migrationStream = new MigrationStream({
         migrationFiles: filteredMigrations,
         space,
@@ -134,24 +166,11 @@ runCmd.action(
         onProgress: () => {
           migrationsProgress.increment();
         },
-      });
-
-      const storiesStream = await createStoriesStream({
-        spaceId: space,
-        params: {
-          componentName,
-          ...buildStoryScopeParams({ startsWith, query }),
-        },
-        onTotal: (total) => {
-          storiesProgress.setTotal(total);
-          migrationsProgress.setTotal(total);
-        },
-        onProgress: () => {
-          storiesProgress.increment();
-        },
-        onError: (failedStory) => {
-          storiesProgress.increment();
-          migrationStream.recordFetchFailure(failedStory);
+        onError: ({ storyId, name, error, migrationName }) => {
+          const reason = migrationName
+            ? `${migrationName} failed: ${error.message}`
+            : error.message;
+          failedStories.push({ storyId, name, reason });
         },
       });
 
@@ -161,6 +180,9 @@ runCmd.action(
         dryRun,
         onProgress: () => {
           updateProgress.increment();
+        },
+        onError: ({ storyId, name, error }) => {
+          failedStories.push({ storyId, name, reason: `Update failed: ${error.message}` });
         },
       });
 
@@ -173,14 +195,6 @@ runCmd.action(
       });
 
       ui.stopAllProgressBars();
-
-      // Show migration summary
-      const migrationSummary = migrationStream.getSummary();
-      ui.info(migrationSummary);
-
-      // Show update summary
-      const updateSummary = updateStream.getSummary();
-      ui.info(updateSummary);
 
       const migrationStreamResults = migrationStream.getResults();
       const migrationResults = {
@@ -196,29 +210,56 @@ runCmd.action(
         failed: updateStreamResults.failed.length,
       };
 
+      const fetchResults = {
+        total: fetchedStories + fetchFailedStories,
+        succeeded: fetchedStories,
+        failed: fetchFailedStories,
+      };
+
+      if (fatalError) {
+        // Stories still on their way between stages when the run stopped
+        // were neither saved nor failed, so the counts below miss them.
+        const finishedStories =
+          fetchResults.failed +
+          migrationResults.failed +
+          migrationResults.skipped +
+          updateResults.total;
+        ui.warn(`Run stopped after ${finishedStories} of ${listedStories} stories.`);
+      }
+      ui.info(migrationStream.getSummary());
+      if (!fatalError || updateResults.total > 0) {
+        ui.info(updateStream.getSummary());
+      }
+      if (failedStories.length > 0) {
+        ui.list(listFailedStories(failedStories));
+      }
+
       logger.info("Migration finished", {
+        fetchResults,
         migrationResults,
         updateResults,
       });
+      reporter.addSummary("fetchResults", fetchResults);
       reporter.addSummary("migrationResults", migrationResults);
       reporter.addSummary("updateResults", updateResults);
-
-      // Every story that was migrated is counted again by the update, so the
-      // status follows each story's final outcome instead of adding up both.
-      const failedStories = migrationResults.failed + updateResults.failed;
-      const succeededStories = updateResults.succeeded + migrationResults.skipped;
-      if (fatalError || failedStories > 0) {
-        reporter.setStatus(
-          succeededStories > 0 ? REPORT_STATUS.partialSuccess : REPORT_STATUS.failure,
-        );
+      if (failedStories.length > 0) {
+        reporter.addMeta("failedStories", failedStories);
       }
-      reporter.finalize();
+      try {
+        reporter.finalize(fatalError ?? undefined);
+      } catch (error) {
+        if (!fatalError) {
+          throw error;
+        }
+        // Report the write failure without hiding the error that stopped the run.
+        handleError(error as Error, verbose);
+      }
 
       if (fatalError) {
         handleError(fatalError, verbose);
         return;
       }
-      process.exitCode = failedStories > 0 ? EXIT_CODE_RUNTIME_ERROR : 0;
+      process.exitCode = failedStories.length > 0 ? EXIT_CODE_RUNTIME_ERROR : 0;
     } catch (error) {
       handleError(error as Error, verbose);
     }

@@ -1,34 +1,33 @@
 import { APIError } from "../../../utils/error";
-import type { FailedStory } from "./constants";
+import { FailureReasonGroup } from "../../../utils/failure-reason-group";
 
-/** How many failed stories the summary lists before pointing to the log file. */
-export const MAX_LISTED_FAILED_STORIES = 10;
-
-/**
- * Lists failed stories with the reason, so they can be found in the space.
- * The reason is the error message, which carries the API's own explanation
- * (e.g. a workflow stage that doesn't allow publishing) when there is one.
- * Long lists are cut off; every failed story is also in the log file.
- */
-export function formatFailedStories(failed: FailedStory[]): string {
-  const lines = failed.slice(0, MAX_LISTED_FAILED_STORIES).map(({ storyId, name, error }) => {
-    const story = name && name !== storyId.toString() ? `${name} (id ${storyId})` : `id ${storyId}`;
-    return `  - ${story}: ${error.message}`;
-  });
-  const unlisted = failed.length - MAX_LISTED_FAILED_STORIES;
-  if (unlisted > 0) {
-    lines.push(`  … and ${unlisted} more, listed in the log file.`);
-  }
-  return lines.join("\n");
+/** A story that couldn't be fetched, migrated, or updated, with the reason. */
+export interface FailedStoryReport {
+  storyId: number;
+  name: string | undefined;
+  reason: string;
 }
 
 /**
- * Whether an error would fail every remaining story the same way (e.g. revoked
+ * Lists failed stories grouped by reason, so one cause shared by hundreds of
+ * stories reads as one line. The reason carries the API's own explanation
+ * (e.g. a workflow stage that doesn't allow publishing) when there is one.
+ */
+export function listFailedStories(failed: FailedStoryReport[]): string[] {
+  const group = new FailureReasonGroup();
+  for (const { storyId, name, reason } of failed) {
+    group.record(
+      reason,
+      name && name !== storyId.toString() ? `${name} (id ${storyId})` : `id ${storyId}`,
+    );
+  }
+  return group.toListLines("migrate", ["story", "stories"]);
+}
+
+/**
+ * Whether an error would fail every remaining story the same way (revoked
  * credentials), so continuing the run would only repeat it for each story.
  */
 export function isSystemicError(error: unknown): error is APIError {
-  return (
-    error instanceof APIError &&
-    (error.errorId === "unauthorized" || error.errorId === "network_error")
-  );
+  return error instanceof APIError && error.errorId === "unauthorized";
 }

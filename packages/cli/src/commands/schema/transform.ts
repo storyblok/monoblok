@@ -118,22 +118,33 @@ export function toDatasourceCreate(input: unknown): DatasourceCreate {
  */
 export function toDatasourceUpdate(input: unknown, remote: Datasource): Record<string, unknown> {
   const base = toDatasourceCreate(input);
-  const localDims = base.dimensions_attributes ?? [];
+  const localDims = (base.dimensions_attributes ?? []).flatMap((dimension) =>
+    typeof dimension.name === "string" && typeof dimension.entry_value === "string"
+      ? [{ name: dimension.name, entry_value: dimension.entry_value }]
+      : [],
+  );
   const remoteDims = remote.dimensions ?? [];
 
   if (remoteDims.length === 0) {
     return base;
   }
 
-  const localKeys = new Set(localDims.map((d) => `${d.name}::${d.entry_value}`));
+  const remoteByEntryValue = new Map(
+    remoteDims.map((dimension) => [dimension.entry_value, dimension]),
+  );
+  const localEntryValues = new Set(localDims.map((dimension) => dimension.entry_value));
+  const updateEntries = localDims.map((dimension) => {
+    const existing = remoteByEntryValue.get(dimension.entry_value);
+    return existing?.id != null ? { ...dimension, id: existing.id } : dimension;
+  });
   const destroyEntries = remoteDims
-    .filter((rd) => rd.id != null && !localKeys.has(`${rd.name}::${rd.entry_value}`))
+    .filter((rd) => rd.id != null && !localEntryValues.has(rd.entry_value))
     .map((rd) => ({ id: rd.id, _destroy: true }));
 
-  if (destroyEntries.length > 0) {
+  if (destroyEntries.length > 0 || updateEntries.some((dimension) => "id" in dimension)) {
     return {
       ...base,
-      dimensions_attributes: [...localDims, ...destroyEntries],
+      dimensions_attributes: [...updateEntries, ...destroyEntries],
     };
   }
 

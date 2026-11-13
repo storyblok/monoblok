@@ -1,10 +1,42 @@
-import type { SchemaLike } from "./shapes";
+import type { SchemaFieldLike, SchemaLike } from "./shapes";
 import type { ValidationIssue, ValidationResult } from "./types";
-import { FIELD_TYPES } from "../field-types";
+import { FIELD_TYPES, isLayoutFieldType } from "../field-types";
 import { DERIVED_RESTRICTION_KEYS, EDITOR_RESTRICT_TYPES } from "../restrictions";
 import { isRecord, toValues } from "./shapes";
 
 const FIELD_TYPE_LIST = FIELD_TYPES.map((value) => `"${value}"`).join(", ");
+/**
+ * Mirrors the Management API's publish check, which reads only the first
+ * modification of the first setting that has any.
+ */
+function isConditionallyRequired(field: SchemaFieldLike): boolean {
+  const settings: unknown = field.conditional_settings;
+  if (!Array.isArray(settings)) {
+    return false;
+  }
+  const setting: unknown = settings.find(
+    (candidate: unknown) => isRecord(candidate) && Array.isArray(candidate.modifications),
+  );
+  const modification: unknown =
+    isRecord(setting) && Array.isArray(setting.modifications)
+      ? setting.modifications[0]
+      : undefined;
+  return isRecord(modification) && modification.required === true;
+}
+
+function requiredLayoutFieldKeys(field: SchemaFieldLike): ("required" | "conditional_settings")[] {
+  const keys: ("required" | "conditional_settings")[] = [];
+  if (!isLayoutFieldType(field.type)) {
+    return keys;
+  }
+  if (field.required === true) {
+    keys.push("required");
+  }
+  if (isConditionallyRequired(field)) {
+    keys.push("conditional_settings");
+  }
+  return keys;
+}
 
 /**
  * Validates a schema definition without throwing. Checks structural identity
@@ -12,7 +44,8 @@ const FIELD_TYPE_LIST = FIELD_TYPES.map((value) => `"${value}"`).join(", ");
  * (every `allow` entry resolves to a defined block; every field `datasource`
  * resolves to a defined datasource; every field declares a known `type`;
  * every `custom` field's `field_type` resolves to a registered field plugin; no
- * field mixes `allow`/`deny` with the wire restriction keys they derive).
+ * field mixes `allow`/`deny` with the wire restriction keys they derive; no
+ * layout field is required, statically or by a condition).
  *
  * @example
  * const result = validateSchema({ blocks: { hero }, datasources: { colors } });
@@ -309,6 +342,19 @@ export function validateSchema(schema: SchemaLike): ValidationResult {
           entity: blockEntity,
           // `JSON.stringify` so `123` and `"123"` read as different mistakes.
           message: `${fieldLabel} in ${blockLabel} has unknown type ${JSON.stringify(fieldTypeValue)}. Expected one of ${FIELD_TYPE_LIST}.`,
+        });
+      }
+
+      for (const layoutRequiredKey of requiredLayoutFieldKeys(field)) {
+        issues.push({
+          severity: "error",
+          code: "required_layout_field",
+          path: ["blocks", blockKey, fieldName ?? index, layoutRequiredKey],
+          entity: blockEntity,
+          message:
+            layoutRequiredKey === "required"
+              ? `${fieldLabel} in ${blockLabel} is a "${field.type}" field marked "required". Layout fields hold no value, so publishing a story that uses this block fails. Remove "required".`
+              : `${fieldLabel} in ${blockLabel} is a "${field.type}" field required by a condition. Layout fields hold no value, so publishing can fail once the condition matches. Remove the condition that makes it required.`,
         });
       }
 

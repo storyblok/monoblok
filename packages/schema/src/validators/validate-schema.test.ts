@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { storyblokColorField } from "../field-plugins/storyblok-color-field";
 import { defineBlock } from "../helpers/define-block";
+import { hideWhen, requiredWhen } from "../helpers/define-condition";
 import { defineDatasource } from "../helpers/define-datasource";
 import { defineField } from "../helpers/define-field";
 import { defineFolder } from "../helpers/define-folder";
@@ -210,6 +211,114 @@ describe("validateSchema", () => {
       });
       expect(codesFor(validateSchema({ blocks: [block] }))).not.toContain("unknown_restrict_type");
     }
+  });
+
+  // `defineField` rejects this shape; a schema read from a space can still carry it.
+  it.each(["section", "tab", "group"] as const)("flags a required %s field", (type) => {
+    const block = defineBlock({
+      name: "page",
+      fields: [{ name: "layout", type, required: true }],
+    });
+    const result = validateSchema({ blocks: [block] });
+    expect(result.ok).toBe(false);
+    expect(result.issues).toEqual([
+      expect.objectContaining({
+        code: "required_layout_field",
+        path: ["blocks", "page", "layout", "required"],
+      }),
+    ]);
+  });
+
+  it("flags a layout field required by a condition", () => {
+    const block = defineBlock({
+      name: "page",
+      fields: [
+        {
+          name: "details",
+          type: "section",
+          conditional_settings: [{ rule_match: "any", modifications: [{ required: true }] }],
+        },
+      ],
+    });
+    const result = validateSchema({ blocks: [block] });
+    expect(result.ok).toBe(false);
+    expect(result.issues).toEqual([
+      expect.objectContaining({
+        code: "required_layout_field",
+        path: ["blocks", "page", "details", "conditional_settings"],
+      }),
+    ]);
+  });
+
+  it("flags both a static and a conditional `required` on the same layout field", () => {
+    const block = defineBlock({
+      name: "page",
+      fields: [
+        {
+          name: "details",
+          type: "section",
+          required: true,
+          conditional_settings: [{ modifications: [{ required: true }] }],
+        },
+      ],
+    });
+    expect(validateSchema({ blocks: [block] }).issues).toEqual([
+      expect.objectContaining({ path: ["blocks", "page", "details", "required"] }),
+      expect.objectContaining({ path: ["blocks", "page", "details", "conditional_settings"] }),
+    ]);
+  });
+
+  it("does not throw on malformed conditional settings", () => {
+    const block = {
+      name: "page",
+      fields: [
+        {
+          name: "details",
+          type: "section",
+          conditional_settings: [{ modifications: { required: true } }],
+        },
+      ],
+    } as unknown as SchemaBlockLike;
+    expect(() => validateSchema({ blocks: [block] })).not.toThrow();
+  });
+
+  it("ignores a conditional `required` the publish check does not read", () => {
+    const block = defineBlock({
+      name: "page",
+      fields: [
+        {
+          name: "details",
+          type: "section",
+          conditional_settings: [
+            hideWhen({ field: "title", is: "empty" }),
+            requiredWhen({ field: "title", is: "not_empty" }),
+          ],
+        },
+        {
+          name: "tab-1",
+          type: "tab",
+          conditional_settings: [{ modifications: [{ display: "hide" }, { required: true }] }],
+        },
+        defineField("title", { type: "text" }),
+      ],
+    });
+    expect(validateSchema({ blocks: [block] }).issues).toEqual([]);
+  });
+
+  it("accepts layout fields with required false or a hide condition", () => {
+    const block = defineBlock({
+      name: "page",
+      fields: [
+        { name: "tab-1", type: "tab", required: false },
+        {
+          name: "details",
+          type: "section",
+          conditional_settings: [{ modifications: [{ display: "hide" }, { required: false }] }],
+        },
+        defineField("title", { type: "text", required: true }),
+      ],
+    });
+    expect(validateSchema({ blocks: [block] }).issues).toEqual([]);
   });
 
   it("flags a deny reference to an unknown block", () => {

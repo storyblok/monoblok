@@ -91,14 +91,18 @@ schemaCommand
       const writeSpinner = ui.createSpinner(
         `Generating TypeScript files to ${targetDisplayPath}...`,
       );
-      const { writtenFiles, placeholderFieldPlugins, fieldsWithoutFieldType } =
-        await writeSchemaFiles(
-          targetPath,
-          rawComponents,
-          rawComponentFolders,
-          rawDatasources,
-          rawInternalTags,
-        );
+      const {
+        writtenFiles,
+        placeholderFieldPlugins,
+        fieldsWithoutFieldType,
+        requiredLayoutFields,
+      } = await writeSchemaFiles(
+        targetPath,
+        rawComponents,
+        rawComponentFolders,
+        rawDatasources,
+        rawInternalTags,
+      );
 
       summary.total = writtenFiles.length;
       summary.succeeded = writtenFiles.length;
@@ -123,6 +127,15 @@ schemaCommand
           [
             "Skipped custom fields that name no field plugin:",
             ...fieldsWithoutFieldType.map((field) => `  - ${field}`),
+          ].join("\n"),
+        );
+      }
+
+      if (requiredLayoutFields.length > 0) {
+        ui.warn(
+          [
+            "Made these group and tab fields not required. They hold no value, so a required one prevents publishing. The next schema push updates the space:",
+            ...requiredLayoutFields.map((entry) => `  - ${entry}`),
           ].join("\n"),
         );
       }

@@ -5,23 +5,19 @@ import { DERIVED_RESTRICTION_KEYS, EDITOR_RESTRICT_TYPES } from "../restrictions
 import { isRecord, toValues } from "./shapes";
 
 const FIELD_TYPE_LIST = FIELD_TYPES.map((value) => `"${value}"`).join(", ");
-/**
- * Mirrors the Management API's publish check, which reads only the first
- * modification of the first setting that has any.
- */
 function isConditionallyRequired(field: SchemaFieldLike): boolean {
   const settings: unknown = field.conditional_settings;
   if (!Array.isArray(settings)) {
     return false;
   }
-  const setting: unknown = settings.find(
-    (candidate: unknown) => isRecord(candidate) && Array.isArray(candidate.modifications),
+  return settings.some(
+    (setting: unknown) =>
+      isRecord(setting) &&
+      Array.isArray(setting.modifications) &&
+      setting.modifications.some(
+        (modification: unknown) => isRecord(modification) && modification.required === true,
+      ),
   );
-  const modification: unknown =
-    isRecord(setting) && Array.isArray(setting.modifications)
-      ? setting.modifications[0]
-      : undefined;
-  return isRecord(modification) && modification.required === true;
 }
 
 function requiredLayoutFieldKeys(field: SchemaFieldLike): ("required" | "conditional_settings")[] {
@@ -347,14 +343,15 @@ export function validateSchema(schema: SchemaLike): ValidationResult {
 
       for (const layoutRequiredKey of requiredLayoutFieldKeys(field)) {
         issues.push({
-          severity: "error",
+          // A conditional `required` blocks publishing only in some spaces, and a schema doesn't say which.
+          severity: layoutRequiredKey === "required" ? "error" : "warning",
           code: "required_layout_field",
           path: ["blocks", blockKey, fieldName ?? index, layoutRequiredKey],
           entity: blockEntity,
           message:
             layoutRequiredKey === "required"
               ? `${fieldLabel} in ${blockLabel} is a "${field.type}" field marked "required". Layout fields hold no value, so publishing a story that uses this block fails. Remove "required".`
-              : `${fieldLabel} in ${blockLabel} is a "${field.type}" field required by a condition. Layout fields hold no value, so publishing can fail once the condition matches. Remove the condition that makes it required.`,
+              : `${fieldLabel} in ${blockLabel} is a "${field.type}" field required by a condition. Layout fields hold no value, so publishing can fail once the condition matches. Set the condition to not required.`,
         });
       }
 

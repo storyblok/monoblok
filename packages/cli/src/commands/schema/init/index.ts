@@ -134,7 +134,7 @@ schemaCommand
       if (requiredLayoutFields.length > 0) {
         ui.warn(
           [
-            "Made these group and tab fields not required. They hold no value, so a required one prevents publishing. The next schema push updates the space:",
+            "Made these group and tab fields not required. They hold no value, so a required one can prevent publishing. The next schema push updates the space:",
             ...requiredLayoutFields.map((entry) => `  - ${entry}`),
           ].join("\n"),
         );

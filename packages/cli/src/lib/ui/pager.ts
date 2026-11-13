@@ -46,6 +46,13 @@ function canPage(): boolean {
   );
 }
 
+let isPaging = false;
+
+/** While the pager runs, Ctrl+C is meant for it, not for the CLI. */
+export function isPagerOpen(): boolean {
+  return isPaging;
+}
+
 /**
  * Prints text to stdout, through a pager when stdout is a terminal.
  *
@@ -70,6 +77,7 @@ export async function page(text: string): Promise<void> {
     // terminal in whatever mode `less` had put it in.
     const ignoreInterrupt = (): void => {};
     process.on("SIGINT", ignoreInterrupt);
+    isPaging = true;
 
     const child = spawn(PAGER, PAGER_ARGS, { stdio: ["pipe", "inherit", "inherit"] });
     let failedToStart = false;
@@ -79,6 +87,7 @@ export async function page(text: string): Promise<void> {
     // Fires after `'error'` too, so a pager that never started ends up here.
     child.on("close", (code, signal) => {
       process.off("SIGINT", ignoreInterrupt);
+      isPaging = false;
       // Nothing has been shown yet, so the text still has to go out. A pager
       // that started and exited non-zero on its own (`LESS=--bogus-option`)
       // showed nothing either; one killed by a signal was quit by the reader.

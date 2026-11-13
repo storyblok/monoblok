@@ -1,4 +1,5 @@
 import { getActiveConfig } from "../lib/config";
+import { getTelemetryTraceHeaders } from "../lib/telemetry/run";
 
 export interface FetchErrorRequest {
   url?: string;
@@ -50,6 +51,7 @@ export async function customFetch<T>(
     try {
       const headers = {
         "Content-Type": "application/json",
+        ...getTelemetryTraceHeaders(),
         ...options.headers,
       };
 
@@ -112,7 +114,7 @@ export async function customFetch<T>(
         throw error;
       }
       // For network errors or other non-HTTP errors, create a FetchError
-      throw new FetchError(
+      const networkError = new FetchError(
         error instanceof Error ? error.message : String(error),
         {
           status: 0,
@@ -121,6 +123,8 @@ export async function customFetch<T>(
         },
         requestContext,
       );
+      networkError.cause = error;
+      throw networkError;
     }
   }
 

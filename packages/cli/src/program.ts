@@ -26,6 +26,15 @@ import {
   resolveConfig,
   setActiveConfig,
 } from "./lib/config";
+import {
+  getTelemetryTraceId,
+  isTelemetryCommand,
+  promptForTelemetryConsent,
+  recordTelemetryRegion,
+  recordTelemetrySpaceId,
+  startTelemetryRun,
+  trackTelemetryInvocation,
+} from "./lib/telemetry";
 
 const packageJson = getPackageJson();
 
@@ -67,9 +76,19 @@ export function getProgram(): Command {
       }
     }
 
+    trackTelemetryInvocation(programInstance);
+
     // Unified preAction hook: handles config resolution, then logging/reporting setup
     programInstance.hook("preAction", async (thisCommand, actionCommand) => {
       const targetCommand = actionCommand ?? thisCommand;
+
+      // Opting out must work even where the config can't be loaded.
+      if (isTelemetryCommand(targetCommand)) {
+        return;
+      }
+
+      await promptForTelemetryConsent();
+      await startTelemetryRun(thisCommand);
 
       // Set before config resolution so a failure there can't read as a result.
       setRuntimeErrorExitCode(
@@ -85,15 +104,18 @@ export function getProgram(): Command {
       // Initialize mapiClient
       const { state, initializeSession } = session();
       await initializeSession();
+      const region = state.region ?? resolvedConfig.region;
+      recordTelemetryRegion(region);
       if (state.password) {
         getMapiClient({
           personalAccessToken: state.password,
-          region: state.region ?? resolvedConfig.region,
+          region,
         });
       }
 
       // Step 2: Setup logging, UI, and reporting with resolved config
       const options = targetCommand.optsWithGlobals();
+      recordTelemetrySpaceId(options.space);
       const commandPieces: string[] = [];
       for (let c: Command | null = targetCommand; c; c = c.parent as Command | null) {
         commandPieces.unshift(c.name());
@@ -132,7 +154,13 @@ export function getProgram(): Command {
 
       // Initialize logger with configured transports
       const logger = getLogger({
-        context: { runId, command, options, cliVersion: packageJson.version },
+        context: {
+          runId,
+          command,
+          options,
+          cliVersion: packageJson.version,
+          telemetryTraceId: getTelemetryTraceId(),
+        },
         transports,
       });
 

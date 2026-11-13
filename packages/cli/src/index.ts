@@ -2,10 +2,11 @@
 import "dotenv/config";
 
 import { CommanderError } from "commander";
-import { handleError } from "./utils";
+import { CommandError, handleError } from "./utils";
 import { getProgram } from "./program";
 import { getUI } from "./lib/ui";
 import { colorPalette } from "./constants";
+import { recordTelemetryError, sendTelemetry } from "./lib/telemetry";
 import "./commands/login";
 import "./commands/logout";
 import "./commands/signup";
@@ -21,9 +22,11 @@ import "./commands/reports";
 import "./commands/assets";
 import "./commands/stories";
 import "./commands/schema";
+import "./commands/telemetry";
 
 export * from "./types/storyblok";
 
+const startTime = performance.timeOrigin;
 const program = getProgram();
 const ui = getUI();
 
@@ -38,6 +41,7 @@ program.on("command:*", () => {
   // Write help text directly to stderr — do not use outputHelp({ error: true })
   // which routes through configureOutput.writeErr → handleError, turning help text into an error.
   console.error(program.helpInformation());
+  recordTelemetryError(new CommandError("Invalid command"));
   process.exitCode = 2;
 });
 
@@ -59,3 +63,5 @@ try {
     handleError(error as Error);
   }
 }
+
+await sendTelemetry({ program, startTime, exitCode: Number(process.exitCode ?? 0) });

@@ -1,7 +1,11 @@
 import type { LogContext, LogLevel, LogRecord, LogTransport } from "./logger";
-import { appendToFileSync } from "../../utils/filesystem";
-import { existsSync, readdirSync, unlinkSync } from "node:fs";
-import { dirname, extname, join } from "pathe";
+import {
+  appendToFileSync,
+  listRunFiles,
+  pruneRunFiles,
+  pruneSiblingRunFiles,
+} from "../../utils/filesystem";
+import { join } from "pathe";
 import { APIError } from "../../utils/error/api-error";
 
 export interface FileTransportOptions {
@@ -11,13 +15,14 @@ export interface FileTransportOptions {
 }
 
 export class FileTransport implements LogTransport {
+  public static readonly FILE_EXTENSION = ".jsonl";
   public filePath: string;
   public level: LogLevel;
   private maxFiles?: number;
   private hasPruned = false;
 
   constructor(options?: FileTransportOptions) {
-    this.filePath = options?.filePath ?? `./${Date.now()}.jsonl`;
+    this.filePath = options?.filePath ?? `./${Date.now()}${FileTransport.FILE_EXTENSION}`;
     this.level = options?.level ?? "info";
     this.maxFiles = options?.maxFiles;
   }
@@ -35,64 +40,18 @@ export class FileTransport implements LogTransport {
       // files if at least one log was written and not when initializing the
       // transport.
       this.hasPruned = true;
-      this.pruneOldFiles();
+      pruneSiblingRunFiles(this.filePath, this.maxFiles);
     }
   }
 
-  private pruneOldFiles(): void {
-    if (this.maxFiles === undefined) {
-      return;
-    }
-
-    const dir = dirname(this.filePath);
-    const ext = extname(this.filePath);
-
-    FileTransport.pruneLogFiles(dir, this.maxFiles, ext);
+  public static pruneLogFiles(directory: string, keep: number): number {
+    return pruneRunFiles(directory, FileTransport.FILE_EXTENSION, keep);
   }
 
-  public static pruneLogFiles(directory: string, keep: number, extension = ".jsonl") {
-    if (!existsSync(directory)) {
-      return 0;
-    }
-
-    const files = readdirSync(directory)
-      .filter((file) => extname(file) === extension)
-      .sort();
-
-    const filesToDelete = files.length - keep;
-    if (filesToDelete <= 0) {
-      return 0;
-    }
-
-    let deleted = 0;
-    for (const file of files.slice(0, filesToDelete)) {
-      try {
-        unlinkSync(join(directory, file));
-      } catch (error) {
-        // `readdirSync` and `unlinkSync` are not atomic, so a concurrent CLI
-        // process logging to the same directory may prune the same file first.
-        // The file is already gone, which is the desired outcome, so ignore it
-        // rather than letting best-effort log rotation crash the command.
-        if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-          throw error;
-        }
-      }
-      deleted += 1;
-    }
-
-    return deleted;
-  }
-
-  public static listLogFiles(directory: string, extension = ".jsonl") {
-    if (!existsSync(directory)) {
-      return [];
-    }
-
-    const files = readdirSync(directory)
-      .filter((file) => extname(file) === extension)
-      .sort();
-
-    return files.map((f) => join(directory, f).replace(process.cwd(), "."));
+  public static listLogFiles(directory: string): string[] {
+    return listRunFiles(directory, FileTransport.FILE_EXTENSION).map((file) =>
+      join(directory, file).replace(process.cwd(), "."),
+    );
   }
 
   private levelRank(level: LogLevel): number {

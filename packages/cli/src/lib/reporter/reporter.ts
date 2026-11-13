@@ -1,6 +1,10 @@
-import { saveToFileSync } from "../../utils/filesystem";
-import { existsSync, readdirSync, unlinkSync } from "node:fs";
-import { dirname, extname, join, relative } from "pathe";
+import {
+  listRunFiles,
+  pruneRunFiles,
+  pruneSiblingRunFiles,
+  saveToFileSync,
+} from "../../utils/filesystem";
+import { join, relative } from "pathe";
 
 export const REPORT_STATUS = {
   unfinished: "UNFINISHED",
@@ -37,6 +41,7 @@ export interface ReporterOptions {
 }
 
 export class Reporter {
+  public static readonly FILE_EXTENSION = ".json";
   public filePath: string;
   private enabled: boolean;
   private startedAt: Date = new Date();
@@ -51,7 +56,7 @@ export class Reporter {
 
   constructor(options?: ReporterOptions) {
     this.enabled = options?.enabled || false;
-    this.filePath = options?.filePath ?? `./${Date.now()}.json`;
+    this.filePath = options?.filePath ?? `./${Date.now()}${Reporter.FILE_EXTENSION}`;
     this.maxFiles = options?.maxFiles;
   }
 
@@ -78,7 +83,7 @@ export class Reporter {
     saveToFileSync(this.filePath, JSON.stringify(this.report, null, 2));
 
     if (this.maxFiles !== undefined) {
-      this.pruneOldFiles();
+      pruneSiblingRunFiles(this.filePath, this.maxFiles);
     }
   }
 
@@ -100,47 +105,14 @@ export class Reporter {
     }
   }
 
-  private pruneOldFiles(): void {
-    if (this.maxFiles === undefined) {
-      return;
-    }
-
-    const dir = dirname(this.filePath);
-    const ext = extname(this.filePath);
-
-    Reporter.pruneReportFiles(dir, this.maxFiles, ext);
+  public static pruneReportFiles(directory: string, keep: number): number {
+    return pruneRunFiles(directory, Reporter.FILE_EXTENSION, keep);
   }
 
-  public static pruneReportFiles(directory: string, keep: number, extension = ".json") {
-    if (!existsSync(directory)) {
-      return 0;
-    }
-
-    const files = readdirSync(directory)
-      .filter((file) => extname(file) === extension)
-      .sort();
-
-    const filesToDelete = files.length - keep;
-    if (filesToDelete <= 0) {
-      return 0;
-    }
-
-    for (const file of files.slice(0, filesToDelete)) {
-      unlinkSync(join(directory, file));
-    }
-
-    return filesToDelete;
-  }
-
-  public static listReportFiles(directory: string, extension = ".json") {
-    if (!existsSync(directory)) {
-      return [];
-    }
-
-    return readdirSync(directory)
-      .filter((file) => extname(file) === extension)
-      .map((f) => relative(process.cwd(), join(directory, f)))
-      .sort();
+  public static listReportFiles(directory: string): string[] {
+    return listRunFiles(directory, Reporter.FILE_EXTENSION).map((file) =>
+      relative(process.cwd(), join(directory, file)),
+    );
   }
 }
 

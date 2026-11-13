@@ -13,10 +13,10 @@ import { directories } from "./constants";
 import type { LogLevel, LogTransport } from "./lib/logger/logger";
 import { getLogger, setLoggerTransports } from "./lib/logger/logger";
 import { getUI } from "./lib/ui";
-import { getReporter } from "./lib/reporter/reporter";
+import { getReporter, Reporter } from "./lib/reporter/reporter";
 import { FileTransport } from "./lib/logger/logger-transport-file";
 import { ConsoleTransport } from "./lib/logger/logger-transport-console";
-import { resolveCommandPath } from "./utils/filesystem";
+import { getRunFileName, resolveCommandPath } from "./utils/filesystem";
 import { session } from "./session";
 import { getMapiClient } from "./api";
 import {
@@ -119,7 +119,7 @@ export function getProgram(): Command {
       // Add file transport if enabled
       if (resolvedConfig.log.file.enabled) {
         const logsPath = resolveCommandPath(directories.logs, options.space, options.path);
-        const logFilename = `${commandPieces.join("-")}-${runId}.jsonl`;
+        const logFilename = getRunFileName(commandPieces, runId, FileTransport.FILE_EXTENSION);
         logFilePath = join(logsPath, logFilename);
         transports.push(
           new FileTransport({
@@ -147,7 +147,7 @@ export function getProgram(): Command {
       // Initialize reporter based on config
       if (resolvedConfig.report.enabled) {
         const reportPath = resolveCommandPath(directories.reports, options.space, options.path);
-        const reportFilename = `${commandPieces.join("-")}-${runId}.json`;
+        const reportFilename = getRunFileName(commandPieces, runId, Reporter.FILE_EXTENSION);
         const reportFilePath = join(reportPath, reportFilename);
         const reporter = getReporter({
           enabled: true,

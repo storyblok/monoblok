@@ -13,6 +13,10 @@ export type Experiment = CdnExperiment & {
          * Full slug of the story in the default language
          */
         full_slug: string;
+        /**
+         * UUID of the story
+         */
+        uuid: string | null;
     }>;
 };
 
@@ -34,17 +38,21 @@ export type ExperimentVariant = {
      */
     weight: number;
     /**
-     * Whether this is the control variant
+     * Whether this is the control variant. Visitors in the control variant see the original stories, so the control variant has an empty story_mappings list by design
      */
     is_control: boolean;
     /**
-     * Mappings between original stories and their variant copies
+     * Copies of the tested stories for this variant: one entry for each original story that has a copy in this variant. The list holds copies only. By design, the control variant has an empty list, and in an experiment without copies every variant has an empty list. If a story has no entry in the visitor's variant, show the original story
      */
     story_mappings: Array<{
         /**
          * ID of the original story
          */
         original_story_id: number;
+        /**
+         * UUID of the original story
+         */
+        original_uuid: string | null;
         /**
          * Slug of the original story
          */
@@ -53,6 +61,10 @@ export type ExperimentVariant = {
          * ID of the variant story copy
          */
         variant_story_id: number | null;
+        /**
+         * UUID of the variant story copy
+         */
+        variant_uuid: string | null;
         /**
          * Slug of the variant story copy
          */
@@ -74,7 +86,7 @@ export type CdnExperiment = {
      */
     display_name: string;
     /**
-     * IDs of stories assigned to this experiment
+     * IDs of the original stories tested in this experiment. The same for every variant, including the control variant
      */
     story_ids: Array<number>;
     /**

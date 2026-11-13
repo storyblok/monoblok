@@ -415,6 +415,7 @@ const makeRemoteStory = ({
   scheduled_dates: null,
   ideas: [],
   favourite_for_user_ids: [],
+  assigned_users_per_language: {},
 });
 
 describe("createStoriesForLevel", () => {

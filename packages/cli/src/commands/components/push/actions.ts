@@ -55,9 +55,10 @@ function toRequestTagIds(
  * Requires every request property to be listed, so a property added to the API
  * fails type-checking until it is mapped. A property that references another
  * resource by ID also needs translating in `ComponentNode.resolveReferences`.
+ * `updated_at` is only read with `enforce_version_validation`, which push does not send.
  */
 type ExhaustiveComponentRequest = ComponentCreate &
-  Record<keyof ComponentCreate | keyof ComponentUpdate, unknown>;
+  Record<Exclude<keyof ComponentCreate | keyof ComponentUpdate, "updated_at">, unknown>;
 
 // Component actions
 export const pushComponent = async (

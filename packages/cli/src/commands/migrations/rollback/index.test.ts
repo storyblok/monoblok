@@ -92,6 +92,7 @@ const mockUpdatedStory: Story = {
   scheduled_dates: null,
   ideas: [],
   favourite_for_user_ids: [],
+  assigned_users_per_language: {},
   imported_at: null,
   deleted_at: null,
 };

@@ -38,7 +38,12 @@ import type {
 } from "@storyblok/experiments";
 import { createApiClient } from "@storyblok/api-client";
 import { createManagementApiClient } from "@storyblok/management-api-client";
-import { assignVariant, createExperiments, resolveExperiment } from "@storyblok/experiments";
+import {
+  assignVariant,
+  createExperiments,
+  resolveExperiment,
+  resolveRelations,
+} from "@storyblok/experiments";
 import { fetchAdapter } from "@storyblok/experiments/adapters";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -52,6 +57,10 @@ const STORY_SLUG_PREFIX = "e2e-experiments-";
 const FOLDER_SLUG = `${STORY_SLUG_PREFIX}campaigns`;
 const ORIGINAL_STORY_SLUG = `${STORY_SLUG_PREFIX}home`;
 const ORIGINAL_SLUG = `${FOLDER_SLUG}/${ORIGINAL_STORY_SLUG}`;
+const PAGE_SLUG = `${STORY_SLUG_PREFIX}landing`;
+const RESOLVE_RELATIONS = `${COMPONENT_NAME}.related`;
+const ORIGINAL_TITLE = "Home";
+const VARIANT_TITLE = "Home (variant B)";
 const VISITOR_ID = "visitor-e2e";
 
 const mapi = createManagementApiClient({
@@ -147,6 +156,8 @@ describe("@storyblok/experiments CDN round-trip", () => {
   let experiments: Experiment[];
   let experiment: Experiment;
   let variantSlug: string;
+  let originalStoryUuid: string;
+  let variantStoryUuid: string;
 
   /** An assignment for a chosen variant, shaped as `assignVariant` builds one. */
   const assignmentFor = (variant: ExperimentVariant): Assignment => ({
@@ -171,7 +182,10 @@ describe("@storyblok/experiments CDN round-trip", () => {
           name: COMPONENT_NAME,
           is_root: true,
           is_nestable: false,
-          schema: { title: { type: "text", pos: 0 } },
+          schema: {
+            title: { type: "text", pos: 0 },
+            related: { type: "options", source: "internal_stories", pos: 1 },
+          },
         },
       },
     });
@@ -186,11 +200,12 @@ describe("@storyblok/experiments CDN round-trip", () => {
           name: "E2E Experiments Home",
           slug: ORIGINAL_STORY_SLUG,
           parent_id: folderRes.data!.story!.id!,
-          content: { component: COMPONENT_NAME, title: "Home" },
+          content: { component: COMPONENT_NAME, title: ORIGINAL_TITLE },
         },
       },
     });
     const originalStoryId = storyRes.data!.story!.id!;
+    originalStoryUuid = storyRes.data!.story!.uuid!;
     await mapi.stories.publish(originalStoryId);
 
     // 4. The experiment (draft) with a 50/50 control + variant split.
@@ -221,7 +236,24 @@ describe("@storyblok/experiments CDN round-trip", () => {
     const variantStoryId = mappingRes.data!.story_mapping.variant_story_id;
 
     // 6. Activation requires every non-control variant story to be published.
+    await mapi.stories.update(variantStoryId, {
+      body: { story: { content: { component: COMPONENT_NAME, title: VARIANT_TITLE } } },
+    });
     await mapi.stories.publish(variantStoryId);
+    const variantStoryRes = await mapi.stories.get(variantStoryId);
+    variantStoryUuid = variantStoryRes.data!.story!.uuid!;
+
+    // A page that references the original story through `resolve_relations`.
+    const pageRes = await mapi.stories.create({
+      body: {
+        story: {
+          name: "E2E Experiments Landing",
+          slug: PAGE_SLUG,
+          content: { component: COMPONENT_NAME, title: "Landing", related: [originalStoryUuid] },
+        },
+      },
+    });
+    await mapi.stories.publish(pageRes.data!.story!.id!);
 
     // 7. Activate: only running experiments appear on the CDN.
     await mapi.put(`${experimentsPath}/${experimentId}/activate`, {});
@@ -255,9 +287,12 @@ describe("@storyblok/experiments CDN round-trip", () => {
         (candidate) => candidate.original_slug === ORIGINAL_STORY_SLUG,
       )!;
       expect(mapping.variant_slug).toBe(variantSlug);
+      expect(mapping.original_uuid).toBe(originalStoryUuid);
+      expect(mapping.variant_uuid).toBe(variantStoryUuid);
       expect(experiment.stories).toContainEqual({
         id: mapping.original_story_id,
         full_slug: ORIGINAL_SLUG,
+        uuid: originalStoryUuid,
       });
     });
   });
@@ -287,6 +322,64 @@ describe("@storyblok/experiments CDN round-trip", () => {
 
       expect(controlVisitor).toBeDefined();
       expect(variantVisitor).toBeDefined();
+    });
+  });
+
+  describe("resolveRelations", () => {
+    const visitorIn = (isControl: boolean): string => {
+      for (let index = 0; index < 50; index++) {
+        const visitorId = `visitor-relations-${index}`;
+        if (assignVariant({ experiment, visitorId })!.variant.is_control === isControl) {
+          return visitorId;
+        }
+      }
+      throw new Error("No visitor bucketed into the requested variant");
+    };
+
+    /** The documented flow: fetch the page, resolve its rels, refetch for a variant visitor. */
+    const renderRelated = async (visitorId: string) => {
+      const capi = createApiClient({ accessToken: previewToken });
+      const query = { resolve_relations: RESOLVE_RELATIONS };
+      const { data: page } = await capi.stories.get(PAGE_SLUG, { query, throwOnError: true });
+
+      const resolution = resolveRelations({
+        experiments,
+        uuids: (page.rels ?? []).map((rel) => rel.uuid),
+        visitorId,
+      });
+      if (resolution.variants.size === 0) {
+        return { resolution, rels: page.rels ?? [] };
+      }
+
+      const { data: variantPage } = await capi.stories.get(PAGE_SLUG, {
+        query: { ...query, resolve_experiment_variants: resolution.param },
+        throwOnError: true,
+      });
+      return { resolution, rels: variantPage.rels ?? [] };
+    };
+
+    it("renders the variant content of a related story for a variant visitor", async () => {
+      const { resolution, rels } = await renderRelated(visitorIn(false));
+
+      expect(resolution.variants.get(originalStoryUuid)).toBe(variantStoryUuid);
+      expect(resolution.exposures.map((exposure) => exposure.experiment.id)).toContain(
+        experiment.id,
+      );
+      expect(rels).toHaveLength(1);
+      expect(rels[0].uuid).toBe(originalStoryUuid);
+      expect(rels[0].full_slug).toBe(ORIGINAL_SLUG);
+      expect(rels[0].content.title).toBe(VARIANT_TITLE);
+    });
+
+    it("renders the original related story for a control visitor", async () => {
+      const { resolution, rels } = await renderRelated(visitorIn(true));
+
+      expect(resolution.variants.size).toBe(0);
+      expect(resolution.exposures.map((exposure) => exposure.experiment.id)).toContain(
+        experiment.id,
+      );
+      expect(rels[0].uuid).toBe(originalStoryUuid);
+      expect(rels[0].content.title).toBe(ORIGINAL_TITLE);
     });
   });
 
@@ -377,8 +470,12 @@ describe("@storyblok/experiments CDN round-trip", () => {
       const exposure = renderEvents.find((event) => event.type === "exposure")!;
       expect(exposure).toBeDefined();
 
+      // The space may run other experiments, and a conversion is tracked for each of them.
       const tracked = conversionEvents.find(
-        (event) => event.type === "conversion" && event.name === "signup",
+        (event) =>
+          event.type === "conversion" &&
+          event.name === "signup" &&
+          event.experiment.id === experiment.id,
       )!;
       expect(tracked).toBeDefined();
       expect(tracked.visitorId).toBe(visitorId);

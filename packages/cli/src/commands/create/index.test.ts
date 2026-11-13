@@ -98,6 +98,13 @@ const createMockSpace = (overrides: Partial<SpaceDetail> = {}): SpaceDetail => (
   api_requests: 0,
   exceeded_requests: 0,
   routes: [],
+  suspension_causes: [],
+  ai_features_disabled: false,
+  suspension: {
+    editor: { state: "working", reason: null },
+    website: { state: "working", reason: null },
+    causes: [],
+  },
   trial: false,
   default_root: "",
   has_slack_webhook: false,

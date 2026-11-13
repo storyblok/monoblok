@@ -79,17 +79,16 @@ ticket on these dimensions and derive an overall priority.
 
 **Impact:**
 
-- `blocker`: Prevents core functionality, no workaround. If any workaround exists, even an obvious
-  one the reporter did not mention, it is `critical`. Downgrading to an earlier version is not a
-  workaround.
+- `blocker`: Users cannot work with the current version, and no workaround helps: core functionality
+  fails, damage is done before a workaround could apply (e.g. `--dry-run` writes to a space), or an
+  update grows the bundle by 100 kB gzip or more, enough to fail CI size checks. Any workaround,
+  even one the reporter did not mention, makes it `critical`; downgrading is not a workaround.
 - `critical`: Major functionality broken or data silently lost, workaround exists
-- `degraded`: Works but with noticeable problems
-- `minor`: Cosmetic or negligible effect
+- `degraded`: Works, but with a noticeable problem or a measurable cost in what ships (bundle size,
+  load or build time), whatever the reporter's type
+- `minor`: Cosmetic or negligible, including feature requests and improvements without such a cost
 
-Feature requests and improvements are `minor` unless existing use is broken. A measurable cost users
-already pay in something that ships, such as bundle size or load or build time, is `degraded`,
-whatever the reporter's type. A missing optimization without such a cost stays `minor`. Score fixed
-tickets as reported.
+Score fixed tickets as reported.
 
 **Breadth:**
 

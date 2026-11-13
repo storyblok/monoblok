@@ -118,7 +118,11 @@ export function toDatasourceCreate(input: unknown): DatasourceCreate {
  */
 export function toDatasourceUpdate(input: unknown, remote: Datasource): Record<string, unknown> {
   const base = toDatasourceCreate(input);
-  const localDims = base.dimensions_attributes ?? [];
+  const localDims = (base.dimensions_attributes ?? []).flatMap((dimension) =>
+    typeof dimension.name === "string" && typeof dimension.entry_value === "string"
+      ? [{ name: dimension.name, entry_value: dimension.entry_value }]
+      : [],
+  );
   const remoteDims = remote.dimensions ?? [];
 
   if (remoteDims.length === 0) {

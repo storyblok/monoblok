@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { getStaticChildren, hasContent, type StoryblokRichTextNodeWithKey } from '@storyblok/richtext';
+  import { excludeComponentFromContext, getStaticChildren, hasContent, type StoryblokRichTextNodeWithKey } from '@storyblok/richtext';
   import type { StoryblokSvelteRichTextRenderContext } from '../richtext-helpers';
   import RenderTextNodeWithMarks from './RenderTextNodeWithMarks.svelte';
   import RenderChildren from './RenderChildren.svelte';
@@ -20,13 +20,7 @@
     options.components ? options.components[node.type] : undefined,
   );
 
-  // When passing context to a custom component, exclude that component type
-  // to prevent infinite loops if the custom component uses StoryblokRichText internally
-  const contextForCustom = $derived(
-    CustomComponent
-      ? { ...options, components: { ...options.components, [node.type]: undefined } }
-      : options,
-  );
+  const contextForCustom = $derived(excludeComponentFromContext(options, node.type));
 </script>
 
 {#if CustomComponent}

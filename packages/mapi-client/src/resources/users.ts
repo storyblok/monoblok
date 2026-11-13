@@ -5,6 +5,7 @@ import type {
   UpdateCurrentUserResponses,
 } from "../generated/mapi/types.gen";
 import type { ApiResponse, FetchOptions, MapiResourceDeps } from "../client";
+import { buildCallOptions } from "../utils/call-options";
 
 export function createUsersResource<DefaultThrowOnError extends boolean = false>(
   deps: Omit<MapiResourceDeps<DefaultThrowOnError>, "spaceId">,
@@ -25,10 +26,7 @@ export function createUsersResource<DefaultThrowOnError extends boolean = false>
           mapi.getCurrentUser({
             client,
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -46,10 +44,7 @@ export function createUsersResource<DefaultThrowOnError extends boolean = false>
             client,
             body,
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );

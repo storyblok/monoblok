@@ -9,6 +9,7 @@ import type { Asset, AssetUpdate } from "../generated/mapi/types-aliased.gen";
 import type { ApiResponse, FetchOptions, MapiResourceDeps } from "../client";
 import { uploadToS3 } from "./assets";
 import { resolveSpaceId, type SpaceIdPathOverride } from "./shared";
+import { buildCallOptions } from "../utils/call-options";
 
 /**
  * Query params accepted by `POST /v1/spaces/{space_id}/shared_assets` (the
@@ -60,10 +61,6 @@ export function createSharedAssetsResource<DefaultThrowOnError extends boolean =
 ) {
   const { client, spaceId, wrapRequest } = deps;
   const getSpaceId = (path?: SpaceIdPathOverride["path"]) => resolveSpaceId(spaceId, path);
-  const kyOpts = (fetchOptions?: FetchOptions) =>
-    fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {};
-  const maybeThrow = (throwOnError?: boolean) =>
-    throwOnError === undefined ? {} : { throwOnError };
   /** Narrows a widened sign query back to the generated (stricter) query type. See `SignSharedAssetQuery`. */
   const signQuery = (query: SignSharedAssetQuery) => query as CreateSpaceSharedAssetData["query"];
 
@@ -84,8 +81,7 @@ export function createSharedAssetsResource<DefaultThrowOnError extends boolean =
             path: { space_id: getSpaceId(path) },
             query: query && { ...query },
             signal,
-            ...maybeThrow(throwOnError),
-            ...kyOpts(fetchOptions),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -105,8 +101,7 @@ export function createSharedAssetsResource<DefaultThrowOnError extends boolean =
             client,
             path: { space_id: getSpaceId(path), id: assetId },
             signal,
-            ...maybeThrow(throwOnError),
-            ...kyOpts(fetchOptions),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -123,7 +118,7 @@ export function createSharedAssetsResource<DefaultThrowOnError extends boolean =
       const { body, file, signal, path, fetchOptions } = options;
       const { short_filename, ...rest } = body;
       const resolvedSpaceId = getSpaceId(path);
-      const opts = kyOpts(fetchOptions);
+      const opts = buildCallOptions(client, undefined, fetchOptions);
 
       const signResult = await wrapRequest<CreateSpaceSharedAssetResponses[200], true>(
         () =>
@@ -180,7 +175,7 @@ export function createSharedAssetsResource<DefaultThrowOnError extends boolean =
     ): Promise<Asset> {
       const { body, file, signal, path, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      const opts = kyOpts(fetchOptions);
+      const opts = buildCallOptions(client, undefined, fetchOptions);
 
       const asset = await this.upload({
         body: {
@@ -235,7 +230,7 @@ export function createSharedAssetsResource<DefaultThrowOnError extends boolean =
     ): Promise<void> {
       const { body, file, signal, path, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      const opts = kyOpts(fetchOptions);
+      const opts = buildCallOptions(client, undefined, fetchOptions);
 
       if (file !== undefined) {
         const { short_filename, ...assetBody } = body as {
@@ -313,8 +308,7 @@ export function createSharedAssetsResource<DefaultThrowOnError extends boolean =
             client,
             path: { space_id: getSpaceId(path), id: assetId },
             signal,
-            ...maybeThrow(throwOnError),
-            ...kyOpts(fetchOptions),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );

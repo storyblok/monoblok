@@ -1,16 +1,11 @@
-import {
-  CommandError,
-  handleError,
-  isRegion,
-  requireAuthentication,
-  toHumanReadable,
-} from "../../utils";
+import { CommandError, handleError, requireAuthentication, toHumanReadable } from "../../utils";
 import { colorPalette, commands, type RegionCode, regions } from "../../constants";
 import { performInteractiveLogin } from "../login/helpers";
 import { getProgram } from "../../program";
 import type { CreateOptions } from "./constants";
 import { session } from "../../session";
 import { confirm, input, select } from "@inquirer/prompts";
+import { isRegion } from "@storyblok/region-helper";
 import {
   fetchBlueprintRepositories,
   generateProject,

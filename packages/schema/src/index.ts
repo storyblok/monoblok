@@ -57,6 +57,7 @@ export type { Schema } from "./helpers/schema-type";
 
 // Field types
 export { FIELD_TYPES, isLayoutFieldType, LAYOUT_FIELD_TYPES } from "./field-types";
+export type { LayoutFieldType } from "./generated/types/field";
 // Restrictions
 export {
   DENIABLE_FIELD_TYPES,

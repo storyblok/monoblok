@@ -340,17 +340,17 @@ type NoExtraKeys<T> = T extends { type: "custom" }
     };
 
 /**
- * Rejects `required` that can be `true` on a layout field, including a `type`
- * union with a layout member. The Management API enforces it there too, and a
- * layout field never holds a value, so publishing a story that uses the block
- * fails. `required: false` has no effect, so it passes.
+ * Rejects a `required` that can be `true` on a layout field. The field holds no
+ * value, so publishing any story that uses the block fails. A `type` union with
+ * a value type, such as `FieldType` in a field factory, passes; `validateSchema`
+ * catches it at runtime.
  */
 type NoLayoutRequired<T> = T extends { type: infer TType; required: infer TRequired }
-  ? [Extract<TType, LayoutFieldType>] extends [never]
-    ? unknown
-    : true extends TRequired
+  ? [TType] extends [LayoutFieldType]
+    ? true extends TRequired
       ? { required: Invalid<"a layout field holds no value, so it cannot be required"> }
       : unknown
+    : unknown
   : unknown;
 
 /**

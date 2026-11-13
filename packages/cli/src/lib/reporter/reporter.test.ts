@@ -1,6 +1,8 @@
 import { expect, it } from "vitest";
 import { vol } from "memfs";
+import * as nodeFs from "node:fs";
 import { REPORT_STATUS, Reporter } from "./reporter";
+import { getRunFileName } from "../../utils/filesystem";
 
 it("should compute status and write report when enabled", () => {
   const reporterSuccess = new Reporter({ enabled: true, filePath: "./success.json" });
@@ -54,38 +56,15 @@ it("should compute status and write report when enabled", () => {
 });
 
 it("should only keep n number of report files", () => {
-  const maxFiles = 3;
+  for (const runId of [1, 2, 3, 4, 5]) {
+    new Reporter({ enabled: true, filePath: `./report-${runId}.json`, maxFiles: 3 }).finalize();
+  }
 
-  const mk = (n: number) => {
-    const r = new Reporter({ enabled: true, filePath: `./${n}.json`, maxFiles });
-    r.finalize();
-  };
-
-  mk(1);
-  mk(2);
-  mk(3);
-  mk(4);
-  mk(5);
-
-  const files = Object.keys(vol.toJSON());
-  expect(files).toHaveLength(maxFiles);
-  // Oldest files (1.json, 2.json) should be gone
-  expect(
-    files.some((f) => f.endsWith("/1.json") || f.endsWith("\\1.json") || f.endsWith("1.json")),
-  ).toBe(false);
-  expect(
-    files.some((f) => f.endsWith("/2.json") || f.endsWith("\\2.json") || f.endsWith("2.json")),
-  ).toBe(false);
-  // Newest files (3.json, 4.json, 5.json) should remain
-  expect(
-    files.some((f) => f.endsWith("/3.json") || f.endsWith("\\3.json") || f.endsWith("3.json")),
-  ).toBe(true);
-  expect(
-    files.some((f) => f.endsWith("/4.json") || f.endsWith("\\4.json") || f.endsWith("4.json")),
-  ).toBe(true);
-  expect(
-    files.some((f) => f.endsWith("/5.json") || f.endsWith("\\5.json") || f.endsWith("5.json")),
-  ).toBe(true);
+  expect(Reporter.listReportFiles(".")).toEqual([
+    "report-3.json",
+    "report-4.json",
+    "report-5.json",
+  ]);
 });
 
 it("should not write a report when disabled", () => {
@@ -94,4 +73,42 @@ it("should not write a report when disabled", () => {
 
   const files = Object.keys(vol.toJSON());
   expect(files).toHaveLength(0);
+});
+
+it("should prune the oldest runs regardless of command name or modification time", () => {
+  const oldestRun = getRunFileName(["storyblok", "stories", "pull"], 1000, ".json");
+  const olderRun = getRunFileName(["storyblok", "stories", "pull"], 2000, ".json");
+  const newestRun = getRunFileName(["storyblok", "schema", "push"], 3000, ".json");
+  vol.fromJSON({ [oldestRun]: "{}", [olderRun]: "{}" });
+  nodeFs.utimesSync(oldestRun, new Date(2000), new Date(2000));
+  nodeFs.utimesSync(olderRun, new Date(1000), new Date(1000));
+
+  new Reporter({ enabled: true, filePath: newestRun, maxFiles: 2 }).finalize();
+
+  expect(Reporter.listReportFiles(".")).toEqual([olderRun, newestRun]);
+});
+
+it("should keep its own report when runs that started later already finished", () => {
+  vol.fromJSON({ "./stories-pull-2000.json": "{}", "./stories-pull-3000.json": "{}" });
+
+  new Reporter({ enabled: true, filePath: "./migrations-run-1000.json", maxFiles: 2 }).finalize();
+
+  expect(Reporter.listReportFiles(".")).toEqual([
+    "migrations-run-1000.json",
+    "stories-pull-3000.json",
+  ]);
+});
+
+it("should ignore files without a run ID", () => {
+  vol.fromJSON({ "./notes.json": "{}", "./stories-pull-1000.json": "{}" });
+
+  expect(Reporter.listReportFiles(".")).toEqual(["stories-pull-1000.json"]);
+  expect(Reporter.pruneReportFiles(".", 0)).toBe(1);
+  expect(nodeFs.existsSync("./notes.json")).toBe(true);
+});
+
+it("should return the number of deleted files when keep is negative", () => {
+  vol.fromJSON({ "./a-1000.json": "{}", "./b-2000.json": "{}" });
+
+  expect(Reporter.pruneReportFiles(".", -1)).toBe(2);
 });

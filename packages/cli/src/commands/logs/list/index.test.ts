@@ -60,6 +60,23 @@ describe("logs list command", () => {
     );
   });
 
+  it("should list log files oldest run first", async () => {
+    preconditions.hasLogFiles();
+
+    await logsCommand.parseAsync(["node", "test", "list", "--space", "12345"]);
+
+    const listedFiles = vi
+      .mocked(console.error)
+      .mock.calls.map(([line]) => String(line))
+      .filter((line) => line.includes(".jsonl"))
+      .map((line) => line.split("/").pop());
+    expect(listedFiles).toEqual([
+      "storyblok-migrations-run-1234567890.jsonl",
+      "storyblok-migrations-run-1234567891.jsonl",
+      "storyblok-components-push-1234567892.jsonl",
+    ]);
+  });
+
   it("should handle no logs found when directory does not exist", async () => {
     preconditions.hasNoLogFiles();
 

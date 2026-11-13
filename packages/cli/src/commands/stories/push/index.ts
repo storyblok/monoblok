@@ -15,6 +15,7 @@ import { session } from "../../../session";
 import { storiesCommand } from "../command";
 import { loadManifest, resolveCommandPath } from "../../../utils/filesystem";
 import { isRecord } from "../../../utils/object";
+import { recordTelemetryFindings } from "../../../lib/telemetry/run";
 import { getUI } from "../../../lib/ui";
 import { getLogger } from "../../../lib/logger/logger";
 import { getReporter } from "../../../lib/reporter/reporter";
@@ -144,6 +145,7 @@ pushCmd.action(async (options, command) => {
           summary.creationResults.failed = total;
           // Fail the process so CI does not report a green job with nothing pushed.
           process.exitCode = EXIT_CODE_RUNTIME_ERROR;
+          recordTelemetryFindings();
           return;
         }
         ui.warn(message);

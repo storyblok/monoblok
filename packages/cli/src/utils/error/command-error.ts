@@ -12,3 +12,5 @@ export class CommandError extends Error {
     };
   }
 }
+
+export class NotLoggedInError extends CommandError {}

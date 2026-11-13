@@ -23,6 +23,14 @@ export default defineConfig({
       clean: false,
       dts: true,
     },
+    // Spawned detached by the CLI to send telemetry, so it must sit next to `index.mjs`.
+    {
+      entry: { "telemetry-sender": "./src/entrypoints/telemetry-sender.ts" },
+      format: ["esm"],
+      outDir: "./dist",
+      clean: false,
+      dts: false,
+    },
     // `types generate` copies these declarations into the user's `types/storyblok.d.ts`,
     // so they ship as product output and must not reference anything outside themselves.
     // A dedicated single-entry build guarantees that: there is no second entry to split

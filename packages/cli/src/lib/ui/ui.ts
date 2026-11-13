@@ -5,6 +5,7 @@ import { colorPalette } from "../../constants";
 import { DEFAULT_GLOBAL_CONFIG } from "../config/defaults";
 import { capitalize } from "../../utils/format";
 import { getRuntimeErrorExitCode } from "../../utils/error/exit-code";
+import { recordTelemetryError } from "../telemetry/run";
 import { getStderrTarget, getStdoutTarget } from "./stream-target";
 
 interface InfoOptions {
@@ -81,6 +82,7 @@ function guardStdoutEpipe(ui?: UI): void {
       stdoutClosedListeners.clear();
       return;
     }
+    recordTelemetryError(error);
     (ui ?? getUI()).error(`Failed to write to stdout: ${error.message}`);
     // Set here because the write already failed: the document on stdout is
     // truncated, and a consumer must not read the command's own exit code as

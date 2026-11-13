@@ -1,6 +1,7 @@
 import { colorPalette, commands } from "../../../constants";
 import { handleError, requireAuthentication, toError } from "../../../utils";
 import { getLogger } from "../../../lib/logger/logger";
+import { recordTelemetryFindings } from "../../../lib/telemetry/run";
 import { getUI } from "../../../lib/ui";
 import { session } from "../../../session";
 import { schemaCommand } from "../command";
@@ -100,6 +101,7 @@ Without --exit-code, differences exit 0 and failures exit non-zero.`,
       const hasDrift = diffResult.creates + diffResult.updates + diffResult.stale > 0;
       if (options.exitCode && hasDrift) {
         process.exitCode = EXIT_CODE_SCHEMAS_DIFFER;
+        recordTelemetryFindings();
       }
     } catch (maybeError) {
       handleError(toError(maybeError), verbose);

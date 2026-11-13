@@ -15,7 +15,8 @@
     "directory": "packages/react"
   },
   "files": [
-    "dist"
+    "dist",
+    "docs"
   ],
   "type": "module",
   "sideEffects": false,

@@ -19,6 +19,13 @@ export default defineConfig({
         files: ["**/*.md", "**/*.mdx"],
         options: { proseWrap: "always" },
       },
+      {
+        // Package docs sync to the docs platform. Wrapping moves the text of a
+        // GitHub alert onto its `> [!NOTE]` line, which GitHub and the docs
+        // platform no longer read as an alert, and folds long frontmatter.
+        files: ["packages/*/docs/**/*.md", "docs/library-reference-template.md"],
+        options: { proseWrap: "preserve" },
+      },
     ],
   },
 });

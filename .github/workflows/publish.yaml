@@ -92,6 +92,38 @@ jobs:
           fi
         shell: bash
 
+      # Tell the docs platform which packages with docs/reference.md were
+      # published. It reads the docs from the npm tarball and opens a PR with
+      # the regenerated pages. See `docs/docs-platform.md`.
+      # The packages are already on npm, so a failed notification must not fail
+      # the release or skip the jobs after it.
+      - name: Notify the docs platform
+        if: steps.detect-packages.outputs.packages != ''
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.DOCS_PLATFORM_DISPATCH_TOKEN }}
+          NPM_TAG: ${{ steps.npm-tag.outputs.tag }}
+          PACKAGES: ${{ steps.detect-packages.outputs.packages }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::warning::DOCS_PLATFORM_DISPATCH_TOKEN isn't set; the docs platform wasn't notified."
+            exit 0
+          fi
+          for dir in packages/*/; do
+            [ -f "$dir/docs/reference.md" ] || continue
+            name=$(node -p "require('./$dir/package.json').name")
+            version=$(node -p "require('./$dir/package.json').version")
+            case ",$PACKAGES," in *",$name,"*) ;; *) continue ;; esac
+            echo "Notifying the docs platform: $name@$version ($NPM_TAG)"
+            gh api repos/storyblok/storyblok-docs-platform/dispatches \
+              -f event_type=library-published \
+              -f "client_payload[package]=$name" \
+              -f "client_payload[version]=$version" \
+              -f "client_payload[dist_tag]=$NPM_TAG" ||
+              echo "::warning::Couldn't notify the docs platform about $name@$version."
+          done
+        shell: bash
+
   # Syncs the blueprints to their template repos once the packages are on npm, so the sync resolves
   # `latest` to what was just published. Every publish on main asks for it, including one that had
   # nothing new to publish: the approval is where a run is rejected. See blueprints/README.md.

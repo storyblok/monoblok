@@ -26,7 +26,6 @@ token locally:
    - Set an expiration date
    - Select the following scopes:
      - `repo` (Full control of private repositories)
-     - `write:packages` (Upload packages to GitHub Package Registry)
    - Click "Generate token"
    - **Copy the token immediately** (you won't be able to see it again)
 
@@ -83,15 +82,15 @@ This script will:
   - Analyze conventional commits since the last release
   - Determine appropriate version bumps
   - Create version commits
-  - Create git tags
+  - Create git tags (`{project}@{version}`, e.g. `@storyblok/astro@7.2.0`)
   - Push changes to the repository
-  - Generate changelogs
-  - Create a GitHub release
+  - Create a GitHub release per package with generated release notes (there are no `CHANGELOG.md`
+    files)
 
 **Important**: The script enforces these prerequisites automatically. If any check fails, it will
 provide clear instructions on how to fix the issue before proceeding.
 
-### Pre-release Versions (alpha, beta, next)
+### Pre-release Versions (alpha, beta, next, rc)
 
 To release a pre-release version (e.g., for testing before stable release):
 
@@ -128,7 +127,7 @@ To release a pre-release version (e.g., for testing before stable release):
 
 Each package's `release.branches` in its `package.json` is the source of truth for which branches it
 may release from. Packages without a `release.branches` field release from every release branch
-(`main`, `alpha`, `beta`, `next`).
+(`main`, `alpha`, `beta`, `next`, `rc`).
 
 The gate is enforced in three places:
 
@@ -145,13 +144,15 @@ The gate is enforced in three places:
 To keep a package out of stable releases, omit `"main"` from its `release.branches`. To promote an
 alpha-only package to stable, add `"main"` back.
 
-| Package                 | Channels                                      |
-| ----------------------- | --------------------------------------------- |
-| `@storyblok/astro`      | `main`, `alpha`, `next`                       |
-| `@storyblok/nuxt`       | `main`, `next`                                |
-| `@storyblok/react`      | `main`, `rc`                                  |
-| `storyblok-js-client`   | `main`, `beta`, `next`                        |
-| `@storyblok/migrations` | `alpha` only — stable disabled until promoted |
+| Package               | Channels                |
+| --------------------- | ----------------------- |
+| `@storyblok/astro`    | `main`, `alpha`, `next` |
+| `@storyblok/js`       | `main`                  |
+| `@storyblok/nuxt`     | `main`, `next`          |
+| `@storyblok/react`    | `main`, `rc`            |
+| `@storyblok/svelte`   | `main`                  |
+| `@storyblok/vue`      | `main`                  |
+| `storyblok-js-client` | `main`, `beta`, `next`  |
 
 #### Alpha-only packages and downstream consumers
 
@@ -207,19 +208,19 @@ This will:
 - Create version commits
 - Create git tags
 - Push changes to the repository
-- Generate changelogs
 - Skip creating a GitHub release
 
 ### Manual Versioning
 
 To create a release with a specific version:
 
-````bash
+```bash
 # With GitHub release
 pnpm nx release 1.2.3 --skip-publish
 
 # Without GitHub release
 pnpm nx release version 1.2.3
+```
 
 ### Advanced Release Options
 
@@ -239,7 +240,7 @@ pnpm release --first-release
 
 # Combine options (order does not matter)
 pnpm release --version=0.1.0 --projects=@storyblok/astro --first-release --dry-run
-````
+```
 
 #### Option Reference
 
@@ -254,11 +255,10 @@ pnpm release --version=0.1.0 --projects=@storyblok/astro --first-release --dry-r
 You can combine these options as needed. The script will always place the version (if specified)
 immediately after `pnpm nx release` in the underlying command.
 
-````
-
 ### Version Bumps
 
 Version increments are determined by commit messages:
+
 - `feat:` → minor version bump
 - `fix:` → patch version bump
 - `BREAKING CHANGE:` or `feat!:` → major version bump
@@ -274,6 +274,7 @@ After versioning and pushing your changes:
 5. Click "Run workflow"
 
 The publish workflow will:
+
 - Build all packages
 - Handle workspace dependencies
 - Publish to npm with the appropriate distribution tag:
@@ -314,9 +315,9 @@ Run `pnpm check:workspace-protocol` to verify both rules. CI runs it on every bu
 
 ### Caret Ranges on Pre-release Channels
 
-A caret range is resolved at install time against whatever npm offers, which interacts awkwardly with
-pre-release versions. When a package is packed while its workspace dependency sits at a pre-release
-version, the published range looks like `^7.8.0-next.0`, and semver reads that as
+A caret range is resolved at install time against whatever npm offers, which interacts awkwardly
+with pre-release versions. When a package is packed while its workspace dependency sits at a
+pre-release version, the published range looks like `^7.8.0-next.0`, and semver reads that as
 `>=7.8.0-next.0 <8.0.0`. Stable `7.8.0` and `7.9.0` both satisfy it.
 
 An artifact published from `next` can therefore resolve a **stable** dependency rather than the
@@ -326,9 +327,9 @@ with different trees.
 This affects any edge where a package **and** its workspace dependency both release from the same
 pre-release channel, because only then is the dependency at a pre-release version when the dependent
 is packed. `storyblok` (the CLI), `@storyblok/angular`, `@storyblok/migrations`, and
-`@storyblok/astro` all have such edges today. A dependency that releases from `main` only is never at
-a pre-release version, so its published range is an ordinary caret and this does not apply, which is
-why `@storyblok/nuxt` and its `@storyblok/vue` dependency are unaffected.
+`@storyblok/astro` all have such edges today. A dependency that releases from `main` only is never
+at a pre-release version, so its published range is an ordinary caret and this does not apply, which
+is why `@storyblok/nuxt` and its `@storyblok/vue` dependency are unaffected.
 
 This is accepted rather than solved. Pre-release consumers are already opted into instability, and
 the alternatives (per-branch specifier overrides, publish-time channel checks) cost more than the
@@ -354,7 +355,7 @@ npm install @storyblok/package@alpha
 
 # RC version
 npm install @storyblok/package@rc
-````
+```
 
 ## Release Branches
 
@@ -393,10 +394,10 @@ If the release process fails to create a GitHub release, you can create it manua
 git tag --sort=-creatordate | head -5
 
 # Create a GitHub release for a specific tag
-gh release create v1.2.3 --title "v1.2.3" --notes "Release notes here"
+gh release create @storyblok/astro@1.2.3 --title "@storyblok/astro@1.2.3" --notes "Release notes here"
 
 # Or generate notes automatically from commits
-gh release create v1.2.3 --generate-notes
+gh release create @storyblok/astro@1.2.3 --generate-notes
 ```
 
 #### Option 2: Using GitHub Web Interface
@@ -404,11 +405,11 @@ gh release create v1.2.3 --generate-notes
 1. Go to your repository on GitHub
 2. Click on "Releases" in the right sidebar
 3. Click "Draft a new release"
-4. Click "Choose a tag" and select the tag created by the release process (e.g., `v1.2.3`)
-5. Set the release title (usually the version number, e.g., `v1.2.3`)
+4. Click "Choose a tag" and select the tag created by the release process (e.g.,
+   `@storyblok/astro@1.2.3`)
+5. Set the release title (usually the version number, e.g., `@storyblok/astro@1.2.3`)
 6. **Generate release notes**:
    - Click "Generate release notes" button to automatically create notes from commits between tags
-   - Or manually add release notes by copying from CHANGELOG.md
    - Edit the generated notes as needed to highlight important changes
 7. Select "Set as the latest release" if this is a stable release
 8. Click "Publish release"
@@ -461,14 +462,13 @@ If `pnpm release` or `nx release version` fails partway through:
 
    # If commits exist but tags weren't created
    # Check package.json files for new versions, then create tags
-   git tag v1.2.3
+   git tag @storyblok/astro@1.2.3
 
    # If tags exist but weren't pushed
    git push origin main --tags
    ```
 
 3. **If the release process partially completed**:
-   - Check CHANGELOG.md files to see if they were updated
    - Verify package.json versions were incremented
    - Complete any missing steps manually using the commands above
 
@@ -478,13 +478,13 @@ If you need to undo a release:
 
 ```bash
 # Delete the local tag
-git tag -d v1.2.3
+git tag -d @storyblok/astro@1.2.3
 
 # Delete the remote tag
-git push origin :refs/tags/v1.2.3
+git push origin :refs/tags/@storyblok/astro@1.2.3
 
 # Delete the GitHub release (using gh CLI)
-gh release delete v1.2.3
+gh release delete @storyblok/astro@1.2.3
 
 # Revert the version commits
 git revert HEAD~1  # adjust the number based on commits to revert
@@ -496,6 +496,7 @@ git push origin main
 - **"You must be on a release branch"**: Switch to `main`, `alpha`, `beta`, `next`, or `rc` branch
 - **"GITHUB_TOKEN not found"**: Set up your GitHub token as described in Prerequisites
 - **"No commits since last release"**: Ensure you have commits following conventional commit format
-- **"Authentication failed"**: Check your NPM_TOKEN and GITHUB_TOKEN credentials
+- **"Authentication failed"**: Check your `GITHUB_TOKEN`. npm publishing runs in the Publish
+  workflow via OIDC trusted publishing and needs no local npm token
 - **"Tag already exists"**: The version has already been tagged. Use `git tag -d <tag>` to delete if
   needed

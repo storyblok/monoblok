@@ -7,7 +7,7 @@ description: "@storyblok/react is Storyblok’s official SDK for React applicati
 
 [@storyblok/react](https://github.com/storyblok/monoblok/tree/rc/packages/react) is Storyblok’s official SDK for React applications.
 
-Version 8.x separates rendering from data fetching. Fetch content with [`@storyblok/api-client`](https://www.storyblok.com/docs/libraries/js/content-delivery-api-client), and render it with the components returned by [`defineStoryblokBlocks`](#definestoryblokblocks).
+Version 8.x separates rendering from data fetching. Fetch content with [`@storyblok/api-client`](https://www.storyblok.com/docs/libraries/js/content-delivery-api-client), and render it with the components returned by [`defineStoryblokBlocks`](#definestoryblokblocks). To upgrade from version 7.x, follow the [migration guide](https://www.storyblok.com/docs/libraries/js/react-sdk/migration-from-v7).
 
 ## Requirements
 
@@ -685,6 +685,7 @@ Related types:
 
 ## Further resources
 
+- [Migrate to @storyblok/react 8.x](https://www.storyblok.com/docs/libraries/js/react-sdk/migration-from-v7)—Learn how to upgrade an application from version 7.x in the migration guide.
 - [@storyblok/api-client Package Reference](https://www.storyblok.com/docs/libraries/js/content-delivery-api-client)—Learn how to fetch content from the Content Delivery API in the @storyblok/api-client reference.
 - [@storyblok/richtext Package Reference](https://www.storyblok.com/docs/libraries/js/rich-text)—Find the supported rich text nodes, marks, and customization options in the @storyblok/richtext reference.
 - [@storyblok/schema Package Reference](https://www.storyblok.com/docs/libraries/js/schema)—Learn how to type the blocks of a project in the @storyblok/schema reference.

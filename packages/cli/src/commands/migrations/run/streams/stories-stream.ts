@@ -114,6 +114,9 @@ class StoriesStream extends Transform {
     try {
       await this.semaphore.acquire();
       const story = await fetchStory(this.spaceId, chunk.id.toString());
+      if (!story) {
+        throw new Error("The API returned no story");
+      }
       this.push(story);
       this.onProgress?.();
       getLogger().info("Fetched story", { storyId: chunk.id });

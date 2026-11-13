@@ -45,6 +45,8 @@ export interface FailedStory {
 
 export interface FailedMigration extends FailedStory {
   migrationNames: string[];
+  /** The migration file that failed, when a single one did. */
+  migrationName?: string;
 }
 
 export interface SkippedMigration {

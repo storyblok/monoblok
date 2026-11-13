@@ -44,7 +44,34 @@ export type ApiResponse<
   ? { data: Data; error?: never; response: Response; request: Request }
   : { data?: Data; error?: ClientError; response: Response; request: Request };
 
-export type HttpRequestOptions = Omit<RequestOptions, "method" | "security" | "url">;
+// `responseStyle: "data"` would unwrap the body at runtime, which `ApiResponse` can't describe.
+export type HttpRequestOptions = Omit<
+  RequestOptions,
+  "method" | "security" | "url" | "responseStyle"
+>;
+
+/**
+ * `client.get()`. Overloads instead of a second type parameter: TS can't infer one type argument
+ * while another is passed explicitly, so `get<T>(path, { throwOnError: false })` would fail.
+ */
+type ApiClientGet<ThrowOnError extends boolean> = {
+  <TData = unknown>(
+    path: string,
+    options: HttpRequestOptions & { throwOnError: true },
+  ): Promise<ApiResponse<TData, true>>;
+  <TData = unknown>(
+    path: string,
+    options: HttpRequestOptions & { throwOnError: false },
+  ): Promise<ApiResponse<TData, false>>;
+  <TData = unknown>(
+    path: string,
+    options?: HttpRequestOptions & { throwOnError?: undefined },
+  ): Promise<ApiResponse<TData, ThrowOnError>>;
+  <TData = unknown>(
+    path: string,
+    options?: HttpRequestOptions,
+  ): Promise<ApiResponse<TData, boolean>>;
+};
 
 /** Past this, a slow discovering read costs more than the redirects it saves. */
 const MAX_CV_DISCOVERY_WAIT_MS = 2000;
@@ -249,7 +276,7 @@ type ApiClientBaseResult<
   datasources: ReturnType<typeof createDatasourcesResource<ThrowOnError>>;
   experiments: ReturnType<typeof createExperimentsResource<ThrowOnError>>;
   flushCache: () => Promise<void>;
-  get: (path: string, options?: HttpRequestOptions) => Promise<ApiResponse>;
+  get: ApiClientGet<ThrowOnError>;
   interceptors: Client["interceptors"];
   links: ReturnType<typeof createLinksResource<ThrowOnError>>;
   spaces: ReturnType<typeof createSpacesResource<ThrowOnError>>;
@@ -565,10 +592,12 @@ export const createApiClientBase = <
     path: string,
     query: Record<string, unknown>,
     options: HttpRequestOptions,
-  ): Promise<ApiResponse> =>
-    asApiResponse(
+  ): Promise<ApiResponse<unknown, boolean>> =>
+    asApiResponse<unknown, boolean>(
       client.request<unknown, ClientError, boolean>({
         ...options,
+        // An explicit `undefined` would override the client-level setting.
+        throwOnError: options.throwOnError ?? throwOnError,
         method,
         query,
         security,
@@ -730,7 +759,7 @@ export const createApiClientBase = <
     method: "GET",
     path: string,
     options: HttpRequestOptions = {},
-  ): Promise<ApiResponse> => {
+  ): Promise<ApiResponse<unknown, boolean>> => {
     const rawQuery = options.query || {};
 
     return requestWithCache(method, path, rawQuery, (query) => {
@@ -740,9 +769,28 @@ export const createApiClientBase = <
     });
   };
 
-  const getRequest = (path: string, options: HttpRequestOptions = {}) => {
+  function getRequest<TData = unknown>(
+    path: string,
+    options: HttpRequestOptions & { throwOnError: true },
+  ): Promise<ApiResponse<TData, true>>;
+  function getRequest<TData = unknown>(
+    path: string,
+    options: HttpRequestOptions & { throwOnError: false },
+  ): Promise<ApiResponse<TData, false>>;
+  function getRequest<TData = unknown>(
+    path: string,
+    options?: HttpRequestOptions & { throwOnError?: undefined },
+  ): Promise<ApiResponse<TData, ThrowOnError>>;
+  function getRequest<TData = unknown>(
+    path: string,
+    options?: HttpRequestOptions,
+  ): Promise<ApiResponse<TData, boolean>>;
+  function getRequest(
+    path: string,
+    options: HttpRequestOptions = {},
+  ): Promise<ApiResponse<unknown, boolean>> {
     return request("GET", path, options);
-  };
+  }
 
   const resourceDeps: ResourceDeps<ThrowOnError> = {
     client,

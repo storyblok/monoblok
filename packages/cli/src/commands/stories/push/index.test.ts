@@ -2167,7 +2167,7 @@ describe("stories push command", () => {
       expect(actions.updateStory).not.toHaveBeenCalled();
       // Reporting
       const report = getReport();
-      expect(report?.status).toBe("PARTIAL_SUCCESS");
+      expect(report?.status).toBe("FAILURE");
       // Logging
       const logFile = getLogFileContents(LOG_PREFIX);
       expect(logFile).toContain("Invalid bloks field: expected an array");
@@ -2232,7 +2232,7 @@ describe("stories push command", () => {
 
       // Reporting
       const report = getReport();
-      expect(report?.status).toBe("PARTIAL_SUCCESS");
+      expect(report?.status).toBe("FAILURE");
       // Logging
       const logFile = getLogFileContents(LOG_PREFIX);
       expect(logFile).toContain("Failed to update story");

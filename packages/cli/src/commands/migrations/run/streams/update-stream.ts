@@ -9,8 +9,9 @@ import {
 } from "../../../stories/utils";
 import { getLogger } from "../../../../lib/logger/logger";
 import { createPipelineBackpressureLock } from "../../../../utils/backpressure-lock";
-import { ERROR_CODES } from "../constants";
+import { ERROR_CODES, type FailedStory } from "../constants";
 import { toError } from "../../../../utils/error";
+import { isSystemicError } from "../failed-stories";
 
 export interface UpdateStreamOptions {
   space: string;
@@ -18,6 +19,7 @@ export interface UpdateStreamOptions {
   dryRun?: boolean;
   onProgress?: (current: number) => void;
   onTotal?: (total: number) => void;
+  onError?: (failed: FailedStory) => void;
 }
 
 export interface UpdateStreamResult {
@@ -61,10 +63,36 @@ export class UpdateStream extends Writable {
   ) {
     try {
       await this.semaphore.acquire();
-
-      this.updateStory(chunk).finally(() => {
+      if (this.destroyed) {
+        // The run was stopped while this story waited for a slot.
         this.semaphore.release();
-      });
+        callback();
+        return;
+      }
+
+      this.updateStory(chunk)
+        .catch((maybeError) => {
+          // `updateStory` records its own failures. This only keeps anything
+          // it couldn't handle from becoming an unhandled rejection, which
+          // would end the process in the middle of the run.
+          const error = toError(maybeError);
+          const storyName = chunk.name || chunk.storyId.toString();
+          const isRecorded = [...this.results.successful, ...this.results.failed].some(
+            (story) => story.storyId === chunk.storyId,
+          );
+          if (!isRecorded) {
+            this.recordFailure({ storyId: chunk.storyId, name: storyName, error });
+          }
+          getLogger().error(error.message, {
+            storyId: chunk.storyId,
+            storyName,
+            error,
+            errorCode: ERROR_CODES.MIGRATION_STORY_UPDATE_ERROR,
+          });
+        })
+        .finally(() => {
+          this.semaphore.release();
+        });
 
       callback();
     } catch (error) {
@@ -120,40 +148,40 @@ export class UpdateStream extends Writable {
         getLogger().info("Updated story", { storyId });
       } else {
         const error = new Error("Update returned null");
-        this.results.failed.push({
-          storyId,
-          name: storyName,
-          error,
-        });
-        this.results.totalProcessed++;
-        this.options.onProgress?.(this.results.totalProcessed);
+        this.recordFailure({ storyId, name: storyName, error });
         getLogger().error(`Failed to update story: ${error.message}`, {
           storyId,
+          storyName,
           errorCode: ERROR_CODES.MIGRATION_STORY_UPDATE_NULL,
         });
       }
     } catch (maybeError) {
       const error = toError(maybeError);
-      this.results.failed.push({
-        storyId,
-        name: storyName,
-        error,
-      });
-      this.results.totalProcessed++;
-      this.options.onProgress?.(this.results.totalProcessed);
+      this.recordFailure({ storyId, name: storyName, error });
       getLogger().error(error.message, {
         storyId,
+        storyName,
         error,
         errorCode: ERROR_CODES.MIGRATION_STORY_UPDATE_ERROR,
       });
+      if (isSystemicError(error)) {
+        // Every remaining story would fail the same way, so stop the run.
+        this.destroy(error);
+      }
     }
+  }
+
+  private recordFailure(failed: { storyId: number; name: string; error: Error }): void {
+    this.results.failed.push(failed);
+    this.results.totalProcessed++;
+    this.options.onProgress?.(this.results.totalProcessed);
+    this.options.onError?.(failed);
   }
 
   async _destroy(error: Error | null, callback: (error?: Error | null) => void) {
     try {
       // Process any remaining items
       await this.semaphore.drain();
-      callback();
     } catch (batchError) {
       callback(batchError as Error);
       return;

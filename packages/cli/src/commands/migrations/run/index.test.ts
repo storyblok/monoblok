@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { resolve } from "pathe";
 import { vol } from "memfs";
@@ -12,6 +12,8 @@ import { resetLogger } from "../../../lib/logger/logger";
 import { resetReporter } from "../../../lib/reporter/reporter";
 import { getLogFileContents } from "../../__tests__/helpers";
 import { buildMigrationFilename } from "../migration-filename";
+import { APIError } from "../../../utils/error";
+import { FetchError } from "../../../utils/fetch";
 
 vi.mock("../../stories/actions", () => ({
   fetchStories: vi.fn(),
@@ -91,6 +93,10 @@ const createMockStory = (overrides: Partial<Story> = {}): Story => {
 };
 
 const mockStory = createMockStory();
+const unfetchableStory = createMockStory({ id: 517473244, name: "Unfetchable Story" });
+const unpublishableStory = createMockStory({ id: 517473245, name: "Unpublishable Story" });
+const WORKFLOW_STAGE_ERROR =
+  "You are not allowed to publish at this workflow stage. Please change the workflow stage first.";
 
 const UNSAFE_COMPONENT_NAME = "hero:v2";
 const COLLIDING_COMPONENT_NAME = "hero_v2";
@@ -196,6 +202,111 @@ const preconditions = {
       Promise.resolve({ default: (block: any) => ({ ...block, migrated: true }) }),
     );
   },
+  getsNoStoryForOneStory() {
+    vi.mocked(fetchStories).mockResolvedValue({
+      stories: [unfetchableStory, mockStory],
+      headers: new Headers({ Total: "2", "Per-Page": "100" }),
+    });
+    vi.mocked(fetchStory).mockImplementation(async (_spaceId, storyId) =>
+      storyId === unfetchableStory.id.toString() ? undefined : mockStory,
+    );
+    this.canUpdateStory();
+    this.canLoadMigrationFunction();
+  },
+  failsToFetchOneStory() {
+    vi.mocked(fetchStories).mockResolvedValue({
+      stories: [unfetchableStory, mockStory],
+      headers: new Headers({ Total: "2", "Per-Page": "100" }),
+    });
+    vi.mocked(fetchStory).mockImplementation(async (_spaceId, storyId) => {
+      if (storyId === unfetchableStory.id.toString()) {
+        throw new APIError(
+          "server_error",
+          "pull_story",
+          new FetchError("Internal Server Error", {
+            status: 500,
+            statusText: "Internal Server Error",
+            data: { error: "Story could not be loaded" },
+          }),
+        );
+      }
+      return mockStory;
+    });
+    this.canUpdateStory();
+    this.canLoadMigrationFunction();
+  },
+  failsToApplyMigrationToStory() {
+    this.canFetchStories();
+    this.canFetchStory();
+    this.canUpdateStory();
+    this.canLoadMigrationFunction(() => {
+      throw new Error("Cannot read properties of undefined (reading 'title')");
+    });
+  },
+  failsToUpdateEveryStory() {
+    this.canFetchStories();
+    this.canFetchStory();
+    this.canLoadMigrationFunction();
+    vi.mocked(updateStory).mockRejectedValue(
+      new APIError(
+        "unprocessable_entity",
+        "update_story",
+        new FetchError("Unprocessable Entity", {
+          status: 422,
+          statusText: "Unprocessable Entity",
+          data: { error: WORKFLOW_STAGE_ERROR },
+        }),
+      ),
+    );
+  },
+  isNotAuthorizedToFetchStory() {
+    this.canFetchStories();
+    this.canUpdateStory();
+    this.canLoadMigrationFunction();
+    vi.mocked(fetchStory).mockRejectedValue(
+      new APIError(
+        "unauthorized",
+        "pull_story",
+        new FetchError("Unauthorized", { status: 401, statusText: "Unauthorized" }),
+      ),
+    );
+  },
+  isNotAuthorizedToUpdateStory() {
+    this.canFetchStories();
+    this.canFetchStory();
+    this.canLoadMigrationFunction();
+    vi.mocked(updateStory).mockRejectedValue(
+      new APIError(
+        "unauthorized",
+        "update_story",
+        new FetchError("Unauthorized", { status: 401, statusText: "Unauthorized" }),
+      ),
+    );
+  },
+  failsToUpdateOneStory() {
+    vi.mocked(fetchStories).mockResolvedValue({
+      stories: [unpublishableStory, mockStory],
+      headers: new Headers({ Total: "2", "Per-Page": "100" }),
+    });
+    vi.mocked(fetchStory).mockImplementation(async (_spaceId, storyId) =>
+      storyId === unpublishableStory.id.toString() ? unpublishableStory : mockStory,
+    );
+    vi.mocked(updateStory).mockImplementation(async (_spaceId, storyId) => {
+      if (storyId === unpublishableStory.id) {
+        throw new APIError(
+          "unprocessable_entity",
+          "update_story",
+          new FetchError("Unprocessable Entity", {
+            status: 422,
+            statusText: "Unprocessable Entity",
+            data: { error: WORKFLOW_STAGE_ERROR },
+          }),
+        );
+      }
+      return mockStory;
+    });
+    this.canLoadMigrationFunction();
+  },
   canMigrateFromSpace() {
     this.canFetchStories();
     this.canFetchStory();
@@ -216,6 +327,11 @@ describe("migrations run command", () => {
     vi.clearAllMocks();
     vol.reset();
     resetReporter();
+    process.exitCode = undefined;
+  });
+
+  afterEach(() => {
+    process.exitCode = undefined;
   });
 
   it("should apply a migration for a component whose name is not filename-safe", async () => {
@@ -346,6 +462,11 @@ describe("migrations run command", () => {
         }),
       },
       summary: {
+        fetchResults: {
+          failed: 0,
+          succeeded: 1,
+          total: 1,
+        },
         migrationResults: {
           failed: 0,
           skipped: 0,
@@ -369,6 +490,7 @@ describe("migrations run command", () => {
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining("Update Results: 1 stories updated."),
     );
+    expect(process.exitCode).toBe(0);
   });
 
   it("should report a run with only skipped migrations as success", async () => {
@@ -416,6 +538,11 @@ describe("migrations run command", () => {
       status: "FAILURE",
       meta: expect.any(Object),
       summary: {
+        fetchResults: {
+          failed: 0,
+          succeeded: 1,
+          total: 1,
+        },
         migrationResults: {
           failed: 1,
           skipped: 0,
@@ -619,5 +746,201 @@ describe("migrations run command", () => {
 
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('No directory found for space \\"67890\\".');
+  });
+
+  it("should keep migrating the other stories when one story can't be fetched", async () => {
+    preconditions.failsToFetchOneStory();
+    resetLogger();
+
+    await migrationsCommand.parseAsync(["node", "test", "run", "--space", "12345"]);
+
+    expect(updateStory).toHaveBeenCalledTimes(1);
+    expect(updateStory).toHaveBeenCalledWith("12345", mockStory.id, expect.any(Object));
+    // UI
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining(
+        `Failed to migrate "Unfetchable Story (id ${unfetchableStory.id})": Fetch failed: Story could not be loaded`,
+      ),
+    );
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining("Migration Results: 1 stories updated, 0 stories skipped."),
+    );
+    expect(process.exitCode).toBe(1);
+    // Report
+    const reportFile = Object.entries(vol.toJSON()).find(([filename]) =>
+      filename.includes("reports/12345/storyblok-migrations-run-"),
+    )?.[1];
+    expect(JSON.parse(reportFile || "{}")).toMatchObject({
+      status: "PARTIAL_SUCCESS",
+      summary: {
+        fetchResults: { total: 2, succeeded: 1, failed: 1 },
+        migrationResults: { total: 1, succeeded: 1, failed: 0 },
+        updateResults: { total: 1, succeeded: 1, failed: 0 },
+      },
+      meta: {
+        failedStories: [
+          {
+            storyId: unfetchableStory.id,
+            name: "Unfetchable Story",
+            reason: "Fetch failed: Story could not be loaded",
+          },
+        ],
+      },
+    });
+    // Logging
+    const logFile = getLogFileContents(LOG_PREFIX);
+    expect(logFile).toContain("MIGRATION_STORY_FETCH_ERROR");
+    expect(logFile).toContain("Unfetchable Story");
+    expect(logFile).toContain("Migration finished");
+  });
+
+  it("should list a story that failed to update with the reason the API gave", async () => {
+    preconditions.failsToUpdateOneStory();
+    resetLogger();
+
+    await migrationsCommand.parseAsync(["node", "test", "run", "--space", "12345"]);
+
+    expect(updateStory).toHaveBeenCalledTimes(2);
+    // UI
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining(
+        `Failed to migrate "Unpublishable Story (id ${unpublishableStory.id})": Update failed: ${WORKFLOW_STAGE_ERROR}`,
+      ),
+    );
+    expect(process.exitCode).toBe(1);
+    // Report
+    const reportFile = Object.entries(vol.toJSON()).find(([filename]) =>
+      filename.includes("reports/12345/storyblok-migrations-run-"),
+    )?.[1];
+    expect(JSON.parse(reportFile || "{}")).toMatchObject({
+      status: "PARTIAL_SUCCESS",
+      summary: {
+        updateResults: { total: 2, succeeded: 1, failed: 1 },
+      },
+    });
+    // Logging
+    const logFile = getLogFileContents(LOG_PREFIX);
+    expect(logFile).toContain(WORKFLOW_STAGE_ERROR);
+    expect(logFile).toContain("Unpublishable Story");
+  });
+
+  it("should report a run where every story update failed as a failure", async () => {
+    preconditions.failsToUpdateEveryStory();
+    resetLogger();
+
+    await migrationsCommand.parseAsync(["node", "test", "run", "--space", "12345"]);
+
+    const reportFile = Object.entries(vol.toJSON()).find(([filename]) =>
+      filename.includes("reports/12345/storyblok-migrations-run-"),
+    )?.[1];
+    expect(JSON.parse(reportFile || "{}")).toMatchObject({
+      status: "FAILURE",
+      summary: {
+        migrationResults: { total: 1, succeeded: 1, failed: 0 },
+        updateResults: { total: 1, succeeded: 0, failed: 1 },
+      },
+    });
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("should list a story the migration function failed on with the reason", async () => {
+    preconditions.failsToApplyMigrationToStory();
+    resetLogger();
+
+    await migrationsCommand.parseAsync(["node", "test", "run", "--space", "12345"]);
+
+    expect(updateStory).not.toHaveBeenCalled();
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining(
+        `Failed to migrate "Test Story (id ${mockStory.id})": migration-component.js failed: Cannot read properties of undefined (reading 'title')`,
+      ),
+    );
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("should stop the run and still print the summary when fetching stories is not authorized", async () => {
+    preconditions.isNotAuthorizedToFetchStory();
+    resetLogger();
+
+    await migrationsCommand.parseAsync(["node", "test", "run", "--space", "12345"]);
+
+    expect(updateStory).not.toHaveBeenCalled();
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining("Run stopped after 1 of 1 stories."),
+    );
+    expect(console.error).not.toHaveBeenCalledWith(
+      expect.stringContaining("No stories required updates"),
+    );
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining("The user is not authorized to access the API"),
+    );
+    const reportFile = Object.entries(vol.toJSON()).find(([filename]) =>
+      filename.includes("reports/12345/storyblok-migrations-run-"),
+    )?.[1];
+    expect(JSON.parse(reportFile || "{}")).toMatchObject({ status: "FAILURE" });
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("should stop the run and still print the summary when updating stories is not authorized", async () => {
+    preconditions.isNotAuthorizedToUpdateStory();
+    resetLogger();
+
+    await migrationsCommand.parseAsync(["node", "test", "run", "--space", "12345"]);
+
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining("Update Results: 0 stories updated, 1 stories failed."),
+    );
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining("The user is not authorized to access the API"),
+    );
+    const reportFile = Object.entries(vol.toJSON()).find(([filename]) =>
+      filename.includes("reports/12345/storyblok-migrations-run-"),
+    )?.[1];
+    expect(JSON.parse(reportFile || "{}")).toMatchObject({ status: "FAILURE" });
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("should keep migrating the other stories when the API returns no story", async () => {
+    preconditions.getsNoStoryForOneStory();
+    resetLogger();
+
+    await migrationsCommand.parseAsync(["node", "test", "run", "--space", "12345"]);
+
+    expect(updateStory).toHaveBeenCalledExactlyOnceWith("12345", mockStory.id, expect.any(Object));
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining(
+        `Failed to migrate "Unfetchable Story (id ${unfetchableStory.id})": Fetch failed: The API returned no story`,
+      ),
+    );
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("should still report the error that stopped the run when writing the report fails", async () => {
+    preconditions.isNotAuthorizedToUpdateStory();
+    resetLogger();
+    const saveToFileSync = filesystem.saveToFileSync;
+    const saveSpy = vi
+      .spyOn(filesystem, "saveToFileSync")
+      .mockImplementation((filePath, ...rest) => {
+        if (filePath.includes("reports/")) {
+          throw new Error("Permission denied while accessing the file");
+        }
+        return saveToFileSync(filePath, ...rest);
+      });
+
+    try {
+      await migrationsCommand.parseAsync(["node", "test", "run", "--space", "12345"]);
+    } finally {
+      saveSpy.mockRestore();
+    }
+
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining("Permission denied while accessing the file"),
+    );
+    // The error block, not the failed-stories list, which repeats the message.
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining("error The user is not authorized to access the API"),
+    );
+    expect(process.exitCode).toBe(1);
   });
 });

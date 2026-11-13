@@ -61,9 +61,10 @@ export class FailureReasonGroup {
    * - Multiple:                   `Failed to push N assets — reason (e.g. "a", "b")`
    * - Overflow:                   `… and N more failure reason(s)`
    *
-   * Pass `verb` to customise the opening word ("push", "read", "transfer", …).
+   * Pass `verb` to customise the opening word ("push", "read", "transfer", …)
+   * and `nouns` for what failed, singular and plural.
    */
-  toListLines(verb = "push"): string[] {
+  toListLines(verb = "push", [singular, plural]: [string, string] = ["asset", "assets"]): string[] {
     const all = this.entries();
     const visible = all.slice(0, MAX_REASONS);
 
@@ -71,7 +72,7 @@ export class FailureReasonGroup {
       if (count === 1 && examples.length > 0) {
         return `Failed to ${verb} "${examples[0]}": ${reason}`;
       }
-      const noun = count === 1 ? "asset" : "assets";
+      const noun = count === 1 ? singular : plural;
       const exampleStr =
         examples.length > 0 ? ` (e.g. ${examples.map((e) => `"${e}"`).join(", ")})` : "";
       return `Failed to ${verb} ${count} ${noun} — ${reason}${exampleStr}`;

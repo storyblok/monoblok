@@ -95,3 +95,28 @@ it("should not write a report when disabled", () => {
   const files = Object.keys(vol.toJSON());
   expect(files).toHaveLength(0);
 });
+
+const readReport = (name: string) => {
+  const files = vol.toJSON();
+  return JSON.parse(String(files[Object.keys(files).find((k) => k.includes(name))!]));
+};
+
+it("should fail a run when a stage that counts the same items failed for all of them", () => {
+  const reporter = new Reporter({ enabled: true, filePath: "./stages.json" });
+  reporter.addSummary("processResults", { total: 2, succeeded: 2, failed: 0 });
+  reporter.addSummary("updateResults", { total: 2, succeeded: 0, failed: 2 });
+  reporter.finalize();
+
+  expect(readReport("stages.json").status).toBe(REPORT_STATUS.failure);
+});
+
+it("should fail a run that was stopped by an error and record the error", () => {
+  const reporter = new Reporter({ enabled: true, filePath: "./stopped.json" });
+  reporter.addSummary("jobs", { total: 2, succeeded: 2, failed: 0 });
+  reporter.finalize(new Error("Unauthorized"));
+
+  expect(readReport("stopped.json")).toMatchObject({
+    status: REPORT_STATUS.failure,
+    meta: { error: "Unauthorized" },
+  });
+});

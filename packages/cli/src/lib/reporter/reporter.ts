@@ -65,7 +65,11 @@ export class Reporter {
     return this;
   }
 
-  public finalize() {
+  /**
+   * Writes the report. Pass the error that stopped the command early, so the
+   * report says the run failed even though its summaries look complete.
+   */
+  public finalize(stoppedBy?: Error) {
     if (!this.enabled) {
       return;
     }
@@ -73,7 +77,12 @@ export class Reporter {
     const endedAt = new Date();
     this.report.meta.endedAt = endedAt.toISOString();
     this.report.meta.durationMs = endedAt.getTime() - this.startedAt.getTime();
-    this.updateStatus();
+    if (stoppedBy) {
+      this.report.meta.error = stoppedBy.message;
+      this.report.status = REPORT_STATUS.failure;
+    } else {
+      this.updateStatus();
+    }
 
     saveToFileSync(this.filePath, JSON.stringify(this.report, null, 2));
 
@@ -82,21 +91,22 @@ export class Reporter {
     }
   }
 
+  /**
+   * Each summary is a stage, and stages often count the same items (e.g. a
+   * story that is processed and then fails to update), so counts are never
+   * added up across stages: a stage where everything failed fails the run.
+   */
   private updateStatus() {
-    let succeededTotal = 0;
-    let failedTotal = 0;
+    const stages = Object.values(this.report.summary);
 
-    for (const item of Object.values(this.report.summary)) {
-      succeededTotal += item.succeeded;
-      failedTotal += item.failed;
-    }
-
-    if (failedTotal === 0) {
+    if (stages.every((stage) => stage.failed === 0)) {
       this.report.status = REPORT_STATUS.success;
-    } else if (succeededTotal > 0) {
-      this.report.status = REPORT_STATUS.partialSuccess;
-    } else {
+    } else if (
+      stages.some((stage) => stage.failed > 0 && stage.succeeded + (stage.skipped ?? 0) === 0)
+    ) {
       this.report.status = REPORT_STATUS.failure;
+    } else {
+      this.report.status = REPORT_STATUS.partialSuccess;
     }
   }
 

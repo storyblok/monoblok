@@ -28,15 +28,27 @@ decide the next action.
 **GitHub issues:**
 
 ```bash
-gh issue view <number> --repo storyblok/monoblok --json title,body,labels,state,comments,author,createdAt
+gh issue view <number> --repo storyblok/monoblok \
+  --json title,body,labels,state,comments,author,createdAt,closedByPullRequestsReferences
 ```
 
-**Linear:**
+**Linear:** `scripts/linear-fetch.sh` next to this file, run from the repo root:
 
 ```bash
 bash .agents/skills/triage/scripts/linear-fetch.sh issue DX-123 DX-456
 bash .agents/skills/triage/scripts/linear-fetch.sh triage
 ```
+
+Linear steps apply only to `DX-` tickets; skip them for GitHub-only runs. A ticket synced from
+GitHub has its issue in `attachments` (`.../monoblok/issues/<n>`), and its Linear comments all show
+"GitHub" as the author: triage it as that GitHub issue, named `#<n> (DX-<id>)`.
+
+**Fix PRs:** a GitHub issue's candidates are in `closedByPullRequestsReferences`, a Linear ticket's
+are the `.../pull/<n>` links in `attachments`. Both include merged and closed PRs, so keep only
+those where `gh pr view <url> --json state` says `OPEN`. If several, the newest is the fix. A PR
+that is not linked, whether the issue names it or one
+`gh pr list --repo storyblok/monoblok --search "<keywords>"` finds it, is only a candidate: nobody
+has checked that it fixes the ticket. Write it as `#<n> (not linked)`.
 
 ### Step 3: Assess each ticket
 
@@ -62,36 +74,50 @@ output, etc.).
 
 #### 3c. Priority assessment
 
-Score each ticket on these dimensions, then derive an overall priority.
+Read `calibration.md` next to this file first and match the ticket against it. Then score each
+ticket on these dimensions and derive an overall priority.
 
 **Impact:**
 
-- `blocker`: Prevents core functionality, no workaround
-- `critical`: Major functionality broken, workaround exists
-- `degraded`: Works but with noticeable problems
-- `minor`: Cosmetic, edge case, or negligible effect
+- `blocker`: Users cannot work with the current version, and no workaround helps: core functionality
+  fails, damage is done before a workaround could apply (e.g. `--dry-run` writes to a space), or an
+  update grows the bundle by 100 kB gzip or more, enough to fail CI size checks. Any workaround,
+  even one the reporter did not mention, makes it `critical`; downgrading is not a workaround.
+- `critical`: Major functionality broken or data silently lost, workaround exists
+- `degraded`: Works, but with a noticeable problem or a measurable cost in what ships (bundle size,
+  load or build time), whatever the reporter's type
+- `minor`: Cosmetic or negligible, including feature requests and improvements without such a cost
+
+Score fixed tickets as reported.
 
 **Breadth:**
 
-- `widespread`: Affects most/all users of the package
-- `common`: Common scenario
-- `uncommon`: Specific configuration or setup
+- `widespread`: The default setup of the package or command
+- `common`: A mainstream framework, runtime or module system, or a command used in normal flows
+- `uncommon`: Needs a specific option, input value, field type or path
 - `edge-case`: Rare conditions or unusual usage
 
-**Urgency:**
+Judge the reported scenario, not the install base: if it needs a specific option or input, it is
+`uncommon`, unless most projects use that value or option (e.g. underscores in blok names,
+`livePreview`, static generation).
 
-- `regression`: Worked before, broke recently
-- `new-defect`: Never worked, newly discovered
-- `longstanding`: Has been this way for a while
+**Regression:** `yes` when it worked in an earlier version and broke after an update, of our package
+or of a dependency, framework or runtime it supports (e.g. a Nuxt minor release). It needs evidence:
+the report names a version where it worked, or the changelog or `git log` shows the change that
+broke it. "It used to work" alone is `no`, and so is a `regression` label without evidence. A case
+an earlier fix left out is `no` too: it never worked.
 
 **Overall priority:**
 
-| Priority          | Criteria                                                      |
-| ----------------- | ------------------------------------------------------------- |
-| **P0 — Critical** | Blocker + widespread/common                                   |
-| **P1 — High**     | Critical + common, or blocker + uncommon                      |
-| **P2 — Medium**   | Degraded + common, or critical + edge-case                    |
-| **P3 — Low**      | Minor impact, edge-case, or longstanding with easy workaround |
+| Priority          | Criteria                                                       |
+| ----------------- | -------------------------------------------------------------- |
+| **P0 — Critical** | Blocker + widespread/common                                    |
+| **P1 — High**     | Critical + widespread/common, or blocker + uncommon/edge-case  |
+| **P2 — Medium**   | Degraded + widespread/common, or critical + uncommon/edge-case |
+| **P3 — Low**      | Minor impact, or degraded + uncommon/edge-case                 |
+
+A regression raises the priority one level (P3 → P2, P2 → P1): people relied on it, and an update
+took it away. Only a blocker reaches P0 this way.
 
 #### 3d. Verdict
 
@@ -102,6 +128,7 @@ Score each ticket on these dimensions, then derive an overall priority.
 | **duplicate**  | Already tracked elsewhere — link to the original          |
 | **not-a-bug**  | Working as intended, user error, or environment issue     |
 | **wont-fix**   | Valid but out of scope or conflicts with design direction |
+| **fixed**      | Already resolved: ask the reporter to confirm and close   |
 
 #### 3e. Duplicate search
 
@@ -121,10 +148,10 @@ the connection.
 ```markdown
 ## Triage Summary
 
-| Ticket | Title | Type        | Priority | Verdict    | Package |
-| ------ | ----- | ----------- | -------- | ---------- | ------- |
-| #368   | ...   | bug         | P1       | actionable | cli     |
-| DX-123 | ...   | improvement | P2       | actionable | vue     |
+| Ticket | Title | Type        | Priority | Verdict    | Package | Suggested labels |
+| ------ | ----- | ----------- | -------- | ---------- | ------- | ---------------- |
+| #368   | ...   | bug         | P1       | actionable | cli     | `pkg: cli`       |
+| DX-123 | ...   | improvement | P2       | actionable | vue     | `pkg: vue`       |
 ```
 
 #### Detailed assessment (one per ticket)
@@ -133,12 +160,13 @@ the connection.
 ### <ticket-id>: <title>
 
 **Source:** GitHub / Linear **Type:** <type> (correct reporter's classification if needed)
-**Reproducibility:** <assessment> **Priority:** <P0-P3> — <label>
+**Reproducibility:** <assessment> **Priority:** <P0-P3> — <Critical|High|Medium|Low>
 
 - Impact: <level> (<reason>)
 - Breadth: <level> (<reason>)
-- Urgency: <level> (<reason>)
-- Related: <linked tickets if any> **Package:** <package> **Verdict:** <verdict>
+- Regression: <no, or yes: worked in <version>, broke with <version or update>>
+- Related: <tickets> **Package:** <package> **Verdict:** <verdict>
+- Fix PR: <#number, #number (not linked), or none> **Labels:** <suggested labels>
 
 **Summary:** <2-3 sentences>
 
@@ -147,16 +175,35 @@ the connection.
 
 For **needs-info** tickets, include a draft reply asking for the missing information.
 
+## Labels
+
+Suggest only labels that exist (`gh label list --repo storyblok/monoblok`); priority has no label.
+Package → label is `pkg: <folder>`, except `capi-client` → `pkg: api-client`, `mapi-client` →
+`pkg: management-api-client` and `js-client` → `pkg: storyblok-js-client`. Suggest none if no label
+fits (e.g. `schema`).
+
 ## Output
 
-Write results to `claude-output/triage-<identifier>.md` (e.g. `triage-424.md`,
-`triage-box-03-20.md`) and present the summary table directly to the user.
+Write `claude-output/triage-<identifier>.md` (e.g. `triage-424.md`, `triage-DX-296.md`), or
+`triage-<YYYY-MM-DD-HHMMSS>-batch.md` (UTC) for several issues, so a later batch never overwrites an
+earlier one. Every issue gets a `### <ticket-id>: <title>` heading (`### #836: …`, `### DX-296: …`);
+for P3 the body is the one line below. Start with a "Needs attention" list: P0/P1, any regression,
+or P2 with no `OWNER`/`MEMBER`/`COLLABORATOR` comment in the last 14 days
+(`gh issue view --json comments` includes `authorAssociation`; for Linear, no comment at all in 14
+days). Only `actionable` and `needs-info` tickets without an open linked fix PR go on that list (a
+candidate does not count), whatever their priority; the rest still get their section below. Give
+every issue its scores, one line is enough for P3 (no summary or next step):
+`P3 | minor / edge-case | verdict | pkg | fix PR or none`. A P3 needs-info ticket keeps its draft
+reply under that line. Present the summary table, sorted by priority, then by ticket number from
+highest to lowest (newest first); in a mixed run, GitHub tickets come before Linear ones within the
+same priority. Sort the "Needs attention" list the same way, and write the detailed sections in
+table order.
 
 ## Rules
 
 - **Read-only.** Never create, update, comment on, or close issues on GitHub or Linear.
-- **Always write a report.** Every triage run must produce a `claude-output/triage-<identifier>.md`
-  file.
 - **No code analysis.** Use `/investigate` for deep dives.
-- When unsure, lean toward **bug** and higher priority — better to investigate than dismiss.
-- For Linear triage box: process all tickets, sort output by priority (P0 first).
+- When unsure about type, lean toward **bug**; priority always follows the table and the regression
+  step.
+- If the reporter's version is outdated, the next step is "retest on the latest version", unless the
+  changelog or `git log` shows it is already fixed.

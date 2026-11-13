@@ -306,15 +306,46 @@ interface ValueOpSpec<
   under?: UnderOf<TBefore>;
 }
 
-/** The pre-migration value type of `<block>.<field>`, or `unknown` when unknowable. */
-type SourceValue<TBefore extends SchemaShape, TBlock extends string, TField> =
-  IsUntypedSchema<TBefore> extends true
+/** The value type of `<block>.<field>` in `TSchema`, or `unknown` when unknowable. */
+type FieldValue<TSchema extends SchemaShape, TBlock extends string, TField> =
+  IsUntypedSchema<TSchema> extends true
     ? unknown
-    : TBlock extends BlockNameOf<TBefore>
-      ? TField extends keyof ContentOf<TBefore, TBlock>
-        ? ContentOf<TBefore, TBlock>[TField]
+    : TBlock extends BlockNameOf<TSchema>
+      ? TField extends keyof ContentOf<TSchema, TBlock>
+        ? ContentOf<TSchema, TBlock>[TField]
         : unknown
       : unknown;
+
+/** A block a callback writes may leave out `_uid`; the runner derives one from its position. */
+type WithOptionalUids<T> = T extends readonly (infer Item)[]
+  ? WithOptionalUids<Item>[]
+  : T extends { _uid: string; component: string }
+    ? Omit<WithOptionalChildUids<T>, "_uid"> & { _uid?: string }
+    : T;
+
+type WithOptionalChildUids<T> = { [K in keyof T]: WithOptionalUids<T[K]> };
+
+/**
+ * What a callback may write to `<block>.<field>`. A schema without literal block
+ * and field names (the bare `SchemaShape` interface) resolves every field to
+ * `never`, which would reject any write, so that widens to `unknown`.
+ */
+type WritableValue<TSchema extends SchemaShape, TBlock extends string, TField> = [
+  FieldValue<TSchema, TBlock, TField>,
+] extends [never]
+  ? unknown
+  : WithOptionalUids<FieldValue<TSchema, TBlock, TField>>;
+
+/**
+ * Constraint for a `const` type parameter that captures what a callback returns.
+ * The schema parameters are still being inferred when the callback is checked, so
+ * a return typed only as `WritableValue` widens `linktype: "url"` to `string`;
+ * the `const` capture keeps the literals. The array and record members keep array
+ * literals mutable at any depth, such as a richtext document's `content`, since a
+ * `const` capture infers a readonly tuple wherever its constraint names no
+ * mutable array.
+ */
+type WriteCandidate = WriteCandidate[] | { [key: string]: WriteCandidate } | {} | null | undefined;
 
 /**
  * A key op never honors `under`, but it carries one through when a caller
@@ -411,15 +442,20 @@ export function reorderField<
 /**
  * Rewrites one field's value, translations included: the callback is invoked
  * once per key in the field's `__i18n__` family, with the language it belongs to.
+ * Returning `undefined` leaves that key as it is; `removeField` removes a field.
  */
 export function alterField<
   TAfter extends SchemaShape,
   TBefore extends SchemaShape,
   const TBlock extends SourceBlockName<TAfter, TBefore>,
   const TField extends SourceFieldName<TAfter, TBefore, TBlock>,
+  const TValue extends WriteCandidate = WritableValue<TAfter, TBlock, TField> | undefined,
 >(
   spec: { block: TBlock; field: TField; under?: UnderOf<TBefore> },
-  fn: (value: SourceValue<TBefore, TBlock, TField>, context: AlterFieldContext) => unknown,
+  fn: (
+    value: FieldValue<TBefore, TBlock, TField>,
+    context: AlterFieldContext,
+  ) => TValue & (WritableValue<TAfter, TBlock, TField> | undefined),
 ): AlterFieldOp<TAfter, TBefore> {
   return {
     kind: "alterField",
@@ -449,7 +485,7 @@ export function alterBlock<
     | (TBlock extends BlockNameOf<TAfter>
         ? IsUntypedSchema<TAfter> extends true
           ? Record<string, unknown>
-          : ContentOf<TAfter, TBlock>
+          : WithOptionalChildUids<ContentOf<TAfter, TBlock>>
         : never),
 ): AlterBlockOp<TAfter, TBefore> {
   return {
@@ -509,14 +545,15 @@ export function addField<
   TAfter extends SchemaShape,
   TBefore extends SchemaShape,
   const TBlock extends SourceBlockName<TAfter, TBefore>,
+  // Defaulted for the same reason as on `splitField`.
+  const TField extends TargetFieldName<TAfter, TBlock> = TargetFieldName<TAfter, TBlock>,
+  const TValue extends WriteCandidate = WritableValue<TAfter, TBlock, TField> | undefined,
 >(
-  spec: {
-    block: TBlock;
-    field: TargetFieldName<TAfter, TBlock>;
-    translatable?: boolean;
-    under?: KeyOpUnder;
-  },
-  fn: (block: SourceContent<TBefore, TBlock>, context: AlterFieldContext) => unknown,
+  spec: { block: TBlock; field: TField; translatable?: boolean; under?: KeyOpUnder },
+  fn: (
+    block: SourceContent<TBefore, TBlock>,
+    context: AlterFieldContext,
+  ) => TValue & (WritableValue<TAfter, TBlock, TField> | undefined),
 ): AddFieldOp<TAfter, TBefore> {
   return {
     kind: "addField",
@@ -554,10 +591,10 @@ export function splitField<
     block: TBlock;
     field: TField;
     into: readonly TargetFieldName<TAfter, TBlock>[];
-    merge?: (values: readonly unknown[]) => unknown;
+    merge?: (values: readonly unknown[]) => WritableValue<TBefore, TBlock, TField>;
     under?: KeyOpUnder;
   },
-  split: (value: SourceValue<TBefore, TBlock, TField>) => readonly unknown[],
+  split: (value: FieldValue<TBefore, TBlock, TField>) => readonly unknown[],
 ): SplitFieldOp<TAfter, TBefore> {
   return {
     kind: "splitField",
@@ -581,15 +618,18 @@ export function mergeFields<
   TAfter extends SchemaShape,
   TBefore extends SchemaShape,
   const TBlock extends SourceBlockName<TAfter, TBefore>,
+  // Defaulted for the same reason as on `splitField`.
+  const TInto extends TargetFieldName<TAfter, TBlock> = TargetFieldName<TAfter, TBlock>,
+  const TValue extends WriteCandidate = WritableValue<TAfter, TBlock, TInto>,
 >(
   spec: {
     block: TBlock;
     fields: readonly SourceFieldName<TAfter, TBefore, TBlock>[];
-    into: TargetFieldName<TAfter, TBlock>;
+    into: TInto;
     split?: (value: never) => readonly unknown[];
     under?: KeyOpUnder;
   },
-  merge: (values: readonly unknown[]) => unknown,
+  merge: (values: readonly unknown[]) => TValue & WritableValue<TAfter, TBlock, TInto>,
 ): MergeFieldsOp<TAfter, TBefore> {
   return {
     kind: "mergeFields",

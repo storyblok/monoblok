@@ -55,6 +55,29 @@ describe("loadMigrations", () => {
     ).rejects.toThrow(/0001-broken/);
   });
 
+  it("should load only the migrations the filter accepts and import no other file", async () => {
+    const imported: string[] = [];
+    const loaded = await loadMigrations(
+      spaceMigrations,
+      async (file) => {
+        imported.push(path.basename(file));
+        return importDefault(file);
+      },
+      { filter: ({ id }) => id === "0002-drop-card-subtitle" },
+    );
+
+    expect(loaded.map((entry) => entry.id)).toEqual(["0002-drop-card-subtitle"]);
+    expect(imported).toEqual(["0002-drop-card-subtitle.ts"]);
+  });
+
+  it("should name the file that failed to load", async () => {
+    await expect(
+      loadMigrations(spaceMigrations, async () => {
+        throw new Error("boom at import");
+      }),
+    ).rejects.toThrow(/0001-rename-card-title\.ts could not be loaded: boom at import/);
+  });
+
   it("should return an empty list for a directory that does not exist", async () => {
     expect(await loadMigrations(path.join(fixtures, "no-such-directory"), importDefault)).toEqual(
       [],

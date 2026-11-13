@@ -1,8 +1,8 @@
 import type { Argument, Command, Option } from "commander";
-import { MAX_VALUE_LENGTH, REDACTED, TOO_LONG } from "./config";
-import { isTelemetryValueAllowed } from "./denylist";
+import { getCommandAncestry } from "../config/helpers";
+import { REDACTED } from "./config";
 
-export type InvocationValue = string | string[] | boolean;
+export type InvocationValue = string | number | boolean | readonly string[];
 
 export type Invocation = {
   /** Space-separated command path, e.g. `storyblok components push`. */
@@ -12,32 +12,30 @@ export type Invocation = {
   args: Record<string, InvocationValue>;
 };
 
-function toReported(target: Option | Argument, name: string, value: unknown) {
-  if (value === undefined || typeof value === "boolean") {
+/**
+ * Only values that can't carry user data are sent: booleans, numbers, and the option's own
+ * choices. Anything else, such as a slug, search text, or path, only shows that it was set.
+ */
+function toReported(target: Option | Argument, value: unknown): InvocationValue | undefined {
+  if (value === undefined || typeof value === "boolean" || typeof value === "number") {
     return value;
   }
-  if (!isTelemetryValueAllowed(target, name)) {
-    return REDACTED;
+  if (target.argChoices && (typeof value === "string" || Array.isArray(value))) {
+    return Array.isArray(value) ? value.map(String) : value;
   }
-  const truncate = (item: unknown) => {
-    const text = String(item);
-    return text.length > MAX_VALUE_LENGTH ? TOO_LONG : text;
-  };
-  return Array.isArray(value) ? value.map(truncate) : truncate(value);
+  return REDACTED;
 }
 
 function getCommandPath(command: Command): string {
-  const names: string[] = [];
-  for (let current: Command | null = command; current; current = current.parent) {
-    names.unshift(current.name());
-  }
-  return names.join(" ");
+  return getCommandAncestry(command)
+    .map((current) => current.name())
+    .join(" ");
 }
 
-/** Values from config files, env, and defaults are left out: only what was typed counts. */
+/** Only flags typed on the command line, not config files, env, or defaults. */
 function getFlags(command: Command): Invocation["flags"] {
   const flags: Invocation["flags"] = {};
-  for (let current: Command | null = command; current; current = current.parent) {
+  for (const current of getCommandAncestry(command).reverse()) {
     for (const option of current.options) {
       const key = option.attributeName();
       if (current.getOptionValueSource(key) !== "cli") {
@@ -45,7 +43,7 @@ function getFlags(command: Command): Invocation["flags"] {
       }
       const flag = option.long ?? option.short ?? key;
       const name = flag.replace(option.negate ? /^--no-/ : /^-+/, "");
-      const value = toReported(option, name, current.getOptionValue(key));
+      const value = toReported(option, current.getOptionValue(key));
       // `--x` and `--no-x` share one value, so the first one wins.
       if (value !== undefined) {
         flags[name] ??= value;
@@ -58,7 +56,7 @@ function getFlags(command: Command): Invocation["flags"] {
 function getArgs(command: Command): Invocation["args"] {
   const args: Invocation["args"] = {};
   command.registeredArguments.forEach((argument, index) => {
-    const value = toReported(argument, argument.name(), command.processedArgs[index]);
+    const value = toReported(argument, command.processedArgs[index]);
     if (value !== undefined) {
       args[argument.name()] = value;
     }

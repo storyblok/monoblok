@@ -26,7 +26,7 @@ function post({ url, headers, body }: TelemetryRequest, signal: AbortSignal): Pr
   });
 }
 
-/** Never rejects. Dash0 drops a request whose client hangs up before the response. */
+/** Never rejects. */
 export async function postAll(requests: readonly TelemetryRequest[], timeoutMs: number) {
   const signal = AbortSignal.timeout(timeoutMs);
   await Promise.all(requests.map((request) => post(request, signal)));

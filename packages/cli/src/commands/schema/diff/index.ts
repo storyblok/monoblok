@@ -1,9 +1,7 @@
-import { Option } from "commander";
 import { colorPalette, commands } from "../../../constants";
 import { handleError, requireAuthentication, toError } from "../../../utils";
 import { getLogger } from "../../../lib/logger/logger";
 import { getUI } from "../../../lib/ui";
-import { denyTelemetryValue } from "../../../lib/telemetry";
 import { session } from "../../../session";
 import { schemaCommand } from "../command";
 import { diffSchema } from "../diff-schema";
@@ -15,21 +13,13 @@ const EXIT_CODE_SCHEMAS_DIFFER = 1;
 schemaCommand
   .command("diff")
   .description("Diff two schemas (space IDs or local entry files) and report what changed")
-  .addOption(
-    denyTelemetryValue(
-      new Option(
-        "--from <space-id|path>",
-        "Base schema to compare against: a space ID or a path to a schema entry file",
-      ).makeOptionMandatory(),
-    ),
+  .requiredOption(
+    "--from <space-id|path>",
+    "Base schema to compare against: a space ID or a path to a schema entry file",
   )
-  .addOption(
-    denyTelemetryValue(
-      new Option(
-        "--to <space-id|path>",
-        "Target schema: a space ID or a path to a schema entry file",
-      ).makeOptionMandatory(),
-    ),
+  .requiredOption(
+    "--to <space-id|path>",
+    "Target schema: a space ID or a path to a schema entry file",
   )
   .option(
     "--exit-code",

@@ -5,17 +5,18 @@ import { confirm } from "@inquirer/prompts";
 import chalk from "chalk";
 import { colorPalette, commands } from "../../constants";
 import { getPackageJson } from "../../utils/package";
-import { getUI, stderrPromptContext } from "../ui";
+import { getCommandAncestry } from "../config/helpers";
+import { getUI, isPagerOpen, stderrPromptContext } from "../ui";
 import {
   PRIVACY_NOTICE_URL,
   REDACTED,
   SERVICE_NAME,
   TELEMETRY_AUTH_TOKEN,
   TELEMETRY_DATASET,
+  TELEMETRY_DOCS_URL,
   TELEMETRY_ENDPOINT,
   TELEMETRY_ENV,
-  TELEMETRY_SENDER_FILENAME,
-  TELEMETRY_TIMEOUT_MS,
+  TELEMETRY_SENDER_ENTRY,
 } from "./config";
 import { getConsentFilePath, getTelemetryStatus, saveConsent } from "./consent";
 import {
@@ -32,40 +33,47 @@ import { CANCELED, getErrorType } from "./error-type";
 import { describeInvocation } from "./invocation";
 import type { Attributes } from "./otlp";
 import { buildMetricsPayload, buildTracesPayload, createTraceContext } from "./otlp";
-import { getRunState, recordTelemetryPromptDuration, recordTelemetryTraceContext } from "./run";
+import {
+  claimTelemetrySend,
+  getRunState,
+  recordTelemetryInterrupt,
+  recordTelemetryPromptDuration,
+  recordTelemetryTraceContext,
+} from "./run";
 import type { TelemetryRequest } from "./transport";
-import { postAll } from "./transport";
 
 const SPAN_NAME = "storyblok.cli.command";
 const COMMAND_COUNTER = "storyblok.cli.command.count";
 const ERROR_COUNTER = "storyblok.cli.error.count";
 
-type Outcome = "success" | "failure" | "error" | "canceled";
+/** `findings`: a non-zero exit without an error, e.g. `schema diff --exit-code` found differences. */
+type Outcome = "success" | "findings" | "error" | "canceled";
+
+const EXIT_CODE_INTERRUPTED = 130;
 
 export function isTelemetryDebugEnabled(): boolean {
   return isTruthyEnv(process.env[TELEMETRY_ENV.DEBUG]);
 }
 
-function isTransportConfigured(): boolean {
-  return TELEMETRY_AUTH_TOKEN !== "";
-}
-
-function isTelemetryCommand(command: Command): boolean {
-  for (let current: Command | null = command; current; current = current.parent) {
-    if (current.name() === commands.TELEMETRY && current.parent) {
-      return true;
-    }
-  }
-  return false;
+export function isTelemetryCommand(command: Command): boolean {
+  return getCommandAncestry(command).some(
+    (current) => current.parent && current.name() === commands.TELEMETRY,
+  );
 }
 
 /**
- * Asks once, on the first interactive run. Without a TTY or in CI nobody can answer, and a
- * container would ask on every run, so telemetry stays off there until
- * `storyblok telemetry enable`.
+ * Asks once, on the first interactive run. Without a TTY or in CI nobody can answer, a container
+ * would ask on every run, and a coding agent's answer isn't the user's, so telemetry stays off
+ * there until `storyblok telemetry enable`.
  */
-export async function promptForTelemetryConsent(command: Command): Promise<void> {
-  if (!isInteractive() || isCi() || isContainer() || isTelemetryCommand(command)) {
+export async function promptForTelemetryConsent(): Promise<void> {
+  if (
+    !isInteractive() ||
+    isCi() ||
+    isContainer() ||
+    getAgent() !== undefined ||
+    isTelemetryDebugEnabled()
+  ) {
     return;
   }
   const status = await getTelemetryStatus();
@@ -79,7 +87,8 @@ export async function promptForTelemetryConsent(command: Command): Promise<void>
     const enabled = await confirm(
       {
         message: [
-          "The Storyblok CLI can collect usage data to shape the roadmap and prioritize fixes.",
+          "The Storyblok CLI can share usage data with Storyblok to prioritize fixes and features.",
+          `  What is shared: ${TELEMETRY_DOCS_URL}`,
           `  Privacy policy: ${PRIVACY_NOTICE_URL}`,
           `  Opt out at any time with ${disableCommand}.`,
           "  Share usage data?",
@@ -95,21 +104,47 @@ export async function promptForTelemetryConsent(command: Command): Promise<void>
       throw error;
     }
     getUI().warn(
-      `Could not save your answer to ${getConsentFilePath()}, so the CLI will ask again.`,
+      `Couldn't save your answer to ${getConsentFilePath()}. The CLI asks again on the next run.`,
     );
   } finally {
     recordTelemetryPromptDuration(performance.now() - promptStartedAt);
   }
 }
 
+/**
+ * Without a listener, Ctrl+C kills the process before the run is recorded. The listener sends the
+ * run and re-raises the signal, so shells and scripts still see the process die from it.
+ */
+function listenForInterrupt(program: Command): void {
+  const onInterrupt = () => {
+    // While the pager runs, Ctrl+C is meant for it.
+    if (isPagerOpen()) {
+      return;
+    }
+    // A second Ctrl+C kills the process right away.
+    process.off("SIGINT", onInterrupt);
+    recordTelemetryInterrupt();
+    void sendTelemetry({
+      program,
+      startTime: performance.timeOrigin,
+      exitCode: EXIT_CODE_INTERRUPTED,
+    }).finally(() => process.kill(process.pid, "SIGINT"));
+  };
+  process.on("SIGINT", onInterrupt);
+}
+
 /** Call after the consent prompt and before the first request to the Storyblok API. */
-export async function startTelemetryTrace(): Promise<void> {
+export async function startTelemetryRun(program: Command): Promise<void> {
   try {
-    if (isTransportConfigured() && (await getTelemetryStatus()).enabled) {
+    const { enabled } = await getTelemetryStatus();
+    if (enabled) {
       recordTelemetryTraceContext(createTraceContext());
     }
+    if (enabled || isTelemetryDebugEnabled()) {
+      listenForInterrupt(program);
+    }
   } catch {
-    // Without a readable consent, requests go out without trace context.
+    // Without a readable consent, the run isn't recorded.
   }
 }
 
@@ -117,10 +152,11 @@ function getOutcome(errorType: string | undefined, exitCode: number): Outcome {
   if (errorType === CANCELED) {
     return "canceled";
   }
-  if (errorType) {
-    return "error";
+  // Some commands log a failed item and still succeed, e.g. by fetching it another way.
+  if (exitCode === 0) {
+    return "success";
   }
-  return exitCode === 0 ? "success" : "failure";
+  return errorType ? "error" : "findings";
 }
 
 function prefixKeys(prefix: string, values: Attributes): Attributes {
@@ -142,8 +178,8 @@ export function buildTelemetryPayloads(input: TelemetryRun, installId: string | 
   const startTime = input.startTime + (run.promptDurationMs ?? 0);
   const endTime = input.endTime ?? Date.now();
   const invocation = describeInvocation(run.command ?? input.program, run.argsProcessed === true);
-  const errorType = run.errorType === CANCELED ? undefined : run.errorType;
   const outcome = getOutcome(run.errorType, input.exitCode);
+  const errorType = outcome === "error" ? run.errorType : undefined;
 
   const resource: Attributes = {
     "service.name": SERVICE_NAME,
@@ -159,6 +195,7 @@ export function buildTelemetryPayloads(input: TelemetryRun, installId: string | 
     "storyblok.cli.outcome": outcome,
     "storyblok.cli.ci": isCi(),
     "storyblok.cli.agent": getAgent(),
+    "storyblok.cli.region": run.region,
   };
 
   const traces = buildTracesPayload(resource, scope, {
@@ -209,36 +246,33 @@ function writeDebugOutput(url: string, payload: unknown): void {
 /**
  * Dash0 takes about a second to answer and drops a request whose client hangs up early, so a
  * detached process waits for it and the run exits right away. Resolves once the requests are
- * handed over; false when the process can't be started.
+ * handed over.
  */
-function sendDetached(requests: readonly TelemetryRequest[]): Promise<boolean> {
+function sendDetached(requests: readonly TelemetryRequest[]): Promise<void> {
   return new Promise((resolve) => {
     try {
       const child = spawn(
         process.execPath,
-        [fileURLToPath(new URL(TELEMETRY_SENDER_FILENAME, import.meta.url))],
+        [fileURLToPath(new URL(`${TELEMETRY_SENDER_ENTRY}.mjs`, import.meta.url))],
         { detached: true, stdio: ["pipe", "ignore", "ignore"], windowsHide: true },
       );
-      child.on("error", () => resolve(false));
-      child.stdin?.on("error", () => resolve(false));
+      child.on("error", () => resolve());
+      child.stdin?.on("error", () => resolve());
       child.unref();
-      child.stdin?.end(JSON.stringify(requests), () => resolve(true));
+      child.stdin?.end(JSON.stringify(requests), () => resolve());
     } catch {
-      resolve(false);
+      resolve();
     }
   });
 }
 
-/** Never throws, and gives up after `timeoutMs`, so telemetry can't break or stall a command. */
-export async function sendTelemetry(
-  input: TelemetryRun,
-  timeoutMs = TELEMETRY_TIMEOUT_MS,
-): Promise<void> {
+/** Never throws or waits for the endpoint, so telemetry can't break or stall a command. */
+export async function sendTelemetry(input: TelemetryRun): Promise<void> {
   try {
-    const debug = isTelemetryDebugEnabled();
-    if (!debug && !isTransportConfigured()) {
+    if (!claimTelemetrySend()) {
       return;
     }
+    const debug = isTelemetryDebugEnabled();
     const status = await getTelemetryStatus();
     if (!status.enabled && !debug) {
       return;
@@ -259,17 +293,15 @@ export async function sendTelemetry(
     const headers = {
       "Content-Type": "application/json",
       Authorization: `Bearer ${TELEMETRY_AUTH_TOKEN}`,
-      ...(TELEMETRY_DATASET && { "Dash0-Dataset": TELEMETRY_DATASET }),
+      "Dash0-Dataset": TELEMETRY_DATASET,
     };
     const requests = payloads.map(({ url, payload }) => ({
       url,
       headers,
       body: JSON.stringify(payload),
     }));
-    if (!(await sendDetached(requests))) {
-      await postAll(requests, timeoutMs);
-    }
+    await sendDetached(requests);
   } catch {
-    // Deliberately silent, see above.
+    // See above.
   }
 }

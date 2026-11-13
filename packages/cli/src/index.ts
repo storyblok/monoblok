@@ -4,14 +4,9 @@ import "dotenv/config";
 import { CommanderError } from "commander";
 import { CommandError, handleError } from "./utils";
 import { getProgram } from "./program";
-import { getUI, isPagerOpen } from "./lib/ui";
+import { getUI } from "./lib/ui";
 import { colorPalette } from "./constants";
-import {
-  recordTelemetryError,
-  recordTelemetryInterrupt,
-  sendTelemetry,
-  TELEMETRY_INTERRUPT_TIMEOUT_MS,
-} from "./lib/telemetry";
+import { recordTelemetryError, sendTelemetry } from "./lib/telemetry";
 import "./commands/login";
 import "./commands/logout";
 import "./commands/signup";
@@ -31,29 +26,9 @@ import "./commands/telemetry";
 
 export * from "./types/storyblok";
 
-const EXIT_CODE_INTERRUPTED = 130;
-
 const startTime = performance.timeOrigin;
 const program = getProgram();
 const ui = getUI();
-
-// Without a listener, Ctrl+C kills the process before the run can be recorded.
-let interrupted = false;
-process.on("SIGINT", async () => {
-  if (isPagerOpen()) {
-    return;
-  }
-  if (interrupted) {
-    process.exit(EXIT_CODE_INTERRUPTED);
-  }
-  interrupted = true;
-  recordTelemetryInterrupt();
-  await sendTelemetry(
-    { program, startTime, exitCode: EXIT_CODE_INTERRUPTED },
-    TELEMETRY_INTERRUPT_TIMEOUT_MS,
-  );
-  process.exit(EXIT_CODE_INTERRUPTED);
-});
 
 ui.br();
 ui.title("Storyblok CLI", colorPalette.PRIMARY);

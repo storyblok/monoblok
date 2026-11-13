@@ -10,19 +10,20 @@ import { detectAgent, detectProvider } from "std-env";
 import { APIError } from "../../utils/error/api-error";
 import { NotLoggedInError } from "../../utils/error/command-error";
 import { FetchError } from "../../utils/fetch";
+import { redactClientError } from "../../utils/error/redact";
 import { createMapiClient } from "../../api";
-import { denyTelemetryValue } from "./denylist";
 import { getConsentFilePath } from "./consent";
 import { TELEMETRY_SCHEMA_VERSION } from "./config";
 import {
   recordTelemetryError,
   recordTelemetryInterrupt,
+  recordTelemetryRegion,
   recordTelemetrySpaceId,
   resetTelemetryRun,
   trackTelemetryInvocation,
 } from "./run";
 import { runSender } from "./sender";
-import { promptForTelemetryConsent, sendTelemetry, startTelemetryTrace } from "./telemetry";
+import { promptForTelemetryConsent, sendTelemetry, startTelemetryRun } from "./telemetry";
 
 const { ENDPOINT, AUTH_TOKEN } = vi.hoisted(() => ({
   ENDPOINT: "https://telemetry.test",
@@ -88,11 +89,10 @@ function createProgram() {
     .argument("[componentName]")
     .option("-s, --space <space>", "space ID")
     .option("--dry-run")
-    .option("--format <format>", "output format", "pretty")
+    .addOption(new Option("--format <format>", "output format").choices(["pretty", "json"]))
+    .option("--limit <limit>", "max items", (value) => Number.parseInt(value, 10))
     .option("--token <token>")
-    .option("--out-dir <dir>")
     .option("--starts-with <path>")
-    .addOption(denyTelemetryValue(new Option("--data <data>")))
     .action(() => {});
   program
     .command("validate")
@@ -102,7 +102,7 @@ function createProgram() {
     await createMapiClient({ personalAccessToken: "test-token" }).users.me();
   });
   trackTelemetryInvocation(program);
-  program.hook("preAction", startTelemetryTrace);
+  program.hook("preAction", (thisCommand) => startTelemetryRun(thisCommand));
   return program;
 }
 
@@ -147,6 +147,8 @@ const preconditions = {
     });
   },
 };
+
+let sigintListenersBefore: Function[] = [];
 
 const rateLimitError = () =>
   new APIError(
@@ -210,6 +212,8 @@ describe("telemetry", () => {
     mapiRequests.length = 0;
     vi.mocked(spawn).mockImplementation(runSenderInProcess);
     resetTelemetryRun();
+    sigintListenersBefore = process.listeners("SIGINT");
+    vi.spyOn(process, "kill").mockImplementation(() => true);
     vi.stubEnv("DO_NOT_TRACK", "");
     vi.stubEnv("STORYBLOK_TELEMETRY_DISABLED", "");
     vi.stubEnv("STORYBLOK_TELEMETRY_DEBUG", "");
@@ -218,6 +222,11 @@ describe("telemetry", () => {
   });
 
   afterEach(() => {
+    for (const listener of process.listeners("SIGINT")) {
+      if (!sigintListenersBefore.includes(listener)) {
+        process.off("SIGINT", listener);
+      }
+    }
     server.resetHandlers();
     vi.unstubAllEnvs();
     vi.restoreAllMocks();
@@ -289,17 +298,42 @@ describe("telemetry", () => {
   });
 
   describe("values", () => {
-    it("should send flag and argument values typed on the command line", async () => {
+    it("should send booleans, numbers, and choices typed on the command line", async () => {
       preconditions.consentGiven();
 
-      await run(["components", "push", "teaser", "--space", "12345", "--format=json", "--dry-run"]);
+      await run(["components", "push", "--format=json", "--limit", "5", "--dry-run"]);
 
       expect(spanAttributes()).toMatchObject({
-        "storyblok.cli.arg.componentName": "teaser",
-        "storyblok.cli.flag.space": "12345",
         "storyblok.cli.flag.format": "json",
+        "storyblok.cli.flag.limit": "5",
         "storyblok.cli.flag.dry-run": true,
       });
+    });
+
+    it("should only show that other values were set", async () => {
+      preconditions.consentGiven();
+
+      await run([
+        "components",
+        "push",
+        "Jane Doe",
+        "--space",
+        "12345",
+        "--token",
+        "sk-1",
+        "--starts-with",
+        "en/blog",
+      ]);
+
+      expect(spanAttributes()).toMatchObject({
+        "storyblok.cli.arg.componentName": "[REDACTED]",
+        "storyblok.cli.flag.space": "[REDACTED]",
+        "storyblok.cli.flag.token": "[REDACTED]",
+        "storyblok.cli.flag.starts-with": "[REDACTED]",
+      });
+      expect(sentText()).not.toContain("Jane Doe");
+      expect(sentText()).not.toContain("sk-1");
+      expect(sentText()).not.toContain("en/blog");
     });
 
     it("should leave out default values", async () => {
@@ -307,7 +341,6 @@ describe("telemetry", () => {
 
       await run(["components", "push"]);
 
-      expect(spanAttributes()).not.toHaveProperty("storyblok.cli.flag.format");
       expect(spanAttributes()).not.toHaveProperty("storyblok.cli.flag.color");
     });
 
@@ -319,52 +352,16 @@ describe("telemetry", () => {
       expect(spanAttributes()).toMatchObject({
         "storyblok.cli.flag.verbose": true,
         "storyblok.cli.flag.color": false,
-        "storyblok.cli.flag.space": "12345",
+        "storyblok.cli.flag.space": "[REDACTED]",
       });
     });
 
     it("should report the last value of a repeated flag, as the command sees it", async () => {
       preconditions.consentGiven();
 
-      await run(["components", "push", "--space", "1", "--space", "2"]);
+      await run(["components", "push", "--limit", "1", "--limit", "2"]);
 
-      expect(spanAttributes()["storyblok.cli.flag.space"]).toBe("2");
-    });
-
-    it("should redact values of secrets, local paths, and denied flags", async () => {
-      preconditions.consentGiven();
-
-      await run(["components", "push", "--token", "sk-1", "--out-dir", "/tmp/x", "--data", "{}"]);
-
-      expect(spanAttributes()).toMatchObject({
-        "storyblok.cli.flag.token": "[REDACTED]",
-        "storyblok.cli.flag.out-dir": "[REDACTED]",
-        "storyblok.cli.flag.data": "[REDACTED]",
-      });
-    });
-
-    it("should send values whose help placeholder merely reads like a path", async () => {
-      preconditions.consentGiven();
-
-      await run(["components", "push", "--starts-with", "en/blog"]);
-
-      expect(spanAttributes()["storyblok.cli.flag.starts-with"]).toBe("en/blog");
-    });
-
-    it("should redact arguments that name a file", async () => {
-      preconditions.consentGiven();
-
-      await run(["validate", "/home/me/schema.ts"]);
-
-      expect(spanAttributes()["storyblok.cli.arg.entry-file"]).toBe("[REDACTED]");
-    });
-
-    it("should replace very long values", async () => {
-      preconditions.consentGiven();
-
-      await run(["components", "push", "x".repeat(201)]);
-
-      expect(spanAttributes()["storyblok.cli.arg.componentName"]).toBe("[TOO_LONG]");
+      expect(spanAttributes()["storyblok.cli.flag.limit"]).toBe("2");
     });
 
     it.each([
@@ -385,12 +382,11 @@ describe("telemetry", () => {
     it("should attribute a rejected run to the command it was meant for", async () => {
       preconditions.consentGiven();
 
-      await run(["components", "push", "--tokn", "SECRET", "--space", "1"], { exitCode: 2 });
+      await run(["components", "push", "--tokn", "SECRET", "--dry-run"], { exitCode: 2 });
 
       expect(spanAttributes()).toMatchObject({
         "storyblok.cli.command": "storyblok components push",
-        "storyblok.cli.flag.space": "1",
-        "storyblok.cli.outcome": "failure",
+        "storyblok.cli.flag.dry-run": true,
       });
     });
   });
@@ -427,22 +423,31 @@ describe("telemetry", () => {
       });
     });
 
-    it("should drop the version from the agent name", async () => {
+    it("should reduce the agent name to its first word", async () => {
       preconditions.consentGiven();
       preconditions.runsInAgent("claude-code_2-1-322_agent");
 
       await run(["components", "push"]);
 
-      expect(spanAttributes()["storyblok.cli.agent"]).toBe("claude-code_agent");
+      expect(spanAttributes()["storyblok.cli.agent"]).toBe("claude");
     });
 
-    it("should not pass on a free-form agent name", async () => {
+    it("should not pass on an agent name that doesn't start with a word", async () => {
       preconditions.consentGiven();
-      preconditions.runsInAgent("my agent /home/me");
+      preconditions.runsInAgent("/home/me/agent");
 
       await run(["components", "push"]);
 
       expect(spanAttributes()["storyblok.cli.agent"]).toBe("other");
+    });
+
+    it("should count runs by region", async () => {
+      preconditions.consentGiven();
+      recordTelemetryRegion("us");
+
+      await run(["components", "push"]);
+
+      expect(commandCounterAttributes()["storyblok.cli.region"]).toBe("us");
     });
 
     it.each([
@@ -465,7 +470,7 @@ describe("telemetry", () => {
       vi.spyOn(performance, "now").mockReturnValueOnce(0).mockReturnValueOnce(3000);
       vi.mocked(confirm).mockResolvedValue(true);
       const program = createProgram();
-      await promptForTelemetryConsent(program);
+      await promptForTelemetryConsent();
 
       await sendTelemetry({
         program,
@@ -505,13 +510,27 @@ describe("telemetry", () => {
       expect(spanAttributes()["error.type"]).toBe("RATE_LIMITED");
     });
 
+    const fetchFailed = () => new TypeError("fetch failed", { cause: { code: "ECONNREFUSED" } });
+    const networkFetchError = () => {
+      const error = new FetchError("fetch failed", { status: 0, statusText: "Network Error" });
+      error.cause = fetchFailed();
+      return error;
+    };
+
     it.each([
-      ["NOT_LOGGED_IN", new NotLoggedInError("not logged in")],
-      ["ECONNRESET", new TypeError("fetch failed", { cause: { code: "ECONNRESET" } })],
-      ["TYPE_ERROR", new TypeError("undefined is not a function")],
-      ["SYNTAX_ERROR", new SyntaxError("Unexpected token")],
-      ["UNEXPECTED_ERROR", new Error("something")],
-    ])("should report %s", async (errorType, error) => {
+      ["NOT_LOGGED_IN", "a missing login", new NotLoggedInError("not logged in")],
+      ["ECONNREFUSED", "a failed fetch", fetchFailed()],
+      [
+        "ECONNREFUSED",
+        "a wrapped failed fetch",
+        new APIError("generic", "pull_stories", networkFetchError()),
+      ],
+      ["ECONNREFUSED", "a redacted failed fetch", redactClientError(fetchFailed())],
+      ["TIMEOUT_ERROR", "a timeout", new DOMException("The operation timed out.", "TimeoutError")],
+      ["TYPE_ERROR", "a built-in error", new TypeError("undefined is not a function")],
+      ["SYNTAX_ERROR", "a broken user file", new SyntaxError("Unexpected token")],
+      ["UNEXPECTED_ERROR", "a plain error", new Error("something")],
+    ])("should report %s for %s", async (errorType, _, error) => {
       preconditions.consentGiven();
       recordTelemetryError(error);
 
@@ -520,12 +539,23 @@ describe("telemetry", () => {
       expect(spanAttributes()["error.type"]).toBe(errorType);
     });
 
-    it("should report a non-zero exit without an error as a failure", async () => {
+    it("should report a non-zero exit without an error as findings", async () => {
       preconditions.consentGiven();
 
       await run(["components", "push"], { exitCode: 1 });
 
-      expect(spanAttributes()["storyblok.cli.outcome"]).toBe("failure");
+      expect(spanAttributes()["storyblok.cli.outcome"]).toBe("findings");
+      expect(metricNames()).toEqual(["storyblok.cli.command.count"]);
+    });
+
+    it("should report a run that recovered from an error as a success", async () => {
+      preconditions.consentGiven();
+      recordTelemetryError(rateLimitError());
+
+      await run(["components", "push"], { exitCode: 0 });
+
+      expect(spanAttributes()["storyblok.cli.outcome"]).toBe("success");
+      expect(spanAttributes()["error.type"]).toBeUndefined();
       expect(metricNames()).toEqual(["storyblok.cli.command.count"]);
     });
 
@@ -538,6 +568,41 @@ describe("telemetry", () => {
 
       expect(spanAttributes()["storyblok.cli.outcome"]).toBe("canceled");
       expect(spanAttributes()["error.type"]).toBeUndefined();
+    });
+  });
+
+  describe("interrupts", () => {
+    it("should send an interrupted run and let Ctrl+C end the process", async () => {
+      preconditions.consentGiven();
+      await createProgram().parseAsync(["components", "push"], { from: "user" });
+
+      process.emit("SIGINT");
+
+      await vi.waitFor(() => expect(process.kill).toHaveBeenCalledWith(process.pid, "SIGINT"));
+      await Promise.all(senders);
+      expect(spanAttributes()).toMatchObject({
+        "storyblok.cli.outcome": "canceled",
+        "process.exit.code": "130",
+      });
+    });
+
+    it("should leave Ctrl+C alone when telemetry is off", async () => {
+      preconditions.consentDeclined();
+
+      await createProgram().parseAsync(["components", "push"], { from: "user" });
+
+      expect(process.listeners("SIGINT")).toEqual(sigintListenersBefore);
+    });
+
+    it("should send a run only once", async () => {
+      preconditions.consentGiven();
+
+      await Promise.all([run(["components", "push"]), run(["components", "push"])]);
+
+      expect(received.map(({ url }) => new URL(url).pathname).sort()).toEqual([
+        "/v1/metrics",
+        "/v1/traces",
+      ]);
     });
   });
 
@@ -608,13 +673,11 @@ describe("telemetry", () => {
       );
     });
 
-    it("should send in-process when the detached process can't start", async () => {
+    it("should not fail the run when the detached process can't start", async () => {
       preconditions.consentGiven();
       preconditions.senderCannotStart();
 
-      await run(["components", "push"]);
-
-      expect(sentSpan().name).toBe("storyblok.cli.command");
+      await expect(run(["components", "push"])).resolves.toBeUndefined();
     });
 
     it("should give up on an unresponsive endpoint after the timeout", async () => {
@@ -625,17 +688,6 @@ describe("telemetry", () => {
       await run(["components", "push"]);
 
       expect(Date.now() - started).toBeLessThan(1000);
-    });
-
-    it("should give up in-process after the timeout", async () => {
-      preconditions.consentGiven();
-      preconditions.senderCannotStart();
-      preconditions.ingestionHangs();
-      const started = Date.now();
-
-      await run(["components", "push"]);
-
-      expect(Date.now() - started).toBeLessThan(2500);
     });
 
     it("should swallow network errors", async () => {

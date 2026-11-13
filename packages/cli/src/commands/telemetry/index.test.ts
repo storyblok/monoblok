@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { vol } from "memfs";
+import { dirname, join } from "pathe";
 import { confirm } from "@inquirer/prompts";
-import { getStoryblokGlobalPath } from "../../utils/filesystem";
+import { detectAgent } from "std-env";
+import { loadConfig } from "../../lib/config/loader";
 import { getConsentFilePath } from "../../lib/telemetry/consent";
 import { TELEMETRY_SCHEMA_VERSION } from "../../lib/telemetry/config";
 import { resetLogger } from "../../lib/logger/logger";
@@ -12,8 +14,13 @@ import "../logs";
 vi.mock("@inquirer/prompts", () => ({ confirm: vi.fn() }));
 vi.mock("std-env", async (importOriginal) => ({
   ...(await importOriginal<typeof import("std-env")>()),
+  detectAgent: vi.fn(() => ({})),
   detectProvider: () => ({ name: "", ci: false }),
 }));
+vi.mock("../../lib/config/loader", async (importOriginal) => {
+  const original = await importOriginal<typeof import("../../lib/config/loader")>();
+  return { ...original, loadConfig: vi.fn(original.loadConfig) };
+});
 
 const INSTALL_ID = "3f0c1d9e-1111-4222-8333-944455556666";
 
@@ -56,7 +63,11 @@ const preconditions = {
     storeConsent({ enabled: false, schemaVersion: TELEMETRY_SCHEMA_VERSION - 1 });
   },
   consentCannotBeSaved() {
-    vol.fromJSON({ [getStoryblokGlobalPath()]: "not a directory" });
+    vol.fromJSON({ [dirname(getConsentFilePath())]: "not a directory" });
+  },
+  configIsBroken() {
+    vol.fromJSON({ [join(process.cwd(), "storyblok.config.ts")]: "export default {" });
+    vi.mocked(loadConfig).mockRejectedValue(new SyntaxError("Unexpected token"));
   },
   doNotTrackSet() {
     vi.stubEnv("DO_NOT_TRACK", "1");
@@ -76,6 +87,12 @@ const preconditions = {
   runsInCi() {
     vi.stubEnv("CI", "true");
   },
+  runsInAgent() {
+    vi.mocked(detectAgent).mockReturnValue({ name: "claude" });
+  },
+  debugModeOn() {
+    vi.stubEnv("STORYBLOK_TELEMETRY_DEBUG", "1");
+  },
   userAnswers(answer: boolean) {
     vi.mocked(confirm).mockResolvedValue(answer);
   },
@@ -94,9 +111,13 @@ describe("telemetry command", () => {
     vi.spyOn(console, "warn").mockImplementation(() => {});
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     vi.unstubAllEnvs();
     vi.restoreAllMocks();
+    vi.mocked(detectAgent).mockReturnValue({});
+    const { loadConfig: originalLoadConfig } =
+      await vi.importActual<typeof import("../../lib/config/loader")>("../../lib/config/loader");
+    vi.mocked(loadConfig).mockImplementation(originalLoadConfig);
   });
 
   it("should enable telemetry with a new install ID", async () => {
@@ -122,7 +143,7 @@ describe("telemetry command", () => {
 
     await telemetryCommand.parseAsync(["node", "test", "enable"]);
 
-    expect(output()).toContain("DO_NOT_TRACK is set and takes precedence");
+    expect(output()).toContain("DO_NOT_TRACK is set, so the CLI sends nothing");
   });
 
   it("should disable telemetry and forget the install ID", async () => {
@@ -132,6 +153,15 @@ describe("telemetry command", () => {
 
     expect(storedConsent()).toMatchObject({ enabled: false });
     expect(storedConsent().installId).toBeUndefined();
+  });
+
+  it("should disable telemetry even when the config can't be loaded", async () => {
+    preconditions.consentGiven();
+    preconditions.configIsBroken();
+
+    await telemetryCommand.parseAsync(["node", "test", "disable"]);
+
+    expect(storedConsent()).toMatchObject({ enabled: false });
   });
 
   it("should show the install ID when enabled", async () => {
@@ -162,7 +192,7 @@ describe("telemetry command", () => {
   });
 
   describe("consent prompt", () => {
-    it("should ask on the first interactive run, with no preselected, and store the answer", async () => {
+    it("should ask on the first interactive run, defaulting to no, and store the answer", async () => {
       preconditions.runsInTerminal();
       preconditions.userAnswers(true);
 
@@ -205,7 +235,7 @@ describe("telemetry command", () => {
 
       await logsCommand.parseAsync(["node", "test", "list", "--space", "12345"]);
 
-      expect(output()).toContain("Could not save your answer");
+      expect(output()).toContain("Couldn't save your answer");
     });
 
     it("should store a declined answer", async () => {
@@ -254,6 +284,24 @@ describe("telemetry command", () => {
     it("should not ask in a container, where every run would ask again", async () => {
       preconditions.runsInTerminal();
       preconditions.runsInContainer();
+
+      await logsCommand.parseAsync(["node", "test", "list", "--space", "12345"]);
+
+      expect(confirm).not.toHaveBeenCalled();
+    });
+
+    it("should not ask a coding agent, whose answer isn't the user's", async () => {
+      preconditions.runsInTerminal();
+      preconditions.runsInAgent();
+
+      await logsCommand.parseAsync(["node", "test", "list", "--space", "12345"]);
+
+      expect(confirm).not.toHaveBeenCalled();
+    });
+
+    it("should not ask in debug mode", async () => {
+      preconditions.runsInTerminal();
+      preconditions.debugModeOn();
 
       await logsCommand.parseAsync(["node", "test", "list", "--space", "12345"]);
 

@@ -1,4 +1,5 @@
 import type { Command } from "commander";
+import { regionCodes, type RegionCode } from "../../constants";
 import { CANCELED, getErrorType } from "./error-type";
 import type { TraceContext } from "./otlp";
 
@@ -7,12 +8,14 @@ const SPACE_ID_PATTERN = /^\d{1,20}$/;
 type RunState = {
   errorType?: string;
   spaceId?: string;
+  region?: RegionCode;
   /** The deepest command Commander dispatched to, even if it then rejected the input. */
   command?: Command;
   argsProcessed?: boolean;
   promptDurationMs?: number;
   /** Only set when telemetry is enabled, so only consenting runs link their API requests. */
   traceContext?: TraceContext;
+  sent?: boolean;
 };
 
 let run: RunState = {};
@@ -39,6 +42,23 @@ export function recordTelemetrySpaceId(space: unknown): void {
   if (typeof value === "string" && SPACE_ID_PATTERN.test(value)) {
     run.spaceId = value;
   }
+}
+
+export function recordTelemetryRegion(region: unknown): void {
+  run.region = regionCodes.find((code) => code === region);
+}
+
+/** True only on the first call, so a run is sent once even when Ctrl+C races the final send. */
+export function claimTelemetrySend(): boolean {
+  if (run.sent) {
+    return false;
+  }
+  run.sent = true;
+  return true;
+}
+
+export function getTelemetryTraceId(): string | undefined {
+  return run.traceContext?.traceId;
 }
 
 export function recordTelemetryTraceContext(context: TraceContext): void {

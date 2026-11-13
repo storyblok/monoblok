@@ -13,35 +13,47 @@ const ERROR_TYPE_BY_STATUS: Partial<Record<number, string>> = {
   429: "RATE_LIMITED",
 };
 
-/** Built-in classes separate a CLI bug (`TypeError`) from a broken user file (`SyntaxError`). */
-const BUILT_IN_ERROR_TYPES: Partial<Record<string, string>> = {
-  TypeError: "TYPE_ERROR",
-  SyntaxError: "SYNTAX_ERROR",
-  RangeError: "RANGE_ERROR",
-  ReferenceError: "REFERENCE_ERROR",
-  URIError: "URI_ERROR",
-  EvalError: "EVAL_ERROR",
-  AggregateError: "AGGREGATE_ERROR",
-};
-
 /** Node.js system and undici codes, e.g. `ECONNRESET` or `UND_ERR_CONNECT_TIMEOUT`. */
 const SYSTEM_ERROR_CODE_PATTERN = /^(E[A-Z]{2,20}|UND_ERR_[A-Z_]{2,40})$/;
+
+/** A class name is code, never user data, e.g. `TimeoutError`. */
+const ERROR_CLASS_NAME_PATTERN = /^[A-Z][A-Za-z0-9]{0,40}Error$/;
+
+const MAX_CAUSE_DEPTH = 5;
 
 function errorTypeFromStatus(status: number): string {
   return ERROR_TYPE_BY_STATUS[status] ?? (status >= 500 ? "SERVER_ERROR" : `HTTP_${status}`);
 }
 
-/** `fetch` wraps network failures in a `TypeError` whose `cause` carries the code. */
-function getSystemErrorCode(error: Error): string | undefined {
-  for (const candidate of [error, error.cause]) {
-    if (typeof candidate === "object" && candidate !== null && "code" in candidate) {
-      const { code } = candidate;
-      if (typeof code === "string" && SYSTEM_ERROR_CODE_PATTERN.test(code)) {
-        return code;
-      }
+/**
+ * `fetch` puts the code on its `TypeError`'s `cause`, and `APIError` keeps the error it wraps as
+ * `error`.
+ */
+export function getSystemErrorCode(error: unknown): string | undefined {
+  let candidate = error;
+  for (let depth = 0; depth < MAX_CAUSE_DEPTH; depth++) {
+    if (typeof candidate !== "object" || candidate === null) {
+      return undefined;
     }
+    if (
+      "code" in candidate &&
+      typeof candidate.code === "string" &&
+      SYSTEM_ERROR_CODE_PATTERN.test(candidate.code)
+    ) {
+      return candidate.code;
+    }
+    candidate =
+      "error" in candidate ? candidate.error : "cause" in candidate ? candidate.cause : undefined;
   }
   return undefined;
+}
+
+/** E.g. `TypeError` → `TYPE_ERROR`, which separates a CLI bug from a broken user file (`SYNTAX_ERROR`). */
+function getErrorClassType({ name }: Error): string | undefined {
+  if (name === "Error" || !ERROR_CLASS_NAME_PATTERN.test(name)) {
+    return undefined;
+  }
+  return name.replace(/(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/g, "_").toUpperCase();
 }
 
 /** Never reads the message: it can carry paths, names, and server responses. */
@@ -62,11 +74,15 @@ export function getErrorType(error: unknown): string {
   if (status) {
     return errorTypeFromStatus(status);
   }
+  const systemErrorCode = getSystemErrorCode(error);
+  if (systemErrorCode) {
+    return systemErrorCode;
+  }
   if (error instanceof APIError) {
     return error.errorId.toUpperCase();
   }
   if (!(error instanceof Error)) {
     return "UNEXPECTED_ERROR";
   }
-  return getSystemErrorCode(error) ?? BUILT_IN_ERROR_TYPES[error.name] ?? "UNEXPECTED_ERROR";
+  return getErrorClassType(error) ?? "UNEXPECTED_ERROR";
 }

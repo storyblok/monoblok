@@ -1,9 +1,8 @@
 import { basename, join } from "pathe";
-import { Argument, Option } from "commander";
+import { Option } from "commander";
 import { colorPalette, commands, directories } from "../../../constants";
 import { assetsCommand } from "../command";
 import { getUI } from "../../../lib/ui";
-import { denyTelemetryValue } from "../../../lib/telemetry";
 import { getLogger } from "../../../lib/logger/logger";
 import { getReporter, type Report } from "../../../lib/reporter/reporter";
 import { session } from "../../../session";
@@ -107,10 +106,10 @@ function buildScopeTransports(scope: Scope, apiSpace: string): ScopeTransports {
 
 const pushCmd = assetsCommand
   .command("push")
-  .addArgument(denyTelemetryValue(new Argument("[asset]", "path or URL of a single asset to push")))
+  .argument("[asset]", "path or URL of a single asset to push")
   .option("-s, --space <space>", "space ID")
   .option("-f, --from <from>", "source space id")
-  .addOption(denyTelemetryValue(new Option("--data <data>", "inline asset data as JSON")))
+  .option("--data <data>", "inline asset data as JSON")
   .option("--short-filename <short-filename>", "override the asset filename")
   .option("--folder <folderId>", "destination asset folder ID")
   .addOption(

@@ -52,8 +52,8 @@ Throw the typed errors from `src/utils/error/`: `APIError` (ID from `API_ERRORS`
 1 means a result, so runtime errors exit 2.
 
 `handleError()` and `logOnlyError()` also record the error for telemetry, as a fixed code from
-`getErrorType()` in `src/lib/telemetry/error-type.ts`. A new error class lands in `UNEXPECTED_ERROR`
-unless you map it there.
+`getErrorType()` in `src/lib/telemetry/error-type.ts`. An unmapped error class is reported by its
+name, e.g. `TimeoutError` as `TIMEOUT_ERROR`.
 
 ## Tests
 

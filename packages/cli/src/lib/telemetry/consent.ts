@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import { join } from "pathe";
-import { getStoryblokGlobalPath, saveToFile } from "../../utils/filesystem";
+import { saveToFile } from "../../utils/filesystem";
 import { TELEMETRY_ENV, TELEMETRY_SCHEMA_VERSION } from "./config";
 import { isTruthyEnv } from "./environment";
 
@@ -19,7 +20,8 @@ export type TelemetryStatus =
 
 const OPT_OUT_VARIABLES = [TELEMETRY_ENV.DISABLED, TELEMETRY_ENV.DO_NOT_TRACK];
 
-export const getConsentFilePath = () => join(getStoryblokGlobalPath(), "telemetry.json");
+/** Not the global `.storyblok` folder, which falls back to the working directory without `HOME`. */
+export const getConsentFilePath = () => join(homedir(), ".storyblok", "telemetry.json");
 
 function isStoredConsent(value: unknown): value is StoredConsent {
   return (
@@ -46,7 +48,6 @@ async function readConsent(): Promise<StoredConsent | undefined> {
   }
 }
 
-/** The variable that turns telemetry off regardless of the stored answer, if one is set. */
 export function getOptOutVariable(): string | undefined {
   return OPT_OUT_VARIABLES.find((variable) => isTruthyEnv(process.env[variable]));
 }

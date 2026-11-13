@@ -1,4 +1,4 @@
-import { type Command, Option } from "commander";
+import type { Command } from "commander";
 import { colorPalette, commands } from "../../../constants";
 import { CommandError, FileSystemError, handleError } from "../../../utils";
 import { type ComponentsData, readComponentsFiles } from "../../components/push/actions";
@@ -8,7 +8,6 @@ import { generateStoryblokTypes, generateTypes, saveTypesToComponentsFile } from
 import { readDatasourcesFiles } from "../../datasources/push/actions";
 import type { SpaceDatasourcesData } from "../../../commands/datasources/constants";
 import { getUI } from "../../../lib/ui";
-import { denyTelemetryValue } from "../../../lib/telemetry";
 import { getLogger } from "../../../lib/logger/logger";
 
 const generateCmd = typesCommand
@@ -26,18 +25,10 @@ const generateCmd = typesCommand
   .option("--type-prefix <prefix>", "prefix to be prepended to all generated component type names")
   .option("--type-suffix <suffix>", "suffix to be appended to all generated component type names")
   .option("--suffix <suffix>", "Components suffix")
-  .addOption(
-    denyTelemetryValue(
-      new Option("--custom-fields-parser <path>", "Path to the parser file for Custom Field Types"),
-    ),
-  )
-  .addOption(
-    denyTelemetryValue(
-      new Option(
-        "--compiler-options <options>",
-        "path to the compiler options from json-schema-to-typescript",
-      ),
-    ),
+  .option("--custom-fields-parser <path>", "Path to the parser file for Custom Field Types")
+  .option(
+    "--compiler-options <options>",
+    "path to the compiler options from json-schema-to-typescript",
   )
   .option("-s, --space <space>", "space ID");
 

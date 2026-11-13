@@ -27,9 +27,12 @@ import {
   setActiveConfig,
 } from "./lib/config";
 import {
+  getTelemetryTraceId,
+  isTelemetryCommand,
   promptForTelemetryConsent,
+  recordTelemetryRegion,
   recordTelemetrySpaceId,
-  startTelemetryTrace,
+  startTelemetryRun,
   trackTelemetryInvocation,
 } from "./lib/telemetry";
 
@@ -79,8 +82,13 @@ export function getProgram(): Command {
     programInstance.hook("preAction", async (thisCommand, actionCommand) => {
       const targetCommand = actionCommand ?? thisCommand;
 
-      await promptForTelemetryConsent(targetCommand);
-      await startTelemetryTrace();
+      // Opting out must work even where the config can't be loaded.
+      if (isTelemetryCommand(targetCommand)) {
+        return;
+      }
+
+      await promptForTelemetryConsent();
+      await startTelemetryRun(thisCommand);
 
       // Set before config resolution so a failure there can't read as a result.
       setRuntimeErrorExitCode(
@@ -96,10 +104,12 @@ export function getProgram(): Command {
       // Initialize mapiClient
       const { state, initializeSession } = session();
       await initializeSession();
+      const region = state.region ?? resolvedConfig.region;
+      recordTelemetryRegion(region);
       if (state.password) {
         getMapiClient({
           personalAccessToken: state.password,
-          region: state.region ?? resolvedConfig.region,
+          region,
         });
       }
 
@@ -144,7 +154,13 @@ export function getProgram(): Command {
 
       // Initialize logger with configured transports
       const logger = getLogger({
-        context: { runId, command, options, cliVersion: packageJson.version },
+        context: {
+          runId,
+          command,
+          options,
+          cliVersion: packageJson.version,
+          telemetryTraceId: getTelemetryTraceId(),
+        },
         transports,
       });
 

@@ -1,5 +1,6 @@
 import { defineConfig } from "vite-plus";
 import { cjsInterop } from "../../tools/cjs/cjs-interop-plugin.ts";
+import { TELEMETRY_SENDER_ENTRY } from "./src/lib/telemetry/config.ts";
 
 export default defineConfig({
   pack: [
@@ -23,13 +24,13 @@ export default defineConfig({
       clean: false,
       dts: true,
     },
-    // Spawned detached by the CLI to send telemetry, so it must sit next to `index.mjs`. Keep
-    // the entry name in sync with TELEMETRY_SENDER_FILENAME in src/lib/telemetry/config.ts.
+    // Spawned detached by the CLI to send telemetry, so it must sit next to `index.mjs`.
     {
-      entry: { "telemetry-sender": "./src/entrypoints/telemetry-sender.ts" },
+      entry: { [TELEMETRY_SENDER_ENTRY]: "./src/entrypoints/telemetry-sender.ts" },
       format: ["esm"],
       outDir: "./dist",
       clean: false,
+      dts: false,
     },
     // `types generate` copies these declarations into the user's `types/storyblok.d.ts`,
     // so they ship as product output and must not reference anything outside themselves.

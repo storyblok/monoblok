@@ -4,8 +4,8 @@ import { detectAgent, detectProvider } from "std-env";
 
 const KNOWN_PACKAGE_MANAGERS = new Set(["npm", "pnpm", "yarn", "bun", "deno"]);
 
-/** `AI_AGENT` is free-form, so anything that doesn't look like a name is sent as `other`. */
-const AGENT_NAME_PATTERN = /^[a-z0-9][\w.-]{0,31}$/;
+/** `AI_AGENT` is free-form, so only a first word that looks like a name is sent. */
+const AGENT_NAME_PATTERN = /^[a-z][a-z0-9]{0,19}$/;
 
 /** Docker and Podman create these in every container. */
 const CONTAINER_MARKER_FILES = ["/.dockerenv", "/run/.containerenv"];
@@ -44,15 +44,17 @@ export function isCi(): boolean {
   return provider.name !== "" && provider.ci !== false;
 }
 
-/** `AI_AGENT` may carry the agent's version, e.g. `claude-code_2-1-322_agent`. */
-const VERSION_SEGMENT_PATTERN = /[-_.]v?\d+(?=[-_.]|$)/g;
-
+/**
+ * Reduced to the first word, so `claude-code_2-1-322_agent` from `AI_AGENT` and `claude` from
+ * `CLAUDECODE` count as one agent.
+ */
 export function getAgent(): string | undefined {
-  const name = detectAgent().name?.toLowerCase().replace(VERSION_SEGMENT_PATTERN, "");
+  const name = detectAgent().name?.toLowerCase();
   if (!name) {
     return undefined;
   }
-  return AGENT_NAME_PATTERN.test(name) ? name : "other";
+  const [firstWord = ""] = name.split(/[^a-z0-9]/);
+  return AGENT_NAME_PATTERN.test(firstWord) ? firstWord : "other";
 }
 
 export function isInteractive(): boolean {

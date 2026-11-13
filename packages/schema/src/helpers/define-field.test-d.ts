@@ -3,7 +3,7 @@ import type { ConditionalSetting } from "../generated/overlay/_internal.gen";
 import type { FieldValue } from "../generated/types/field";
 import { defineBlock } from "./define-block";
 import { hideWhen } from "./define-condition";
-import { type CheckedField, defineField, type FieldInput } from "./define-field";
+import { type CheckedField, defineField, type FieldInput, type FieldType } from "./define-field";
 import { defineFolder } from "./define-folder";
 
 describe("defineField type inference", () => {
@@ -524,9 +524,21 @@ describe("defineField field option checking", () => {
     void defineField("tab-1", { type: "tab", required: true });
     // @ts-expect-error a layout field holds no value, so it cannot be required
     void defineField("legacy", { type: "group", required: flag });
-    const type: "text" | "tab" = flag ? "text" : "tab";
+    const type: "section" | "tab" = flag ? "section" : "tab";
     // @ts-expect-error a layout field holds no value, so it cannot be required
     void defineField("either", { type, required: true });
+  });
+
+  it("should accept a `required` on a `type` that may be a value type", () => {
+    const flag = Math.random() > 0.5;
+    const type: "text" | "tab" = flag ? "text" : "tab";
+    void defineField("either", { type, required: true });
+    const requiredField = (name: string, fieldType: FieldType) =>
+      defineField(name, { type: fieldType, required: true });
+    const optionalField = (name: string, fieldType: FieldType, required: boolean) =>
+      defineField(name, { type: fieldType, required });
+    void requiredField("title", "text");
+    void optionalField("title", "text", flag);
   });
 
   it("should accept a `required` that is never `true` on layout fields", () => {

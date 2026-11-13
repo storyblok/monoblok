@@ -229,7 +229,7 @@ describe("validateSchema", () => {
     ]);
   });
 
-  it("flags a layout field required by a condition", () => {
+  it("warns about a layout field required by a condition", () => {
     const block = defineBlock({
       name: "page",
       fields: [
@@ -241,9 +241,10 @@ describe("validateSchema", () => {
       ],
     });
     const result = validateSchema({ blocks: [block] });
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(true);
     expect(result.issues).toEqual([
       expect.objectContaining({
+        severity: "warning",
         code: "required_layout_field",
         path: ["blocks", "page", "details", "conditional_settings"],
       }),
@@ -263,8 +264,14 @@ describe("validateSchema", () => {
       ],
     });
     expect(validateSchema({ blocks: [block] }).issues).toEqual([
-      expect.objectContaining({ path: ["blocks", "page", "details", "required"] }),
-      expect.objectContaining({ path: ["blocks", "page", "details", "conditional_settings"] }),
+      expect.objectContaining({
+        severity: "error",
+        path: ["blocks", "page", "details", "required"],
+      }),
+      expect.objectContaining({
+        severity: "warning",
+        path: ["blocks", "page", "details", "conditional_settings"],
+      }),
     ]);
   });
 
@@ -282,7 +289,7 @@ describe("validateSchema", () => {
     expect(() => validateSchema({ blocks: [block] })).not.toThrow();
   });
 
-  it("ignores a conditional `required` the publish check does not read", () => {
+  it("warns about a conditional `required` in any position", () => {
     const block = defineBlock({
       name: "page",
       fields: [
@@ -302,7 +309,10 @@ describe("validateSchema", () => {
         defineField("title", { type: "text" }),
       ],
     });
-    expect(validateSchema({ blocks: [block] }).issues).toEqual([]);
+    expect(validateSchema({ blocks: [block] }).issues).toEqual([
+      expect.objectContaining({ path: ["blocks", "page", "details", "conditional_settings"] }),
+      expect.objectContaining({ path: ["blocks", "page", "tab-1", "conditional_settings"] }),
+    ]);
   });
 
   it("accepts layout fields with required false or a hide condition", () => {

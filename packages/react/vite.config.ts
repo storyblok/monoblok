@@ -6,6 +6,9 @@ export default defineConfig({
     {
       alias: { "@": resolve(import.meta.dirname, "src") },
       attw: { level: "error", profile: "esm-only" },
+      // Ship the API reference in the tarball so coding agents can read it from
+      // node_modules/@storyblok/react/dist/docs/.
+      copy: [{ from: "docs", to: "dist", flatten: false }],
       dts: true,
       entry: {
         index: "./src/index.ts",

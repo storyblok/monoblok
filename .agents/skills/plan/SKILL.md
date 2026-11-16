@@ -24,7 +24,7 @@ Create an implementation plan for: $ARGUMENTS
 
 ## Output Format
 
-```markdown
+````markdown
 ## Summary
 
 [1-2 sentences describing what this plan achieves]
@@ -48,12 +48,16 @@ Create an implementation plan for: $ARGUMENTS
 
 ## Verification Commands
 
-\`\`\`bash pnpm nx lint <package> pnpm nx test <package> pnpm nx run <package> test:types \`\`\`
+```bash
+pnpm nx lint <package>
+pnpm nx test <package>
+pnpm nx test:types <package>
+```
 
 ## Risks/Open Questions
 
 - Any assumptions or unknowns
-```
+````
 
 ## Output
 

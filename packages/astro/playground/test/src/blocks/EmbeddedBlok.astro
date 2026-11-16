@@ -1,0 +1,9 @@
+---
+const { block, editable } = Astro.props;
+---
+
+<div {...editable}>
+  <p class="text-base text-primary" data-test="embedded-blok">
+    {block.description}
+  </p>
+</div>

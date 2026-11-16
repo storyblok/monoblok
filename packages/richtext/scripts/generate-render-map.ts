@@ -1,6 +1,6 @@
 import { type AnyExtension, getSchema } from "@tiptap/core";
-import type { Schema } from "prosemirror-model";
-import { MarkType, NodeType } from "prosemirror-model";
+import type { Schema } from "@tiptap/pm/model";
+import { MarkType, NodeType } from "@tiptap/pm/model";
 import fs from "node:fs";
 import path from "pathe";
 import { fileURLToPath } from "node:url";

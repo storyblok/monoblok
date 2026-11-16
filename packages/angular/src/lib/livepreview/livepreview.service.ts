@@ -1,8 +1,12 @@
 import { InjectionToken, inject, NgZone, Injectable, DestroyRef } from "@angular/core";
 import { Story } from "@storyblok/api-client";
-import { type BridgeParams, onStoryblokEditorEvent } from "@storyblok/live-preview";
+import {
+  type BridgeParams,
+  type LivePreviewOptions,
+  onStoryblokEditorEvent,
+} from "@storyblok/live-preview";
 
-/**å
+/**
  * Internal injection token holding the Storyblok bridge configuration.
  * Provided by `withLivePreview()`.
  *
@@ -20,6 +24,20 @@ export const LIVE_PREVIEW_ENABLED = new InjectionToken<boolean>("LIVE_PREVIEW_EN
  * Callback function type for live preview updates.
  */
 export type LivePreviewCallback = (story: Story) => void;
+
+/**
+ * Options for {@link LivePreviewService.listen}: the Preview Bridge
+ * configuration, `onChange` and `onError` handlers, and an optional
+ * `DestroyRef` that removes the subscription automatically.
+ */
+export type LivePreviewListenOptions = LivePreviewOptions & {
+  /**
+   * Removes the subscription when this `DestroyRef` fires, for example the
+   * calling component's. If it has already been destroyed, nothing is
+   * subscribed.
+   */
+  destroyRef?: DestroyRef;
+};
 
 /**
  * Error thrown in development when LivePreviewService is used
@@ -59,56 +77,44 @@ export class LivePreviewService {
   /**
    * Subscribes to Storyblok Visual Editor live preview updates.
    *
-   * Returns a cleanup function that removes this subscription. The shared
-   * bridge is destroyed when the last subscription using it is removed.
-   * For automatic cleanup tied to a component or service lifetime, prefer
-   * {@link connect} which accepts a `DestroyRef` and handles teardown for you.
+   * Pass the calling component's `DestroyRef` as `options.destroyRef` to
+   * remove the subscription automatically when the component is destroyed.
+   * Otherwise, call the returned cleanup function yourself. The shared bridge
+   * is destroyed when the last subscription using it is removed.
    *
-   * @param callback Called with the updated story on every `input` event.
-   * @param options Optional bridge configuration; merged over the base config.
-   * @returns A promise that resolves to a cleanup function.
-   */
-  async listen(callback: LivePreviewCallback, options?: BridgeParams): Promise<() => void> {
-    if (!this.enabledFlag) {
-      if (typeof ngDevMode === "undefined" || ngDevMode) {
-        throw new LivePreviewNotEnabledError();
-      }
-      return () => {};
-    }
-
-    const mergedConfig: BridgeParams = {
-      ...this.baseConfig,
-      ...options,
-    };
-
-    return onStoryblokEditorEvent((story) => {
-      this.ngZone.run(() => {
-        callback(story as Story);
-      });
-    }, mergedConfig);
-  }
-
-  /**
-   * Subscribes to Storyblok Visual Editor live preview updates and
-   * automatically removes the subscription when the provided `DestroyRef` fires.
-   *
-   * This is the preferred API for component use. It eliminates the need for
-   * a manual cleanup field and an `ngOnDestroy` implementation, and correctly
-   * handles the case where the component is destroyed while the bridge is
-   * still loading.
+   * When the story is saved or published, the page reloads. To handle it
+   * yourself instead, pass the optional `options.onChange`. Preview Bridge
+   * load failures are logged with `console.error`, or passed to the optional
+   * `options.onError`. Both run inside the Angular zone, like `callback`.
    *
    * @example
    * ```ts
    * private readonly destroyRef = inject(DestroyRef);
    *
    * ngOnInit(): void {
-   *   this.livePreview.connect(
-   *     (story) => this.story.set(story),
-   *     this.destroyRef,
-   *     this.bridgeConfig,
-   *   );
+   *   void this.livePreview.listen((story) => this.story.set(story), {
+   *     destroyRef: this.destroyRef,
+   *   });
    * }
    * ```
+   *
+   * @param callback Called with the updated story on every `input` event.
+   * @param options Optional bridge configuration, merged over the base config,
+   * plus `onChange`, `onError`, and `destroyRef`.
+   * @returns A promise that resolves to a cleanup function.
+   */
+  async listen(
+    callback: LivePreviewCallback,
+    options?: LivePreviewListenOptions,
+  ): Promise<() => void> {
+    return this.subscribe(callback, options);
+  }
+
+  /**
+   * Subscribes to Storyblok Visual Editor live preview updates and
+   * automatically removes the subscription when the provided `DestroyRef` fires.
+   *
+   * @deprecated Use `listen(callback, { ...options, destroyRef })` instead.
    *
    * @param callback Called with the updated story on every `input` event.
    * @param destroyRef The `DestroyRef` of the calling component or service.
@@ -121,48 +127,68 @@ export class LivePreviewService {
     destroyRef: DestroyRef,
     options?: BridgeParams,
   ): Promise<() => void> {
-    let cleanup: (() => void) | undefined;
-    let destroyed = false;
-
-    // Register teardown synchronously — before the async bridge load — so
-    // that if the component is destroyed while the bridge is still loading,
-    // `destroyed` is set to true and the bridge is torn down as soon as the
-    // promise resolves.
-    //
-    // Guard with try/catch: during SSR, Angular may have already destroyed
-    // the view by the time ngOnInit runs (e.g. on navigation), causing
-    // DestroyRef.onDestroy() to throw NG0911. In that case treat the context
-    // as already destroyed so the bridge is torn down immediately once loaded.
-    let unregister: (() => void) | undefined;
     try {
-      unregister = destroyRef.onDestroy(() => {
-        destroyed = true;
-        cleanup?.();
-      });
-    } catch {
-      destroyed = true;
-    }
-
-    // Already destroyed before we even subscribed — don't touch the shared bridge.
-    if (destroyed) {
-      unregister?.();
-      return () => {};
-    }
-
-    try {
-      cleanup = await this.listen(callback, options);
+      return this.subscribe(callback, { ...options, destroyRef });
     } catch (error) {
       console.error("[Storyblok] connect() failed to subscribe to live preview updates:", error);
-      unregister?.();
+      return () => {};
+    }
+  }
+
+  /**
+   * Registers the subscription and returns its cleanup function synchronously,
+   * so it can be tied to a `DestroyRef` without awaiting the bridge.
+   */
+  private subscribe(callback: LivePreviewCallback, options?: LivePreviewListenOptions): () => void {
+    // Check before touching the DestroyRef, so a missing withLivePreview() is
+    // reported in dev mode even when the DestroyRef is already destroyed.
+    if (!this.enabledFlag) {
+      if (typeof ngDevMode === "undefined" || ngDevMode) {
+        throw new LivePreviewNotEnabledError();
+      }
       return () => {};
     }
 
-    if (destroyed) {
-      cleanup();
+    const { destroyRef, onChange, onError, ...bridgeOptions } = options ?? {};
+    let cleanup: (() => void) | undefined;
+
+    // During SSR, Angular may have already destroyed the view by the time
+    // ngOnInit runs (e.g. on navigation), causing DestroyRef.onDestroy() to
+    // throw NG0911. The context is gone, so don't touch the shared bridge.
+    let unregister: (() => void) | undefined;
+    if (destroyRef) {
+      try {
+        unregister = destroyRef.onDestroy(() => cleanup?.());
+      } catch {
+        return () => {};
+      }
     }
+
+    // onStoryblokEditorEvent never throws: failures go to onError.
+    cleanup = this.subscribeToEditor(callback, bridgeOptions, onChange, onError);
+
     return () => {
       unregister?.();
       cleanup?.();
     };
+  }
+
+  private subscribeToEditor(
+    callback: LivePreviewCallback,
+    bridgeOptions: BridgeParams,
+    onChange: LivePreviewOptions["onChange"],
+    onError: LivePreviewOptions["onError"],
+  ): () => void {
+    const config: LivePreviewOptions = { ...this.baseConfig, ...bridgeOptions };
+    // Only pass handlers that were given: without `onChange` the page reloads,
+    // and without `onError` the failure is logged.
+    if (onChange) config.onChange = (event) => this.ngZone.run(() => onChange(event));
+    if (onError) config.onError = (error) => this.ngZone.run(() => onError(error));
+
+    return onStoryblokEditorEvent((story) => {
+      this.ngZone.run(() => {
+        callback(story as Story);
+      });
+    }, config);
   }
 }

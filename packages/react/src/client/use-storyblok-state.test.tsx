@@ -29,7 +29,7 @@ describe("useStoryblokState", () => {
     editorCallback = undefined;
     editorCallbacks = [];
     vi.clearAllMocks();
-    vi.mocked(onStoryblokEditorEvent).mockImplementation(async (cb) => {
+    vi.mocked(onStoryblokEditorEvent).mockImplementation((cb) => {
       editorCallback = cb as EditorCallback;
       editorCallbacks.push(cb as EditorCallback);
       return mockUnsubscribe;

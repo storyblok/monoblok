@@ -1,7 +1,8 @@
 ---
 name: blitz
 description:
-  Use when asked to blitz, batch-process, or drive multiple GitHub issues end to end in parallel
+  Use when asked to blitz, batch-process, or drive multiple GitHub issues or Linear tickets end to
+  end in parallel
 model: opus
 disable-model-invocation: true
 effort: high
@@ -9,7 +10,7 @@ effort: high
 
 # Blitz
 
-Blitz the following GitHub issues: $ARGUMENTS
+Blitz the following GitHub issues or Linear tickets: $ARGUMENTS
 
 ## Overview
 
@@ -90,10 +91,10 @@ Present final status:
 ```markdown
 ## Blitz Summary
 
-| Issue | Status      | Investigation        | Worktree  | Branch    |
-| ----- | ----------- | -------------------- | --------- | --------- |
-| #368  | implemented | `investigate-368.md` | `fix-368` | `fix-368` |
-| #509  | planned     | `investigate-509.md` | `fix-509` | `fix-509` |
+| Issue | Status      | Investigation        | Worktree          | Branch            |
+| ----- | ----------- | -------------------- | ----------------- | ----------------- |
+| #368  | implemented | `investigate-368.md` | `fix-368-<title>` | `fix/368-<title>` |
+| #509  | planned     | `investigate-509.md` | `fix-509-<title>` | `fix/509-<title>` |
 
 ### Results
 

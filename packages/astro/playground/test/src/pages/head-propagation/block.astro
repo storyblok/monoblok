@@ -1,0 +1,12 @@
+---
+import BaseLayout from "../../components/BaseLayout.astro";
+import { StoryblokBlock } from "../../storyblok";
+
+// Fixture for e2e/head-propagation.spec.ts: the block resolved from the
+// registry by `StoryblokBlock`.
+const block = { _uid: "mdx-note", component: "mdx_note" };
+---
+
+<BaseLayout>
+  <StoryblokBlock block={block} />
+</BaseLayout>

@@ -1,4 +1,5 @@
 import { compile, type JSONSchema } from "json-schema-to-typescript";
+import { isLayoutFieldType } from "@storyblok/schema";
 import type { Component, SpaceComponentsData } from "../../../commands/components/constants";
 import {
   __dirname,
@@ -17,7 +18,7 @@ import { importUserModuleDefault } from "../../../utils/user-module";
 import { isRecord } from "../../../utils/object";
 import { resolvePath, saveToFile } from "../../../utils/filesystem";
 import { readFileSync } from "node:fs";
-import type { ComponentPropertySchema, ComponentPropertySchemaType } from "../../../types/schemas";
+import type { ComponentPropertySchema } from "../../../types/schemas";
 import {
   createComponentFile,
   createContentTypesFile,
@@ -67,11 +68,6 @@ const SOURCE_MAP_START = "//# sourceMappingURL=";
 // Bundled declarations hoist every import to the top as a single line each. Binding
 // lists are normalized by the bundler, so a regex is sufficient to enumerate them.
 const IMPORT_STATEMENT = /^import\s+(?:(.+?)\s+from\s+)?["'][^"']+["'];?[ \t]*$/gm;
-// Field types that exist purely to arrange other fields in the editor. They carry no
-// value of their own, so a story never stores anything under their key. The management
-// API calls the editor's "Group" field a `section`.
-const LAYOUT_FIELD_TYPES = new Set<ComponentPropertySchemaType>(["section", "tab"]);
-const isLayoutFieldType = (type: ComponentPropertySchemaType) => LAYOUT_FIELD_TYPES.has(type);
 const getDatasourceTypeTitle = (slug: string) => `${toPascalCase(slug)}DataSource`;
 
 const getImportedBindings = (content: string) =>
@@ -204,12 +200,26 @@ const getPropertyTypeAnnotation = (property: FieldSchema, prefix?: string, suffi
       return { type: "boolean" };
     case "datetime":
     case "image":
+    case "file":
+    case "link":
     case "markdown":
     case "number":
     case "text":
     case "textarea":
       return { type: "string" };
+    case "commerce":
+    case "custom":
+      return { type: "any" };
+    case "section":
+    case "tab":
+    case "group":
+      // Unreachable: layout fields are skipped before their type is annotated.
+      // Listed so the exhaustiveness guard below holds.
+      return { type: "any" };
     default:
+      // Unknown types still reach this at runtime, e.g. from a newer API than the
+      // CLI was built against.
+      property.type satisfies never;
       return { type: "any" };
   }
 };

@@ -133,6 +133,7 @@ class SbFetch {
 
       if (this.timeout && timeout) {
         clearTimeout(timeout);
+        timeout = null;
       }
 
       const response = (await this._responseHandler(fetchResponse)) as ISbResponse;
@@ -156,6 +157,10 @@ class SbFetch {
         message: err.message || err.toString() || "An unknown error occurred",
       };
       return error;
+    } finally {
+      if (timeout !== null) {
+        clearTimeout(timeout);
+      }
     }
   }
 

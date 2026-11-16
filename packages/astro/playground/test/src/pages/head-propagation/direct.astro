@@ -1,0 +1,11 @@
+---
+import BaseLayout from "../../components/BaseLayout.astro";
+import MdxNote from "../../blocks/MdxNote.astro";
+
+// Control for e2e/head-propagation.spec.ts: the block imported directly,
+// which Astro's own import-graph analysis already covers.
+---
+
+<BaseLayout>
+  <MdxNote />
+</BaseLayout>

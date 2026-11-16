@@ -25,12 +25,13 @@ Implement the approved plan: $ARGUMENTS
 
 - Do NOT add new dependencies unless explicitly in the plan
 - Do NOT refactor unrelated code
-- Do NOT add comments/docs unless specifically requested
+- Do NOT add comments unless specifically requested. Draft user-facing docs in `DOCS.md` (see
+  `docs/docs-platform.md`)
 - Preserve existing code style and patterns
 
 ## Output Format
 
-```markdown
+````markdown
 ## Changes Made
 
 | File            | Change       |
@@ -39,21 +40,22 @@ Implement the approved plan: $ARGUMENTS
 
 ## Verification
 
-\`\`\`bash
-
+```bash
 # Commands run and output
-
-pnpm nx lint <package> pnpm nx test <package> pnpm nx run <package> test:types \`\`\`
+pnpm nx lint <package>
+pnpm nx test <package>
+pnpm nx test:types <package>
+```
 
 ## Notes
 
 - Any deviations from plan (with justification)
 - Any follow-up items discovered
-```
+````
 
 ## Post-Implementation Checklist
 
 - [ ] All planned changes completed
 - [ ] Lint passes: `pnpm nx lint <package>`
 - [ ] Tests pass: `pnpm nx test <package>`
-- [ ] Types check: `pnpm nx run <package> test:types`
+- [ ] Types check: `pnpm nx test:types <package>`

@@ -119,14 +119,11 @@ export class LivePreviewComponent {
     }
 
     afterNextRender(() => {
-      void this.livePreview.connect(
-        (updatedStory) => this.story.set(updatedStory as Story),
-        this.destroyRef,
-        {
-          resolveRelations: ["article.author"],
-          preventClicks: false,
-        },
-      );
+      void this.livePreview.listen((updatedStory) => this.story.set(updatedStory as Story), {
+        resolveRelations: ["article.author"],
+        preventClicks: false,
+        destroyRef: this.destroyRef,
+      });
     });
   }
 

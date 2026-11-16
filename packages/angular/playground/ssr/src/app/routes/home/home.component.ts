@@ -53,13 +53,15 @@ export class HomeComponent implements OnInit {
   private liveUpdateReceived = false;
 
   ngOnInit(): void {
-    void this.livePreview.connect(
+    void this.livePreview.listen(
       (updatedStory) => {
         this.liveUpdateReceived = true;
         this.story.set((updatedStory as Story) || null);
       },
-      this.destroyRef,
-      this.bridgeConfig,
+      {
+        ...this.bridgeConfig,
+        destroyRef: this.destroyRef,
+      },
     );
 
     void this.loadStory();

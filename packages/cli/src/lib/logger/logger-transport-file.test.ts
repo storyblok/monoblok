@@ -2,6 +2,7 @@ import { expect, it, vi } from "vitest";
 import { vol } from "memfs";
 import * as nodeFs from "node:fs";
 import { FileTransport } from "./logger-transport-file";
+import { getRunFileName } from "../../utils/filesystem";
 import { APIError } from "../../utils/error";
 import { FetchError } from "../../utils/fetch";
 
@@ -53,11 +54,11 @@ it("should format errors correctly", () => {
 it("should only keep n number of log files", () => {
   const maxFiles = 3;
 
-  new FileTransport({ filePath: "1.jsonl", maxFiles }).log({ level: "info", message: "Log 1" });
-  new FileTransport({ filePath: "2.jsonl", maxFiles }).log({ level: "info", message: "Log 2" });
-  new FileTransport({ filePath: "3.jsonl", maxFiles }).log({ level: "info", message: "Log 3" });
-  new FileTransport({ filePath: "4.jsonl", maxFiles }).log({ level: "info", message: "Log 4" });
-  new FileTransport({ filePath: "5.jsonl", maxFiles }).log({ level: "info", message: "Log 5" });
+  new FileTransport({ filePath: "run-1.jsonl", maxFiles }).log({ level: "info", message: "Log 1" });
+  new FileTransport({ filePath: "run-2.jsonl", maxFiles }).log({ level: "info", message: "Log 2" });
+  new FileTransport({ filePath: "run-3.jsonl", maxFiles }).log({ level: "info", message: "Log 3" });
+  new FileTransport({ filePath: "run-4.jsonl", maxFiles }).log({ level: "info", message: "Log 4" });
+  new FileTransport({ filePath: "run-5.jsonl", maxFiles }).log({ level: "info", message: "Log 5" });
 
   const files = Object.keys(vol.toJSON()).sort();
   const fileContents = Object.values(vol.toJSON());
@@ -73,7 +74,7 @@ it("should only keep n number of log files", () => {
 });
 
 it("should not throw when a pruned file was already removed by a concurrent process", () => {
-  vol.fromJSON({ "./a.jsonl": "a", "./b.jsonl": "b", "./c.jsonl": "c" });
+  vol.fromJSON({ "./a-1.jsonl": "a", "./b-2.jsonl": "b", "./c-3.jsonl": "c" });
 
   // Simulate the race: between `readdirSync` and `unlinkSync` another CLI
   // process deletes the same oldest file, so the first `unlinkSync` raises
@@ -85,30 +86,62 @@ it("should not throw when a pruned file was already removed by a concurrent proc
 
   let deleted = 0;
   expect(() => {
-    deleted = FileTransport.pruneLogFiles(".", 1, ".jsonl");
+    deleted = FileTransport.pruneLogFiles(".", 1);
   }).not.toThrow();
 
-  // Both targeted files (a.jsonl, b.jsonl) are gone after the call; only the
-  // most recent (c.jsonl) is kept.
   expect(deleted).toBe(2);
   const remaining = Object.keys(vol.toJSON())
     .map((p) => p.split("/").pop())
     .sort();
-  expect(remaining).not.toContain("b.jsonl");
-  expect(remaining).toContain("c.jsonl");
+  expect(remaining).not.toContain("b-2.jsonl");
+  expect(remaining).toContain("c-3.jsonl");
 
   unlinkSpy.mockRestore();
 });
 
 it("should rethrow non-ENOENT errors while pruning", () => {
-  vol.fromJSON({ "./a.jsonl": "a", "./b.jsonl": "b" });
+  vol.fromJSON({ "./a-1.jsonl": "a", "./b-2.jsonl": "b" });
 
   const eacces = Object.assign(new Error("EACCES: permission denied"), { code: "EACCES" });
   const unlinkSpy = vi.spyOn(nodeFs, "unlinkSync").mockImplementationOnce(() => {
     throw eacces;
   });
 
-  expect(() => FileTransport.pruneLogFiles(".", 1, ".jsonl")).toThrow("EACCES");
+  expect(() => FileTransport.pruneLogFiles(".", 1)).toThrow("EACCES");
 
   unlinkSpy.mockRestore();
+});
+
+it("should prune the oldest runs regardless of command name or modification time", () => {
+  const oldestRun = getRunFileName(["storyblok", "stories", "pull"], 1000, ".jsonl");
+  const olderRun = getRunFileName(["storyblok", "stories", "pull"], 2000, ".jsonl");
+  const newestRun = getRunFileName(["storyblok", "schema", "push"], 3000, ".jsonl");
+  vol.fromJSON({ [oldestRun]: "{}", [olderRun]: "{}" });
+  nodeFs.utimesSync(oldestRun, new Date(2000), new Date(2000));
+  nodeFs.utimesSync(olderRun, new Date(1000), new Date(1000));
+
+  new FileTransport({ filePath: newestRun, maxFiles: 2 }).log({ level: "info", message: "Log 3" });
+
+  const remaining = Object.keys(vol.toJSON()).map((path) => path.split("/").pop());
+  expect(remaining.sort()).toEqual([newestRun, olderRun]);
+});
+
+it("should keep its own log file when runs that started later already finished", () => {
+  vol.fromJSON({ "./stories-pull-2000.jsonl": "{}", "./stories-pull-3000.jsonl": "{}" });
+
+  new FileTransport({ filePath: "./migrations-run-1000.jsonl", maxFiles: 2 }).log({
+    level: "info",
+    message: "Started",
+  });
+
+  const remaining = Object.keys(vol.toJSON()).map((path) => path.split("/").pop());
+  expect(remaining.sort()).toEqual(["migrations-run-1000.jsonl", "stories-pull-3000.jsonl"]);
+});
+
+it("should skip directories while pruning", () => {
+  vol.fromJSON({ "./old-1000.jsonl/file": "", "./run-2000.jsonl": "{}" });
+
+  expect(FileTransport.pruneLogFiles(".", 0)).toBe(1);
+  expect(nodeFs.existsSync("./old-1000.jsonl")).toBe(true);
+  expect(nodeFs.existsSync("./run-2000.jsonl")).toBe(false);
 });

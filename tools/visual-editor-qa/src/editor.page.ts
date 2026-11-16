@@ -125,6 +125,20 @@ export class StoryblokEditor {
     return this.page.locator(".sb-textfield").locator(`input[id*="${fieldName}"]`).first();
   }
 
+  /**
+   * Appends a block to the story's root `body` through the editor's
+   * "Insert block" picker, matched by `displayName`. Call with no block
+   * selected.
+   */
+  async addBlock(displayName: string): Promise<void> {
+    // `.last()` appends at the end of the field.
+    await this.page.getByTestId("add-block-button").last().click();
+    await this.page
+      .getByTestId("add-block-slideover-list-item")
+      .filter({ hasText: displayName })
+      .click();
+  }
+
   /** Saves, and waits for the reload the bridge's `change` handler triggers. */
   async save(): Promise<void> {
     const before = this.previewLoads;

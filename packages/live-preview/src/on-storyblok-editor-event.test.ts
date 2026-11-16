@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { BridgeParams } from "@storyblok/preview-bridge";
 import type StoryblokBridge from "@storyblok/preview-bridge";
 
 // ---- mocks ----
@@ -19,22 +18,41 @@ import { isBrowser } from "./utils/is-browser";
 import { isInEditor } from "./utils/is-in-editor";
 import { loadStoryblokBridge } from "./load-storyblok-bridge";
 import { onStoryblokEditorEvent } from "./on-storyblok-editor-event";
+import type { LivePreviewOptions } from "./on-storyblok-editor-event";
+import type { BridgeParams } from "@storyblok/preview-bridge";
 
 /** Advances several microtask ticks — enough for a chain of `.then()`s to settle. */
-async function flushMicrotasks(times = 5): Promise<void> {
+async function flushMicrotasks(times = 10): Promise<void> {
   for (let i = 0; i < times; i++) {
     await Promise.resolve();
   }
 }
 
+/** Sends an `input` event through the most recently attached bridge listener. */
+function fireInput(story: unknown): void {
+  const handler = onMock.mock.calls.at(-1)?.[1];
+  handler({ action: "input", story });
+}
+
 describe("onStoryblokEditorEvent", () => {
   const activeCleanups: (() => void)[] = [];
 
+  /** Subscribes and waits for the shared bridge build to settle. */
   async function subscribe(
     callback: Parameters<typeof onStoryblokEditorEvent>[0],
-    options?: BridgeParams,
+    options?: LivePreviewOptions,
   ): Promise<() => void> {
-    const cleanup = await onStoryblokEditorEvent(callback, options);
+    const cleanup = subscribeNow(callback, options);
+    await flushMicrotasks();
+    return cleanup;
+  }
+
+  /** Subscribes without waiting for the bridge build. */
+  function subscribeNow(
+    callback: Parameters<typeof onStoryblokEditorEvent>[0],
+    options?: LivePreviewOptions,
+  ): () => void {
+    const cleanup = onStoryblokEditorEvent(callback, options);
     activeCleanups.push(cleanup);
     return cleanup;
   }
@@ -54,9 +72,10 @@ describe("onStoryblokEditorEvent", () => {
     });
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     for (const cleanup of activeCleanups) cleanup();
     activeCleanups.length = 0;
+    await flushMicrotasks();
     vi.restoreAllMocks();
   });
 
@@ -503,6 +522,87 @@ describe("onStoryblokEditorEvent", () => {
     expect(window.location.reload).toHaveBeenCalledOnce();
   });
 
+  it("should call onChange instead of reloading when every subscriber provides one", async () => {
+    inEditor();
+
+    const onChangeA = vi.fn();
+    const onChangeB = vi.fn();
+    await subscribe(vi.fn(), { onChange: onChangeA });
+    await subscribe(vi.fn(), { onChange: onChangeB });
+
+    const handler = onMock.mock.calls[0][1];
+    const event = { action: "change", slug: "home", storyId: 1, reload: true };
+    handler(event);
+    handler({ ...event, action: "published", slugChanged: false });
+
+    expect(window.location.reload).not.toHaveBeenCalled();
+    expect(onChangeA).toHaveBeenCalledTimes(2);
+    expect(onChangeA).toHaveBeenNthCalledWith(1, event);
+    expect(onChangeB).toHaveBeenCalledTimes(2);
+  });
+
+  it("should reload when any subscriber has no onChange", async () => {
+    inEditor();
+
+    const onChange = vi.fn();
+    await subscribe(vi.fn(), { onChange });
+    await subscribe(vi.fn());
+
+    const handler = onMock.mock.calls[0][1];
+    handler({ action: "change" });
+
+    expect(window.location.reload).toHaveBeenCalledOnce();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("should stop reloading once the subscriber without onChange cleans up", async () => {
+    inEditor();
+
+    const onChange = vi.fn();
+    await subscribe(vi.fn(), { onChange });
+    const cleanup = await subscribe(vi.fn());
+    cleanup();
+
+    const handler = onMock.mock.calls[0][1];
+    handler({ action: "published" });
+
+    expect(window.location.reload).not.toHaveBeenCalled();
+    expect(onChange).toHaveBeenCalledOnce();
+  });
+
+  it("should not forward onChange to the Preview Bridge", async () => {
+    inEditor();
+
+    await subscribe(vi.fn(), { resolveRelations: ["a.rel"], onChange: vi.fn() });
+
+    expect(loadStoryblokBridge).toHaveBeenCalledWith({
+      resolveRelations: ["a.rel"],
+      initOnlyOnce: false,
+    });
+  });
+
+  it("should keep calling onChange handlers when one throws", async () => {
+    inEditor();
+
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const onChange = vi.fn();
+    await subscribe(vi.fn(), {
+      onChange: () => {
+        throw new Error("boom");
+      },
+    });
+    await subscribe(vi.fn(), { onChange });
+
+    const handler = onMock.mock.calls[0][1];
+    handler({ action: "change" });
+
+    expect(onChange).toHaveBeenCalledOnce();
+    expect(consoleError).toHaveBeenCalledWith(
+      expect.stringContaining("onChange handler threw"),
+      expect.any(Error),
+    );
+  });
+
   it("overrides caller-supplied initOnlyOnce", async () => {
     inEditor();
 
@@ -546,7 +646,10 @@ describe("onStoryblokEditorEvent", () => {
       .mockRejectedValueOnce(new Error("bridge failed"))
       .mockResolvedValueOnce({ on: onMock, destroy: destroyMock } as unknown as StoryblokBridge);
 
-    await expect(subscribe(vi.fn())).rejects.toThrow("bridge failed");
+    const onError = vi.fn();
+    await subscribe(vi.fn(), { onError });
+    expect(onError).toHaveBeenCalledExactlyOnceWith(new Error("bridge failed"));
+
     const cleanup = await subscribe(vi.fn());
 
     expect(loadStoryblokBridge).toHaveBeenCalledTimes(2);
@@ -628,18 +731,21 @@ describe("onStoryblokEditorEvent", () => {
     vi.mocked(loadStoryblokBridge).mockImplementationOnce(() => firstBridge);
     vi.mocked(loadStoryblokBridge).mockImplementationOnce(() => secondBridge);
 
-    const pA = onStoryblokEditorEvent(vi.fn(), { resolveRelations: ["a.rel"] });
+    const onErrorA = vi.fn();
+    const onErrorB = vi.fn();
+    subscribeNow(vi.fn(), { resolveRelations: ["a.rel"], onError: onErrorA });
     // Let the reconcile loop's first pass (options from A alone) reach its
     // `await loadStoryblokBridge(...)` call before B contributes more options.
     await flushMicrotasks();
-    const pB = onStoryblokEditorEvent(vi.fn(), { resolveRelations: ["b.rel"] });
+    subscribeNow(vi.fn(), { resolveRelations: ["b.rel"], onError: onErrorB });
 
     resolveFirstBridge({ on: onMock, destroy: destroyMock } as unknown as StoryblokBridge);
     await flushMicrotasks();
     rejectSecondBridge(new Error("second bridge failed"));
+    await flushMicrotasks();
 
-    await expect(pA).rejects.toThrow("second bridge failed");
-    await expect(pB).rejects.toThrow("second bridge failed");
+    expect(onErrorA).toHaveBeenCalledExactlyOnceWith(new Error("second bridge failed"));
+    expect(onErrorB).toHaveBeenCalledExactlyOnceWith(new Error("second bridge failed"));
 
     // The bridge built from the first pass is not left dangling: both
     // subscribers failed and unsubscribed, so it must be torn down even
@@ -647,20 +753,22 @@ describe("onStoryblokEditorEvent", () => {
     expect(destroyMock).toHaveBeenCalledOnce();
   });
 
-  it("does not reject an already-settled subscriber when a later, unrelated rebuild fails", async () => {
+  it("does not report an already-settled subscriber's error when a later, unrelated rebuild fails", async () => {
     inEditor();
 
-    const cleanupA = await subscribe(vi.fn(), { resolveRelations: ["a.rel"] });
+    const onErrorA = vi.fn();
+    const cleanupA = await subscribe(vi.fn(), { resolveRelations: ["a.rel"], onError: onErrorA });
     expect(loadStoryblokBridge).toHaveBeenCalledTimes(1);
 
     vi.mocked(loadStoryblokBridge).mockRejectedValueOnce(new Error("bad customParent"));
-    await expect(subscribe(vi.fn(), { resolveRelations: ["b.rel"] })).rejects.toThrow(
-      "bad customParent",
-    );
+    const onErrorB = vi.fn();
+    await subscribe(vi.fn(), { resolveRelations: ["b.rel"], onError: onErrorB });
+    expect(onErrorB).toHaveBeenCalledExactlyOnceWith(new Error("bad customParent"));
 
-    // A's own subscribe already resolved before B's failing subscribe was
-    // made, so A is not retroactively rejected — though its bridge is still
-    // destroyed, since two bridges can never be live at once.
+    // A's bridge was already built before B's failing subscribe was made, so
+    // A's onError is not called — though its bridge is still destroyed, since
+    // two bridges can never be live at once.
+    expect(onErrorA).not.toHaveBeenCalled();
     expect(destroyMock).toHaveBeenCalledOnce();
     cleanupA();
   });
@@ -672,9 +780,9 @@ describe("onStoryblokEditorEvent", () => {
     expect(loadStoryblokBridge).toHaveBeenCalledTimes(1);
 
     vi.mocked(loadStoryblokBridge).mockRejectedValueOnce(new Error("bad customParent"));
-    await expect(subscribe(vi.fn(), { resolveRelations: ["b.rel"] })).rejects.toThrow(
-      "bad customParent",
-    );
+    const onErrorB = vi.fn();
+    await subscribe(vi.fn(), { resolveRelations: ["b.rel"], onError: onErrorB });
+    expect(onErrorB).toHaveBeenCalledExactlyOnceWith(new Error("bad customParent"));
 
     // A is still subscribed after B's failed build. A later, unrelated
     // subscribe must fold A back into the retry — not spin up a brand new,
@@ -688,5 +796,222 @@ describe("onStoryblokEditorEvent", () => {
 
     cleanupA();
     cleanupC();
+  });
+
+  describe("synchronous cleanup and error reporting", () => {
+    beforeEach(() => {
+      inEditor();
+    });
+
+    it("should return a cleanup function synchronously", () => {
+      const cleanup = subscribeNow(vi.fn());
+
+      expect(cleanup).toBeTypeOf("function");
+      expect(cleanup).not.toBeInstanceOf(Promise);
+    });
+
+    it("should deliver input events once the bridge has loaded", async () => {
+      const callback = vi.fn();
+      subscribeNow(callback, { resolveRelations: ["foo.bar"] });
+      await flushMicrotasks();
+
+      fireInput({ id: 1, content: {} });
+
+      expect(loadStoryblokBridge).toHaveBeenCalledWith({
+        resolveRelations: ["foo.bar"],
+        initOnlyOnce: false,
+      });
+      expect(callback).toHaveBeenCalledWith({ id: 1, content: {} });
+    });
+
+    it("should not forward onError to the Preview Bridge", async () => {
+      subscribeNow(vi.fn(), { resolveRelations: ["foo.bar"], onError: vi.fn() });
+      await flushMicrotasks();
+
+      expect(loadStoryblokBridge).toHaveBeenCalledWith({
+        resolveRelations: ["foo.bar"],
+        initOnlyOnce: false,
+      });
+    });
+
+    it("should do nothing outside the Visual Editor", async () => {
+      vi.mocked(isInEditor).mockReturnValue(false);
+
+      const cleanup = subscribeNow(vi.fn());
+      await flushMicrotasks();
+
+      expect(loadStoryblokBridge).not.toHaveBeenCalled();
+      expect(() => cleanup()).not.toThrow();
+    });
+
+    it("should do nothing on the server", async () => {
+      vi.mocked(isBrowser).mockReturnValue(false);
+
+      subscribeNow(vi.fn());
+      await flushMicrotasks();
+
+      expect(loadStoryblokBridge).not.toHaveBeenCalled();
+    });
+
+    it("should destroy a bridge that finishes loading after cleanup, without reporting an error", async () => {
+      const onError = vi.fn();
+      const cleanup = subscribeNow(vi.fn(), { onError });
+
+      cleanup();
+      await flushMicrotasks();
+
+      expect(onError).not.toHaveBeenCalled();
+      // Either the build is aborted before construction, or the late bridge is destroyed.
+      const built = vi.mocked(loadStoryblokBridge).mock.calls.length;
+      expect(destroyMock).toHaveBeenCalledTimes(built);
+    });
+
+    it("should stop delivering events after cleanup", async () => {
+      const callback = vi.fn();
+      const cleanup = subscribeNow(callback);
+      await flushMicrotasks();
+
+      cleanup();
+      fireInput({ id: 1 });
+
+      expect(callback).not.toHaveBeenCalled();
+      expect(destroyMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("should report a bridge load failure through onError and remove the subscription", async () => {
+      const error = new Error("bridge failed");
+      vi.mocked(loadStoryblokBridge).mockRejectedValueOnce(error);
+      const onError = vi.fn();
+
+      subscribeNow(vi.fn(), { onError });
+      await flushMicrotasks();
+
+      expect(onError).toHaveBeenCalledExactlyOnceWith(error);
+
+      // The failed subscriber is gone, so a later one gets a fresh build.
+      const callback = vi.fn();
+      subscribeNow(callback);
+      await flushMicrotasks();
+      fireInput({ id: 2 });
+
+      expect(loadStoryblokBridge).toHaveBeenCalledTimes(2);
+      expect(callback).toHaveBeenCalledWith({ id: 2 });
+    });
+
+    it("should log a bridge load failure when no onError is given", async () => {
+      const error = new Error("bridge failed");
+      vi.mocked(loadStoryblokBridge).mockRejectedValueOnce(error);
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      subscribeNow(vi.fn());
+      await flushMicrotasks();
+
+      expect(consoleError).toHaveBeenCalledWith(expect.stringContaining("[Storyblok]"), error);
+    });
+
+    it("should rebuild the bridge for existing subscribers when a newcomer's build fails", async () => {
+      const existingCallback = vi.fn();
+      const existingOnError = vi.fn();
+      subscribeNow(existingCallback, { resolveRelations: ["a.rel"], onError: existingOnError });
+      await flushMicrotasks();
+
+      const error = new Error("bridge failed");
+      vi.mocked(loadStoryblokBridge).mockRejectedValueOnce(error);
+      const newcomerOnError = vi.fn();
+      subscribeNow(vi.fn(), { resolveRelations: ["b.rel"], onError: newcomerOnError });
+      await flushMicrotasks();
+
+      expect(newcomerOnError).toHaveBeenCalledExactlyOnceWith(error);
+      expect(existingOnError).not.toHaveBeenCalled();
+      expect(loadStoryblokBridge).toHaveBeenLastCalledWith({
+        resolveRelations: ["a.rel"],
+        initOnlyOnce: false,
+      });
+
+      fireInput({ id: 4 });
+      expect(existingCallback).toHaveBeenCalledWith({ id: 4 });
+    });
+
+    it("should report a failed rebuild after cleanup to every remaining subscriber", async () => {
+      const remainingOnError = vi.fn();
+      subscribeNow(vi.fn(), { resolveRelations: ["a.rel"], onError: remainingOnError });
+      const cleanupOther = subscribeNow(vi.fn(), { resolveRelations: ["b.rel"] });
+      await flushMicrotasks();
+
+      const error = new Error("rebuild failed");
+      vi.mocked(loadStoryblokBridge).mockRejectedValueOnce(error);
+      cleanupOther();
+      await flushMicrotasks();
+
+      expect(remainingOnError).toHaveBeenCalledExactlyOnceWith(error);
+      // The failure is reported, not retried with the same options in a loop.
+      expect(loadStoryblokBridge).toHaveBeenCalledTimes(2);
+    });
+
+    it("should log a shared bridge failure once for subscribers without onError", async () => {
+      const error = new Error("bridge failed");
+      vi.mocked(loadStoryblokBridge).mockRejectedValueOnce(error);
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      subscribeNow(vi.fn());
+      subscribeNow(vi.fn());
+      subscribeNow(vi.fn());
+      await flushMicrotasks();
+
+      expect(consoleError).toHaveBeenCalledOnce();
+    });
+
+    it("should reuse the in-flight build when re-subscribing right after a mid-load cleanup", async () => {
+      let resolveBridge!: (bridge: StoryblokBridge) => void;
+      vi.mocked(loadStoryblokBridge).mockImplementationOnce(
+        () =>
+          new Promise<StoryblokBridge>((resolve) => {
+            resolveBridge = resolve;
+          }),
+      );
+
+      const cleanup = subscribeNow(vi.fn());
+      await flushMicrotasks();
+      expect(loadStoryblokBridge).toHaveBeenCalledOnce();
+
+      // A React StrictMode or Svelte `$effect` re-run: cleanup, then subscribe again.
+      cleanup();
+      const callback = vi.fn();
+      subscribeNow(callback);
+      await flushMicrotasks();
+
+      resolveBridge({ on: onMock, destroy: destroyMock } as unknown as StoryblokBridge);
+      await flushMicrotasks();
+      fireInput({ id: 5 });
+
+      expect(loadStoryblokBridge).toHaveBeenCalledOnce();
+      expect(destroyMock).not.toHaveBeenCalled();
+      expect(callback).toHaveBeenCalledWith({ id: 5 });
+    });
+
+    it("should report a setup error through onError instead of throwing", () => {
+      const error = new Error("setup failed");
+      vi.mocked(isInEditor).mockImplementation(() => {
+        throw error;
+      });
+      const onError = vi.fn();
+
+      const cleanup = subscribeNow(vi.fn(), { onError });
+
+      expect(onError).toHaveBeenCalledExactlyOnceWith(error);
+      expect(() => cleanup()).not.toThrow();
+    });
+
+    it("should call onChange instead of reloading the page", async () => {
+      const onChange = vi.fn();
+      subscribeNow(vi.fn(), { onChange });
+      await flushMicrotasks();
+
+      const handler = onMock.mock.calls.at(-1)?.[1];
+      handler({ action: "published" });
+
+      expect(window.location.reload).not.toHaveBeenCalled();
+      expect(onChange).toHaveBeenCalledExactlyOnceWith({ action: "published" });
+    });
   });
 });

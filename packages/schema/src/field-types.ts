@@ -1,4 +1,4 @@
-import type { FieldType } from "./generated/types/field";
+import type { FieldType, LayoutFieldType } from "./generated/types/field";
 
 /**
  * Every field type the Management API accepts on a component schema, in the
@@ -37,3 +37,24 @@ export const FIELD_TYPES = [
   "commerce",
   "custom",
 ] as const satisfies readonly FieldType[];
+
+/**
+ * Field types that only arrange other fields in the editor (tabs, sections and
+ * the legacy `group`). They hold no value, so a story never stores anything
+ * under their key, and block content types leave their keys out. The editor
+ * labels `section` "Group".
+ *
+ * A runtime counterpart to the type-level `LayoutFieldType`.
+ * `field-types.test-d.ts` fails the type check if the two disagree.
+ */
+export const LAYOUT_FIELD_TYPES = [
+  "section",
+  "tab",
+  "group",
+] as const satisfies readonly LayoutFieldType[];
+
+const LAYOUT_FIELD_TYPE_SET: ReadonlySet<string> = new Set(LAYOUT_FIELD_TYPES);
+
+export function isLayoutFieldType(type: string): type is LayoutFieldType {
+  return LAYOUT_FIELD_TYPE_SET.has(type);
+}

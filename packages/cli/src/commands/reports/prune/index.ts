@@ -8,12 +8,7 @@ import { directories } from "../../../constants";
 const pruneCmd = reportsCommand
   .command("prune")
   .description("Prune reports")
-  .option(
-    "--keep <number>",
-    "Max number of report files to keep (default `0`, meaning remove all)",
-    Number.parseInt,
-    0,
-  )
+  .option("--keep <number>", "Number of most recent report files to keep", Number.parseInt, 0)
   .option("-s, --space <space>", "space ID");
 
 pruneCmd.action(async (options: { keep: number }, command: Command) => {

@@ -32,7 +32,7 @@ Analyze the code changes for:
 
 ### If user-facing changes
 
-- [ ] **Docs updated** - The README or relevant documentation reflects the change.
+- [ ] **Docs drafted** - User-facing changes have a `DOCS.md` draft (see `docs/docs-platform.md`).
 - [ ] **Examples work** - Code examples in the documentation are tested and copy-paste ready.
 - [ ] **Error messages helpful** - New errors explain what went wrong and how to fix it.
 
@@ -78,6 +78,12 @@ Analyze the code changes for:
 - [ ] Edge cases are handled (null, empty, invalid input).
 - [ ] No security issues exist (injection, secrets exposure).
 
+### API integration (when applicable)
+
+- [ ] Error codes are handled (401, 403, 404, 422, 429).
+- [ ] Request and response formats match the API.
+- [ ] Rate limiting is considered.
+
 ### Output format (code review)
 
 ```markdown
@@ -96,8 +102,7 @@ Analyze the code changes for:
 
 ### Test case structure
 
-Refer to the [Test Plan Template](./templates/test-plan.md) and the
-[Test Plan Example](./examples/assets-test-plan.md) for test plan structure guidance.
+For test plan structure, see `templates/test-plan.md` and `examples/assets-test-plan.md`.
 
 ### Coverage requirements
 
@@ -107,3 +112,8 @@ Create test cases for:
 2. **Negative cases** - Invalid input, unauthorized access, and missing data.
 3. **Edge cases** - Empty input, large input, and special characters.
 4. **Error recovery** - What happens when things fail mid-operation.
+
+## Output
+
+Write the review to `claude-output/review-<identifier>.md` (PR `#435` → `review-435.md`, branch or
+free text → slugified).

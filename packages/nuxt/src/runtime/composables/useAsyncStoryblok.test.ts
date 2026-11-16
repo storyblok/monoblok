@@ -22,6 +22,7 @@ vi.mock("#app", () => ({
     clear: vi.fn(),
   })),
   useRuntimeConfig: () => mockRuntimeConfig,
+  onNuxtReady: vi.fn((callback: () => void) => callback()),
 }));
 
 vi.mock("@storyblok/vue", () => ({
@@ -52,7 +53,7 @@ vi.mock("vue", () => ({
 }));
 
 import { useAsyncStoryblok } from "./useAsyncStoryblok";
-import { useAsyncData } from "#app";
+import { onNuxtReady, useAsyncData } from "#app";
 
 describe("useAsyncStoryblok", () => {
   beforeEach(() => {
@@ -60,6 +61,23 @@ describe("useAsyncStoryblok", () => {
     apiGet.mockClear();
     useStoryblokBridge.mockClear();
     vi.mocked(useAsyncData).mockClear();
+    vi.mocked(onNuxtReady).mockClear();
+  });
+
+  it("registers the bridge only once the app is ready, not during setup (regression)", async () => {
+    let runWhenReady: (() => void) | undefined;
+    vi.mocked(onNuxtReady).mockImplementationOnce((callback: () => void) => {
+      runWhenReady = callback;
+    });
+
+    await useAsyncStoryblok("home", { api: { version: "draft" } });
+
+    // Registering during setup runs before Nuxt restores the real URL on prerendered pages,
+    // so the bridge must wait for onNuxtReady.
+    expect(useStoryblokBridge).not.toHaveBeenCalled();
+
+    runWhenReady?.();
+    expect(useStoryblokBridge).toHaveBeenCalledTimes(1);
   });
 
   it("throws when the access token is not available client-side (regression)", async () => {

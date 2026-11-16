@@ -1,5 +1,6 @@
 ---
-import { attrsToHtmlString, buildAstroAttrs, isSelfClosing, type StoryblokRichTextRenderSpec, type StoryblokRichTextElement } from '../../';
+import { attrsToHtmlString, isSelfClosing, type StoryblokRichTextRenderSpec, type StoryblokRichTextElement } from '@storyblok/richtext';
+import { buildAstroAttrs } from '../../richtext-helpers';
 
 interface Props {
   type: StoryblokRichTextElement;

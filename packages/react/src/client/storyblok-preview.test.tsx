@@ -29,7 +29,7 @@ describe("StoryblokPreview (client mode)", () => {
   beforeEach(() => {
     editorCallback = undefined;
     vi.clearAllMocks();
-    vi.mocked(onStoryblokEditorEvent).mockImplementation(async (cb) => {
+    vi.mocked(onStoryblokEditorEvent).mockImplementation((cb) => {
       editorCallback = cb as EditorCallback;
       return mockUnsubscribe;
     });

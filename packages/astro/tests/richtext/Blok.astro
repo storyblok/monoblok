@@ -1,0 +1,13 @@
+---
+import type { StoryblokAstroRichTextProps } from '../../src/index';
+
+type Props = StoryblokAstroRichTextProps<'blok'>;
+
+const { attrs } = Astro.props;
+---
+
+{
+  attrs.body?.map((block) => (
+    <div data-test="embedded-blok">{block.component}</div>
+  ))
+}

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   customRendererFixture,
   integrationFixtures,
@@ -16,6 +16,8 @@ import CustomLink from "./richtext/CustomLink.astro";
 import CodeBlock from "./richtext/CodeBlock.astro";
 import CustomTable from "./richtext/CustomTable.astro";
 import CustomText from "./richtext/CustomText.astro";
+import Blok from "./richtext/Blok.astro";
+import { resetMissingBlokWarning } from "../src/richtext-helpers";
 // Removes source file and location attributes that Astro adds for hydration
 const clean = (result: string) =>
   result
@@ -24,7 +26,7 @@ const clean = (result: string) =>
 
 describe("storyblok Richtext", async () => {
   describe("input handling", async () => {
-    it("returns empty string for null input", async () => {
+    it("should return empty string for null input", async () => {
       const container = await AstroContainer.create();
       const result = await container.renderToString(StoryblokRichText, {
         props: {
@@ -33,7 +35,7 @@ describe("storyblok Richtext", async () => {
       });
       expect(clean(result)).toBe("");
     });
-    it("returns empty string for undefined input", async () => {
+    it("should return empty string for undefined input", async () => {
       const container = await AstroContainer.create();
       const result = await container.renderToString(StoryblokRichText, {
         props: {
@@ -42,7 +44,7 @@ describe("storyblok Richtext", async () => {
       });
       expect(result).toBe("");
     });
-    it("returns empty string for empty array", async () => {
+    it("should return empty string for empty array", async () => {
       const container = await AstroContainer.create();
       const result = await container.renderToString(StoryblokRichText, {
         props: {
@@ -206,6 +208,122 @@ describe("storyblok Richtext", async () => {
         },
       });
       expect(clean(result)).toBe(infinite_loop.expected);
+    });
+  });
+
+  describe("blok nodes", async () => {
+    const document = {
+      type: "doc",
+      content: [
+        {
+          type: "blok",
+          attrs: {
+            id: "x",
+            body: [{ _uid: "1", component: "teaser" }],
+          },
+        },
+      ],
+    };
+
+    beforeEach(() => {
+      resetMissingBlokWarning();
+    });
+
+    it("should render nothing and warn when no `components.blok` is provided", async () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const container = await AstroContainer.create();
+
+      const result = await container.renderToString(StoryblokRichText, {
+        props: { document },
+      });
+
+      expect(result.trim()).toBe("");
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining("[storyblok]"));
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining("components.blok"));
+
+      warn.mockRestore();
+    });
+
+    it("should warn outside dev too", async () => {
+      vi.stubEnv("DEV", false);
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const container = await AstroContainer.create();
+
+      await container.renderToString(StoryblokRichText, { props: { document } });
+
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining("components.blok"));
+
+      warn.mockRestore();
+      vi.unstubAllEnvs();
+    });
+
+    it("should warn only once across renders and blok nodes", async () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const container = await AstroContainer.create();
+      const twoBloks = { ...document, content: [...document.content, ...document.content] };
+
+      await container.renderToString(StoryblokRichText, { props: { document: twoBloks } });
+      await container.renderToString(StoryblokRichText, { props: { document } });
+
+      expect(warn).toHaveBeenCalledTimes(1);
+
+      warn.mockRestore();
+    });
+
+    it("should not warn with `warnings={false}`, without silencing other instances", async () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const container = await AstroContainer.create();
+
+      await container.renderToString(StoryblokRichText, { props: { document, warnings: false } });
+      expect(warn).not.toHaveBeenCalled();
+
+      await container.renderToString(StoryblokRichText, { props: { document } });
+      expect(warn).toHaveBeenCalledTimes(1);
+
+      warn.mockRestore();
+    });
+
+    it("should render through the component passed in `components.blok`", async () => {
+      const container = await AstroContainer.create();
+
+      const result = await container.renderToString(StoryblokRichText, {
+        props: { document, components: { blok: Blok } },
+      });
+
+      expect(result).toContain("teaser");
+    });
+  });
+
+  describe("optimizeImage", async () => {
+    const document = {
+      type: "doc",
+      content: [
+        {
+          type: "image",
+          attrs: { src: "https://example.com/image.jpg", alt: "Image" },
+        },
+      ],
+    };
+
+    it("should apply optimized attributes as HTML attributes, not a serialized blob", async () => {
+      const container = await AstroContainer.create();
+
+      const result = await container.renderToString(StoryblokRichText, {
+        props: { document, optimizeImage: { width: 800 } },
+      });
+
+      expect(clean(result)).toContain('width="800"');
+      expect(result).not.toContain("attrs=");
+    });
+
+    it("should override src with the optimized URL", async () => {
+      const container = await AstroContainer.create();
+
+      const result = await container.renderToString(StoryblokRichText, {
+        props: { document, optimizeImage: { width: 800 } },
+      });
+
+      expect(clean(result)).toContain('src="https://example.com/image.jpg/m/800x0/"');
     });
   });
 });

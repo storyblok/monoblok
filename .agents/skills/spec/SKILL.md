@@ -15,7 +15,7 @@ Generate a spec for: $ARGUMENTS
 **IMPORTANT:** Write the spec output to a markdown file, NOT to the terminal.
 
 1. Extract an identifier from the arguments:
-   - For ticket IDs like `DX-237` -> use `dx-237`
+   - For ticket IDs like `DX-237` -> use `DX-237`
    - For descriptions -> slugify the first few words (e.g., "CLI login flow" -> `cli-login-flow`)
 
 2. Create the output directory if it doesn't exist:
@@ -52,7 +52,7 @@ Specs define the **user-facing contract**, not internal architecture.
 - Target versions and platforms
 - DX principles and patterns to follow
 - Non-functional requirements (performance, reliability, coverage)
-- Architectural constraints (e.g., "must compose on top of @storyblok/capi-client")
+- Architectural constraints (e.g., "must compose on top of @storyblok/api-client")
 - Command syntax, config formats, file structures, output examples (these ARE the DX spec)
 
 **DO NOT INCLUDE:**

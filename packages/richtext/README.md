@@ -33,10 +33,9 @@
   framework-specific elements, such as React components or Vue nodes.
 - **Custom Resolvers**: Allows developers to override default rendering behavior for specific
   elements like links, images, and embedded components. This enables integration with custom
-  components or styling frameworks like Tailwind CSS. Storyblok
+  components or styling frameworks like Tailwind CSS.
 - **Image Optimization**: Supports image optimization options, including lazy loading, responsive
   sizing, and format conversion (e.g., to WebP), enhancing performance and user experience.
-  Storyblok
 - **TypeScript Support**: Provides full TypeScript typings with generics, ensuring type safety and
   improved developer experience across different frameworks.
 - **Markdown to Rich Text Conversion**: Converts Markdown content to Storyblok's rich text nodes,
@@ -44,12 +43,12 @@
 
 ## Documentation
 
-For complete documentation, please visit
-[package reference](https://www.storyblok.com/docs/packages/storyblok-richtext)
+For complete documentation, please visit the
+[package reference](https://www.storyblok.com/docs/libraries/js/rich-text).
 
 ## Contributing
 
-If you'd like to contribute, please refer to the [contributing guidelines](CONTRIBUTING.md).
+If you'd like to contribute, please refer to the [contributing guidelines](../../CONTRIBUTING.md).
 
 ## Community
 
@@ -86,4 +85,4 @@ If you have a question, please ask in the
 
 ## License
 
-[License](/LICENSE)
+[License](./LICENSE)

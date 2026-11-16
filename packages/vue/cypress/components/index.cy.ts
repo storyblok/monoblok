@@ -6,12 +6,16 @@ import MyCustomFallback from "../../playground/vue/src/components/MyCustomFallba
 import { apiPlugin, StoryblokVue } from "@storyblok/vue";
 import EmojiRandomizer from "./testing-components/EmojiRandomizer.vue";
 import Essential from "./testing-components/Essential.vue";
+import FeaturedPosts from "./testing-components/FeaturedPosts.vue";
 import RealApi from "./testing-components/RealApi.vue";
 import RichText from "./testing-components/RichText.vue";
+import SwitchingBlok from "./testing-components/SwitchingBlok.vue";
+import UnderscoredBlok from "./testing-components/UnderscoredBlok.vue";
 import { mount } from "cypress/vue";
 
-const prepare = (pluginOpts = {}, comp = Essential, globalOpts = {}) => {
+const prepare = (pluginOpts = {}, comp = Essential, globalOpts = {}, props = {}) => {
   mount(comp, {
+    props,
     global: {
       plugins: [
         [
@@ -114,7 +118,7 @@ describe("@storyblok/vue", () => {
       prepare({ use: [apiPlugin], enableFallbackComponent: false }, RealApi);
       cy.get("@error").should(
         "be.calledWithMatch",
-        'Component could not be found for blok "page"! Is it defined in main.ts as "app.component("page", page);"?',
+        'Component could not be found for blok "page"! Register it as "Page": app.component("Page", Page) in Vue, or a storyblok/Page.vue file in Nuxt.',
       );
     });
 
@@ -166,7 +170,7 @@ describe("@storyblok/vue", () => {
       cy.get("[data-test=custom-fallback-component]").should("not.exist");
       cy.get("@error").should(
         "be.calledWithMatch",
-        'Component could not be found for blok "teaser"! Is it defined in main.ts as "app.component("teaser", teaser);"?',
+        'Component could not be found for blok "teaser"! Register it as "Teaser": app.component("Teaser", Teaser) in Vue, or a storyblok/Teaser.vue file in Nuxt.',
       );
     });
 
@@ -187,6 +191,99 @@ describe("@storyblok/vue", () => {
         "be.calledWithMatch",
         'Is the Fallback component "MyCustomFallback" registered properly?',
       );
+    });
+    describe("with an underscored blok name", () => {
+      it("should render the component registered under the PascalCase name without an error", () => {
+        prepare({}, UnderscoredBlok, { components: { FeaturedPosts } });
+
+        cy.get("[data-test=featured-posts]").should("have.text", "FeaturedPosts works");
+        cy.get("@error").should("not.be.calledWithMatch", "Component could not be found");
+      });
+
+      it("should render the registered component instead of the fallback when enableFallbackComponent is true", () => {
+        prepare({ enableFallbackComponent: true }, UnderscoredBlok, {
+          components: { FeaturedPosts },
+        });
+
+        cy.get("[data-test=featured-posts]").should("have.text", "FeaturedPosts works");
+        cy.get(".fallback-component").should("not.exist");
+      });
+
+      it("should render the fallback component when enableFallbackComponent is true and no component is registered", () => {
+        prepare({ enableFallbackComponent: true }, UnderscoredBlok);
+
+        cy.get(".fallback-component").contains(
+          "Component could not be found for blok featured_posts! Is it configured correctly?",
+        );
+      });
+
+      it("should suggest the PascalCase name in the console.error when no component is registered", () => {
+        prepare({}, UnderscoredBlok);
+
+        cy.get("[data-test=root]").should("exist");
+        cy.get("@error").should(
+          "be.calledWithMatch",
+          'Component could not be found for blok "featured_posts"! Register it as "FeaturedPosts": app.component("FeaturedPosts", FeaturedPosts) in Vue, or a storyblok/FeaturedPosts.vue file in Nuxt.',
+        );
+      });
+
+      it("should render the component registered under the kebab-case name without an error", () => {
+        prepare({}, UnderscoredBlok, { components: { "featured-posts": FeaturedPosts } });
+
+        cy.get("[data-test=featured-posts]").should("have.text", "FeaturedPosts works");
+        cy.get("@error").should("not.be.calledWithMatch", "Component could not be found");
+      });
+
+      it("should render the component registered under the raw underscored name without an error", () => {
+        prepare({}, UnderscoredBlok, { components: { featured_posts: FeaturedPosts } });
+
+        cy.get("[data-test=featured-posts]").should("have.text", "FeaturedPosts works");
+        cy.get("@error").should("not.be.calledWithMatch", "Component could not be found");
+      });
+
+      it("should suggest the raw name in the console.error when the PascalCase name is not a valid identifier", () => {
+        prepare({}, UnderscoredBlok, {}, { name: "teaser_" });
+
+        cy.get("[data-test=root]").should("exist");
+        cy.get("@error").should(
+          "be.calledWithMatch",
+          'Component could not be found for blok "teaser_"! Register it as "teaser_": app.component("teaser_", YourComponent) in Vue.',
+        );
+      });
+    });
+
+    describe("with a blok name that matches StoryblokComponent", () => {
+      it("should report the component as missing instead of rendering StoryblokComponent inside itself", () => {
+        prepare({}, UnderscoredBlok, {}, { name: "storyblok_component" });
+
+        cy.get("[data-test=root]").should("exist");
+        cy.get("@error").should(
+          "be.calledWithMatch",
+          'Component could not be found for blok "storyblok_component"!',
+        );
+      });
+
+      it("should render the fallback component when enableFallbackComponent is true", () => {
+        prepare(
+          { enableFallbackComponent: true },
+          UnderscoredBlok,
+          {},
+          { name: "storyblok_component" },
+        );
+
+        cy.get(".fallback-component").contains(
+          "Component could not be found for blok storyblok_component! Is it configured correctly?",
+        );
+      });
+    });
+
+    it("should render the new component when the blok's component changes", () => {
+      prepare({}, SwitchingBlok, { components: { FeaturedPosts, Teaser } });
+
+      cy.get("[data-test=featured-posts]").should("exist");
+      cy.get("[data-test=switch]").click();
+      cy.get("[data-test=teaser]").should("exist");
+      cy.get("[data-test=featured-posts]").should("not.exist");
     });
   });
 

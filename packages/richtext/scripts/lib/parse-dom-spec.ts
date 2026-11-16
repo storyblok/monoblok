@@ -1,4 +1,4 @@
-import type { DOMOutputSpec } from "prosemirror-model";
+import type { DOMOutputSpec } from "@tiptap/pm/model";
 import type { StoryblokRichTextRenderSpec } from "../../src/core/types";
 import { stringToStyle, styleToString } from "../../src/core/style";
 

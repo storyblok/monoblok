@@ -1,0 +1,7 @@
+---
+const { block, editable } = Astro.props;
+---
+
+<div {...editable} data-test="feature-component">
+  <h2 class="text-center text-secondary text-xl font-bold">{block.name}</h2>
+</div>

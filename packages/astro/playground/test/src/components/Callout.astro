@@ -1,0 +1,12 @@
+---
+// Its scoped style only reaches the page through head propagation: Astro
+// hoists it from the MDX entry that embeds it into `<head>`.
+---
+
+<p class="callout" data-test="callout"><slot /></p>
+
+<style>
+  .callout {
+    color: rgb(255, 0, 0);
+  }
+</style>

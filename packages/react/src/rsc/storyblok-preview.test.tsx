@@ -98,7 +98,7 @@ describe("StoryblokPreview (server mode)", () => {
     editorCallbacks = [];
     vi.clearAllMocks();
     vi.useFakeTimers();
-    vi.mocked(onStoryblokEditorEvent).mockImplementation(async (cb) => {
+    vi.mocked(onStoryblokEditorEvent).mockImplementation((cb) => {
       editorCallback = cb as EditorCallback;
       editorCallbacks.push(cb as EditorCallback);
       return mockUnsubscribe;

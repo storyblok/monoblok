@@ -7,7 +7,7 @@
 #   linear-fetch.sh triage                  # Triage issues for DX team (default)
 #   linear-fetch.sh triage --team OTHER    # Triage issues for a different team
 #
-# Requires LINEAR_API_KEY in the project .env file.
+# Requires LINEAR_API_KEY in the environment or the repo root .env.
 
 set -euo pipefail
 
@@ -27,7 +27,7 @@ load_env() {
     source "${env_file}"
     set +a
   fi
-  : "${LINEAR_API_KEY:?Missing LINEAR_API_KEY in ${env_file}}"
+  : "${LINEAR_API_KEY:?Requires LINEAR_API_KEY in the environment or ${env_file}.}"
 }
 
 # ---------------------------------------------------------------------------

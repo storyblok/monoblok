@@ -35,7 +35,7 @@ import {
 import { getErrorType, UNRECORDED_ERROR } from "./error-type";
 import { describeInvocation } from "./invocation";
 import type { Attributes } from "./otlp";
-import { buildMetricsPayload, buildTracesPayload, createTraceContext } from "./otlp";
+import { buildTracesPayload, createTraceContext } from "./otlp";
 import {
   claimTelemetrySend,
   getRunState,
@@ -45,14 +45,13 @@ import {
   recordTelemetryStatus,
   recordTelemetryTraceContext,
 } from "./run";
-import type { TelemetryPayloads } from "./transport";
+import type { TelemetryPayload } from "./transport";
 
 /** Emitted next to the CLI's entry, from `src/entrypoints/telemetry-sender.ts`. */
 const SENDER_FILE = "telemetry-sender.mjs";
 
+/** Counts and rates come from the spans in Dash0, so concurrent runs can't collide in a metric series. */
 const SPAN_NAME = "storyblok.cli.command";
-const COMMAND_COUNTER = "storyblok.cli.command.count";
-const ERROR_COUNTER = "storyblok.cli.error.count";
 
 /** `findings`: a non-zero exit that reports a result, e.g. `schema diff --exit-code` found differences. */
 type Outcome = "success" | "findings" | "error" | "canceled";
@@ -192,10 +191,10 @@ export type TelemetryRun = {
   endTime?: number;
 };
 
-export function buildTelemetryPayloads(
+export function buildTelemetryPayload(
   input: TelemetryRun,
   installId: string | undefined,
-): TelemetryPayloads {
+): TelemetryPayload {
   const run = getRunState();
   const { version } = getPackageJson();
   // Time spent answering the consent prompt isn't time the command took.
@@ -213,13 +212,6 @@ export function buildTelemetryPayloads(
     "process.runtime.version": process.versions.node,
   };
   const scope = { name: SERVICE_NAME, version };
-  const commandAttributes: Attributes = {
-    "storyblok.cli.command": invocation.command,
-    "storyblok.cli.outcome": outcome,
-    "storyblok.cli.ci": isCi(),
-    "storyblok.cli.agent": getAgent(),
-    "storyblok.cli.region": run.region,
-  };
 
   const traces = buildTracesPayload(resource, scope, {
     name: SPAN_NAME,
@@ -228,7 +220,11 @@ export function buildTelemetryPayloads(
     endTime,
     isError: outcome === "error",
     attributes: {
-      ...commandAttributes,
+      "storyblok.cli.command": invocation.command,
+      "storyblok.cli.outcome": outcome,
+      "storyblok.cli.ci": isCi(),
+      "storyblok.cli.agent": getAgent(),
+      "storyblok.cli.region": run.region,
       "error.type": errorType,
       "process.exit.code": input.exitCode,
       "storyblok.cli.install.id": installId,
@@ -239,25 +235,7 @@ export function buildTelemetryPayloads(
     },
   });
 
-  const counters = [
-    {
-      name: COMMAND_COUNTER,
-      description: "CLI command invocations",
-      unit: "{invocation}",
-      attributes: commandAttributes,
-    },
-  ];
-  if (errorType) {
-    counters.push({
-      name: ERROR_COUNTER,
-      description: "CLI command invocations that ended with an error",
-      unit: "{error}",
-      attributes: { ...commandAttributes, "error.type": errorType },
-    });
-  }
-  const metrics = buildMetricsPayload(resource, scope, counters, { startTime, endTime });
-
-  return { traces, metrics };
+  return { traces };
 }
 
 function writeDebugOutput(path: string, payload: unknown): void {
@@ -271,10 +249,10 @@ function writeDebugOutput(path: string, payload: unknown): void {
  * detached process waits for it and the run exits right away. The payload goes through a file
  * because only synchronous work completes while the process exits.
  */
-function sendDetached(payloads: TelemetryPayloads): void {
+function sendDetached(payload: TelemetryPayload): void {
   const payloadFile = join(tmpdir(), `${TELEMETRY_PAYLOAD_FILE_PREFIX}${randomUUID()}.json`);
   const removePayloadFile = () => rmSync(payloadFile, { force: true });
-  writeFileSync(payloadFile, JSON.stringify(payloads), { mode: 0o600, flag: "wx" });
+  writeFileSync(payloadFile, JSON.stringify(payload), { mode: 0o600, flag: "wx" });
   try {
     const child = spawn(
       process.execPath,
@@ -317,13 +295,12 @@ export function sendTelemetry(input: TelemetryRun): void {
       return;
     }
 
-    const payloads = buildTelemetryPayloads(input, installId ?? REDACTED);
+    const payload = buildTelemetryPayload(input, installId ?? REDACTED);
     if (debug) {
-      writeDebugOutput("/v1/traces", payloads.traces);
-      writeDebugOutput("/v1/metrics", payloads.metrics);
+      writeDebugOutput("/v1/traces", payload.traces);
       return;
     }
-    sendDetached(payloads);
+    sendDetached(payload);
   } catch {
     // Telemetry must never fail a command.
   }

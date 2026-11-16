@@ -56,6 +56,7 @@ vi.mock("node:child_process", async (importOriginal) => ({
 const MAPI_URL = "https://mapi.storyblok.com";
 const INSTALL_ID = "3f0c1d9e-1111-4222-8333-944455556666";
 const START_TIME = 1_700_000_000_000;
+const OTLP_STATUS_CODE_ERROR = 2;
 
 type OtlpKeyValue = { key: string; value: Record<string, unknown> };
 type Received = { url: string; headers: Headers; body: any };
@@ -185,12 +186,12 @@ async function run(
   await Promise.all(senders);
 }
 
-function sent(path: "traces" | "metrics") {
-  return received.find(({ url }) => url.endsWith(`/v1/${path}`));
+function sentTraces() {
+  return received.find(({ url }) => url.endsWith("/v1/traces"));
 }
 
 function sentSpan() {
-  return sent("traces")?.body.resourceSpans[0].scopeSpans[0].spans[0];
+  return sentTraces()?.body.resourceSpans[0].scopeSpans[0].spans[0];
 }
 
 function spanAttributes(): Record<string, unknown> {
@@ -199,20 +200,8 @@ function spanAttributes(): Record<string, unknown> {
   );
 }
 
-function metricNames(): string[] {
-  return sent("metrics")?.body.resourceMetrics[0].scopeMetrics[0].metrics.map(
-    ({ name }: { name: string }) => name,
-  );
-}
-
-function commandCounterAttributes(): Record<string, unknown> {
-  const [counter] = sent("metrics")?.body.resourceMetrics[0].scopeMetrics[0].metrics ?? [];
-  return Object.fromEntries(
-    counter.sum.dataPoints[0].attributes.map(({ key, value }: OtlpKeyValue) => [
-      key,
-      Object.values(value)[0],
-    ]),
-  );
+function isErrorSpan(): boolean {
+  return sentSpan().status.code === OTLP_STATUS_CODE_ERROR;
 }
 
 function sentText(): string {
@@ -315,12 +304,14 @@ describe("telemetry", () => {
     );
   });
 
-  it("should send a span and a command counter with the ingest token", async () => {
+  it("should send only a span, with the ingest token and the dataset", async () => {
     preconditions.consentGiven();
 
     await run(["components", "push"]);
 
-    expect(sent("traces")?.headers.get("authorization")).toBe(`Bearer ${AUTH_TOKEN}`);
+    expect(received).toHaveLength(1);
+    expect(sentTraces()?.headers.get("authorization")).toBe(`Bearer ${AUTH_TOKEN}`);
+    expect(sentTraces()?.headers.get("dash0-dataset")).toBe("dev-storyblok-cli");
     expect(sentSpan().name).toBe("storyblok.cli.command");
     expect(spanAttributes()).toMatchObject({
       "storyblok.cli.command": "storyblok components push",
@@ -328,7 +319,7 @@ describe("telemetry", () => {
       "storyblok.cli.install.id": INSTALL_ID,
       "process.exit.code": "0",
     });
-    expect(metricNames()).toEqual(["storyblok.cli.command.count"]);
+    expect(isErrorSpan()).toBe(false);
   });
 
   it.each([
@@ -464,14 +455,14 @@ describe("telemetry", () => {
       expect(spanAttributes()["storyblok.cli.agent"]).toBe("claude");
     });
 
-    it("should count runs by CI and agent", async () => {
+    it("should report runs by CI and agent", async () => {
       preconditions.consentGiven();
       preconditions.envSet("CI", "true");
       preconditions.runsInAgent("claude");
 
       await run(["components", "push"]);
 
-      expect(commandCounterAttributes()).toMatchObject({
+      expect(spanAttributes()).toMatchObject({
         "storyblok.cli.ci": true,
         "storyblok.cli.agent": "claude",
       });
@@ -495,13 +486,13 @@ describe("telemetry", () => {
       expect(spanAttributes()["storyblok.cli.agent"]).toBe("other");
     });
 
-    it("should count runs by region", async () => {
+    it("should report runs by region", async () => {
       preconditions.consentGiven();
       recordTelemetryRegion("us");
 
       await run(["components", "push"]);
 
-      expect(commandCounterAttributes()["storyblok.cli.region"]).toBe("us");
+      expect(spanAttributes()["storyblok.cli.region"]).toBe("us");
     });
 
     it.each([
@@ -541,7 +532,7 @@ describe("telemetry", () => {
   });
 
   describe("errors", () => {
-    it("should report a normalized error type and count the error", async () => {
+    it("should report a normalized error type and mark the span as an error", async () => {
       preconditions.consentGiven();
       recordTelemetryError(rateLimitError());
 
@@ -551,7 +542,7 @@ describe("telemetry", () => {
         "storyblok.cli.outcome": "error",
         "error.type": "RATE_LIMITED",
       });
-      expect(metricNames()).toEqual(["storyblok.cli.command.count", "storyblok.cli.error.count"]);
+      expect(isErrorSpan()).toBe(true);
     });
 
     it("should report the first error of a run", async () => {
@@ -610,7 +601,7 @@ describe("telemetry", () => {
       await run(["components", "push"], { exitCode: 1 });
 
       expect(spanAttributes()["storyblok.cli.outcome"]).toBe("findings");
-      expect(metricNames()).toEqual(["storyblok.cli.command.count"]);
+      expect(isErrorSpan()).toBe(false);
     });
 
     it("should report a non-zero exit without a recorded error as an error", async () => {
@@ -645,7 +636,7 @@ describe("telemetry", () => {
 
       expect(spanAttributes()["storyblok.cli.outcome"]).toBe("success");
       expect(spanAttributes()["error.type"]).toBeUndefined();
-      expect(metricNames()).toEqual(["storyblok.cli.command.count"]);
+      expect(isErrorSpan()).toBe(false);
     });
 
     it("should report an interrupted run as canceled", async () => {
@@ -688,10 +679,7 @@ describe("telemetry", () => {
 
       await Promise.all([run(["components", "push"]), run(["components", "push"])]);
 
-      expect(received.map(({ url }) => new URL(url).pathname).sort()).toEqual([
-        "/v1/metrics",
-        "/v1/traces",
-      ]);
+      expect(received.map(({ url }) => new URL(url).pathname)).toEqual(["/v1/traces"]);
     });
   });
 
@@ -738,7 +726,6 @@ describe("telemetry", () => {
       expect(received).toHaveLength(0);
       const output = stderr.mock.calls.map(([chunk]) => String(chunk)).join("");
       expect(output).toContain(`POST ${ENDPOINT}/v1/traces`);
-      expect(output).toContain(`POST ${ENDPOINT}/v1/metrics`);
       expect(output).toContain("storyblok.cli.command");
     });
 
@@ -748,7 +735,7 @@ describe("telemetry", () => {
 
       await run(["components", "push"]);
 
-      expect(received).toHaveLength(2);
+      expect(received).toHaveLength(1);
     });
   });
 

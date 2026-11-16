@@ -9,7 +9,7 @@ import {
   TELEMETRY_SENDER_TIMEOUT_MS,
 } from "./config";
 
-export type TelemetryPayloads = { traces: unknown; metrics: unknown };
+export type TelemetryPayload = { traces: unknown };
 
 /**
  * `node:https` instead of `fetch`: aborting a `fetch` that is still connecting leaves the socket
@@ -41,8 +41,8 @@ function post(path: string, payload: unknown, signal: AbortSignal): Promise<void
   });
 }
 
-function isTelemetryPayloads(value: unknown): value is TelemetryPayloads {
-  return typeof value === "object" && value !== null && "traces" in value && "metrics" in value;
+function isTelemetryPayload(value: unknown): value is TelemetryPayload {
+  return typeof value === "object" && value !== null && "traces" in value;
 }
 
 /** Runs in the detached process. Never rejects. */
@@ -56,15 +56,11 @@ export async function runSender(
     }
     const json = readFileSync(payloadFile, "utf8");
     rmSync(payloadFile, { force: true });
-    const payloads: unknown = JSON.parse(json);
-    if (!isTelemetryPayloads(payloads)) {
+    const payload: unknown = JSON.parse(json);
+    if (!isTelemetryPayload(payload)) {
       return;
     }
-    const signal = AbortSignal.timeout(timeoutMs);
-    await Promise.all([
-      post("/v1/traces", payloads.traces, signal),
-      post("/v1/metrics", payloads.metrics, signal),
-    ]);
+    await post("/v1/traces", payload.traces, AbortSignal.timeout(timeoutMs));
   } catch {
     // The CLI has exited; there is nowhere to report to.
   }

@@ -15,7 +15,6 @@ type OtlpKeyValue = { key: string; value: OtlpAnyValue };
 const SPAN_KIND_INTERNAL = 1;
 const STATUS_CODE_UNSET = 0;
 const STATUS_CODE_ERROR = 2;
-const AGGREGATION_TEMPORALITY_DELTA = 1;
 
 function toAnyValue(value: AttributeValue): OtlpAnyValue {
   if (typeof value === "string") {
@@ -77,54 +76,6 @@ export function buildTracesPayload(resource: Attributes, scope: Scope, span: Spa
                 status: { code: span.isError ? STATUS_CODE_ERROR : STATUS_CODE_UNSET },
               },
             ],
-          },
-        ],
-      },
-    ],
-  };
-}
-
-export type CounterInput = {
-  name: string;
-  description: string;
-  unit: string;
-  attributes: Attributes;
-};
-
-/**
- * Each invocation is its own process, so counters are sent as deltas of 1 and the backend
- * sums them.
- */
-export function buildMetricsPayload(
-  resource: Attributes,
-  scope: Scope,
-  counters: readonly CounterInput[],
-  window: { startTime: number; endTime: number },
-) {
-  return {
-    resourceMetrics: [
-      {
-        resource: { attributes: toKeyValues(resource) },
-        scopeMetrics: [
-          {
-            scope,
-            metrics: counters.map((counter) => ({
-              name: counter.name,
-              description: counter.description,
-              unit: counter.unit,
-              sum: {
-                aggregationTemporality: AGGREGATION_TEMPORALITY_DELTA,
-                isMonotonic: true,
-                dataPoints: [
-                  {
-                    attributes: toKeyValues(counter.attributes),
-                    startTimeUnixNano: toUnixNano(window.startTime),
-                    timeUnixNano: toUnixNano(window.endTime),
-                    asInt: "1",
-                  },
-                ],
-              },
-            })),
           },
         ],
       },

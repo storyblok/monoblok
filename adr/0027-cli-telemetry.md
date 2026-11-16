@@ -35,13 +35,16 @@ stops runs that are still going.
 
 ### 2. Hand-rolled OTLP/JSON over `node:https`
 
-One span (`storyblok.cli.command`) and two delta counters (`storyblok.cli.command.count`,
-`storyblok.cli.error.count`) per run, posted to Dash0 as OTLP/JSON. The OpenTelemetry SDK would add
-dependencies and startup time to every invocation for two requests we can build in a few lines, and
-the debug mode can print exactly what is sent. Counters are deltas because each run is its own
-process; spans aren't kept long-term, so long-term numbers come from the counters. How Dash0 sums
-deltas from many short-lived processes is not verified, so the counters are approximate and the
-spans are the reference while they are retained.
+One span (`storyblok.cli.command`) per run, posted to Dash0 as OTLP/JSON. The OpenTelemetry SDK
+would add dependencies and startup time to every invocation for one request we can build in a few
+lines, and the debug mode can print exactly what is sent.
+
+Counts and rates come from the spans: Dash0's `dash0.spans` metric is computed from the stored spans
+at query time and can be grouped by any span attribute. Client-side counters can't be made correct:
+each run is its own process, so concurrent runs of the same command, version, and platform write
+overlapping deltas into one series, which breaks OpenTelemetry's single-writer rule, and a unique
+writer attribute would turn every run into its own series. The trade-off is retention: spans are
+kept 30 days, which covers triage but not long-term trends.
 
 `fetch` is not used: aborting it while the TCP connection is still being set up leaves the socket
 holding the process open until undici's 10 s connect timeout, which a firewall that drops packets

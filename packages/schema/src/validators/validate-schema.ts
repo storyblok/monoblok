@@ -36,7 +36,8 @@ function requiredLayoutFieldKeys(field: SchemaFieldLike): ("required" | "conditi
 
 /**
  * Validates a schema definition without throwing. Checks structural identity
- * (missing or duplicate block names, field names, and datasource names and slugs) and cross-references
+ * (missing or duplicate block names, field names, and datasource names and
+ * slugs; duplicate dimension names and entry values) and cross-references
  * (every `allow` entry resolves to a defined block; every field `datasource`
  * resolves to a defined datasource; every field declares a known `type`;
  * every `custom` field's `field_type` resolves to a registered field plugin; no
@@ -117,6 +118,29 @@ export function validateSchema(schema: SchemaLike): ValidationResult {
       });
     }
     datasourceNames.add(name);
+
+    // The Management API rejects a datasource whose dimensions share a `name`
+    // or an `entry_value`.
+    const dimensions = Array.isArray(datasource?.dimensions) ? datasource.dimensions : [];
+    for (const key of ["name", "entry_value"] as const) {
+      const seen = new Set<string>();
+      for (const dimension of dimensions) {
+        const value: unknown = isRecord(dimension) ? dimension[key] : undefined;
+        if (typeof value !== "string") {
+          continue;
+        }
+        if (seen.has(value)) {
+          issues.push({
+            severity: "error",
+            code: `duplicate_dimension_${key}`,
+            path: ["datasources", slug, "dimensions"],
+            entity: `datasource:${slug}`,
+            message: `Duplicate dimension ${key} "${value}" on datasource "${slug}".`,
+          });
+        }
+        seen.add(value);
+      }
+    }
   }
 
   const blockNames = new Set<string>();

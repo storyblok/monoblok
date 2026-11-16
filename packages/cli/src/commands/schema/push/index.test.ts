@@ -3,6 +3,7 @@ import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { vol } from "memfs";
 import { confirm } from "@inquirer/prompts";
+import { defineDatasource } from "@storyblok/schema";
 
 import "../index";
 import { schemaCommand } from "../command";
@@ -480,7 +481,7 @@ describe("schema push command", () => {
         { id: 12, name: "Sepia", entry_value: "sepia" },
       ],
     });
-    const localDatasource = {
+    const localDatasource = defineDatasource({
       name: "Colors",
       slug: "colors",
       dimensions: [
@@ -488,9 +489,9 @@ describe("schema push command", () => {
         { name: "Dark Mode", entry_value: "dark" },
         { name: "High Contrast", entry_value: "contrast" },
       ],
-    };
+    });
 
-    preconditions.hasLocalSchema({ components: [], datasources: [localDatasource] as any });
+    preconditions.hasLocalSchema({ components: [], datasources: [localDatasource] });
     preconditions.hasRemoteComponents([]);
     preconditions.hasRemoteFolders([]);
     preconditions.hasRemoteTags([]);
@@ -515,6 +516,89 @@ describe("schema push command", () => {
       { name: "High Contrast", entry_value: "contrast" },
       { id: 12, _destroy: true },
     ]);
+  });
+
+  describe("with a remote datasource that has dimensions", () => {
+    const remoteDatasource = makeMockDatasource({
+      name: "Colors",
+      slug: "colors",
+      dimensions: [
+        { id: 10, name: "Light Mode", entry_value: "light" },
+        { id: 11, name: "Dark Mode", entry_value: "dark" },
+      ],
+    });
+    const datasourceUrl = `https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/datasources/${remoteDatasource.id}`;
+
+    const pushColors = async (dimensions: { name: string; entry_value: string }[]) => {
+      preconditions.hasLocalSchema({
+        components: [],
+        datasources: [defineDatasource({ name: "Colors", slug: "colors", dimensions })],
+      });
+      preconditions.hasRemoteComponents([]);
+      preconditions.hasRemoteFolders([]);
+      preconditions.hasRemoteTags([]);
+      preconditions.hasRemoteDatasources([remoteDatasource]);
+
+      const updateBodies: unknown[] = [];
+      server.use(
+        http.patch(datasourceUrl, async ({ request }) => {
+          updateBodies.push(await request.json());
+          return HttpResponse.json({ datasource: remoteDatasource });
+        }),
+      );
+
+      await schemaCommand.parseAsync([
+        "node",
+        "test",
+        "push",
+        "schema.ts",
+        "--space",
+        DEFAULT_SPACE,
+      ]);
+      return updateBodies;
+    };
+
+    it("should not update a datasource whose dimensions only differ in order", async () => {
+      const updateBodies = await pushColors([
+        { name: "Dark Mode", entry_value: "dark" },
+        { name: "Light Mode", entry_value: "light" },
+      ]);
+
+      expect(updateBodies).toEqual([]);
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining("nothing to push"));
+    });
+
+    it("should warn that removing a dimension deletes the values entered for it", async () => {
+      const updateBodies = await pushColors([{ name: "Light Mode", entry_value: "light" }]);
+
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "Dimension 'Dark Mode' of datasource 'Colors' will be deleted along with the values entered for it.",
+        ),
+      );
+      expect(updateBodies).toHaveLength(1);
+    });
+
+    it("should not warn about a dimension that is renamed in place", async () => {
+      await pushColors([
+        { name: "Light", entry_value: "light" },
+        { name: "Dark Mode", entry_value: "dark" },
+      ]);
+
+      expect(console.warn).not.toHaveBeenCalledWith(expect.stringContaining("will be deleted"));
+    });
+
+    it("should refuse a dimension taking a value another remote dimension holds", async () => {
+      const updateBodies = await pushColors([{ name: "Light Mode", entry_value: "dark" }]);
+
+      expect(updateBodies).toEqual([]);
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "dimension 'Light Mode' (entry_value 'dark') uses the name 'Light Mode' still held by the existing dimension 'Light Mode' (entry_value 'light')",
+        ),
+      );
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining("in two steps"));
+    });
   });
 
   describe("optional block properties", () => {

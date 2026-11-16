@@ -3,8 +3,10 @@ import type {
   ComponentUpdate,
   Datasource,
   DatasourceCreate,
+  DatasourceUpdate,
   Field,
 } from "../../types";
+import { type DimensionIdentity, isDimensionIdentity, pairDimensions } from "./dimensions";
 import { type ComponentOptionalKey, isRecord } from "./utils";
 
 function isSchemaField(value: unknown): value is Field {
@@ -85,6 +87,12 @@ export function toComponentUpdate(input: unknown): ComponentUpdate {
   return buildComponentPayload(input) satisfies ComponentUpdate;
 }
 
+function declaredDimensions(dimensions: unknown[]): DimensionIdentity[] {
+  return dimensions
+    .filter(isDimensionIdentity)
+    .map(({ name, entry_value }) => ({ name, entry_value }));
+}
+
 /** Converts an unknown input to a DatasourceCreate-compatible payload. */
 export function toDatasourceCreate(input: unknown): DatasourceCreate {
   if (!isRecord(input)) {
@@ -97,82 +105,37 @@ export function toDatasourceCreate(input: unknown): DatasourceCreate {
   };
 
   if (Array.isArray(input.dimensions)) {
-    result.dimensions_attributes = input.dimensions
-      .filter(
-        (d: unknown) =>
-          isRecord(d) && typeof d.name === "string" && typeof d.entry_value === "string",
-      )
-      .map((d: Record<string, unknown>) => ({
-        name: d.name as string,
-        entry_value: d.entry_value as string,
-      }));
+    result.dimensions_attributes = declaredDimensions(input.dimensions);
   }
 
   return result;
 }
 
-type DimensionAttributes = NonNullable<DatasourceCreate["dimensions_attributes"]>[number];
-type RemoteDimension = NonNullable<Datasource["dimensions"]>[number];
-
 /**
- * Pairs each local dimension with the remote one it continues, so the update
- * keeps the dimension's id and with it the entry values editors wrote for it.
- * `entry_value` wins over `name` because it is the identifier the Content
- * Delivery API filters by.
+ * The Management API treats a dimension without an `id` as new and rejects it
+ * when its `name` or `entry_value` already exists. Removing one requires
+ * `{ id, _destroy: true }`; an empty `dimensions_attributes` array is a no-op.
  */
-function matchRemoteDimensions(
-  localDims: DimensionAttributes[],
-  remoteDims: RemoteDimension[],
-): Map<DimensionAttributes, RemoteDimension> {
-  const matches = new Map<DimensionAttributes, RemoteDimension>();
-  const unmatchedRemote = new Set(remoteDims.filter((rd) => rd.id != null));
-
-  for (const key of ["entry_value", "name"] as const) {
-    for (const local of localDims) {
-      if (matches.has(local)) {
-        continue;
-      }
-      const remote = [...unmatchedRemote].find((rd) => rd[key] === local[key]);
-      if (remote) {
-        matches.set(local, remote);
-        unmatchedRemote.delete(remote);
-      }
-    }
-  }
-
-  return matches;
-}
-
-/**
- * Builds a datasource update payload that reconciles dimensions with the remote.
- * The Storyblok API treats a dimension without an `id` as a new one and rejects
- * it when its `name` or `entry_value` already exists, and it requires
- * `{ id, _destroy: true }` to remove one; an empty `dimensions_attributes` array
- * is a no-op.
- */
-export function toDatasourceUpdate(input: unknown, remote: Datasource): Record<string, unknown> {
+export function toDatasourceUpdate(input: unknown, remote: Datasource): DatasourceUpdate {
   const base = toDatasourceCreate(input);
-  const localDims = base.dimensions_attributes ?? [];
-  const remoteDims = remote.dimensions ?? [];
+  const localDimensions =
+    isRecord(input) && Array.isArray(input.dimensions) ? declaredDimensions(input.dimensions) : [];
+  const remoteDimensions = (remote.dimensions ?? []).filter((rd) => rd.id != null);
 
-  if (remoteDims.length === 0) {
+  if (remoteDimensions.length === 0) {
     return base;
   }
 
-  const matches = matchRemoteDimensions(localDims, remoteDims);
-  const keptRemoteIds = new Set([...matches.values()].map((rd) => rd.id));
-  const destroyEntries = remoteDims
-    .filter((rd) => rd.id != null && !keptRemoteIds.has(rd.id))
-    .map((rd) => ({ id: rd.id, _destroy: true }));
+  const { pairs, unmatchedRemote } = pairDimensions(localDimensions, remoteDimensions);
 
   return {
     ...base,
     dimensions_attributes: [
-      ...localDims.map((local) => {
-        const match = matches.get(local);
+      ...localDimensions.map((local) => {
+        const match = pairs.get(local);
         return match ? { id: match.id, ...local } : local;
       }),
-      ...destroyEntries,
+      ...unmatchedRemote.map((rd) => ({ id: rd.id, _destroy: true })),
     ],
   };
 }

@@ -1,3 +1,5 @@
+import type { Datasource as DeclaredDatasource } from "@storyblok/schema";
+
 import type { Component, ComponentFolder, Datasource, InternalTag } from "../../types";
 
 /** A locally defined block folder in slug-path identity space. */
@@ -18,7 +20,7 @@ export interface LocalFolder {
 export interface SchemaData {
   components: Component[];
   folders: LocalFolder[];
-  datasources: Datasource[];
+  datasources: DeclaredDatasource[];
 }
 
 /** Remote state fetched from the Storyblok space. */
@@ -37,7 +39,7 @@ export interface RemoteSchemaData {
  */
 export interface NormalizedSchema {
   components: Map<string, Component>;
-  datasources: Map<string, Datasource>;
+  datasources: Map<string, Datasource | DeclaredDatasource>;
   /** Block folders (component groups) keyed by slug path — the folder's identity. */
   folders: Map<string, LocalFolder>;
   /**

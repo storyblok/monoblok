@@ -151,6 +151,39 @@ describe("validateSchema", () => {
     expect(codesFor(result)).toContain("duplicate_datasource_slug");
   });
 
+  it("flags dimensions sharing a name or an entry_value", () => {
+    const themes = defineDatasource({
+      name: "Themes",
+      slug: "themes",
+      dimensions: [
+        { name: "Light", entry_value: "light" },
+        { name: "Light", entry_value: "bright" },
+        { name: "Day", entry_value: "light" },
+      ],
+    });
+    const result = validateSchema({ blocks: {}, datasources: [themes] });
+    expect(codesFor(result)).toEqual([
+      "duplicate_dimension_name",
+      "duplicate_dimension_entry_value",
+    ]);
+    expect(result.issues[0]).toMatchObject({
+      entity: "datasource:themes",
+      path: ["datasources", "themes", "dimensions"],
+    });
+  });
+
+  it("accepts dimensions with distinct names and entry values", () => {
+    const themes = defineDatasource({
+      name: "Themes",
+      slug: "themes",
+      dimensions: [
+        { name: "Light", entry_value: "light" },
+        { name: "Dark", entry_value: "dark" },
+      ],
+    });
+    expect(validateSchema({ blocks: {}, datasources: [themes] }).ok).toBe(true);
+  });
+
   // Regression: `schema push` diffs datasources by `name`, so this pair aborts
   // the push (`Duplicate schema definitions: datasource name "Colors"`) even
   // though the slugs differ. `validateSchema` only tracked slugs, so `schema

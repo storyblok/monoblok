@@ -24,7 +24,8 @@ export type Datasource = Override<
 
 /**
  * A datasource dimension as declared in a schema. `name` and `entry_value`
- * define it; the remaining fields are assigned by the API.
+ * define it. The remaining fields are assigned by the API, and `schema push`
+ * ignores them when declared, `id` included.
  */
 export type DatasourceDimension = Prettify<
   Pick<DimensionGenerated, "name" | "entry_value"> & Partial<DimensionGenerated>

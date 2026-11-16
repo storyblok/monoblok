@@ -268,7 +268,7 @@ describe("toDatasourceUpdate", () => {
       toDatasourceUpdate({ name: "Colors", slug: "colors", dimensions }, remote)
         .dimensions_attributes;
 
-    it("should send existing dimensions with their remote id and only the new one without", () => {
+    it("should send existing dimensions with their remote id and new ones without an id", () => {
       expect(
         dimensionsAttributesFor([
           { name: "Light Mode", entry_value: "light" },
@@ -303,18 +303,6 @@ describe("toDatasourceUpdate", () => {
       ).toEqual([
         { id: 10, name: "Light Mode", entry_value: "bright" },
         { id: 11, name: "Dark Mode", entry_value: "dark" },
-      ]);
-    });
-
-    it("should prefer the entry_value match when a name points at another dimension", () => {
-      expect(
-        dimensionsAttributesFor([
-          { name: "Dark Mode", entry_value: "light" },
-          { name: "Night", entry_value: "dark" },
-        ]),
-      ).toEqual([
-        { id: 10, name: "Dark Mode", entry_value: "light" },
-        { id: 11, name: "Night", entry_value: "dark" },
       ]);
     });
 

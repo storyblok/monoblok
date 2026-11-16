@@ -1,4 +1,4 @@
-import type { Component, Datasource } from "../../types";
+import type { Component } from "../../types";
 import type { DiffResult, EntityDiff, FieldChange, LocalFolder, NormalizedSchema } from "./types";
 import {
   applyDefaults,
@@ -11,8 +11,10 @@ import {
 import { cleanComponent, cleanDatasource, FOLDER_UNGROUPED } from "./serialize";
 import { mapSchemaGroupLists } from "./folders";
 import { mapSchemaTagLists } from "./tags";
+import { pairDimensions, toDimensionList } from "./dimensions";
 
 type EntityType = "component" | "datasource";
+type SchemaDatasource = NormalizedSchema["datasources"] extends Map<string, infer D> ? D : never;
 
 /**
  * Resolves a block tag id to its name. Tag ids are per-space, so both sides are
@@ -120,9 +122,9 @@ function asRecord(value: unknown): Record<string, unknown> {
 }
 
 /**
- * An array that is really a set keyed by `name` — datasource dimensions — as a
- * name-keyed record, so a change reads as the member that moved
- * rather than two dumps of the whole list, and reordering alone is not a change.
+ * An array that is really a set keyed by `name` as a name-keyed record, so a
+ * change reads as the member that moved rather than two dumps of the whole
+ * list, and reordering alone is not a change.
  * Returns `null` for any other array shape, including one whose duplicate names
  * would make the mapping lossy.
  */
@@ -144,8 +146,7 @@ function asNameKeyed(value: unknown): Record<string, unknown> | null {
  * Like {@link diffKeyed}, but recurses into nested records so a change reads as
  * the property that actually moved (`schema.body.maximum`) instead of two dumps
  * of the whole enclosing object. Name-keyed arrays are recursed into the same
- * way (`dimensions.fr.entry_value`); every other non-record value is reported
- * whole.
+ * way; every other non-record value is reported whole.
  */
 function diffKeyedDeep(
   before: Record<string, unknown>,
@@ -203,6 +204,54 @@ function componentChanges(
   return [
     ...diffKeyed(beforeProps, afterProps),
     ...diffKeyedDeep(asRecord(beforeSchema), asRecord(afterSchema), "schema."),
+  ];
+}
+
+/**
+ * Dimension changes as `schema push` applies them: a dimension paired with a
+ * remote one is updated in place and reads as the property that changed, keyed
+ * by its current name (`dimensions.Light Mode.name`). Only an unpaired
+ * dimension is `added` or `removed`, and removing one deletes the values
+ * entered for it.
+ */
+function dimensionChanges(before: unknown, after: unknown): FieldChange[] {
+  const changes: FieldChange[] = [];
+  const target = toDimensionList(after);
+  const { pairs, unmatchedRemote } = pairDimensions(target, toDimensionList(before));
+
+  for (const dimension of target) {
+    const current = pairs.get(dimension);
+    if (!current) {
+      changes.push({ field: `dimensions.${dimension.name}`, change: "added", after: dimension });
+      continue;
+    }
+    for (const key of ["entry_value", "name"] as const) {
+      if (current[key] !== dimension[key]) {
+        changes.push({
+          field: `dimensions.${current.name}.${key}`,
+          change: "modified",
+          before: current[key],
+          after: dimension[key],
+        });
+      }
+    }
+  }
+  for (const dimension of unmatchedRemote) {
+    changes.push({ field: `dimensions.${dimension.name}`, change: "removed", before: dimension });
+  }
+
+  return changes.sort((a, b) => (a.field < b.field ? -1 : a.field > b.field ? 1 : 0));
+}
+
+function datasourceChanges(
+  before: Record<string, unknown>,
+  after: Record<string, unknown>,
+): FieldChange[] {
+  const { dimensions: beforeDimensions, ...beforeProps } = before;
+  const { dimensions: afterDimensions, ...afterProps } = after;
+  return [
+    ...dimensionChanges(beforeDimensions, afterDimensions),
+    ...diffKeyedDeep(beforeProps, afterProps, ""),
   ];
 }
 
@@ -274,7 +323,7 @@ function buildEntityDiff(
   const changes =
     type === "component"
       ? componentChanges(fromClean!, toClean!)
-      : diffKeyedDeep(fromClean!, toClean!, "");
+      : datasourceChanges(fromClean!, toClean!);
 
   return {
     type,
@@ -470,13 +519,22 @@ function diffComponent(
   return buildEntityDiff("component", name, fromClean, toClean);
 }
 
+/**
+ * Dimension order carries no meaning: an update cannot set it, and the
+ * Management API returns dimensions in no guaranteed order.
+ */
+function cleanDatasourceForDiff(datasource: SchemaDatasource): Record<string, unknown> {
+  const clean = cleanDatasource(applyDefaults(datasource, DATASOURCE_DEFAULTS));
+  return { ...clean, dimensions: toDimensionList(clean.dimensions) };
+}
+
 function diffDatasource(
   name: string,
-  fromDs: Datasource | undefined,
-  toDs: Datasource | undefined,
+  fromDs: SchemaDatasource | undefined,
+  toDs: SchemaDatasource | undefined,
 ): EntityDiff {
-  const fromClean = fromDs ? cleanDatasource(applyDefaults(fromDs, DATASOURCE_DEFAULTS)) : null;
-  const toClean = toDs ? cleanDatasource(applyDefaults(toDs, DATASOURCE_DEFAULTS)) : null;
+  const fromClean = fromDs ? cleanDatasourceForDiff(fromDs) : null;
+  const toClean = toDs ? cleanDatasourceForDiff(toDs) : null;
   return buildEntityDiff("datasource", name, fromClean, toClean);
 }
 

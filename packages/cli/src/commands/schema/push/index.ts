@@ -16,6 +16,7 @@ import { loadSchema } from "../load-schema";
 import { diffSchema } from "../diff-schema";
 import { fetchRemoteSchema, localToNormalized, remoteToNormalized } from "../actions";
 import { buildGroupPathByUuid } from "../folders";
+import { describeDimensionConflicts, removedDimensionNames } from "../dimensions";
 import { buildChangesetEntries, executePush, formatDiffOutput } from "./actions";
 import { saveChangeset } from "../changeset";
 import { analyzeBreakingChanges } from "./migrations/analyze";
@@ -109,6 +110,17 @@ schemaCommand
       // 5. Display diffs
       ui.br();
       ui.log(formatDiffOutput(diffResult, { delete: options.delete }));
+
+      const datasourceUpdates = diffResult.diffs.filter(
+        (d) => d.type === "datasource" && d.action === "update",
+      );
+      const dimensionConflicts = datasourceUpdates
+        .map((d) => describeDimensionConflicts(d.name, d.after?.dimensions, d.before?.dimensions))
+        .filter((message) => message !== null);
+      if (dimensionConflicts.length > 0) {
+        handleError(new CommandError(dimensionConflicts.join("\n")), verbose);
+        return;
+      }
 
       // 6. Analyze breaking changes and offer migration generation
       if (options.migrations) {
@@ -252,6 +264,14 @@ schemaCommand
               );
             }
           }
+        }
+      }
+
+      for (const datasource of datasourceUpdates) {
+        for (const dimension of removedDimensionNames(datasource)) {
+          ui.warn(
+            `Dimension '${dimension}' of datasource '${datasource.name}' will be deleted along with the values entered for it.`,
+          );
         }
       }
 

@@ -15,7 +15,7 @@ describe("defineDatasource types", () => {
     expectTypeOf(colors.dimensions[0]).toHaveProperty("entry_value").toEqualTypeOf<string>();
   });
 
-  it("should not promise an API-assigned id on a declared dimension", () => {
+  it("should type the id of a declared dimension as optional", () => {
     const colors = defineDatasource({
       name: "Colors",
       slug: "colors",

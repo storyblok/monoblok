@@ -26,7 +26,12 @@ export {
 } from "./richtext";
 
 export { editableField, isInEditor, storyblokEditable } from "@storyblok/live-preview";
-export type { BridgeParams, LivePreviewStory } from "@storyblok/live-preview";
+export type {
+  BridgeParams,
+  LivePreviewOptions,
+  LivePreviewStory,
+  StoryblokEditorChangeEvent,
+} from "@storyblok/live-preview";
 
 export { type StoryblokRichTextDoc } from "@storyblok/richtext";
 

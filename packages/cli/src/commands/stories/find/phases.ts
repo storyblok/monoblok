@@ -27,7 +27,7 @@ export function findPhases({
   return [
     {
       key: "list",
-      label: "Fetching stories",
+      label: "Listing stories",
       // `repeated`: the same story listed again, once per language under
       // `--scheduled`. Neither a match nor a story filtered out.
       counters: ["succeeded", "repeated", "skipped", "failed"],
@@ -46,7 +46,7 @@ export function findPhases({
     },
     {
       key: "content",
-      label: "Fetching stories content",
+      label: "Fetching content",
       enabled: !skipContent,
       counters: ["succeeded", "failed"],
       // A story whose content could not be fetched cannot be decided below.
@@ -76,13 +76,7 @@ export function processStageName({
   capi: boolean;
   filters: ClientFilter[];
 }): string {
-  if (skipContent) {
-    if (capi) {
-      return "Collecting matches";
-    }
-    return filters.length > 0 ? "Applying client-side filters" : "Writing results";
-  }
-  return capi ? "Collecting matches" : "Applying client-side filters";
+  return skipContent && !capi && filters.length === 0 ? "Writing results" : "Filtering";
 }
 
 /** `1 story`, `210 stories`. */
@@ -176,16 +170,15 @@ export function findSummary({
 }
 
 /**
- * Reports a deliberate stop as one: the counts that follow describe a partial
- * scan, and anything less explicit than "not an error" reads as one next to them.
+ * Reports a deliberate stop as one: the counts above it describe a partial scan,
+ * which could otherwise read as a failure. The success mark says the rest.
  */
 export function stoppedEarlyMessage(limit: number | undefined): string {
-  return (
-    (limit !== undefined
-      ? `Stopped early on purpose: --limit ${limit} was reached, so the rest of the scope was left unread. `
-      : "Stopped early on purpose: the command reading this output took what it needed and closed the pipe. ") +
-    "This is not an error — the run exits 0. The counts cover only the part of the scope that ran."
-  );
+  const reason =
+    limit !== undefined
+      ? `Stopped at --limit ${limit}, as asked.`
+      : "Stopped when the reading command closed the pipe, as expected.";
+  return `${reason} The counts above cover only the part of the scope that ran.`;
 }
 
 /** The content phase's row in the run summary. */

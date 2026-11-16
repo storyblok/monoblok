@@ -381,7 +381,7 @@ describe("StoryblokPreview (server mode)", () => {
     expect(getByTestId("initial")).toBeInTheDocument();
     expect(queryByTestId("recovered")).toBeNull();
     expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining("[Storyblok]"),
+      expect.stringContaining("[storyblok]"),
       expect.any(Error),
     );
 
@@ -726,5 +726,41 @@ describe("StoryblokPreview (server mode)", () => {
 
     expect(renderContent).toHaveBeenCalledOnce(); // only the initial call
     expect(mockUnsubscribe).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the current content for a story without content (visual history)", async () => {
+    const story = makeStory();
+    const renderContent = vi.fn().mockResolvedValue(<div data-testid="initial">initial</div>);
+    const element = await StoryblokPreview({ story, renderContent, debounceMs: 0 });
+    const { getByTestId } = render(element);
+
+    await vi.waitFor(() => expect(editorCallback).toBeDefined());
+    const { content: _content, ...withoutContent } = makeStory({ slug: "history" });
+    await fireEditorEvent(editorCallback!, withoutContent as Story);
+
+    expect(renderContent).toHaveBeenCalledOnce(); // only the initial call
+    expect(getByTestId("initial")).toBeInTheDocument();
+  });
+
+  it("shows the new story's content when a reused instance is given another story", async () => {
+    const storyA = makeStory({ id: "1" });
+    const storyB = makeStory({ id: "2" });
+    const renderContent = vi.fn(async (current: { id: unknown; slug?: unknown }) => (
+      <div data-testid="content">{`${String(current.id)}:${String(current.slug)}`}</div>
+    ));
+
+    // Rendered under the same parent, as a layout would, so React reuses the
+    // position in the tree across stories.
+    const elementA = await StoryblokPreview({ story: storyA, renderContent, debounceMs: 0 });
+    const { getByTestId, rerender } = render(<div>{elementA}</div>);
+
+    await vi.waitFor(() => expect(editorCallback).toBeDefined());
+    await fireEditorEvent(editorCallback!, makeStory({ id: "1", slug: "a-live" }));
+    expect(getByTestId("content")).toHaveTextContent("1:a-live");
+
+    const elementB = await StoryblokPreview({ story: storyB, renderContent, debounceMs: 0 });
+    rerender(<div>{elementB}</div>);
+
+    expect(getByTestId("content")).toHaveTextContent("2:home");
   });
 });

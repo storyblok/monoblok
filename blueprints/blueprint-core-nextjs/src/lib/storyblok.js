@@ -18,11 +18,11 @@ export const getApiClient = () =>
 			: undefined,
 	});
 
-export const { StoryblokBlock } = defineStoryblokBlocks({
+export const { StoryblokBlock } = defineStoryblokBlocks(() => ({
 	components: {
 		page: Page,
 		feature: Feature,
 		grid: Grid,
 		teaser: Teaser,
 	},
-});
+}));

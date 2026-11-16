@@ -85,21 +85,19 @@ describe("useStoryblokEditorEvent", () => {
     expect(onStoryblokEditorEvent).toHaveBeenCalledOnce();
   });
 
-  it("logs a clear error instead of an unhandled rejection when the bridge fails to load", async () => {
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
-    const bridgeError = new Error("bridge boom");
-    vi.mocked(onStoryblokEditorEvent).mockRejectedValueOnce(bridgeError);
-
+  it("subscribes synchronously during the mount effect", () => {
     renderHook(() => useStoryblokEditorEvent(vi.fn()));
+    expect(onStoryblokEditorEvent).toHaveBeenCalledOnce();
+  });
 
-    await vi.waitFor(() =>
-      expect(consoleError).toHaveBeenCalledWith(
-        "[Storyblok] useStoryblokEditorEvent: live preview unavailable.",
-        bridgeError,
-      ),
-    );
-
-    consoleError.mockRestore();
+  it("forwards onChange and onError to onStoryblokEditorEvent", () => {
+    const bridgeOptions = {
+      resolveRelations: ["featured.articles"],
+      onChange: vi.fn(),
+      onError: vi.fn(),
+    };
+    renderHook(() => useStoryblokEditorEvent(vi.fn(), { bridgeOptions }));
+    expect(onStoryblokEditorEvent).toHaveBeenCalledWith(expect.any(Function), bridgeOptions);
   });
 
   describe("with debounceMs", () => {

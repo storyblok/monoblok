@@ -1,7 +1,7 @@
 "use client";
 
 import { onStoryblokEditorEvent } from "@storyblok/live-preview";
-import type { BridgeParams, LivePreviewStory } from "@storyblok/live-preview";
+import type { LivePreviewOptions, LivePreviewStory } from "@storyblok/live-preview";
 import type { Story } from "../types";
 import { useEffect, useRef } from "react";
 
@@ -13,16 +13,19 @@ export interface UseStoryblokEditorEventOptions {
    */
   debounceMs?: number;
   /**
-   * Configuration forwarded to the Preview Bridge constructor.
+   * Configuration forwarded to the Preview Bridge constructor, plus
+   * `onChange` (replaces the page reload on `change` and `published` events,
+   * e.g. with `router.refresh()`) and `onError` (Preview Bridge load
+   * failures). The page still reloads unless every live preview subscriber
+   * on it passes `onChange`.
    * Captured at mount time — changes after mount have no effect.
    */
-  bridgeOptions?: BridgeParams;
+  bridgeOptions?: LivePreviewOptions;
 }
 
 /**
  * Subscribes to Storyblok Visual Editor events and calls `callback` with the
- * updated story. Handles async setup, the mounted guard, optional debouncing,
- * and unsubscription on unmount.
+ * updated story. Handles optional debouncing and unsubscription on unmount.
  *
  * Both `callback` and `options.debounceMs` are tracked via refs so the
  * subscription is established once on mount and never torn down/re-created
@@ -59,40 +62,29 @@ export function useStoryblokEditorEvent<TStory extends Story = Story>(
 
   useEffect(() => {
     let mounted = true;
-    let unsubscribe: (() => void) | undefined;
     let debounceTimer: ReturnType<typeof setTimeout> | undefined;
 
-    const setup = async () => {
-      const fn = await onStoryblokEditorEvent<TStory>((updatedStory) => {
-        if (!mounted) {
-          return;
-        }
-
-        const ms = debounceRef.current;
-
-        if (ms !== undefined) {
-          clearTimeout(debounceTimer);
-          debounceTimer = setTimeout(() => callbackRef.current(updatedStory), ms);
-        } else {
-          callbackRef.current(updatedStory);
-        }
-      }, bridgeOptions);
-
+    // Synchronous, and never throws: Preview Bridge load failures go to
+    // `bridgeOptions.onError` (`console.error` by default).
+    const unsubscribe = onStoryblokEditorEvent<TStory>((updatedStory) => {
       if (!mounted) {
-        fn();
-      } else {
-        unsubscribe = fn;
+        return;
       }
-    };
 
-    setup().catch((error: unknown) => {
-      console.error("[Storyblok] useStoryblokEditorEvent: live preview unavailable.", error);
-    });
+      const ms = debounceRef.current;
+
+      if (ms !== undefined) {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => callbackRef.current(updatedStory), ms);
+      } else {
+        callbackRef.current(updatedStory);
+      }
+    }, bridgeOptions);
 
     return () => {
       mounted = false;
       clearTimeout(debounceTimer);
-      unsubscribe?.();
+      unsubscribe();
     };
   }, []);
 }

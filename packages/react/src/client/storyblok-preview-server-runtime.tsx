@@ -65,6 +65,9 @@ export interface StoryblokPreviewServerRuntimeProps {
   /**
    * Configuration forwarded to the Preview Bridge constructor.
    * Captured at mount time — changes after mount have no effect.
+   *
+   * Plain `BridgeParams`, not `LivePreviewOptions`: these props come from a
+   * Server Component, which can't pass `onChange`/`onError` functions.
    */
   bridgeOptions?: BridgeParams;
 }
@@ -150,7 +153,7 @@ class LiveContentBoundary extends Component<LiveContentBoundaryProps, LiveConten
   }
 
   componentDidCatch(error: unknown) {
-    console.error("[Storyblok] StoryblokPreview: renderContent failed.", error);
+    console.error("[storyblok] StoryblokPreview: renderContent failed.", error);
   }
 
   render() {
@@ -185,7 +188,7 @@ export function StoryblokPreviewServerRuntime({
   // namespace is sealed in the test environment. It is verified manually.
   if (typeof reactUse !== "function") {
     throw new Error(
-      "[Storyblok] StoryblokPreview (server mode, from @storyblok/react/rsc) requires React 19 " +
+      "[storyblok] StoryblokPreview (server mode, from @storyblok/react/rsc) requires React 19 " +
         "(React.use is not available). Use StoryblokPreview from @storyblok/react for React 18.",
     );
   }
@@ -271,6 +274,14 @@ export function StoryblokPreviewServerRuntime({
       // a page preview and a nav preview mounted on the same layout would both
       // re-render on the server with whichever story is being edited.
       if (updatedStory.id !== storyId) {
+        return;
+      }
+      // While the editor shows a previous version (visual history), the
+      // bridge sends the story without `content`. Keep the current render
+      // instead of asking the server to render an empty story, which would
+      // also log the undefined-block warning: the server has no editor URL to
+      // suppress it with.
+      if (updatedStory.content == null) {
         return;
       }
       if (inFlight.current) {

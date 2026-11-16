@@ -20,7 +20,7 @@ export { hideWhen, requiredWhen } from "./helpers/define-condition";
 export type { ConditionOptions, FieldCondition } from "./helpers/define-condition";
 // Datasource
 export { defineDatasource } from "./helpers/define-datasource";
-export type { Datasource } from "./helpers/define-datasource";
+export type { Datasource, DatasourceDimension } from "./helpers/define-datasource";
 // Field
 export { defineField } from "./helpers/define-field";
 export type {

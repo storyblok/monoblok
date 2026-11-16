@@ -111,10 +111,44 @@ export function toDatasourceCreate(input: unknown): DatasourceCreate {
   return result;
 }
 
+type DimensionAttributes = NonNullable<DatasourceCreate["dimensions_attributes"]>[number];
+type RemoteDimension = NonNullable<Datasource["dimensions"]>[number];
+
 /**
- * Builds a datasource update payload that handles dimension deletions.
- * The Storyblok API requires `{ id, _destroy: true }` to remove dimensions;
- * an empty `dimensions_attributes` array is a no-op.
+ * Pairs each local dimension with the remote one it continues, so the update
+ * keeps the dimension's id and with it the entry values editors wrote for it.
+ * `entry_value` wins over `name` because it is the identifier the Content
+ * Delivery API filters by.
+ */
+function matchRemoteDimensions(
+  localDims: DimensionAttributes[],
+  remoteDims: RemoteDimension[],
+): Map<DimensionAttributes, RemoteDimension> {
+  const matches = new Map<DimensionAttributes, RemoteDimension>();
+  const unmatchedRemote = new Set(remoteDims.filter((rd) => rd.id != null));
+
+  for (const key of ["entry_value", "name"] as const) {
+    for (const local of localDims) {
+      if (matches.has(local)) {
+        continue;
+      }
+      const remote = [...unmatchedRemote].find((rd) => rd[key] === local[key]);
+      if (remote) {
+        matches.set(local, remote);
+        unmatchedRemote.delete(remote);
+      }
+    }
+  }
+
+  return matches;
+}
+
+/**
+ * Builds a datasource update payload that reconciles dimensions with the remote.
+ * The Storyblok API treats a dimension without an `id` as a new one and rejects
+ * it when its `name` or `entry_value` already exists, and it requires
+ * `{ id, _destroy: true }` to remove one; an empty `dimensions_attributes` array
+ * is a no-op.
  */
 export function toDatasourceUpdate(input: unknown, remote: Datasource): Record<string, unknown> {
   const base = toDatasourceCreate(input);
@@ -125,17 +159,20 @@ export function toDatasourceUpdate(input: unknown, remote: Datasource): Record<s
     return base;
   }
 
-  const localKeys = new Set(localDims.map((d) => `${d.name}::${d.entry_value}`));
+  const matches = matchRemoteDimensions(localDims, remoteDims);
+  const keptRemoteIds = new Set([...matches.values()].map((rd) => rd.id));
   const destroyEntries = remoteDims
-    .filter((rd) => rd.id != null && !localKeys.has(`${rd.name}::${rd.entry_value}`))
+    .filter((rd) => rd.id != null && !keptRemoteIds.has(rd.id))
     .map((rd) => ({ id: rd.id, _destroy: true }));
 
-  if (destroyEntries.length > 0) {
-    return {
-      ...base,
-      dimensions_attributes: [...localDims, ...destroyEntries],
-    };
-  }
-
-  return base;
+  return {
+    ...base,
+    dimensions_attributes: [
+      ...localDims.map((local) => {
+        const match = matches.get(local);
+        return match ? { id: match.id, ...local } : local;
+      }),
+      ...destroyEntries,
+    ],
+  };
 }

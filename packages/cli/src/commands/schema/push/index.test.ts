@@ -48,6 +48,7 @@ interface MockDatasource {
   slug: string;
   created_at: string;
   updated_at: string;
+  dimensions?: { id?: number; name: string; entry_value: string }[];
 }
 
 function makeMockComponent(overrides: Partial<MockComponent> = {}): MockComponent {
@@ -467,6 +468,53 @@ describe("schema push command", () => {
 
     expect(componentBody?.name).toBe("hero");
     expect(componentBody?.component_group_uuid).toBeUndefined();
+  });
+
+  it("should update a datasource that already has dimensions without recreating them", async () => {
+    const remoteDatasource = makeMockDatasource({
+      name: "Colors",
+      slug: "colors",
+      dimensions: [
+        { id: 10, name: "Light Mode", entry_value: "light" },
+        { id: 11, name: "Dark Mode", entry_value: "dark" },
+        { id: 12, name: "Sepia", entry_value: "sepia" },
+      ],
+    });
+    const localDatasource = {
+      name: "Colors",
+      slug: "colors",
+      dimensions: [
+        { name: "Light", entry_value: "light" },
+        { name: "Dark Mode", entry_value: "dark" },
+        { name: "High Contrast", entry_value: "contrast" },
+      ],
+    };
+
+    preconditions.hasLocalSchema({ components: [], datasources: [localDatasource] as any });
+    preconditions.hasRemoteComponents([]);
+    preconditions.hasRemoteFolders([]);
+    preconditions.hasRemoteTags([]);
+    preconditions.hasRemoteDatasources([remoteDatasource]);
+
+    let updateBody: { dimensions_attributes?: unknown[] } | undefined;
+    server.use(
+      http.patch(
+        `https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/datasources/${remoteDatasource.id}`,
+        async ({ request }) => {
+          updateBody = ((await request.json()) as { datasource: typeof updateBody }).datasource;
+          return HttpResponse.json({ datasource: remoteDatasource });
+        },
+      ),
+    );
+
+    await schemaCommand.parseAsync(["node", "test", "push", "schema.ts", "--space", DEFAULT_SPACE]);
+
+    expect(updateBody?.dimensions_attributes).toEqual([
+      { id: 10, name: "Light", entry_value: "light" },
+      { id: 11, name: "Dark Mode", entry_value: "dark" },
+      { name: "High Contrast", entry_value: "contrast" },
+      { id: 12, _destroy: true },
+    ]);
   });
 
   describe("optional block properties", () => {

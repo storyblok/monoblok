@@ -247,9 +247,107 @@ describe("toDatasourceUpdate", () => {
       name: "Colors",
       slug: "colors",
       dimensions_attributes: [
-        { name: "German", entry_value: "de" },
+        { id: 10, name: "German", entry_value: "de" },
         { id: 11, _destroy: true },
       ],
+    });
+  });
+
+  describe("with a remote that already has dimensions", () => {
+    const remote = {
+      id: 5,
+      name: "Colors",
+      slug: "colors",
+      dimensions: [
+        { id: 10, name: "Light Mode", entry_value: "light" },
+        { id: 11, name: "Dark Mode", entry_value: "dark" },
+      ],
+    } satisfies Datasource;
+
+    const dimensionsAttributesFor = (dimensions: { name: string; entry_value: string }[]) =>
+      toDatasourceUpdate({ name: "Colors", slug: "colors", dimensions }, remote)
+        .dimensions_attributes;
+
+    it("should send existing dimensions with their remote id and only the new one without", () => {
+      expect(
+        dimensionsAttributesFor([
+          { name: "Light Mode", entry_value: "light" },
+          { name: "Dark Mode", entry_value: "dark" },
+          { name: "High Contrast", entry_value: "contrast" },
+        ]),
+      ).toEqual([
+        { id: 10, name: "Light Mode", entry_value: "light" },
+        { id: 11, name: "Dark Mode", entry_value: "dark" },
+        { name: "High Contrast", entry_value: "contrast" },
+      ]);
+    });
+
+    it("should rename a dimension in place when its entry_value is unchanged", () => {
+      expect(
+        dimensionsAttributesFor([
+          { name: "Light", entry_value: "light" },
+          { name: "Dark Mode", entry_value: "dark" },
+        ]),
+      ).toEqual([
+        { id: 10, name: "Light", entry_value: "light" },
+        { id: 11, name: "Dark Mode", entry_value: "dark" },
+      ]);
+    });
+
+    it("should change an entry_value in place when the dimension name is unchanged", () => {
+      expect(
+        dimensionsAttributesFor([
+          { name: "Light Mode", entry_value: "bright" },
+          { name: "Dark Mode", entry_value: "dark" },
+        ]),
+      ).toEqual([
+        { id: 10, name: "Light Mode", entry_value: "bright" },
+        { id: 11, name: "Dark Mode", entry_value: "dark" },
+      ]);
+    });
+
+    it("should prefer the entry_value match when a name points at another dimension", () => {
+      expect(
+        dimensionsAttributesFor([
+          { name: "Dark Mode", entry_value: "light" },
+          { name: "Night", entry_value: "dark" },
+        ]),
+      ).toEqual([
+        { id: 10, name: "Dark Mode", entry_value: "light" },
+        { id: 11, name: "Night", entry_value: "dark" },
+      ]);
+    });
+
+    it("should replace a dimension whose name and entry_value both changed", () => {
+      expect(
+        dimensionsAttributesFor([
+          { name: "Sepia", entry_value: "sepia" },
+          { name: "Dark Mode", entry_value: "dark" },
+        ]),
+      ).toEqual([
+        { name: "Sepia", entry_value: "sepia" },
+        { id: 11, name: "Dark Mode", entry_value: "dark" },
+        { id: 10, _destroy: true },
+      ]);
+    });
+
+    it("should ignore an id set on a local dimension", () => {
+      const result = toDatasourceUpdate(
+        {
+          name: "Colors",
+          slug: "colors",
+          dimensions: [
+            { id: 0, name: "Light Mode", entry_value: "light" },
+            { id: 0, name: "Dark Mode", entry_value: "dark" },
+          ],
+        },
+        remote,
+      );
+
+      expect(result.dimensions_attributes).toEqual([
+        { id: 10, name: "Light Mode", entry_value: "light" },
+        { id: 11, name: "Dark Mode", entry_value: "dark" },
+      ]);
     });
   });
 

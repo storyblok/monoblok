@@ -1,4 +1,7 @@
-import type { Datasource as DatasourceGenerated } from "../generated/capi/types.gen";
+import type {
+  Datasource as DatasourceGenerated,
+  Dimension as DimensionGenerated,
+} from "../generated/capi/types.gen";
 import type { Override } from "../generated/types/_utils";
 import type { Prettify } from "../utils/prettify";
 
@@ -14,7 +17,18 @@ const DATASOURCE_DEFAULTS = {
  * (`name`, `slug`, dimensions). Entry values are content authored by editors,
  * not part of the schema, so they are neither modelled nor pushed here.
  */
-export type Datasource = Override<DatasourceGenerated, { slug: string }>;
+export type Datasource = Override<
+  DatasourceGenerated,
+  { slug: string; dimensions: DatasourceDimension[] }
+>;
+
+/**
+ * A datasource dimension as declared in a schema. `name` and `entry_value`
+ * define it; the remaining fields are assigned by the API.
+ */
+export type DatasourceDimension = Prettify<
+  Pick<DimensionGenerated, "name" | "entry_value"> & Partial<DimensionGenerated>
+>;
 
 /** Fields that have safe defaults and may be omitted from datasource input. */
 type DatasourceOptional = keyof typeof DATASOURCE_DEFAULTS;

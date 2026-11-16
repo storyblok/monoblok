@@ -48,7 +48,8 @@ export type StoryblokReactRichTextComponentMap = {
  * to every custom node/mark component.
  */
 export interface StoryblokReactRichTextRenderContext {
-  optimizeImage?: boolean | StoryblokRichTextImageOptions;
+  /** `true` for the defaults, or any subset of the options (e.g. `{ width: 800 }`). */
+  optimizeImage?: boolean | Partial<StoryblokRichTextImageOptions>;
   components?: StoryblokReactRichTextComponentMap;
   data?: unknown;
   /**

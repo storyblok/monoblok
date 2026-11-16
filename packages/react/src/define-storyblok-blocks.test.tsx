@@ -351,6 +351,85 @@ describe("defineStoryblokBlocks", () => {
       expect(getByTestId("custom-blok")).toHaveTextContent("page");
       expect(queryByTestId("page")).toBeNull();
     });
+
+    it("keeps the built-in embedded-block renderer when `components.blok` is explicitly undefined", () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      warnSpy.mockClear();
+      const { StoryblokRichText } = defineStoryblokBlocks(() => ({ components: { page: Page } }));
+      const doc: StoryblokRichTextInput = {
+        type: "doc",
+        content: [
+          {
+            type: "blok",
+            attrs: { id: "blok-1", body: [{ component: "page", _uid: "uid-page" }] },
+          },
+        ],
+      };
+      const { getByTestId } = render(
+        <StoryblokRichText document={doc} components={{ blok: undefined }} />,
+      );
+      expect(getByTestId("page")).toBeInTheDocument();
+      expect(warnSpy).not.toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
+
+    it("renders nested bloks when a custom component re-passes `context.components`", () => {
+      // The renderer sets a custom component's own type to `undefined` in the
+      // context it receives (recursion guard). A custom `blok` renderer that
+      // forwards `context.components` to a nested StoryblokRichText must
+      // still get the registry's built-in `blok` renderer there.
+      const { StoryblokRichText } = defineStoryblokBlocks(() => ({ components: { page: Page } }));
+      const inner: StoryblokRichTextInput = {
+        type: "doc",
+        content: [
+          {
+            type: "blok",
+            attrs: { id: "blok-2", body: [{ component: "page", _uid: "uid-nested" }] },
+          },
+        ],
+      };
+      const outer: StoryblokRichTextInput = {
+        type: "doc",
+        content: [{ type: "blok", attrs: { id: "blok-1", body: [] } }],
+      };
+      function WrappingBlok({ context }: any) {
+        return (
+          <section data-testid="wrapper">
+            <StoryblokRichText document={inner} components={context?.components} />
+          </section>
+        );
+      }
+      const { getByTestId } = render(
+        <StoryblokRichText document={outer} components={{ blok: WrappingBlok }} />,
+      );
+      expect(getByTestId("wrapper")).toContainElement(getByTestId("page"));
+      expect(getByTestId("page")).toHaveTextContent("uid-nested");
+    });
+
+    it("accepts a partial `optimizeImage` object", () => {
+      const { StoryblokRichText } = defineStoryblokBlocks(() => ({ components: {} }));
+      const doc: StoryblokRichTextInput = {
+        type: "doc",
+        content: [
+          {
+            type: "image",
+            attrs: {
+              id: 1,
+              src: "https://a.storyblok.com/f/1/100x100/abc/photo.jpg",
+              alt: null,
+              title: null,
+              source: null,
+              copyright: null,
+              meta_data: {},
+            },
+          },
+        ],
+      };
+      const { container } = render(
+        <StoryblokRichText document={doc} optimizeImage={{ width: 800 }} />,
+      );
+      expect(container.querySelector("img")?.getAttribute("src")).toContain("/m/800x0");
+    });
   });
 
   // ─── Custom data propagation across nested components ────────────────────
@@ -639,6 +718,15 @@ describe("defineStoryblokBlocks", () => {
       }));
       expect(() => render(<StoryblokBlock block={teaserBlock} />)).toThrow(
         '[storyblok] defineStoryblokBlocks: components["teaser"] is missing "component".',
+      );
+    });
+
+    it("throws a clear error naming the block key when a config entry's component is undefined", () => {
+      const { StoryblokBlock } = defineStoryblokBlocks(() => ({
+        components: { teaser: { component: undefined as any, suspense: true } },
+      }));
+      expect(() => render(<StoryblokBlock block={teaserBlock} />)).toThrow(
+        '[storyblok] defineStoryblokBlocks: components["teaser"].component is undefined.',
       );
     });
   });

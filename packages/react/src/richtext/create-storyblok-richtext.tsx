@@ -101,7 +101,14 @@ export function createStoryblokRichText(
       () =>
         createRichTextRenderer({
           optimizeImage,
-          components: DefaultBlock ? { blok: DefaultBlock, ...components } : components,
+          // A caller's own `components.blok` replaces the registry-bound one;
+          // an explicit `undefined` keeps it. A custom node component that
+          // re-passes `context.components` gets its own type set to
+          // `undefined` (the recursion guard in the renderer), so spreading
+          // `components` last would drop the default for nested bloks.
+          components: DefaultBlock
+            ? { ...components, blok: components?.blok ?? DefaultBlock }
+            : components,
           data,
           warnings,
         })(document),

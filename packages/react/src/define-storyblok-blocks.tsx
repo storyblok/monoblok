@@ -84,6 +84,15 @@ function resolveEntry(
     );
   }
   if (typeof entry === "object" && "component" in entry) {
+    // Same hazard as the `entry == null` check above, one level down:
+    // `{ component: Page }` with `Page` still unset would otherwise reach
+    // React as an "Element type is invalid" error with no block name.
+    if (entry.component == null) {
+      throw new Error(
+        `[storyblok] defineStoryblokBlocks: components["${type}"].component is undefined. ` +
+          "Check for a typo, or a circular import that hasn't finished initializing yet.",
+      );
+    }
     return {
       Component: entry.component,
       needsSuspense: entry.suspense ?? isLazyComponent(entry.component),
@@ -147,8 +156,12 @@ export function defineStoryblokBlocks<TExtraProps extends StoryblokExtraProps = 
   // from the registered components, it would accept any of them.
   factory: () => DefineStoryblokBlocksOptions<NoInfer<TExtraProps>>,
 ): DefineStoryblokBlocksResult<TExtraProps> {
-  // Cached after the first call so a factory with side effects only ever
-  // runs once, no matter how many blocks render.
+  // Cached after the first successful build, so the factory runs once no
+  // matter how many blocks render. A build that throws (the factory itself,
+  // or an invalid entry) is not cached: the next render calls the factory
+  // again, so a binding that was still unset mid-cycle resolves once it's
+  // assigned. A factory with side effects may therefore run more than once
+  // until it returns a valid registry.
   let resolved: ResolvedRegistry | undefined;
   // Warnings already printed, so re-renders (and a server rendering the same
   // page on every request) don't repeat the same warning.
@@ -156,7 +169,7 @@ export function defineStoryblokBlocks<TExtraProps extends StoryblokExtraProps = 
 
   // ── Build the registry lazily, on first render ──────────────────────────
   // Entry normalization, isLazyComponent (Symbol.for allocation), and
-  // fallback resolution all run here — never more than once, and never at
+  // fallback resolution all run here — once per successful build, never at
   // module-init time, which is what makes the import-cycle case above
   // resolve correctly.
   function resolveRegistry(): ResolvedRegistry {

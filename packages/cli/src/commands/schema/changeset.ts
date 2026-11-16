@@ -4,6 +4,9 @@ import { join } from "pathe";
 import type { ChangesetData } from "./types";
 import { fileTimestamp } from "./utils";
 
+/** Changeset directory, relative to the base storage directory. */
+export const CHANGESETS_DIR = "schema/changesets";
+
 /** Ensures a directory exists, creating it recursively if needed. */
 async function ensureDir(dir: string): Promise<void> {
   await mkdir(dir, { recursive: true });
@@ -11,7 +14,7 @@ async function ensureDir(dir: string): Promise<void> {
 
 /** Saves a changeset recording what was pushed and the full pre-push remote state for rollback. Returns the written file path. */
 export async function saveChangeset(basePath: string, data: ChangesetData): Promise<string> {
-  const dir = join(basePath, "schema", "changesets");
+  const dir = join(basePath, CHANGESETS_DIR);
   await ensureDir(dir);
   const fileName = `${fileTimestamp(data.timestamp)}.json`;
   const filePath = join(dir, fileName);

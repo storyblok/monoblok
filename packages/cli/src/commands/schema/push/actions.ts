@@ -15,7 +15,7 @@ import {
   toDatasourceCreate,
   toDatasourceUpdate,
 } from "../transform";
-import { buildGroupPathByUuid, mapSchemaGroupLists } from "../folders";
+import { buildFolderByPath, mapSchemaGroupLists } from "../folders";
 import { collectTagNames, mapSchemaTagLists } from "../tags";
 
 /** A resolved component group reference: its numeric id and server uuid. */
@@ -94,20 +94,6 @@ function resolveTagIds(comp: Component, tagIdByName: Map<string, number>): Compo
   return resolved as unknown as Component;
 }
 
-/** Builds a `slug path → { id, uuid }` map from the remote component groups. */
-function buildGroupByPath(remote: RemoteSchemaData): Map<string, GroupRef> {
-  const remoteFolders = [...remote.componentFolders.values()];
-  const groupPathByUuid = buildGroupPathByUuid(remoteFolders);
-  const groupByPath = new Map<string, GroupRef>();
-  for (const folder of remoteFolders) {
-    const segments = groupPathByUuid.get(folder.uuid);
-    if (segments?.length) {
-      groupByPath.set(segments.join("/"), { id: folder.id, uuid: folder.uuid });
-    }
-  }
-  return groupByPath;
-}
-
 /** Formats diff results for `schema push` display using chalk colors. */
 export function formatDiffOutput(result: DiffResult, options?: { delete?: boolean }): string {
   const willDelete = options?.delete ?? false;
@@ -145,7 +131,9 @@ export async function executePush(
   // 1. Create missing folders (component groups) parent-first, building a
   //    `slug path → { id, uuid }` map from the remote groups plus the ones we
   //    create. Creation is sequential on purpose: a child needs its parent's id.
-  const groupByPath = buildGroupByPath(remote);
+  const groupByPath = new Map<string, GroupRef>(
+    buildFolderByPath([...remote.componentFolders.values()]),
+  );
   const foldersByPath = new Map<string, LocalFolder>(local.folders.map((f) => [f.path, f]));
   const folderCreates = diffResult.diffs
     .filter((d) => d.type === "folder" && d.action === "create")
@@ -466,17 +454,8 @@ export function buildChangesetEntries(
 ): ChangesetEntry[] {
   const changes: ChangesetEntry[] = [];
 
-  // Map remote folders by slug path so folder diffs (whose `name` is the slug
-  // path) can recover the pre-push remote group as their `before` snapshot.
-  const remoteFolders = [...remote.componentFolders.values()];
-  const folderPathByUuid = buildGroupPathByUuid(remoteFolders);
-  const remoteFolderByPath = new Map<string, Record<string, unknown>>();
-  for (const folder of remoteFolders) {
-    const segments = folderPathByUuid.get(folder.uuid);
-    if (segments?.length) {
-      remoteFolderByPath.set(segments.join("/"), folder as unknown as Record<string, unknown>);
-    }
-  }
+  // A folder diff's `name` is its slug path.
+  const remoteFolderByPath = buildFolderByPath([...remote.componentFolders.values()]);
 
   for (const diff of diffResult.diffs) {
     if (diff.action === "unchanged") {

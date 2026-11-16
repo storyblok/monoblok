@@ -53,6 +53,19 @@ export function buildGroupPathByUuid(folders: ComponentFolder[]): Map<string, st
   return cache;
 }
 
+/** Keys remote component groups by their slug path, the identity a local schema uses. */
+export function buildFolderByPath(folders: ComponentFolder[]): Map<string, ComponentFolder> {
+  const pathByUuid = buildGroupPathByUuid(folders);
+  const byPath = new Map<string, ComponentFolder>();
+  for (const folder of folders) {
+    const segments = pathByUuid.get(folder.uuid);
+    if (segments?.length) {
+      byPath.set(segments.join("/"), folder);
+    }
+  }
+  return byPath;
+}
+
 /**
  * Slugifies each `/` segment of a display path: `'My Layout/Heros'` →
  * `'my-layout/heros'`. Segments are dropped when they slugify to empty, so

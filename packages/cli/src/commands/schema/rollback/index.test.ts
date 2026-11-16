@@ -3,10 +3,13 @@ import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { vol } from "memfs";
 import { confirm, select } from "@inquirer/prompts";
+import { join } from "pathe";
 
 import "../index";
 import { schemaCommand } from "../command";
+import { CHANGESETS_DIR } from "../changeset";
 import { DEFAULT_SPACE, getID } from "../../__tests__/helpers";
+import { resolveCommandPath } from "../../../utils/filesystem";
 import type { ChangesetData } from "../types";
 
 vi.mock("@inquirer/prompts", () => ({
@@ -50,15 +53,25 @@ function makeChangeset(
   };
 }
 
-const CHANGESET_PATH = `.storyblok/schema/changesets/2026-04-10T12-00-00-000Z.json`;
+const changesetPath = (name: string) => join(resolveCommandPath(CHANGESETS_DIR), `${name}.json`);
+const CHANGESET_PATH = changesetPath("20260410120000");
+const OTHER_SPACE = 99999;
 
 const server = setupServer();
 
 const preconditions = {
   hasChangeset(changeset: ChangesetData) {
-    vol.fromJSON({
-      [CHANGESET_PATH]: JSON.stringify(changeset),
-    });
+    this.hasChangesetFiles({ [CHANGESET_PATH]: changeset });
+  },
+  hasChangesetFiles(files: Record<string, ChangesetData | string>) {
+    vol.fromJSON(
+      Object.fromEntries(
+        Object.entries(files).map(([path, content]) => [
+          path,
+          typeof content === "string" ? content : JSON.stringify(content),
+        ]),
+      ),
+    );
   },
   hasRemoteComponents(components: MockComponent[]) {
     server.use(
@@ -67,10 +80,17 @@ const preconditions = {
       ),
     );
   },
-  hasRemoteFolders() {
+  hasRemoteFolders(componentGroups: Record<string, unknown>[] = []) {
     server.use(
       http.get(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/component_groups`, () =>
-        HttpResponse.json({ component_groups: [] }),
+        HttpResponse.json({ component_groups: componentGroups }),
+      ),
+    );
+  },
+  failsToDeleteComponents() {
+    server.use(
+      http.delete(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/components/:id`, () =>
+        HttpResponse.json({ message: "Internal Server Error" }, { status: 500 }),
       ),
     );
   },
@@ -291,15 +311,19 @@ describe("schema rollback command", () => {
     expect(files.some((f) => f.includes("schema/changesets/") && f !== CHANGESET_PATH)).toBe(true);
   });
 
+  const savedChangesets = () =>
+    Object.keys(vol.toJSON()).filter((f) => f.startsWith(resolveCommandPath(CHANGESETS_DIR)));
+
   const savedRollbackChangeset = (): string => {
-    const saved = Object.keys(vol.toJSON()).find(
-      (f) => f.includes("schema/changesets/") && !f.endsWith(CHANGESET_PATH),
-    );
+    const saved = savedChangesets().find((f) => f !== CHANGESET_PATH);
     if (!saved) {
       throw new Error("No rollback changeset was saved");
     }
     return saved;
   };
+
+  const rollBack = (...args: string[]) =>
+    schemaCommand.parseAsync(["node", "test", "rollback", ...args, "--space", DEFAULT_SPACE]);
 
   it("should restore an updated datasource when the rollback itself is rolled back", async () => {
     const pushed = { id: 5, name: "Colors", slug: "colours", dimensions: [] };
@@ -329,18 +353,8 @@ describe("schema rollback command", () => {
       ),
     );
 
-    const rollBack = (file: string) =>
-      schemaCommand.parseAsync([
-        "node",
-        "test",
-        "rollback",
-        file,
-        "--space",
-        DEFAULT_SPACE,
-        "--yes",
-      ]);
-    await rollBack(CHANGESET_PATH);
-    await rollBack(savedRollbackChangeset());
+    await rollBack(CHANGESET_PATH, "--yes");
+    await rollBack(savedRollbackChangeset(), "--yes");
 
     expect(updates).toEqual([
       expect.objectContaining({ name: "Colors", slug: "colors" }),
@@ -370,47 +384,204 @@ describe("schema rollback command", () => {
       ),
     );
 
-    const rollBack = (file: string) =>
-      schemaCommand.parseAsync([
-        "node",
-        "test",
-        "rollback",
-        file,
-        "--space",
-        DEFAULT_SPACE,
-        "--yes",
-      ]);
-    await rollBack(CHANGESET_PATH);
+    await rollBack(CHANGESET_PATH, "--yes");
     preconditions.hasRemoteComponents([]);
-    await rollBack(savedRollbackChangeset());
+    await rollBack(savedRollbackChangeset(), "--yes");
 
     expect(created).toEqual([expect.objectContaining({ name: "hero" })]);
   });
 
-  it("should skip changesets without changes with --latest", async () => {
-    const comp = makeMockComponent({ name: "hero" });
-    vol.fromJSON({
-      [CHANGESET_PATH]: JSON.stringify(
-        makeChangeset([{ type: "component", name: "hero", action: "create", after: { ...comp } }]),
-      ),
-      ".storyblok/schema/changesets/2026-04-11T12-00-00-000Z.json": JSON.stringify(
-        makeChangeset([]),
-      ),
-    });
+  it("should skip a block that no longer exists and save no changeset", async () => {
+    preconditions.hasChangeset(
+      makeChangeset([
+        { type: "component", name: "hero", action: "create", after: { name: "hero" } },
+      ]),
+    );
+    preconditions.hasEmptyRemote();
 
-    await schemaCommand.parseAsync([
-      "node",
-      "test",
-      "rollback",
-      "--latest",
-      "--dry-run",
-      "--space",
-      DEFAULT_SPACE,
+    await rollBack(CHANGESET_PATH, "--yes");
+
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining("component 'hero'"));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining("nothing to roll back"));
+    expect(savedChangesets()).toEqual([CHANGESET_PATH]);
+  });
+
+  it("should save the rollback changeset when the rollback fails midway", async () => {
+    const comp = makeMockComponent({ name: "hero" });
+    preconditions.hasChangeset(
+      makeChangeset([{ type: "component", name: "hero", action: "create", after: { ...comp } }]),
+    );
+    preconditions.hasRemoteComponents([comp]);
+    preconditions.hasRemoteFolders();
+    preconditions.hasRemoteDatasources();
+    preconditions.hasRemoteTags();
+    preconditions.failsToDeleteComponents();
+
+    await rollBack(CHANGESET_PATH, "--yes");
+
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Failed to apply rollback"));
+    expect(savedRollbackChangeset()).toBeDefined();
+  });
+
+  it("should update a deleted block that already exists again instead of creating it", async () => {
+    const footer = makeMockComponent({ name: "footer" });
+    preconditions.hasChangeset(
+      makeChangeset([
+        { type: "component", name: "footer", action: "delete", before: { ...footer } },
+      ]),
+    );
+    preconditions.hasRemoteComponents([footer]);
+    preconditions.hasRemoteFolders();
+    preconditions.hasRemoteDatasources();
+    preconditions.hasRemoteTags();
+    const updated: string[] = [];
+    server.use(
+      http.put(
+        `https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/components/:id`,
+        ({ params }) => {
+          updated.push(String(params.id));
+          return HttpResponse.json({ component: footer });
+        },
+      ),
+    );
+
+    await rollBack(CHANGESET_PATH, "--yes");
+
+    expect(updated).toEqual([String(footer.id)]);
+  });
+
+  it("should keep a block folder that existed before the rollback when the rollback is rolled back", async () => {
+    const oldFolder = { id: 1, uuid: "g-old", name: "Layout", parent_uuid: null };
+    const liveFolder = { ...oldFolder, id: 7, uuid: "g-live" };
+    const hero = makeMockComponent({ name: "hero" });
+    preconditions.hasChangeset(
+      makeChangeset([
+        { type: "folder", name: "layout", action: "delete", before: oldFolder },
+        {
+          type: "component",
+          name: "hero",
+          action: "delete",
+          before: { ...hero, component_group_uuid: "g-old" },
+        },
+      ]),
+    );
+    preconditions.hasRemoteComponents([]);
+    preconditions.hasRemoteFolders([liveFolder]);
+    preconditions.hasRemoteDatasources();
+    preconditions.hasRemoteTags();
+    preconditions.canDeleteComponents();
+    const createdComponents: { component_group_uuid?: string }[] = [];
+    server.use(
+      http.post(
+        `https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/components`,
+        async ({ request }) => {
+          const { component } = (await request.json()) as { component: object };
+          createdComponents.push(component);
+          return HttpResponse.json({ component: { id: hero.id, ...component } });
+        },
+      ),
+    );
+    const deletedFolders: string[] = [];
+    server.use(
+      http.delete(
+        `https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/component_groups/:id`,
+        ({ params }) => {
+          deletedFolders.push(String(params.id));
+          return HttpResponse.json({});
+        },
+      ),
+    );
+
+    await rollBack(CHANGESET_PATH, "--yes");
+    preconditions.hasRemoteComponents([
+      { ...hero, component_group_uuid: "g-live" } as MockComponent,
     ]);
+    await rollBack(savedRollbackChangeset(), "--yes");
+
+    expect(createdComponents).toEqual([
+      expect.objectContaining({ component_group_uuid: "g-live" }),
+    ]);
+    expect(deletedFolders).toEqual([]);
+  });
+
+  it("should refuse a changeset without the state to restore", async () => {
+    preconditions.hasChangeset(
+      makeChangeset([
+        { type: "component", name: "hero", action: "update", after: { name: "hero" } },
+      ]),
+    );
+
+    await rollBack(CHANGESET_PATH, "--yes");
 
     expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining("Using latest changeset: 2026-04-10T12-00-00-000Z.json"),
+      expect.stringContaining("does not record the state to restore for component 'hero'"),
     );
+    expect(savedChangesets()).toEqual([CHANGESET_PATH]);
+  });
+
+  it("should refuse a changeset recorded for another space", async () => {
+    preconditions.hasChangeset(
+      makeChangeset(
+        [{ type: "component", name: "hero", action: "create", after: { name: "hero" } }],
+        {
+          spaceId: OTHER_SPACE,
+        },
+      ),
+    );
+
+    await rollBack(CHANGESET_PATH, "--dry-run");
+
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining(`recorded for space ${OTHER_SPACE}, not space ${DEFAULT_SPACE}`),
+    );
+  });
+
+  describe("selecting a changeset", () => {
+    const heroCreated = makeChangeset([
+      { type: "component", name: "hero", action: "create", after: { name: "hero" } },
+    ]);
+    const newerFiles = {
+      [changesetPath("20260411120000")]: makeChangeset([]),
+      [changesetPath("20260412120000")]: { ...heroCreated, spaceId: OTHER_SPACE },
+      [changesetPath("20260413120000")]: "not json",
+    };
+
+    it("should skip changesets without changes, of other spaces, and unreadable ones with --latest", async () => {
+      preconditions.hasChangesetFiles({ [CHANGESET_PATH]: heroCreated, ...newerFiles });
+
+      await rollBack("--latest", "--dry-run");
+
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining("Skipped 20260413120000.json"),
+      );
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining("Using latest changeset: 20260410120000.json"),
+      );
+    });
+
+    it("should offer only changesets of the space that have changes", async () => {
+      preconditions.hasChangesetFiles({ [CHANGESET_PATH]: heroCreated, ...newerFiles });
+      vi.mocked(select).mockResolvedValue(CHANGESET_PATH);
+
+      await rollBack("--dry-run");
+
+      expect(select).toHaveBeenCalledWith(
+        expect.objectContaining({
+          choices: [{ name: "20260410120000.json (1 change(s))", value: CHANGESET_PATH }],
+        }),
+        expect.anything(),
+      );
+    });
+
+    it("should warn when no changeset has changes for the space", async () => {
+      preconditions.hasChangesetFiles(newerFiles);
+
+      await rollBack("--latest");
+
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining(`No changesets with changes found for space ${DEFAULT_SPACE}`),
+      );
+    });
   });
 
   it("should warn when changeset has no changes", async () => {
@@ -456,7 +627,9 @@ describe("schema rollback command", () => {
 
     await schemaCommand.parseAsync(["node", "test", "rollback", "--space", DEFAULT_SPACE]);
 
-    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining("No changesets found"));
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining("No changesets with changes"),
+    );
   });
 
   it("should skip confirmation prompt with --yes", async () => {
@@ -546,7 +719,9 @@ describe("schema rollback command", () => {
     ]);
 
     expect(select).not.toHaveBeenCalled();
-    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining("No changesets found"));
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining("No changesets with changes"),
+    );
   });
 
   it("should handle API errors gracefully", async () => {

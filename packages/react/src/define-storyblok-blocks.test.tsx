@@ -37,6 +37,19 @@ function Teaser({ block }: { block: BlockContent & { title?: string } }) {
   return <span data-testid="teaser">{block.title as string}</span>;
 }
 
+/**
+ * Mimics how RSC bundlers expose a `"use client"` export to a Server
+ * Component: a function tagged with `$$typeof: Symbol.for("react.client.reference")`.
+ * Calls through here so the test can render it on the client.
+ */
+function clientReference<T extends (...args: any[]) => any>(component: T): T {
+  const reference = ((...args: Parameters<T>) => component(...args)) as T;
+  Object.defineProperty(reference, "$$typeof", {
+    value: Symbol.for("react.client.reference"),
+  });
+  return reference;
+}
+
 function Fallback({ block }: { block: BlockContent }) {
   return <div data-testid="fallback">{block.component}</div>;
 }
@@ -703,31 +716,143 @@ describe("defineStoryblokBlocks", () => {
       consoleSpy.mockRestore();
     });
 
-    it("throws a clear error naming the block key when an entry is undefined", () => {
+    // An entry that can't render only affects blocks of its own type: they
+    // warn once and use the `fallback`, like Astro's registry.
+
+    /** Renders `block` with `components`, returning the container and the `console.warn` calls. */
+    function renderWithEntry(components: Record<string, unknown>, block = teaserBlock) {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      // `console.warn` is a shared mock (see test-setup.ts): drop earlier calls.
+      warnSpy.mockClear();
+      const { StoryblokBlock } = defineStoryblokBlocks(() => ({ components: components as any }));
+      const { container } = render(<StoryblokBlock block={block} />);
+      const warnings = warnSpy.mock.calls.map(([message]) => message);
+      warnSpy.mockRestore();
+      return { container, warnings };
+    }
+
+    it("warns naming the block key and renders nothing when an entry is undefined", () => {
+      const { container, warnings } = renderWithEntry({ teaser: undefined });
+      expect(container.firstChild).toBeNull();
+      expect(warnings).toEqual([
+        '[storyblok] defineStoryblokBlocks: components["teaser"] is undefined. ' +
+          "Check for a typo, or a circular import that hasn't finished initializing yet.",
+      ]);
+    });
+
+    it("warns naming the block key when a config entry is missing 'component'", () => {
+      const { warnings } = renderWithEntry({ teaser: { suspense: true } });
+      expect(warnings).toEqual([
+        '[storyblok] defineStoryblokBlocks: components["teaser"] is missing "component".',
+      ]);
+    });
+
+    it("warns naming the block key when a config entry's component is undefined", () => {
+      const { warnings } = renderWithEntry({ teaser: { component: undefined, suspense: true } });
+      expect(warnings).toEqual([
+        expect.stringContaining(
+          '[storyblok] defineStoryblokBlocks: components["teaser"].component is undefined.',
+        ),
+      ]);
+    });
+
+    it.each([
+      ["a module namespace", { Teaser, default: Teaser }],
+      ["{ default: Component }", { default: Teaser }],
+      ["a string", "Teaser"],
+      ["a React element", <Teaser block={teaserBlock} />],
+    ])("warns instead of letting React throw when an entry is %s", (_, entry) => {
+      const { container, warnings } = renderWithEntry({ teaser: entry });
+      expect(container.firstChild).toBeNull();
+      expect(warnings).toEqual([
+        expect.stringContaining(
+          '[storyblok] defineStoryblokBlocks: components["teaser"] isn\'t a valid React component.',
+        ),
+      ]);
+    });
+
+    it("warns when a config entry's component isn't a valid React component", () => {
+      const { warnings } = renderWithEntry({ teaser: { component: { default: Teaser } } });
+      expect(warnings).toEqual([
+        expect.stringContaining(
+          '[storyblok] defineStoryblokBlocks: components["teaser"].component isn\'t a valid React component.',
+        ),
+      ]);
+    });
+
+    it.each([
+      ["memo", memo(Teaser)],
+      ["forwardRef", forwardRef((props: any, _ref) => <Teaser {...props} />)],
+      ["a client reference", clientReference(Teaser)],
+    ])("accepts a %s component", (_, entry) => {
+      const { container, warnings } = renderWithEntry({ teaser: entry });
+      expect(container.querySelector('[data-testid="teaser"]')).not.toBeNull();
+      expect(warnings).toEqual([]);
+    });
+
+    it("renders other block types normally when one entry is invalid", () => {
+      const { container, warnings } = renderWithEntry({ page: Page, teaser: undefined }, pageBlock);
+      expect(container.querySelector('[data-testid="page"]')).not.toBeNull();
+      expect(warnings).toEqual([]);
+    });
+
+    it("renders the fallback for a block whose entry is invalid", () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      warnSpy.mockClear();
+      const { StoryblokBlock } = defineStoryblokBlocks(() => ({
+        components: { teaser: undefined as any },
+        fallback: Fallback,
+      }));
+      const { getByTestId } = render(<StoryblokBlock block={teaserBlock} />);
+      expect(getByTestId("fallback")).toBeInTheDocument();
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('components["teaser"] is undefined.'),
+      );
+      warnSpy.mockRestore();
+    });
+
+    it("warns once per invalid entry across renders", () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      warnSpy.mockClear();
       const { StoryblokBlock } = defineStoryblokBlocks(() => ({
         components: { teaser: undefined as any },
       }));
-      expect(() => render(<StoryblokBlock block={teaserBlock} />)).toThrow(
-        '[storyblok] defineStoryblokBlocks: components["teaser"] is undefined.',
-      );
+      render(<StoryblokBlock block={teaserBlock} />);
+      render(<StoryblokBlock block={teaserBlock} />);
+      expect(warnSpy).toHaveBeenCalledOnce();
+      warnSpy.mockRestore();
     });
 
-    it("throws a clear error naming the block key when a config entry is missing 'component'", () => {
+    it("doesn't warn about an invalid entry with warnings: false", () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      warnSpy.mockClear();
       const { StoryblokBlock } = defineStoryblokBlocks(() => ({
-        components: { teaser: { suspense: true } as any },
+        components: { teaser: undefined as any },
+        warnings: false,
       }));
-      expect(() => render(<StoryblokBlock block={teaserBlock} />)).toThrow(
-        '[storyblok] defineStoryblokBlocks: components["teaser"] is missing "component".',
-      );
+      const { container } = render(<StoryblokBlock block={teaserBlock} />);
+      expect(container.firstChild).toBeNull();
+      expect(warnSpy).not.toHaveBeenCalled();
+      warnSpy.mockRestore();
     });
 
-    it("throws a clear error naming the block key when a config entry's component is undefined", () => {
+    it("warns and renders nothing when the fallback isn't a valid React component", () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      warnSpy.mockClear();
       const { StoryblokBlock } = defineStoryblokBlocks(() => ({
-        components: { teaser: { component: undefined as any, suspense: true } },
+        components: {},
+        fallback: { default: Fallback } as any,
       }));
-      expect(() => render(<StoryblokBlock block={teaserBlock} />)).toThrow(
-        '[storyblok] defineStoryblokBlocks: components["teaser"].component is undefined.',
-      );
+      const { container } = render(<StoryblokBlock block={unknownBlock} />);
+      expect(container.firstChild).toBeNull();
+      expect(warnSpy.mock.calls).toEqual([
+        [
+          "[storyblok] defineStoryblokBlocks: `fallback` isn't a valid React component. " +
+            "Register the component itself, not its module namespace (`import * as`) or " +
+            "`{ default: Component }`.",
+        ],
+      ]);
+      warnSpy.mockRestore();
     });
   });
 
@@ -1142,36 +1267,51 @@ describe("lazy factory resolution", () => {
   });
 
   it("should retry an entry that was invalid on an earlier render", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     let LatePage: typeof Page | undefined;
     const { StoryblokBlock } = defineStoryblokBlocks(() => ({
       components: { page: LatePage! },
     }));
 
-    expect(() => render(<StoryblokBlock block={pageBlock} />)).toThrow(
-      '[storyblok] defineStoryblokBlocks: components["page"] is undefined.',
+    const { container } = render(<StoryblokBlock block={pageBlock} />);
+    expect(container.firstChild).toBeNull();
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        '[storyblok] defineStoryblokBlocks: components["page"] is undefined.',
+      ),
     );
 
     LatePage = Page;
     const { getByTestId } = render(<StoryblokBlock block={pageBlock} />);
     expect(getByTestId("page")).toBeInTheDocument();
+    warnSpy.mockRestore();
   });
 
-  it("should render nothing for an undefined block even when a registry entry is invalid", () => {
+  it("should render nothing for an undefined block even when the factory throws", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     // `console.warn` is a shared mock (see test-setup.ts): drop earlier calls.
     warnSpy.mockClear();
-    const { StoryblokBlock } = defineStoryblokBlocks(() => ({
-      components: { teaser: undefined as any },
-    }));
+    const { StoryblokBlock } = defineStoryblokBlocks(() => {
+      throw new Error("not ready");
+    });
 
     const { container } = render(<StoryblokBlock />);
     expect(container.firstChild).toBeNull();
     expect(warnSpy).toHaveBeenCalledTimes(1);
 
-    // The invalid entry still surfaces once a block needs the registry.
-    expect(() => render(<StoryblokBlock block={teaserBlock} />)).toThrow(
-      '[storyblok] defineStoryblokBlocks: components["teaser"] is undefined.',
-    );
+    // The factory error still surfaces once a block needs the registry.
+    expect(() => render(<StoryblokBlock block={pageBlock} />)).toThrow("not ready");
+    warnSpy.mockRestore();
+  });
+
+  it("should not cache a registry with an invalid entry", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const factory = vi.fn(() => ({ components: { page: Page, teaser: undefined as any } }));
+    const { StoryblokBlock } = defineStoryblokBlocks(factory);
+
+    render(<StoryblokBlock block={pageBlock} />);
+    render(<StoryblokBlock block={pageBlock} />);
+    expect(factory).toHaveBeenCalledTimes(2);
     warnSpy.mockRestore();
   });
 });

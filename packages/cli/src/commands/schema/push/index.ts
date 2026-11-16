@@ -271,27 +271,28 @@ schemaCommand
         return;
       }
 
-      // 8. Save changeset
-      const resolvedPath = resolvePath(basePath, "");
-      const timestamp = new Date().toISOString();
-
-      const changesetPath = await saveChangeset(resolvedPath, {
-        timestamp,
-        spaceId: Number(space),
-        remote: {
-          components: rawComponents,
-          componentFolders: rawComponentFolders,
-          datasources: rawDatasources,
-        },
-        changes: buildChangesetEntries(diffResult, local, remote, { delete: options.delete }),
-      });
-      logger.info("Changeset saved", { path: displayPath(changesetPath, basePath) });
-
-      // 9. Execute push (skipped when nothing to push).
       const nothingToPush =
         diffResult.creates === 0 &&
         diffResult.updates === 0 &&
         (!options.delete || diffResult.stale === 0);
+
+      // 8. Save changeset. Saved before the push so that a push failing midway
+      // can still be rolled back.
+      if (!nothingToPush) {
+        const changesetPath = await saveChangeset(resolvePath(basePath, ""), {
+          timestamp: new Date().toISOString(),
+          spaceId: Number(space),
+          remote: {
+            components: rawComponents,
+            componentFolders: rawComponentFolders,
+            datasources: rawDatasources,
+          },
+          changes: buildChangesetEntries(diffResult, local, remote, { delete: options.delete }),
+        });
+        logger.info("Changeset saved", { path: displayPath(changesetPath, basePath) });
+      }
+
+      // 9. Execute push
       let pushResult: Awaited<ReturnType<typeof executePush>> | null = null;
       if (!nothingToPush) {
         const pushSpinner = ui.createSpinner("Pushing schema...");

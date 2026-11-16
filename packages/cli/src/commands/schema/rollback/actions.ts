@@ -3,6 +3,7 @@ import { join } from "pathe";
 import chalk from "chalk";
 import { createTwoFilesPatch } from "diff";
 
+import type { ComponentFolder } from "../../../types";
 import type { ChangesetData, ChangesetEntry, RemoteSchemaData } from "../types";
 import { applyDefaults, COMPONENT_DEFAULTS, COMPONENT_OPTIONAL_KEYS } from "../utils";
 import { serializeComponent, serializeDatasource } from "../serialize";
@@ -132,6 +133,52 @@ export function buildRollbackOps(changeset: ChangesetData): RollbackOp[] {
   });
 }
 
+/**
+ * Changeset entries for an applied rollback. An update or a delete records the
+ * entity as it was before the rollback, so the rollback can be rolled back.
+ */
+export function buildRollbackChangesetEntries(
+  ops: RollbackOp[],
+  remote: RemoteSchemaData,
+): ChangesetEntry[] {
+  const folderByPath = buildFolderByPath(remote);
+  const remoteEntity = (op: RollbackOp): Record<string, unknown> | undefined => {
+    switch (op.type) {
+      case "component":
+        return remote.components.get(op.name);
+      case "datasource":
+        return remote.datasources.get(op.name);
+      case "folder":
+        return folderByPath.get(op.name);
+    }
+  };
+
+  return ops.map((op) => {
+    const before = op.action === "create" ? undefined : remoteEntity(op);
+    return {
+      type: op.type,
+      name: op.name,
+      action: op.action,
+      ...(before && { before: { ...before } }),
+      ...(Object.keys(op.payload).length > 0 && { after: op.payload }),
+    };
+  });
+}
+
+/**
+ * The first changeset, newest first, that recorded a change. A changeset
+ * without changes has nothing to roll back.
+ */
+export async function findLatestChangesetWithChanges(basePath: string): Promise<string | null> {
+  for (const filePath of await listChangesets(basePath)) {
+    const changeset = await loadChangeset(filePath);
+    if (changeset.changes.length > 0) {
+      return filePath;
+    }
+  }
+  return null;
+}
+
 /** Maps a changeset action to the rollback action that inverts it. */
 function rollbackAction(original: ChangesetEntry["action"]): "create" | "update" | "delete" {
   switch (original) {
@@ -237,13 +284,21 @@ interface GroupRef {
  * the same `buildGroupPathByUuid` output.
  */
 function buildGroupRefByPath(remote: RemoteSchemaData): Map<string, GroupRef> {
+  const byPath = new Map<string, GroupRef>();
+  for (const [path, folder] of buildFolderByPath(remote)) {
+    byPath.set(path, { id: folder.id, uuid: folder.uuid });
+  }
+  return byPath;
+}
+
+function buildFolderByPath(remote: RemoteSchemaData): Map<string, ComponentFolder> {
   const folders = [...remote.componentFolders.values()];
   const pathByUuid = buildGroupPathByUuid(folders);
-  const byPath = new Map<string, GroupRef>();
+  const byPath = new Map<string, ComponentFolder>();
   for (const folder of folders) {
     const segments = pathByUuid.get(folder.uuid);
     if (segments?.length) {
-      byPath.set(segments.join("/"), { id: folder.id, uuid: folder.uuid });
+      byPath.set(segments.join("/"), folder);
     }
   }
   return byPath;

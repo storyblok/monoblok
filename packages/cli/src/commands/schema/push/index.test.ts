@@ -382,6 +382,20 @@ describe("schema push command", () => {
     expect(files.some((f) => f.endsWith(`/components/${DEFAULT_SPACE}/hero.json`))).toBe(true);
   });
 
+  it("should not save a changeset when there is nothing to push", async () => {
+    const comp = makeMockComponent({ name: "hero", schema: { title: { type: "text", pos: 0 } } });
+    preconditions.hasLocalSchema({ components: [comp] as any, datasources: [] });
+    preconditions.hasRemoteComponents([comp]);
+    preconditions.hasRemoteFolders([]);
+    preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
+
+    await schemaCommand.parseAsync(["node", "test", "push", "schema.ts", "--space", DEFAULT_SPACE]);
+
+    const files = Object.keys(vol.toJSON());
+    expect(files.filter((f) => f.includes("schema/changesets/"))).toEqual([]);
+  });
+
   it("should show stale warning without --delete", async () => {
     const localComp = makeMockComponent({
       name: "hero",
@@ -896,7 +910,7 @@ describe("schema push command", () => {
     );
   });
 
-  it("should not include stale entities in changeset without --delete", async () => {
+  it("should not save a changeset for stale entities without --delete", async () => {
     const localComp = makeMockComponent({
       name: "hero",
       schema: { title: { type: "text", pos: 0 } },
@@ -913,12 +927,8 @@ describe("schema push command", () => {
 
     await schemaCommand.parseAsync(["node", "test", "push", "schema.ts", "--space", DEFAULT_SPACE]);
 
-    // Without --delete, the changeset should not contain delete entries for stale entities
-    const changesetFile = Object.entries(vol.toJSON()).find(([filename]) =>
-      filename.includes("schema/changesets/"),
-    )?.[1];
-    const changeset = JSON.parse(changesetFile ?? "{}");
-    expect(changeset.changes).toEqual([]);
+    const files = Object.keys(vol.toJSON());
+    expect(files.filter((f) => f.includes("schema/changesets/"))).toEqual([]);
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining("nothing to push"));
   });
 

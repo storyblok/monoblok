@@ -14,8 +14,10 @@ import { saveChangeset } from "../changeset";
 import { displayPath } from "../utils";
 import type { SchemaRollbackOptions } from "./constants";
 import {
+  buildRollbackChangesetEntries,
   buildRollbackOps,
   executeRollback,
+  findLatestChangesetWithChanges,
   formatRollbackOutput,
   listChangesets,
   loadChangeset,
@@ -60,12 +62,12 @@ schemaCommand
       if (changesetFile) {
         resolvedFile = changesetFile;
       } else if (options.latest) {
-        const available = await listChangesets(resolvedBase);
-        if (available.length === 0) {
+        const latest = await findLatestChangesetWithChanges(resolvedBase);
+        if (!latest) {
           ui.warn("No changesets found. Run `schema push` first to create one.");
           return;
         }
-        resolvedFile = available[0];
+        resolvedFile = latest;
         ui.info(`Using latest changeset: ${basename(resolvedFile)}`);
       } else {
         const available = await listChangesets(resolvedBase);
@@ -171,12 +173,7 @@ schemaCommand
           componentFolders: remoteResult.rawComponentFolders,
           datasources: remoteResult.rawDatasources,
         },
-        changes: ops.map((op) => ({
-          type: op.type,
-          name: op.name,
-          action: op.action,
-          ...(Object.keys(op.payload).length > 0 && { after: op.payload }),
-        })),
+        changes: buildRollbackChangesetEntries(ops, remote),
       });
       logger.info("Rollback changeset saved", {
         path: displayPath(rollbackChangesetPath, basePath),

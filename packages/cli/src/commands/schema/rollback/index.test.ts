@@ -74,10 +74,10 @@ const preconditions = {
       ),
     );
   },
-  hasRemoteDatasources() {
+  hasRemoteDatasources(datasources: Record<string, unknown>[] = []) {
     server.use(
       http.get(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/datasources`, () =>
-        HttpResponse.json({ datasources: [] }),
+        HttpResponse.json({ datasources }),
       ),
     );
   },
@@ -289,6 +289,128 @@ describe("schema rollback command", () => {
 
     const files = Object.keys(vol.toJSON());
     expect(files.some((f) => f.includes("schema/changesets/") && f !== CHANGESET_PATH)).toBe(true);
+  });
+
+  const savedRollbackChangeset = (): string => {
+    const saved = Object.keys(vol.toJSON()).find(
+      (f) => f.includes("schema/changesets/") && !f.endsWith(CHANGESET_PATH),
+    );
+    if (!saved) {
+      throw new Error("No rollback changeset was saved");
+    }
+    return saved;
+  };
+
+  it("should restore an updated datasource when the rollback itself is rolled back", async () => {
+    const pushed = { id: 5, name: "Colors", slug: "colours", dimensions: [] };
+    preconditions.hasChangeset(
+      makeChangeset([
+        {
+          type: "datasource",
+          name: "Colors",
+          action: "update",
+          before: { ...pushed, slug: "colors" },
+          after: { name: "Colors", slug: "colours" },
+        },
+      ]),
+    );
+    preconditions.hasRemoteComponents([]);
+    preconditions.hasRemoteFolders();
+    preconditions.hasRemoteTags();
+    preconditions.hasRemoteDatasources([pushed]);
+    const updates: { name?: string; slug?: string }[] = [];
+    server.use(
+      http.patch(
+        `https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/datasources/5`,
+        async ({ request }) => {
+          updates.push(((await request.json()) as { datasource: object }).datasource);
+          return HttpResponse.json({ datasource: pushed });
+        },
+      ),
+    );
+
+    const rollBack = (file: string) =>
+      schemaCommand.parseAsync([
+        "node",
+        "test",
+        "rollback",
+        file,
+        "--space",
+        DEFAULT_SPACE,
+        "--yes",
+      ]);
+    await rollBack(CHANGESET_PATH);
+    await rollBack(savedRollbackChangeset());
+
+    expect(updates).toEqual([
+      expect.objectContaining({ name: "Colors", slug: "colors" }),
+      expect.objectContaining({ name: "Colors", slug: "colours" }),
+    ]);
+  });
+
+  it("should recreate a deleted block when the rollback itself is rolled back", async () => {
+    const comp = makeMockComponent({ name: "hero" });
+    preconditions.hasChangeset(
+      makeChangeset([{ type: "component", name: "hero", action: "create", after: { ...comp } }]),
+    );
+    preconditions.hasRemoteComponents([comp]);
+    preconditions.hasRemoteFolders();
+    preconditions.hasRemoteDatasources();
+    preconditions.hasRemoteTags();
+    preconditions.canDeleteComponents();
+    const created: { name?: string }[] = [];
+    server.use(
+      http.post(
+        `https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/components`,
+        async ({ request }) => {
+          const { component } = (await request.json()) as { component: { name?: string } };
+          created.push(component);
+          return HttpResponse.json({ component: { id: getID(), ...component } });
+        },
+      ),
+    );
+
+    const rollBack = (file: string) =>
+      schemaCommand.parseAsync([
+        "node",
+        "test",
+        "rollback",
+        file,
+        "--space",
+        DEFAULT_SPACE,
+        "--yes",
+      ]);
+    await rollBack(CHANGESET_PATH);
+    preconditions.hasRemoteComponents([]);
+    await rollBack(savedRollbackChangeset());
+
+    expect(created).toEqual([expect.objectContaining({ name: "hero" })]);
+  });
+
+  it("should skip changesets without changes with --latest", async () => {
+    const comp = makeMockComponent({ name: "hero" });
+    vol.fromJSON({
+      [CHANGESET_PATH]: JSON.stringify(
+        makeChangeset([{ type: "component", name: "hero", action: "create", after: { ...comp } }]),
+      ),
+      ".storyblok/schema/changesets/2026-04-11T12-00-00-000Z.json": JSON.stringify(
+        makeChangeset([]),
+      ),
+    });
+
+    await schemaCommand.parseAsync([
+      "node",
+      "test",
+      "rollback",
+      "--latest",
+      "--dry-run",
+      "--space",
+      DEFAULT_SPACE,
+    ]);
+
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining("Using latest changeset: 2026-04-10T12-00-00-000Z.json"),
+    );
   });
 
   it("should warn when changeset has no changes", async () => {

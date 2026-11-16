@@ -69,6 +69,9 @@ export async function StoryblokPreview<TStory extends Story = Story>({
 
   return (
     <StoryblokPreviewServerRuntime
+      // Keyed by story so a reused instance (e.g. in a layout) drops the live
+      // render, last good render, and queued story from the previous story.
+      key={story.id}
       storyId={story.id}
       renderContent={renderContent}
       debounceMs={debounceMs}

@@ -65,6 +65,9 @@ export interface StoryblokPreviewServerRuntimeProps {
   /**
    * Configuration forwarded to the Preview Bridge constructor.
    * Captured at mount time — changes after mount have no effect.
+   *
+   * Plain `BridgeParams`, not `LivePreviewOptions`: these props come from a
+   * Server Component, which can't pass `onChange`/`onError` functions.
    */
   bridgeOptions?: BridgeParams;
 }
@@ -271,6 +274,14 @@ export function StoryblokPreviewServerRuntime({
       // a page preview and a nav preview mounted on the same layout would both
       // re-render on the server with whichever story is being edited.
       if (updatedStory.id !== storyId) {
+        return;
+      }
+      // While the editor shows a previous version (visual history), the
+      // bridge sends the story without `content`. Keep the current render
+      // instead of asking the server to render an empty story, which would
+      // also log the undefined-block warning: the server has no editor URL to
+      // suppress it with.
+      if (updatedStory.content == null) {
         return;
       }
       if (inFlight.current) {

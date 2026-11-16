@@ -12,6 +12,8 @@ import { directories } from "../../../constants";
 import { loadManifest, resolveCommandPath } from "../../../utils/filesystem";
 import * as actions from "../actions";
 import { resetReporter } from "../../../lib/reporter/reporter";
+import { getErrorType } from "../../../lib/telemetry/error-type";
+import { getRunState } from "../../../lib/telemetry/run";
 import { getProgram } from "../../../program";
 import {
   DEFAULT_SPACE,
@@ -1715,6 +1717,7 @@ describe("stories push command", () => {
         expect.stringContaining("- page.stray (in stories: story-a)"),
       );
       expect(process.exitCode).toBe(1);
+      expect(getErrorType(getRunState().error)).toBe("SCHEMA_VALIDATION_ERROR");
     });
 
     it("should not delete local stories when validation fails even if --cleanup is passed", async () => {

@@ -288,6 +288,23 @@ function sendDetached(payloads: TelemetryPayloads): void {
   }
 }
 
+/**
+ * Read again at send time, so turning telemetry off also stops runs that are still going. Requiring
+ * the install ID the run started with keeps a disable-and-enable from authorizing such a run.
+ */
+function getConsentingInstallId(): string | undefined {
+  const current = getTelemetryStatus();
+  if (!current.enabled) {
+    return undefined;
+  }
+  // The `telemetry` commands and rejected runs never start a run.
+  const atStart = getRunState().status;
+  if (atStart && (!atStart.enabled || atStart.installId !== current.installId)) {
+    return undefined;
+  }
+  return current.installId;
+}
+
 /** Never throws or waits for the endpoint, so telemetry can't break or stall a command. */
 export function sendTelemetry(input: TelemetryRun): void {
   try {
@@ -295,13 +312,12 @@ export function sendTelemetry(input: TelemetryRun): void {
       return;
     }
     const debug = isTelemetryDebugEnabled();
-    // The `telemetry` commands and rejected runs never start a run.
-    const status = getRunState().status ?? getTelemetryStatus();
-    if (!status.enabled && !debug) {
+    const installId = getConsentingInstallId();
+    if (!installId && !debug) {
       return;
     }
 
-    const payloads = buildTelemetryPayloads(input, status.enabled ? status.installId : REDACTED);
+    const payloads = buildTelemetryPayloads(input, installId ?? REDACTED);
     if (debug) {
       writeDebugOutput("/v1/traces", payloads.traces);
       writeDebugOutput("/v1/metrics", payloads.metrics);

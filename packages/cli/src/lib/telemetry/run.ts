@@ -1,3 +1,4 @@
+import { CommanderError } from "commander";
 import type { Command } from "commander";
 import { regionCodes, type RegionCode } from "../../constants";
 import { isPromptCancellation } from "../../utils/error/inspect";
@@ -11,7 +12,7 @@ type RunState = {
   error?: unknown;
   canceled?: boolean;
   hasFindings?: boolean;
-  /** Resolved once, so the trace headers and the final send can't disagree. */
+  /** The consent the run started with. Sending also requires the consent current at that time. */
   status?: TelemetryStatus;
   spaceId?: string;
   region?: RegionCode;
@@ -64,6 +65,16 @@ export function recordTelemetrySpaceId(space: unknown): void {
 
 export function recordTelemetryRegion(region: unknown): void {
   run.region = regionCodes.find((code) => code === region);
+}
+
+/**
+ * Commander ends a run that printed help or the version with exit code 0. Those aren't runs of the
+ * command, and would inflate its usage, so nothing is sent.
+ */
+export function recordTelemetryCommanderExit(error: unknown): void {
+  if (error instanceof CommanderError && error.exitCode === 0) {
+    run.sent = true;
+  }
 }
 
 /** True only on the first call, so a run is sent once even when Ctrl+C races the exit. */

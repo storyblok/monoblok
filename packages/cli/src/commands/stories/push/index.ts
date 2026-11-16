@@ -15,7 +15,7 @@ import { session } from "../../../session";
 import { storiesCommand } from "../command";
 import { loadManifest, resolveCommandPath } from "../../../utils/filesystem";
 import { isRecord } from "../../../utils/object";
-import { recordTelemetryFindings } from "../../../lib/telemetry/run";
+import { recordTelemetryError } from "../../../lib/telemetry/run";
 import { getUI } from "../../../lib/ui";
 import { getLogger } from "../../../lib/logger/logger";
 import { getReporter } from "../../../lib/reporter/reporter";
@@ -34,7 +34,12 @@ import { findComponentSchemas } from "../utils";
 import { baseFieldName } from "../content-fields";
 import { loadAssetMap } from "../../assets/utils";
 import { prefetchTargetStoriesByKeys } from "../actions";
-import { collectSchemaIssues, formatSchemaIssues, hasSchemaIssues } from "../validate-story";
+import {
+  collectSchemaIssues,
+  formatSchemaIssues,
+  hasSchemaIssues,
+  SchemaValidationError,
+} from "../validate-story";
 import { FailureCollector } from "./failure-report";
 
 const pushCmd = storiesCommand
@@ -145,7 +150,7 @@ pushCmd.action(async (options, command) => {
           summary.creationResults.failed = total;
           // Fail the process so CI does not report a green job with nothing pushed.
           process.exitCode = EXIT_CODE_RUNTIME_ERROR;
-          recordTelemetryFindings();
+          recordTelemetryError(new SchemaValidationError());
           return;
         }
         ui.warn(message);

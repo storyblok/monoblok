@@ -117,6 +117,16 @@
         "dependsOn": [
           "@storyblok/openapi-codegen:build"
         ]
+      },
+      "build": {
+        "inputs": [
+          "default",
+          "^default",
+          "cjsBuildPlugins",
+          {
+            "env": "STORYBLOK_TELEMETRY_DATASET"
+          }
+        ]
       }
     }
   }

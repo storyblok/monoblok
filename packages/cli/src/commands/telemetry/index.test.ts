@@ -25,7 +25,8 @@ vi.mock("../../lib/config/loader", async (importOriginal) => {
 const INSTALL_ID = "3f0c1d9e-1111-4222-8333-944455556666";
 
 function storedConsent() {
-  const content = vol.toJSON()[getConsentFilePath()];
+  // memfs drops the drive letter from its keys on Windows.
+  const content = vol.toJSON()[getConsentFilePath().replace(/^[a-z]:/i, "")];
   return content ? JSON.parse(content) : undefined;
 }
 
@@ -194,6 +195,15 @@ describe("telemetry command", () => {
 
     expect(output()).toContain("Telemetry is enabled.");
     expect(output()).toContain(INSTALL_ID);
+  });
+
+  it("should show the status without a subcommand", async () => {
+    preconditions.consentGiven();
+
+    await telemetryCommand.parseAsync(["node", "test"]);
+
+    expect(output()).toContain("Telemetry is enabled.");
+    expect(process.exitCode ?? 0).toBe(0);
   });
 
   it("should tell a user who declined how to enable telemetry", async () => {

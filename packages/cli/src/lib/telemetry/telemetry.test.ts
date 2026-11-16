@@ -15,6 +15,7 @@ import { createMapiClient } from "../../api";
 import { getConsentFilePath } from "./consent";
 import { TELEMETRY_SCHEMA_VERSION } from "./config";
 import {
+  recordTelemetryCommanderExit,
   recordTelemetryError,
   recordTelemetryFindings,
   recordTelemetryInterrupt,
@@ -81,6 +82,7 @@ const server = setupServer(
 
 function createProgram() {
   const program = new Command("storyblok")
+    .version("1.0.0")
     .exitOverride()
     .configureOutput({ writeErr: () => {}, writeOut: () => {} })
     .option("--verbose")
@@ -122,6 +124,13 @@ const preconditions = {
   consentDeclined() {
     storeConsent({ enabled: false, schemaVersion: TELEMETRY_SCHEMA_VERSION });
   },
+  consentGivenAgainWithNewInstallId() {
+    storeConsent({
+      enabled: true,
+      schemaVersion: TELEMETRY_SCHEMA_VERSION,
+      installId: "7a2b4c6d-2222-4333-8444-955566667777",
+    });
+  },
   consentGivenForOlderSchema() {
     storeConsent({
       enabled: true,
@@ -160,13 +169,18 @@ const rateLimitError = () =>
     new FetchError("Too Many Requests", { status: 429, statusText: "Too Many Requests" }),
   );
 
-async function run(argv: string[], { exitCode = 0, endTime = START_TIME + 250 } = {}) {
+async function run(
+  argv: string[],
+  { exitCode = 0, endTime = START_TIME + 250, whileRunning = () => {} } = {},
+) {
   const program = createProgram();
   try {
     await program.parseAsync(argv, { from: "user" });
-  } catch {
-    // Commander rejected the input; telemetry still records the run.
+  } catch (error) {
+    // As in `src/index.ts`: Commander rejected the input or printed help.
+    recordTelemetryCommanderExit(error);
   }
+  whileRunning();
   sendTelemetry({ program, startTime: START_TIME, endTime, exitCode });
   await Promise.all(senders);
 }
@@ -264,6 +278,30 @@ describe("telemetry", () => {
       expect(received).toHaveLength(0);
     });
 
+    it("should send nothing when telemetry is disabled while the run is going", async () => {
+      preconditions.consentGiven();
+
+      await run(["components", "push"], { whileRunning: preconditions.consentDeclined });
+
+      expect(received).toHaveLength(0);
+    });
+
+    it("should send nothing when telemetry is disabled and enabled again while the run is going", async () => {
+      preconditions.consentGiven();
+
+      await run(["components", "push"], {
+        whileRunning: preconditions.consentGivenAgainWithNewInstallId,
+      });
+
+      expect(received).toHaveLength(0);
+    });
+
+    it("should send nothing when telemetry is enabled while the run is going", async () => {
+      await run(["components", "push"], { whileRunning: preconditions.consentGiven });
+
+      expect(received).toHaveLength(0);
+    });
+
     it.each(["DO_NOT_TRACK", "STORYBLOK_TELEMETRY_DISABLED"])(
       "should send nothing when %s is set, even with consent",
       async (variable) => {
@@ -291,6 +329,19 @@ describe("telemetry", () => {
       "process.exit.code": "0",
     });
     expect(metricNames()).toEqual(["storyblok.cli.command.count"]);
+  });
+
+  it.each([
+    ["storyblok --help", ["--help"]],
+    ["storyblok components push --help", ["components", "push", "--help"]],
+    ["storyblok help components", ["help", "components"]],
+    ["storyblok --version", ["--version"]],
+  ])("should send nothing for %s, which isn't a run of the command", async (_name, argv) => {
+    preconditions.consentGiven();
+
+    await run(argv);
+
+    expect(received).toHaveLength(0);
   });
 
   it("should resolve command aliases to the command name", async () => {

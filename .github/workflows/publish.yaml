@@ -36,6 +36,8 @@ jobs:
 
       - name: Build packages
         run: pnpm nx run-many -p="tag:npm:public" -t build
+        env:
+          STORYBLOK_TELEMETRY_DATASET: prd-storyblok-cli
 
       - name: Print Environment Info
         run: pnpm nx report

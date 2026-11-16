@@ -1,4 +1,4 @@
-# ADR-0026: CLI Telemetry
+# ADR-0027: CLI Telemetry
 
 **Status:** Accepted. **Date:** 2026-11-10
 
@@ -30,6 +30,8 @@ to do so unless its user asks.
 The answer lives in the user's home directory, not next to the credentials, whose folder falls back
 to the working directory when `HOME` is unset: consent must not depend on where the CLI runs.
 Enabling again after an opt-out creates a new install ID, so runs before and after can't be linked.
+A run sends only if the answer at its end still matches the one it started with, so an opt-out also
+stops runs that are still going.
 
 ### 2. Hand-rolled OTLP/JSON over `node:https`
 
@@ -74,7 +76,12 @@ anticipate, and those are the ones worth seeing.
 A run that exits 0 counts as a success even if it logged an error, because some commands recover
 from a failed item. Commands that report a result through the exit code, such as
 `schema diff --exit-code`, mark the run as `findings`. Any other non-zero exit counts as an error,
-so a failure that bypasses the error handling is still counted.
+so a failure that bypasses the error handling is still counted. That includes `stories push` stopped
+by `--validate strict`: pushing is its job, so it counts as an error (`SCHEMA_VALIDATION_ERROR`)
+that can be told apart from CLI failures by its type.
+
+Runs that only print help or the version send nothing. Agents read help often, and counting it would
+inflate the usage of the commands they look up.
 
 ### 5. Sent from a detached process
 
@@ -97,11 +104,14 @@ another signal is not recorded.
 
 ### 6. Ingest-only token in the package
 
-The Dash0 token ships in the published package. It is scoped to ingesting into a dataset that holds
-only CLI data. Endpoint and token are fixed per published version, so rotating the token or changing
-the vendor requires a release and silences older versions. An ingest endpoint of our own that
-forwards to the vendor would avoid that, as Next.js, Nuxt, and Astro do, but is a service to run for
-data that tolerates gaps.
+The Dash0 token ships in the published package. It is scoped to ingesting into the CLI's datasets,
+which hold only CLI data. The dataset is inlined at build time: the publish workflow builds with
+`prd-storyblok-cli`, every other build (local, PR previews) with `dev-storyblok-cli`, so testing
+never mixes into production data. The variable is a build input of the CLI in Nx, so a cached dev
+build can't be published. Endpoint and token are fixed per published version, so rotating the token
+or changing the vendor requires a release and silences older versions. An ingest endpoint of our own
+that forwards to the vendor would avoid that, as Next.js, Nuxt, and Astro do, but is a service to
+run for data that tolerates gaps.
 
 ### 7. CI and agent detection via `std-env`
 

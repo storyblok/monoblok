@@ -6,7 +6,7 @@ import { CommandError, handleError } from "./utils";
 import { getProgram } from "./program";
 import { getUI } from "./lib/ui";
 import { colorPalette } from "./constants";
-import { recordTelemetryError } from "./lib/telemetry/run";
+import { recordTelemetryCommanderExit, recordTelemetryError } from "./lib/telemetry/run";
 import { sendTelemetryOnExit } from "./lib/telemetry/telemetry";
 import "./commands/login";
 import "./commands/logout";
@@ -51,6 +51,7 @@ try {
   // Commander throws CommanderError after exitOverride — exit code is already set
   // via writeErr → handleError, so we only need to handle the --help / --version cases.
   if (error instanceof CommanderError) {
+    recordTelemetryCommanderExit(error);
     // --help and --version throw with exitCode 0; let them pass silently
     if (error.exitCode !== 0) {
       // For parse errors, exitCode was already set by writeErr → handleError;

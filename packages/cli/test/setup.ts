@@ -1,6 +1,7 @@
 import { beforeEach, vi } from "vitest";
 import { vol } from "memfs";
 import type { RegionCode } from "../src/constants";
+import { resetTelemetryRun } from "../src/lib/telemetry/run";
 import type { SessionState } from "../src/session";
 
 vi.mock("node:fs");
@@ -57,4 +58,5 @@ vi.mock("../src/lib/config/store", async (importOriginal) => {
 beforeEach(() => {
   vol.reset();
   process.exitCode = undefined;
+  resetTelemetryRun();
 });

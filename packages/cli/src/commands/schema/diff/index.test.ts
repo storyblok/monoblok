@@ -7,6 +7,7 @@ import { schemaCommand } from "../command";
 import type { SchemaData } from "../types";
 import { CommandError, handleError } from "../../../utils";
 import * as configHelpers from "../../../lib/config/helpers";
+import { getRunState } from "../../../lib/telemetry/run";
 import { loadSchema } from "../load-schema";
 
 // loadSchema uses jiti to import TypeScript entry files at runtime, which cannot
@@ -474,6 +475,7 @@ describe("schema diff command", () => {
 
       expect(diffOutput()).toContain(`hero (${change})`);
       expect(process.exitCode).toBe(1);
+      expect(getRunState().hasFindings).toBe(true);
     });
 
     it("should exit 0 when the schemas differ without the flag", async () => {
@@ -521,6 +523,7 @@ describe("schema diff command", () => {
       await schemaCommand.parseAsync(["node", "test", "diff", "--from", "111", "--to", "222"]);
 
       expect(process.exitCode).toBe(1);
+      expect(getRunState().hasFindings).toBeFalsy();
     });
 
     it("should exit 2 when a schema entry file cannot be loaded", async () => {

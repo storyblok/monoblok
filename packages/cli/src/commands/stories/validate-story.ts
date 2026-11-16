@@ -251,3 +251,11 @@ export const formatSchemaIssues = (
 
 export const hasSchemaIssues = (issues: AggregatedSchemaIssues): boolean =>
   issues.missingSchemas.size > 0 || issues.driftByComponent.size > 0;
+
+/** Telemetry reports a push that `--validate strict` stopped as `SCHEMA_VALIDATION_ERROR`. */
+export class SchemaValidationError extends Error {
+  constructor() {
+    super("Stories don't match the component schemas.");
+    this.name = "SchemaValidationError";
+  }
+}

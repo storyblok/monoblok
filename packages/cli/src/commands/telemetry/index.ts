@@ -42,7 +42,7 @@ export const telemetryCommand = program
   );
 
 telemetryCommand
-  .command("status")
+  .command("status", { isDefault: true })
   .description("Show whether telemetry is enabled")
   .action(() => {
     const ui = getUI();

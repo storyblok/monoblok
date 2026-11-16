@@ -27,7 +27,27 @@ Each run sends the following data:
 - Whether the run is in CI, and the name of the coding agent that ran it, if any
 - The space ID, the region, and a random install ID
 
-The CLI never sends error messages or file contents.
+The CLI never sends error messages or file contents. Runs that only show help or the version send
+nothing.
+
+For example, a `storyblok components pull --space 12345` run that fails because the space doesn’t
+exist sends these attributes, in addition to the versions and the platform:
+
+```json
+{
+  "storyblok.cli.command": "storyblok components pull",
+  "storyblok.cli.outcome": "error",
+  "error.type": "NOT_FOUND",
+  "process.exit.code": 1,
+  "storyblok.cli.ci": false,
+  "storyblok.cli.agent": "claude",
+  "storyblok.cli.region": "eu",
+  "storyblok.cli.space.id": "12345",
+  "storyblok.cli.install.id": "3f0c1d9e-1111-4222-8333-944455556666",
+  "storyblok.cli.package_manager": "npm",
+  "storyblok.cli.flag.space": "[REDACTED]"
+}
+```
 
 With telemetry enabled, requests to the Storyblok Management API include a trace ID that links them
 to the run.
@@ -44,6 +64,8 @@ To print the data to stderr instead of sending it, set `STORYBLOK_TELEMETRY_DEBU
 STORYBLOK_TELEMETRY_DEBUG=1 storyblok components pull --space 12345
 ```
 
+Debug mode also works with telemetry disabled. The output then shows the install ID as `[REDACTED]`.
+
 ## Opt in or out
 
 | Command                       | Description                                     |
@@ -51,6 +73,8 @@ STORYBLOK_TELEMETRY_DEBUG=1 storyblok components pull --space 12345
 | `storyblok telemetry status`  | Shows whether telemetry is enabled.             |
 | `storyblok telemetry enable`  | Turns telemetry on.                             |
 | `storyblok telemetry disable` | Turns telemetry off and deletes the install ID. |
+
+Turning telemetry off also applies to commands that are still running.
 
 To turn telemetry off regardless of your answer to the prompt, set `STORYBLOK_TELEMETRY_DISABLED=1`
 or `DO_NOT_TRACK=1`.

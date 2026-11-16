@@ -4,6 +4,7 @@ import { vol } from "memfs";
 import "../index";
 import { schemaCommand } from "../command";
 import { resetReporter } from "../../../lib/reporter/reporter";
+import { getRunState } from "../../../lib/telemetry/run";
 
 // Mock jiti so the loader classifies controlled module exports instead of
 // reading/transpiling a real file (node:fs is mocked with memfs in tests).
@@ -80,6 +81,7 @@ describe("schema validate command", () => {
     await runValidate();
 
     expect(process.exitCode).toBe(1);
+    expect(getRunState().hasFindings).toBe(true);
     const output = loggedOutput();
     expect(output).toContain("hero (block)");
     expect(output).toContain("unresolved_allow");
@@ -95,6 +97,7 @@ describe("schema validate command", () => {
     await runValidate();
 
     expect(process.exitCode).toBe(1);
+    expect(getRunState().hasFindings).toBeFalsy();
   });
 
   it("should exit 2 when the entry file does not exist", async () => {

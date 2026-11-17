@@ -21,6 +21,7 @@ import {
   indexBlocks,
   isBlock,
   languageOfKey,
+  replaceEntries,
   TRANSLATION_SEPARATOR,
   translationKeysFor,
 } from "./patch";
@@ -120,11 +121,10 @@ function isEmptyValue(value: unknown): boolean {
 /** Rewrites a key in place while keeping its position in the object. */
 function renameKey(block: AnyBlock, from: string, to: string): void {
   if (!(from in block)) return;
-  const entries = Object.entries(block).map(([key, value]) =>
-    key === from ? ([to, value] as const) : ([key, value] as const),
+  replaceEntries(
+    block,
+    Object.entries(block).map(([key, value]) => [key === from ? to : key, value]),
   );
-  for (const key of Object.keys(block)) delete block[key];
-  for (const [key, value] of entries) block[key] = value;
 }
 
 /**

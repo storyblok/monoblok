@@ -2,7 +2,14 @@ import { describe, expect, it, vi } from "vitest";
 import { applyMigration, type StoryForMigration } from "./apply-migration";
 import { defineMigration, type MigrationOps } from "./define-migration";
 import type { Journal, MigrationRun, StoryInverse } from "./journal";
-import { alterField, expandBlock, renameField, unwrapChildren, wrapChildren } from "./ops";
+import {
+  alterField,
+  expandBlock,
+  removeField,
+  renameField,
+  unwrapChildren,
+  wrapChildren,
+} from "./ops";
 import type { SchemaShape } from "./types";
 import type { BlockPatch } from "./patch";
 import { planUndo, undoStories } from "./undo-run";
@@ -465,6 +472,70 @@ describe("undoStories after a recorded run", () => {
   }
 
   const uids = (list: unknown) => (list as { _uid: string }[]).map((item) => item._uid);
+
+  const firstBlockOf = (outcome: ReturnType<typeof undo>) =>
+    ((outcome.writes[0]?.content as Content).body as Content[])[0];
+
+  it("should put a renamed field back where it was in the block", () => {
+    const original: Content = {
+      _uid: "r",
+      component: "page",
+      body: [
+        { _uid: "a", component: "card", title: "Hi", title__i18n__de: "Hallo", subtitle: "Sub" },
+      ],
+    };
+    const run = migrate(
+      [renameField({ block: "card", field: "title", to: "headline" })],
+      structuredClone(original),
+    );
+
+    const outcome = undo(run.inverse, run.content);
+
+    expect(Object.keys(firstBlockOf(outcome)!)).toEqual([
+      "_uid",
+      "component",
+      "title",
+      "title__i18n__de",
+      "subtitle",
+    ]);
+  });
+
+  it("should put a removed field back where it was in the block", () => {
+    const original: Content = {
+      _uid: "r",
+      component: "page",
+      body: [{ _uid: "a", component: "card", title: "Hi", subtitle: "Sub" }],
+    };
+    const run = migrate(
+      [removeField({ block: "card", field: "title" })],
+      structuredClone(original),
+    );
+
+    const outcome = undo(run.inverse, run.content);
+
+    expect(outcome.writes[0]?.content).toEqual(original);
+    expect(Object.keys(firstBlockOf(outcome)!)).toEqual(["_uid", "component", "title", "subtitle"]);
+  });
+
+  it("should still restore a field whose preceding field was removed since the run", () => {
+    const run = migrate([renameField({ block: "card", field: "title", to: "headline" })], {
+      _uid: "r",
+      component: "page",
+      body: [{ _uid: "a", component: "card", eyebrow: "New", title: "Hi", subtitle: "Sub" }],
+    });
+    const [migrated] = run.content.body as Content[];
+    delete migrated!.eyebrow;
+
+    const outcome = undo(run.inverse, run.content);
+
+    expect(outcome.conflicts).toEqual([]);
+    expect(firstBlockOf(outcome)).toEqual({
+      _uid: "a",
+      component: "card",
+      title: "Hi",
+      subtitle: "Sub",
+    });
+  });
 
   it("should put expanded blocks back in their original order", () => {
     const original: Content = {

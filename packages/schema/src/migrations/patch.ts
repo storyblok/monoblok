@@ -8,8 +8,13 @@ import { isRecord } from "../utils/is-record";
 export type AnyBlock = Record<string, unknown> & { _uid: string; component: string };
 
 export type BlockPatchOp =
-  /** Whole-value replacement of one field. `expect` is the value the migration left behind. */
-  | { kind: "set"; key: string; value: unknown; expect?: unknown }
+  /**
+   * Whole-value replacement of one field. `expect` is the value the migration
+   * left behind. `afterKey` is the key a field the block does not hold yet
+   * follows, `null` when it comes first, so a rename or removal is undone
+   * without moving the field to the end of the block.
+   */
+  | { kind: "set"; key: string; value: unknown; expect?: unknown; afterKey?: string | null }
   /** Field removed entirely. */
   | { kind: "unset"; key: string; expect?: unknown }
   /**
@@ -177,6 +182,7 @@ export function indexBlocks(
 export function diffBlock(before: AnyBlock, after: AnyBlock): BlockPatch | null {
   const ops: BlockPatchOp[] = [];
   const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
+  const afterKeys = Object.keys(after);
 
   for (const key of keys) {
     if (TRANSPORT_KEYS.has(key)) continue;
@@ -190,7 +196,9 @@ export function diffBlock(before: AnyBlock, after: AnyBlock): BlockPatch | null 
       continue;
     }
     if (!hadKey && hasKey) {
-      ops.push({ kind: "set", key, value: afterValue, expect: undefined });
+      const at = afterKeys.indexOf(key);
+      const afterKey = at === 0 ? null : afterKeys[at - 1]!;
+      ops.push({ kind: "set", key, value: afterValue, expect: undefined, afterKey });
       continue;
     }
 
@@ -385,10 +393,35 @@ function applyOrder(a: BlockPatchOp, b: BlockPatchOp): number {
   return a.kind === "listInsert" && b.kind === "listInsert" ? a.index - b.index : 0;
 }
 
+/** Replaces a block's entries in place, in the given order. */
+export function replaceEntries(block: AnyBlock, entries: [string, unknown][]): void {
+  for (const key of Object.keys(block)) delete block[key];
+  for (const [key, value] of entries) block[key] = value;
+}
+
+/**
+ * Adds a key right after `afterKey`, or first when it is `null`. A key the
+ * block no longer holds leaves no position to restore, so the key is appended.
+ */
+function insertKey(block: AnyBlock, key: string, value: unknown, afterKey: string | null): void {
+  const entries = Object.entries(block);
+  const anchor = afterKey === null ? -1 : entries.findIndex(([existing]) => existing === afterKey);
+  if (afterKey !== null && anchor === -1) {
+    block[key] = value;
+    return;
+  }
+  entries.splice(anchor + 1, 0, [key, value]);
+  replaceEntries(block, entries);
+}
+
 function applyOp(block: AnyBlock, op: BlockPatchOp): boolean {
   switch (op.kind) {
     case "set":
-      block[op.key] = structuredClone(op.value);
+      if (op.key in block || op.afterKey === undefined) {
+        block[op.key] = structuredClone(op.value);
+      } else {
+        insertKey(block, op.key, structuredClone(op.value), op.afterKey);
+      }
       return true;
     case "unset":
       delete block[op.key];

@@ -1953,7 +1953,17 @@ describe("schema push command", () => {
       "Review this migration before running it against your space.",
     );
     expect(migrationFile![1]).toContain("Generated migrations are scaffolds");
-    expect(migrationFile![1]).toContain("block.new_field = block.old_field;");
+    // oxlint-disable-next-line no-new-func
+    const migrate = new Function(
+      migrationFile![1]!.replace("export default function", "return function"),
+    )();
+    const migrated = migrate({ _uid: "1", component: "hero", author_name: "Ada", title: "Hi" });
+    expect(Object.entries(migrated)).toEqual([
+      ["_uid", "1"],
+      ["component", "hero"],
+      ["author", "Ada"],
+      ["title", "Hi"],
+    ]);
   });
 
   it("should not write migration files when --dry-run is used with explicit --migrations", async () => {

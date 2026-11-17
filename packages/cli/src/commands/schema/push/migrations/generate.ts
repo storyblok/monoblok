@@ -48,6 +48,11 @@ function typeConversion(field: string, oldType: string, newType: string): string
   }
 }
 
+/** A statement that renames a field without moving it to the end of the block. */
+function renameStatement(from: string, to: string): string {
+  return `block = Object.fromEntries(Object.entries(block).map(([key, value]) => [key === '${from}' ? '${to}' : key, value]));`;
+}
+
 /**
  * Renders a migration function body from a list of breaking changes.
  * Returns a complete migration file content string.
@@ -57,26 +62,22 @@ export function renderMigrationCode(changes: BreakingChange[]): string {
 
   lines.push("  // Review this migration before running it against your space.");
   lines.push("  // Generated migrations are scaffolds and may need manual adjustments.");
-  lines.push("  // Example rename migration:");
-  lines.push("  // block.new_field = block.old_field;");
-  lines.push("  // delete block.old_field;");
+  lines.push("  // Example rename migration, which keeps the field's position in the block:");
+  lines.push(`  // ${renameStatement("old_field", "new_field")}`);
   lines.push("");
 
   for (const change of changes) {
     switch (change.kind) {
       case "rename":
         lines.push(`  // Rename: ${change.oldField} → ${change.field}`);
-        lines.push(`  if ('${change.oldField}' in block) {`);
-        lines.push(`    block.${change.field} = block.${change.oldField};`);
-        lines.push(`    delete block.${change.oldField};`);
-        lines.push(`  }`);
+        lines.push(`  ${renameStatement(change.oldField, change.field)}`);
         break;
 
       case "removed":
         if (change.renameHint) {
           for (const newField of change.renameHint.newFields) {
             lines.push(`  // If '${change.field}' was renamed to '${newField}', uncomment:`);
-            lines.push(`  // block.${newField} = block.${change.field};`);
+            lines.push(`  // ${renameStatement(change.field, newField)}`);
           }
         } else {
           lines.push(`  // Removed field: ${change.field}`);

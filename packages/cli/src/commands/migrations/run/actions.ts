@@ -107,22 +107,15 @@ export function applyMigrationToAllBlocks(
     return processed;
   }
 
-  let migratedContent = null;
   if (migrationTargetsComponent(migrationFilename, content.component)) {
-    migratedContent = migrationFunction({ ...content });
+    const migratedContent = migrationFunction({ ...content });
+    // Rewritten in the returned order: a field renamed in place keeps its position.
+    for (const key of Object.keys(content)) delete content[key];
+    Object.assign(content, migratedContent);
     processed = true;
   }
 
-  const uniqueKeys = new Set([...Object.keys(content), ...Object.keys(migratedContent || {})]);
-  for (const key of uniqueKeys) {
-    if (migratedContent) {
-      if (!(key in migratedContent)) {
-        delete content[key];
-        continue;
-      }
-      content[key] = migratedContent[key];
-    }
-
+  for (const key of Object.keys(content)) {
     // Recursively process all properties that might contain nested blocks
     // Process arrays (might contain blocks)
     if (Array.isArray(content[key])) {

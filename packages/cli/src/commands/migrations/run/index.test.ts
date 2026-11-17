@@ -408,6 +408,24 @@ describe("migrations run command", () => {
     );
   });
 
+  it("should keep the key order a migration function returns", async () => {
+    preconditions.canFetchStories();
+    preconditions.canFetchStory();
+    preconditions.canUpdateStory();
+    preconditions.canLoadMigrationFunction((block: Record<string, unknown>) =>
+      Object.fromEntries(
+        Object.entries(block).map(([key, value]) => [key === "unchanged" ? "renamed" : key, value]),
+      ),
+    );
+    resetLogger();
+
+    await migrationsCommand.parseAsync(["node", "test", "run", "--space", "12345"]);
+
+    const [, , payload] = vi.mocked(updateStory).mock.calls[0]!;
+    const [block] = (payload.story.content as { body: Record<string, unknown>[] }).body;
+    expect(Object.keys(block!)).toEqual(["_uid", "component", "renamed", "amount"]);
+  });
+
   it("should report a run with only skipped migrations as success", async () => {
     preconditions.canMigrateNoChange();
 

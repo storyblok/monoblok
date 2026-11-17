@@ -4,16 +4,38 @@ import { vol } from "memfs";
 import { renderMigrationCode, toMigrationOps, writeMigrationFile } from "./generate";
 import type { BreakingChange } from "./types";
 
+type Block = Record<string, unknown>;
+
+/** Turns generated migration code into the function `migrations run` calls for each block. */
+function loadMigration(code: string): (block: Block) => Block {
+  // oxlint-disable-next-line no-new-func
+  return new Function(code.replace("export default function", "return function"))();
+}
+
 describe("renderMigrationCode", () => {
-  it("should generate rename code", () => {
-    const changes: BreakingChange[] = [
-      { kind: "rename", field: "author", oldField: "author_name" },
-    ];
-    const code = renderMigrationCode(changes);
-    expect(code).toContain("block.author = block.author_name");
-    expect(code).toContain("delete block.author_name");
-    expect(code).toContain("export default function");
-    expect(code).toContain("return block");
+  it("should rename a field in place, so the block keeps its key order", () => {
+    const migrate = loadMigration(
+      renderMigrationCode([{ kind: "rename", field: "author", oldField: "author_name" }]),
+    );
+
+    const migrated = migrate({ _uid: "1", component: "quote", author_name: "Ada", text: "Hi" });
+
+    expect(Object.entries(migrated)).toEqual([
+      ["_uid", "1"],
+      ["component", "quote"],
+      ["author", "Ada"],
+      ["text", "Hi"],
+    ]);
+  });
+
+  it("should leave a block without the renamed field unchanged", () => {
+    const migrate = loadMigration(
+      renderMigrationCode([{ kind: "rename", field: "author", oldField: "author_name" }]),
+    );
+
+    const migrated = migrate({ _uid: "1", component: "quote", author: "Ada" });
+
+    expect(migrated).toEqual({ _uid: "1", component: "quote", author: "Ada" });
   });
 
   it("should comment a mapping for each option value the field no longer offers", () => {
@@ -110,8 +132,21 @@ describe("renderMigrationCode", () => {
     ];
     const code = renderMigrationCode(changes);
     expect(code).toContain("// If 'author_name' was renamed to 'author', uncomment:");
-    expect(code).toContain("// block.author = block.author_name;");
-    expect(code).toContain("delete block.author_name");
+    expect(loadMigration(code)({ _uid: "1", component: "quote", author_name: "Ada" })).toEqual({
+      _uid: "1",
+      component: "quote",
+    });
+  });
+
+  it("should rename a declined rename in place once its hint is uncommented", () => {
+    const code = renderMigrationCode([
+      { kind: "removed", field: "author_name", renameHint: { newFields: ["author"] } },
+    ]);
+    const migrate = loadMigration(code.replace(/^ {2}\/\/ (block = .*'author_name'.*)$/m, "  $1"));
+
+    const migrated = migrate({ _uid: "1", component: "quote", author_name: "Ada", text: "Hi" });
+
+    expect(Object.keys(migrated)).toEqual(["_uid", "component", "author", "text"]);
   });
 
   it("should combine multiple changes in one file", () => {
@@ -121,7 +156,14 @@ describe("renderMigrationCode", () => {
       { kind: "removed", field: "subtitle" },
     ];
     const code = renderMigrationCode(changes);
-    expect(code).toContain("block.author = block.author_name");
+    const migrated = loadMigration(code)({
+      _uid: "1",
+      component: "review",
+      author_name: "Ada",
+      rating: "4",
+      subtitle: "Old",
+    });
+    expect(migrated).toEqual({ _uid: "1", component: "review", author: "Ada", rating: 4 });
     expect(code).toContain("Number(block.rating)");
     expect(code).toContain("delete block.subtitle");
   });

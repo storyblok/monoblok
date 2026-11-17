@@ -1,4 +1,4 @@
-import { join, parse, resolve } from "pathe";
+import { basename, dirname, extname, join, parse, resolve } from "pathe";
 import { pathToFileURL } from "node:url";
 import {
   access,
@@ -12,8 +12,90 @@ import {
 import { handleFileSystemError } from "./error/filesystem-error";
 import type { FileReaderResult } from "../types";
 import filenamify from "filenamify";
-import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { toError } from "./error";
+
+/** `runId` is the run's start time in ms; it orders log and report files for listing and pruning. */
+export function getRunFileName(commandPieces: string[], runId: number, extension: string): string {
+  return `${commandPieces.join("-")}-${runId}${extension}`;
+}
+
+const RUN_ID_PATTERN = /-(\d+)$/;
+
+function getRunId(file: string): number | undefined {
+  const match = RUN_ID_PATTERN.exec(parse(file).name);
+  return match ? Number(match[1]) : undefined;
+}
+
+function compareCodeUnits(a: string, b: string): number {
+  if (a === b) {
+    return 0;
+  }
+  return a < b ? -1 : 1;
+}
+
+/**
+ * Lists the log or report file names in `directory`, oldest run first. Ignores
+ * files without a run ID.
+ */
+export function listRunFiles(directory: string, extension: string): string[] {
+  if (!existsSync(directory)) {
+    return [];
+  }
+
+  return readdirSync(directory, { withFileTypes: true })
+    .filter((entry) => !entry.isDirectory() && extname(entry.name) === extension)
+    .flatMap((entry) => {
+      const runId = getRunId(entry.name);
+      return runId === undefined ? [] : [{ name: entry.name, runId }];
+    })
+    .sort((a, b) => a.runId - b.runId || compareCodeUnits(a.name, b.name))
+    .map((file) => file.name);
+}
+
+/** Deletes the oldest files until `keep` remain, never `currentFile`, and returns how many it deleted. */
+export function pruneRunFiles(
+  directory: string,
+  extension: string,
+  keep: number,
+  currentFile?: string,
+): number {
+  const files = listRunFiles(directory, extension);
+  const filesToDelete = files
+    .filter((file) => file !== currentFile)
+    .slice(0, Math.max(0, files.length - keep));
+
+  for (const file of filesToDelete) {
+    try {
+      unlinkSync(join(directory, file));
+    } catch (maybeError) {
+      const error = toError(maybeError);
+      // A concurrent CLI run pruning the same directory may delete the file first.
+      if (!("code" in error && error.code === "ENOENT")) {
+        throw error;
+      }
+    }
+  }
+
+  return filesToDelete.length;
+}
+
+/** Prunes the run files next to `currentFilePath`, never deleting it. */
+export function pruneSiblingRunFiles(currentFilePath: string, keep: number): number {
+  return pruneRunFiles(
+    dirname(currentFilePath),
+    extname(currentFilePath),
+    keep,
+    basename(currentFilePath),
+  );
+}
 
 // Default working folder for commands that do not pass --path explicitly.
 export const DEFAULT_STORAGE_DIR = ".storyblok";

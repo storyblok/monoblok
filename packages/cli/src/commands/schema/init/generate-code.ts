@@ -11,6 +11,7 @@ import {
   resolveVarNames,
   sortSchemaByPos,
   toCamelCaseIdentifier,
+  toLayoutDslField,
 } from "@storyblok/schema/internal/codegen";
 
 import type { Component, ComponentFolder, Datasource } from "../../../types";
@@ -25,6 +26,19 @@ import {
 } from "../utils";
 
 export { componentVarName, resolveVarNames } from "@storyblok/schema/internal/codegen";
+
+/** `<block>.<field>` paths of layout fields whose `required` `toLayoutDslField` removes. */
+export function collectRequiredLayoutFields(components: Component[]): string[] {
+  const result: string[] = [];
+  for (const component of components) {
+    for (const [fieldName, field] of Object.entries(component.schema ?? {})) {
+      if (isRecord(field) && toLayoutDslField(field).removedRequired) {
+        result.push(`${component.name}.${fieldName}`);
+      }
+    }
+  }
+  return result;
+}
 
 /**
  * Converts a string to kebab-case, keeping only filesystem/shell-safe

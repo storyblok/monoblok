@@ -14,6 +14,7 @@ export {
   omitEmptyArrays,
   resolveTagRefs,
   sortSchemaByPos,
+  toLayoutDslField,
 } from "./field";
 export type { TagRef } from "./field";
 export { componentVarName, resolveVarNames, toCamelCaseIdentifier } from "./names";

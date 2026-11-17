@@ -1,9 +1,84 @@
+import type { LAYOUT_FIELD_TYPES } from "../field-types";
+import type { Field } from "../generated/types/field";
 import { DENIABLE_FIELD_TYPES } from "../restrictions";
 import { isRecord } from "../utils/is-record";
 import { formatValue, quoteString, RawCode } from "./format";
 
 /** Fields to strip from individual schema field entries (`pos` is implicit in array order). */
 const FIELD_STRIP_KEYS = new Set(["id", "pos"]);
+
+type FieldOfType<TType> = Extract<Field, { type: TType }>;
+
+/** `TKeys` when it lists every key `TField` owns, else `never`, so a missed key fails to compile. */
+type EveryKeyOf<TField, TKeys extends readonly (keyof TField)[]> = [
+  Exclude<keyof TField, TKeys[number]>,
+] extends [never]
+  ? TKeys
+  : never;
+
+const BASE_FIELD_KEYS = [
+  "type",
+  "id",
+  "display_name",
+  "description",
+  "tooltip",
+  "pos",
+  "conditional_settings",
+] as const;
+const SECTION_KEYS = [...BASE_FIELD_KEYS, "keys", "fieldset"] as const;
+const TAB_KEYS = [...BASE_FIELD_KEYS, "keys"] as const;
+
+/**
+ * The editor keeps every key when a field's type changes, so a layout field in a
+ * space can carry keys its type doesn't own.
+ */
+const LAYOUT_FIELD_KEYS = new Map<string, ReadonlySet<string>>(
+  Object.entries({
+    section: new Set(
+      SECTION_KEYS satisfies EveryKeyOf<FieldOfType<"section">, typeof SECTION_KEYS>,
+    ),
+    tab: new Set(TAB_KEYS satisfies EveryKeyOf<FieldOfType<"tab">, typeof TAB_KEYS>),
+    group: new Set(
+      BASE_FIELD_KEYS satisfies EveryKeyOf<FieldOfType<"group">, typeof BASE_FIELD_KEYS>,
+    ),
+  } satisfies Record<(typeof LAYOUT_FIELD_TYPES)[number], ReadonlySet<string>>),
+);
+
+/**
+ * Removes the keys a layout field's type doesn't own and turns each conditional
+ * `required: true` into the editor's "Not Required". Rewriting in place keeps
+ * every modification at its index, which matters because the editor and the
+ * Management API read only the first one. Other field types pass through unchanged.
+ */
+export function toLayoutDslField(field: Record<string, unknown>): {
+  field: Record<string, unknown>;
+  removedRequired: boolean;
+} {
+  const ownedKeys = LAYOUT_FIELD_KEYS.get(String(field.type));
+  if (!ownedKeys) {
+    return { field, removedRequired: false };
+  }
+  let removedRequired = field.required === true;
+  const out = Object.fromEntries(Object.entries(field).filter(([key]) => ownedKeys.has(key)));
+  if (Array.isArray(out.conditional_settings)) {
+    out.conditional_settings = out.conditional_settings.map((setting: unknown) => {
+      if (!isRecord(setting) || !Array.isArray(setting.modifications)) {
+        return setting;
+      }
+      return {
+        ...setting,
+        modifications: setting.modifications.map((modification: unknown) => {
+          if (!isRecord(modification) || modification.required !== true) {
+            return modification;
+          }
+          removedRequired = true;
+          return { ...modification, required: false };
+        }),
+      };
+    });
+  }
+  return { field: out, removedRequired };
+}
 
 function stripKeys(obj: Record<string, unknown>, keys: Set<string>): Record<string, unknown> {
   return Object.fromEntries(
@@ -396,9 +471,8 @@ export function generateFieldCode(
   folderVarByUuid?: Map<string, string>,
   tagNameById?: Map<string, string>,
 ): string {
-  const clean = omitEmptyArrays(
-    toDslField(stripKeys(fieldData, FIELD_STRIP_KEYS), folderVarByUuid, tagNameById),
-  );
+  const { field } = toLayoutDslField(stripKeys(fieldData, FIELD_STRIP_KEYS));
+  const clean = omitEmptyArrays(toDslField(field, folderVarByUuid, tagNameById));
   return `defineField(${quoteString(fieldName)}, ${formatValue(clean, depth)})`;
 }
 

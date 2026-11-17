@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { vol } from "memfs";
-import { join } from "pathe";
+import { basename, join } from "pathe";
 // Import the main first to ensure proper initialization
 import "../index";
 import { reportsCommand } from "../command";
@@ -46,7 +46,10 @@ describe("reports prune command", () => {
 
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Deleted 1 report file"));
     const remainingFiles = Object.keys(vol.toJSON()).filter((path) => path.includes(".json"));
-    expect(remainingFiles).toHaveLength(2);
+    expect(remainingFiles.map((path) => basename(path)).sort()).toEqual([
+      "storyblok-components-push-1234567892.json",
+      "storyblok-migrations-run-1234567891.json",
+    ]);
   });
 
   it("should not delete reports when keep count equals total", async () => {

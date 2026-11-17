@@ -66,6 +66,35 @@ jobs:
           done
           exit 1
 
+  # Parallel PRs can each claim the next free ADR number. The check sees the
+  # base branch as of its last run, so rerun it before merging a PR that adds
+  # an ADR.
+  adr-numbers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Check for duplicate ADR numbers
+        env:
+          # Duplicates that predate this check. Other ADRs reference them by
+          # number, so they keep it.
+          LEGACY_DUPLICATES: |
+            adr/0017-cache-aware-rate-limit-ceiling.md
+            adr/0022-bundle-size-compared-with-the-base-branch.md
+        run: |
+          numbers=$(git ls-files -- 'adr/[0-9]*.md' \
+            | grep -vxF -f <(printf '%s' "$LEGACY_DUPLICATES" | sed 's/^ *//;/^$/d') \
+            | sed -E 's|^adr/([0-9]+)-.*|\1|')
+          duplicates=$(printf '%s\n' "$numbers" | sort | uniq -d)
+          [ -z "$duplicates" ] && exit 0
+          for number in $duplicates; do
+            files=$(git ls-files -- "adr/$number-*.md" | xargs)
+            echo "::error::ADR number $number is taken more than once: $files. Renumber the new ADR to the next free number."
+          done
+          exit 1
+
   build:
     name: build (${{ matrix.name }})
     needs: changes

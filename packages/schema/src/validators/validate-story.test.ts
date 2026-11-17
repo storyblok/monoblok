@@ -1543,19 +1543,20 @@ describe("validateStory — deny entries", () => {
 });
 
 describe("validateStory — layout fields", () => {
+  // `defineField` rejects this shape; a schema read from a space can still carry it.
   const form = defineBlock({
     name: "form",
     is_root: true,
     fields: [
-      defineField("tab-1", { type: "tab", keys: ["title"], required: true }),
-      defineField("details", { type: "section", keys: ["title"], required: true }),
-      defineField("legacy", { type: "group", required: true }),
+      { name: "tab-1", type: "tab", keys: ["title"], required: true },
+      { name: "details", type: "section", keys: ["title"], required: true },
+      { name: "legacy", type: "group", required: true },
       defineField("title", { type: "text" }),
     ],
   });
   const layoutSchema = { blocks: { form } };
 
-  it("does not require a layout field marked required, since it holds no value", () => {
+  it("leaves a required layout field to validateSchema", () => {
     const result = validateStory({ content: { component: "form", title: "Hi" } }, layoutSchema);
     expect(result.ok).toBe(true);
     expect(result.issues).toEqual([]);

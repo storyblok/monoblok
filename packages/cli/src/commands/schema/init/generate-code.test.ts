@@ -947,6 +947,122 @@ describe("generateComponentFile", () => {
     expect(block).toMatchObject({ fields: [{ custom }] });
   });
 
+  it("should drop options a layout field does not own", () => {
+    const component = {
+      id: 1,
+      name: "form",
+      schema: {
+        details: {
+          type: "section",
+          pos: 0,
+          keys: ["title"],
+          display_name: "Details",
+          required: true,
+          max_length: 10,
+          translatable: true,
+        },
+        "tab-1": { type: "tab", pos: 1, keys: ["title"], required: false },
+        legacy: { type: "group", pos: 2, regex: "x" },
+        title: { type: "text", pos: 3, required: true, max_length: 10 },
+      },
+    };
+
+    const block = evaluateBlockFile(generateComponentFile(component as any));
+
+    expect(block).toEqual({
+      name: "form",
+      fields: [
+        { name: "details", type: "section", keys: ["title"], display_name: "Details" },
+        { name: "tab-1", type: "tab", keys: ["title"] },
+        { name: "legacy", type: "group" },
+        { name: "title", type: "text", required: true, max_length: 10 },
+      ],
+    });
+  });
+
+  it("should make conditional required modifications on a layout field not required in place", () => {
+    const rule_conditions = [
+      {
+        validated_object: { type: "field", field_key: "show", field_attr: "value" },
+        validation: "not_empty",
+      },
+    ];
+    const component = {
+      id: 1,
+      name: "form",
+      schema: {
+        details: {
+          type: "section",
+          pos: 0,
+          conditional_settings: [
+            {
+              rule_match: "any",
+              rule_conditions,
+              modifications: [{ required: true }, { display: "hide" }],
+            },
+            { rule_match: "any", rule_conditions, modifications: [{ display: "hide" }] },
+          ],
+        },
+        "tab-1": {
+          type: "tab",
+          pos: 1,
+          conditional_settings: [
+            {
+              rule_match: "any",
+              rule_conditions,
+              modifications: [{ display: "hide", required: true }],
+            },
+          ],
+        },
+        title: {
+          type: "text",
+          pos: 2,
+          conditional_settings: [
+            { rule_match: "any", rule_conditions, modifications: [{ required: true }] },
+          ],
+        },
+      },
+    };
+
+    const block = evaluateBlockFile(generateComponentFile(component as any));
+
+    expect(block).toEqual({
+      name: "form",
+      fields: [
+        {
+          name: "details",
+          type: "section",
+          conditional_settings: [
+            {
+              rule_match: "any",
+              rule_conditions,
+              modifications: [{ required: false }, { display: "hide" }],
+            },
+            { rule_match: "any", rule_conditions, modifications: [{ display: "hide" }] },
+          ],
+        },
+        {
+          name: "tab-1",
+          type: "tab",
+          conditional_settings: [
+            {
+              rule_match: "any",
+              rule_conditions,
+              modifications: [{ display: "hide", required: false }],
+            },
+          ],
+        },
+        {
+          name: "title",
+          type: "text",
+          conditional_settings: [
+            { rule_match: "any", rule_conditions, modifications: [{ required: true }] },
+          ],
+        },
+      ],
+    });
+  });
+
   it("should generate camelCase variable name from snake_case component name", () => {
     const result = generateComponentFile({
       id: 1,

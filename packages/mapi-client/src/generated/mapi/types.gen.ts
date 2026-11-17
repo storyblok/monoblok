@@ -41818,3 +41818,76 @@ export type GetOAuthGrantResponses = {
 };
 
 export type GetOAuthGrantResponse = GetOAuthGrantResponses[keyof GetOAuthGrantResponses];
+
+export type SearchStrataIndexData = {
+    body?: never;
+    path: {
+        /**
+         * Numeric ID of a space
+         */
+        space_id: number;
+    };
+    query?: {
+        /**
+         * Search term, at most 2000 characters. A blank term returns no results.
+         */
+        q?: string;
+        /**
+         * Content version to search.
+         */
+        version?: 'draft' | 'published';
+        /**
+         * Maximum number of results, from 1 to 100. With `starts_with` or `content_type` set, at most 50. Any other value returns 400.
+         */
+        limit?: number;
+        /**
+         * Only search stories whose full slug starts with this value, e.g. `docs/`. Matches the default-language slug: a language prefix such as `de/` matches nothing.
+         */
+        starts_with?: string;
+        /**
+         * Only search stories whose content type (root component) is this one, read from the draft content.
+         */
+        content_type?: string;
+    };
+    url: '/v1/spaces/{space_id}/strata/search';
+};
+
+export type SearchStrataIndexErrors = {
+    /**
+     * Invalid parameter value
+     */
+    400: StrataErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: StrataErrorResponse;
+    /**
+     * Forbidden: Strata is off for the space or organization (`feature_disabled`), or the token lacks `strata:read` (`insufficient_scope`)
+     */
+    403: StrataErrorResponse;
+    /**
+     * The space does not exist or the user cannot access it
+     */
+    404: StrataErrorResponse;
+    /**
+     * Too many requests
+     */
+    429: StrataErrorResponse;
+    /**
+     * Search backend temporarily unavailable
+     */
+    503: StrataErrorResponse;
+};
+
+export type SearchStrataIndexError = SearchStrataIndexErrors[keyof SearchStrataIndexErrors];
+
+export type SearchStrataIndexResponses = {
+    /**
+     * Search results, best match first
+     */
+    200: {
+        results: StrataSearchResults;
+    };
+};
+
+export type SearchStrataIndexResponse = SearchStrataIndexResponses[keyof SearchStrataIndexResponses];

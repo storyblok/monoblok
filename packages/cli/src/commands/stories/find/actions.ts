@@ -419,9 +419,9 @@ export function buildWhereFilters(expressions: string[] | undefined): ClientFilt
   }
   return expressions.map((expression) => {
     const query = compileWhere(expression);
-    // `match` stops at the first hit; a filter only needs to know whether the
+    // `test` stops at the first hit; a filter only needs to know whether the
     // expression selects anything, never the full node list.
-    return (story: Story) => query.match(toJsonValue(withoutContentSummary(story))) !== undefined;
+    return (story: Story) => query.test(toJsonValue(withoutContentSummary(story)));
   });
 }
 

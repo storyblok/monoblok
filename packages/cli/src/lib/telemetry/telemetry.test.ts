@@ -327,6 +327,8 @@ describe("telemetry", () => {
     ["storyblok components push --help", ["components", "push", "--help"]],
     ["storyblok help components", ["help", "components"]],
     ["storyblok --version", ["--version"]],
+    ["storyblok", []],
+    ["storyblok components", ["components"]],
   ])("should send nothing for %s, which isn't a run of the command", async (_name, argv) => {
     preconditions.consentGiven();
 

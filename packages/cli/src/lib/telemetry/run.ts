@@ -67,12 +67,18 @@ export function recordTelemetryRegion(region: unknown): void {
   run.region = regionCodes.find((code) => code === region);
 }
 
+/** Commander prints help instead of failing when a command group runs without a subcommand. */
+const COMMANDER_IMPLICIT_HELP_CODE = "commander.help";
+
 /**
- * Commander ends a run that printed help or the version with exit code 0. Those aren't runs of the
- * command, and would inflate its usage, so nothing is sent.
+ * Runs that only printed help or the version aren't runs of the command, and would inflate its
+ * usage, so nothing is sent.
  */
 export function recordTelemetryCommanderExit(error: unknown): void {
-  if (error instanceof CommanderError && error.exitCode === 0) {
+  if (
+    error instanceof CommanderError &&
+    (error.exitCode === 0 || error.code === COMMANDER_IMPLICIT_HELP_CODE)
+  ) {
     run.sent = true;
   }
 }

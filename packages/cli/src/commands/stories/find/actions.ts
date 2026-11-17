@@ -61,6 +61,22 @@ export function parseList(flag: string, raw: string): string {
 }
 
 /**
+ * Reads `--starts-with` as the API's slug prefix.
+ *
+ * `""` or `/` normalizes to no prefix at all, which would widen the run to the
+ * whole space: the opposite of what passing the flag asked for.
+ */
+export function parseStartsWith(raw: string): string {
+  const { starts_with: startsWith } = buildStoryScopeParams({ startsWith: raw });
+  if (startsWith === undefined) {
+    throw new CommandError(
+      `--starts-with expects a slug prefix, e.g. 'en/blog', and got: ${JSON.stringify(raw)}`,
+    );
+  }
+  return startsWith;
+}
+
+/**
  * Rejects options the command accepts on the surface but cannot honour yet.
  *
  * Silently ignoring an explicitly passed flag is worse than failing: the user
@@ -262,19 +278,13 @@ export function buildQueryParams(
   // handed over as an extra clause rather than spread over the parsed `--query`:
   // both write `component`, and a spread would drop one of them without a word.
   const scope = buildStoryScopeParams({
-    startsWith: options.startsWith,
+    startsWith: options.startsWith === undefined ? undefined : parseStartsWith(options.startsWith),
     query: options.query,
     extraFilterQuery:
       options.containerBlock !== undefined
         ? { component: { in: parseList("--container-block", options.containerBlock) } }
         : undefined,
   });
-  // `--starts-with ""` or `/` normalizes to no prefix at all, i.e. the whole space.
-  if (options.startsWith !== undefined && scope.starts_with === undefined) {
-    throw new CommandError(
-      `--starts-with expects a slug prefix, e.g. 'en/blog', and got: ${JSON.stringify(options.startsWith)}`,
-    );
-  }
   Object.assign(params, scope);
 
   if (options.includesBlock !== undefined) {

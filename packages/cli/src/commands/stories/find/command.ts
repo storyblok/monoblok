@@ -21,10 +21,10 @@ import { prepareCapiFilter } from "./pipeline";
 import { runFind } from "./run";
 import { runCheckReferences } from "./check-references";
 import {
-  assertSemanticCompatibleOptions,
   assertSemanticOptions,
   buildStrataQuery,
-  formatSemanticHelp,
+  parseSemanticLimit,
+  resolveSemanticOptions,
   searchStrata,
 } from "./semantic";
 import type { FindOptions } from "./types";
@@ -56,7 +56,10 @@ const findCmd = storiesCommand
       .choices(["all", "story", "folder"])
       .default("all"),
   )
-  .option("--starts-with <path>", "scope to a story subtree, e.g. 'en/blog'")
+  .option(
+    "--starts-with <path>",
+    "scope to a story subtree, e.g. 'en/blog'. With --mode semantic, only the default-language slug matches",
+  )
   .option(
     "--container-block <name>",
     "stories whose content type (root block) is this component, e.g. 'page'",
@@ -105,7 +108,10 @@ const findCmd = storiesCommand
     "--sort <fields>",
     "order by a story column or 'content.<field>', comma-separated, e.g. 'updated_at:desc' or 'content.title:asc'",
   )
-  .option("--limit <n>", "stop after this many results")
+  .option(
+    "--limit <n>",
+    "stop after this many results. With --mode semantic, 25 by default and at most 100 (50 with --starts-with or --container-block)",
+  )
   .option(
     "--references <uuids>",
     "stories that reference all of these story UUIDs, comma-separated",
@@ -127,13 +133,13 @@ const findCmd = storiesCommand
     "extra CDN query params for --capi-filter, e.g. 'version=published' or 'language=de'",
   );
 
-findCmd.action(async (text: string | undefined, options: FindOptions, command) => {
+findCmd.action(async (text: string | undefined, cliOptions: FindOptions, command) => {
   const ui = getUI();
   const logger = getLogger();
   const reporter = getReporter();
 
   ui.title(`${commands.STORIES}`, colorPalette.STORIES, "Finding stories...");
-  logger.info("Finding stories started", { text, ...options });
+  logger.info("Finding stories started", { text, ...cliOptions });
 
   const { space, verbose } = command.optsWithGlobals();
   const { state } = session();
@@ -149,21 +155,19 @@ findCmd.action(async (text: string | undefined, options: FindOptions, command) =
     return;
   }
 
-  const semantic = options.mode === "semantic";
-  if (semantic) {
-    // A usage error that names the incompatible flag, followed by the help the
-    // user would need next: the same command, narrowed to what this mode takes.
-    try {
-      assertSemanticCompatibleOptions(command);
-    } catch (maybeError) {
-      handleError(toError(maybeError), verbose);
-      ui.br();
-      ui.log(formatSemanticHelp(command));
-      return;
-    }
-  }
+  const semantic = cliOptions.mode === "semantic";
 
   try {
+    let options = cliOptions;
+    if (semantic) {
+      const resolved = resolveSemanticOptions(command, cliOptions);
+      options = resolved.options;
+      if (resolved.ignored.length > 0) {
+        logger.info("Ignoring config values semantic mode cannot take", {
+          ignored: resolved.ignored,
+        });
+      }
+    }
     // Validate and compile everything before the first request, so a bad flag or
     // a malformed JSONPath fails as a usage error instead of mid-stream.
     if (semantic) {
@@ -188,13 +192,15 @@ findCmd.action(async (text: string | undefined, options: FindOptions, command) =
       ...buildDateFilters(options, now),
     ];
     const whereFilters = buildWhereFilters(options.where);
-    const limit = parseLimit(options.limit);
+    // Semantic mode has a default and a ceiling of its own: Strata's page.
+    const semanticLimit = strataQuery ? parseSemanticLimit(options.limit, strataQuery) : undefined;
+    const limit = semanticLimit ? semanticLimit.limit : parseLimit(options.limit);
     const issueTypes = parseIssueTypes(options.checkReferences);
 
     const context = { spaceId: space, params, ui, logger, reporter, verbose };
 
     if (strataQuery) {
-      const ranking = await searchStrata({
+      const search = await searchStrata({
         spaceId: space,
         query: strataQuery,
         ui,
@@ -202,12 +208,13 @@ findCmd.action(async (text: string | undefined, options: FindOptions, command) =
       // Hydrating Strata's matches is one listing request: at most 100 stories.
       await runFind({
         ...context,
-        params: { ...params, by_ids: [...ranking.keys()].join(",") },
+        params: { ...params, by_ids: [...search.ranking.keys()].join(",") },
         preContentFilters,
         filters: whereFilters,
         skipContent: options.skipContent === true,
         limit,
-        ranking,
+        limitIsDefault: semanticLimit?.isDefault,
+        semantic: search,
       });
       return;
     }

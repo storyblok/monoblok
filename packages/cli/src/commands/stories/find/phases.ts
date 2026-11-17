@@ -173,11 +173,16 @@ export function findSummary({
  * Reports a deliberate stop as one: the counts above it describe a partial scan,
  * which could otherwise read as a failure. The success mark says the rest.
  */
-export function stoppedEarlyMessage(limit: number | undefined): string {
+export function stoppedEarlyMessage(
+  limit: number | undefined,
+  { limitIsDefault = false }: { limitIsDefault?: boolean } = {},
+): string {
   const reason =
-    limit !== undefined
-      ? `Stopped at --limit ${limit}, as asked.`
-      : "Stopped when the reading command closed the pipe, as expected.";
+    limit === undefined
+      ? "Stopped when the reading command closed the pipe, as expected."
+      : limitIsDefault
+        ? `Stopped at ${limit} results, the default. Set --limit for more.`
+        : `Stopped at --limit ${limit}, as asked.`;
   return `${reason} The counts above cover only the part of the scope that ran.`;
 }
 

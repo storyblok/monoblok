@@ -15,8 +15,8 @@ import {
 import { STORY_COLUMNS } from "./columns";
 import { runStoryPipeline } from "./pipeline";
 import type { CapiFilter } from "./pipeline";
-import { orderByRank, SEMANTIC_STORY_COLUMNS } from "./semantic";
-import type { SemanticRanking } from "./semantic";
+import { fullPageMessage, orderByRank, SEMANTIC_STORY_COLUMNS } from "./semantic";
+import type { SemanticSearch } from "./semantic";
 import type { ClientFilter, FindContext } from "./types";
 
 export async function runFind({
@@ -26,8 +26,9 @@ export async function runFind({
   filters,
   skipContent = false,
   limit,
+  limitIsDefault = false,
   capi,
-  ranking,
+  semantic,
   ui,
   logger,
   reporter,
@@ -38,14 +39,17 @@ export async function runFind({
   skipContent?: boolean;
   /** Stop once this many results have been written. */
   limit?: number;
+  /** Whether `limit` is the mode's default rather than a `--limit` the user set. */
+  limitIsDefault?: boolean;
   capi?: CapiFilter;
   /**
-   * Strata's ranking, for `--mode semantic`. `params` then lists exactly the
+   * Strata's answer, for `--mode semantic`. `params` then lists exactly the
    * ranked stories, which are fetched and emitted in rank order rather than as
    * listed, so `limit` keeps the best matches.
    */
-  ranking?: SemanticRanking;
+  semantic?: SemanticSearch;
 }): Promise<void> {
+  const ranking = semantic?.ranking;
   const output = ranking
     ? createResultOutput({ columns: SEMANTIC_STORY_COLUMNS, limit })
     : createResultOutput({ columns: STORY_COLUMNS, limit });
@@ -128,7 +132,16 @@ export async function runFind({
     // Printed under the summary, so they are not lost above it.
     const notes: Array<() => void> = [];
     if (earlyExit) {
-      notes.push(() => ui.ok(stoppedEarlyMessage(stoppedByLimit ? limit : undefined)));
+      notes.push(() =>
+        ui.ok(stoppedEarlyMessage(stoppedByLimit ? limit : undefined, { limitIsDefault })),
+      );
+    }
+
+    // Strata has no next page: a full one may have left matches out. Not worth
+    // saying when the run stopped at --limit before using up the page anyway.
+    const fullPageOf = semantic?.fullPageOf;
+    if (fullPageOf !== undefined && !stoppedByLimit) {
+      notes.push(() => ui.warn(fullPageMessage(fullPageOf)));
     }
 
     // Zero matches here means the filters matched nothing, or were written

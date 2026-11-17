@@ -7,8 +7,11 @@ import { vol } from "memfs";
 import "../index";
 import { storiesCommand } from "../command";
 import { loadConfigLayers } from "../../../lib/config/helpers";
+import { getUI } from "../../../lib/ui";
+import { APIError } from "../../../utils/error/api-error";
 import { makeMockStory } from "../__tests__/helpers";
 import type { MockStory } from "../__tests__/helpers";
+import { searchStrata } from "./semantic";
 
 // The config files on disk, as layers: everything else of config resolution is real.
 vi.mock("../../../lib/config/helpers", async (importOriginal) => ({
@@ -17,6 +20,7 @@ vi.mock("../../../lib/config/helpers", async (importOriginal) => ({
 }));
 
 const errorSpy = vi.spyOn(console, "error");
+const warnSpy = vi.spyOn(console, "warn");
 
 const STRATA_SEARCH_URL = "https://mapi.storyblok.com/v1/spaces/12345/strata/search";
 const MAPI_STORIES_URL = "https://mapi.storyblok.com/v1/spaces/12345/stories";
@@ -73,35 +77,44 @@ const preconditions = {
     );
     return requests;
   },
-  strataIsDisabledForTheSpace() {
+  /** Strata answers every search with this status and error `code`, and counts the attempts. */
+  strataRejectsSearches({
+    status,
+    code,
+    message,
+  }: {
+    status: number;
+    code: string;
+    message: string;
+  }) {
+    const attempts = { count: 0 };
     server.use(
-      http.get(STRATA_SEARCH_URL, () =>
-        HttpResponse.json(
-          {
-            error: {
-              message: "Strata is disabled for this space",
-              code: "feature_disabled",
-              details: null,
-              timestamp: "2026-11-04T00:00:00Z",
-            },
-          },
-          { status: 403 },
-        ),
-      ),
+      http.get(STRATA_SEARCH_URL, () => {
+        attempts.count += 1;
+        return HttpResponse.json(
+          { error: { message, code, details: null, timestamp: "2026-11-04T00:00:00Z" } },
+          { status },
+        );
+      }),
     );
+    return attempts;
   },
-  stdoutIsATerminal() {
+  stdoutIsATerminal({ columns = 200 }: { columns?: number } = {}) {
     vi.stubEnv("TERM", "dumb");
-    vi.stubEnv("COLUMNS", "200");
-    const original = Object.getOwnPropertyDescriptor(process.stdout, "isTTY");
-    Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
-    cleanups.push(() => {
-      if (original) {
-        Object.defineProperty(process.stdout, "isTTY", original);
-      } else {
-        delete (process.stdout as { isTTY?: boolean }).isTTY;
-      }
-    });
+    for (const [property, value] of [
+      ["isTTY", true],
+      ["columns", columns],
+    ] as const) {
+      const original = Object.getOwnPropertyDescriptor(process.stdout, property);
+      Object.defineProperty(process.stdout, property, { value, configurable: true });
+      cleanups.push(() => {
+        if (original) {
+          Object.defineProperty(process.stdout, property, original);
+        } else {
+          Reflect.deleteProperty(process.stdout, property);
+        }
+      });
+    }
   },
   capturesStdout() {
     const written: string[] = [];
@@ -397,34 +410,154 @@ describe("stories find --mode semantic", () => {
     expect(table).toContain("Plans and prices");
   });
 
-  it("should report Strata's reason when it rejects the search", async () => {
-    preconditions.strataIsDisabledForTheSpace();
+  it("should keep the name readable and shorten the excerpt in a narrow terminal", async () => {
+    const story = makeMockStory({ name: "Design Tips for Small Spaces" });
+    preconditions.canSearchByMeaning({
+      hits: [{ story, score: 0.8, excerpt: "word ".repeat(400) }],
+    });
+    preconditions.stdoutIsATerminal({ columns: 80 });
+    const written = preconditions.capturesStdout();
+
+    await find("design", "--mode", "semantic");
+
+    const table = stripVTControlCharacters(written.join(""));
+    expect(table).toContain("Design Tips for Small Spaces");
+    for (const line of table.split("\n")) {
+      expect(line.length).toBeLessThanOrEqual(80);
+    }
+  });
+
+  it("should warn that more stories may match when Strata's page comes back full", async () => {
+    // 100 hits on 60 stories: a story can be several hits, so a full page
+    // prints fewer stories than --limit asks for.
+    const stories = Array.from({ length: 60 }, () => makeMockStory());
+    const hits = Array.from({ length: 100 }, (_, index) => ({
+      story: stories[index % stories.length],
+      score: 0.5,
+    }));
+    preconditions.canSearchByMeaning({ hits });
+    preconditions.capturesStdout();
+
+    await find("pricing", "--mode", "semantic", "--skip-content", "--limit", "100");
+
+    expect(warnSpy.mock.calls.flat().join("\n")).toContain(
+      "Strata returned its maximum of 100 hits",
+    );
+  });
+
+  it("should stop at 25 results by default, and say how to get more", async () => {
+    const stories = Array.from({ length: 60 }, () => makeMockStory());
+    preconditions.canSearchByMeaning({ hits: stories.map((story) => ({ story, score: 0.5 })) });
+    const written = preconditions.capturesStdout();
+
+    await find("pricing", "--mode", "semantic", "--skip-content");
+
+    expect(parseLines(written)).toHaveLength(25);
+    expect(process.exitCode).toBeFalsy();
+    expect(errorSpy.mock.calls.flat().join("\n")).toContain(
+      "Stopped at 25 results, the default. Set --limit for more.",
+    );
+  });
+
+  it("should print up to Strata's page with --limit 100", async () => {
+    const stories = Array.from({ length: 60 }, () => makeMockStory());
+    preconditions.canSearchByMeaning({ hits: stories.map((story) => ({ story, score: 0.5 })) });
+    const written = preconditions.capturesStdout();
+
+    await find("pricing", "--mode", "semantic", "--skip-content", "--limit", "100");
+
+    expect(parseLines(written)).toHaveLength(60);
+  });
+
+  it("should not warn about a full page when there is room left on it", async () => {
+    preconditions.canSearchByMeaning({ hits: [{ story: makeMockStory(), score: 0.5 }] });
+    preconditions.capturesStdout();
+
+    await find("pricing", "--mode", "semantic");
+
+    expect(warnSpy.mock.calls.flat().join("\n")).not.toContain("Strata returned its maximum");
+  });
+
+  it.each([
+    {
+      status: 403,
+      code: "feature_disabled",
+      expected: "Strata is not enabled for this space or its organization (feature_disabled).",
+    },
+    {
+      status: 403,
+      code: "insufficient_scope",
+      expected: "The token is missing the strata:read scope (insufficient_scope).",
+    },
+    {
+      status: 401,
+      code: "unauthorized",
+      expected: "The user is not authorized to access the API",
+    },
+    {
+      status: 503,
+      code: "error",
+      expected: "Strata search failed (error): search backend unavailable",
+    },
+  ])("should explain a $status $code from Strata", async ({ status, code, expected }) => {
+    preconditions.strataRejectsSearches({ status, code, message: "search backend unavailable" });
     preconditions.capturesStdout();
 
     await find("pricing", "--mode", "semantic");
 
     expect(process.exitCode).toBe(1);
+    expect(errorSpy.mock.calls.flat().join("\n")).toContain(expected);
+  });
+
+  // What `--verbose` prints: the status and the response body.
+  it("should keep the status and response body on a failed search", async () => {
+    preconditions.strataRejectsSearches({
+      status: 403,
+      code: "feature_disabled",
+      message: "Strata is disabled for this space",
+    });
+
+    const search = searchStrata({ spaceId: "12345", query: { q: "pricing" }, ui: getUI() });
+
+    await expect(search).rejects.toBeInstanceOf(APIError);
+    await expect(search.catch((error: APIError) => error.getInfo())).resolves.toMatchObject({
+      httpCode: 403,
+      responseData: { error: { code: "feature_disabled" } },
+    });
+  });
+
+  // Strata's own throttling asks for a minute or more: retrying through it
+  // would leave the user staring at a spinner.
+  it("should give up on a rate-limited search after two short retries", async () => {
+    const attempts = preconditions.strataRejectsSearches({
+      status: 429,
+      code: "rate_limited",
+      message: "slow down",
+    });
+    preconditions.capturesStdout();
+
+    await find("pricing", "--mode", "semantic");
+
+    expect(attempts.count).toBe(3);
+    expect(process.exitCode).toBe(1);
     expect(errorSpy.mock.calls.flat().join("\n")).toContain(
-      "Strata search failed (HTTP 403): feature_disabled: Strata is disabled for this space",
+      "Strata is rate limiting searches (rate_limited). Try again in a minute.",
     );
   });
 
   it("should treat a search Strata rejects as invalid as a usage error", async () => {
-    server.use(
-      http.get(STRATA_SEARCH_URL, () =>
-        HttpResponse.json(
-          { error: { code: "invalid_argument", message: "q is too long" } },
-          { status: 400 },
-        ),
-      ),
-    );
+    preconditions.strataRejectsSearches({
+      status: 400,
+      code: "invalid_argument",
+      message: "q is too long",
+    });
     preconditions.capturesStdout();
 
     await find("pricing", "--mode", "semantic");
 
     expect(process.exitCode).toBe(2);
     expect(errorSpy.mock.calls.flat().join("\n")).toContain(
-      "Strata search failed (HTTP 400): invalid_argument: q is too long",
+      "Strata rejected the search (invalid_argument): q is too long",
     );
   });
 
@@ -434,6 +567,16 @@ describe("stories find --mode semantic", () => {
     {
       args: ["pricing", "--container-block", "page,article"],
       message: "a single --container-block",
+    },
+    { args: ["pricing", "--container-block", ","], message: "--container-block expects a value" },
+    { args: ["pricing", "--starts-with", "/"], message: "--starts-with expects a slug prefix" },
+    {
+      args: ["pricing", "--limit", "101"],
+      message: "--limit is at most 100 with --mode semantic: Strata returns at most 100 matches",
+    },
+    {
+      args: ["pricing", "--starts-with", "docs", "--limit", "51"],
+      message: "--limit is at most 50 with --mode semantic with --starts-with or --container-block",
     },
   ])("should reject $args before any request", async ({ args, message }) => {
     const counter = preconditions.countsRequests();
@@ -449,43 +592,58 @@ describe("stories find --mode semantic", () => {
     { args: ["--sort", "name:asc"], flag: "--sort" },
     { args: ["--check-references"], flag: "--check-references" },
     { args: ["--capi-filter", "--where", "$.content"], flag: "--capi-filter" },
-    { args: ["--entry-type", "story"], flag: "--entry-type" },
+    { args: ["--entry-type", "folder"], flag: "--entry-type folder" },
     { args: ["--capi-params", "version=published"], flag: "--capi-params" },
-  ])(
-    "should reject $flag as incompatible and show the help for this mode",
-    async ({ args, flag }) => {
-      const counter = preconditions.countsRequests();
-
-      await find("pricing", "--mode", "semantic", ...args);
-
-      const stderr = stripVTControlCharacters(errorSpy.mock.calls.flat().join("\n"));
-      expect(process.exitCode).toBe(2);
-      expect(stderr).toContain(`${flag} is not compatible with --mode semantic`);
-      const help = stderr.slice(stderr.indexOf("Options compatible with --mode semantic"));
-      expect(help).toContain("--starts-with");
-      expect(help).toContain("--where");
-      expect(help).not.toContain(`${flag} `);
-      expect(counter.requests).toBe(0);
-    },
-  );
-
-  it("should reject an incompatible flag set in the config file", async () => {
+  ])("should reject $flag as incompatible, and list every such flag", async ({ args, flag }) => {
     const counter = preconditions.countsRequests();
-    preconditions.configFileSets({ sort: "name:asc" });
 
-    await find("pricing", "--mode", "semantic");
+    await find("pricing", "--mode", "semantic", ...args);
 
+    const stderr = stripVTControlCharacters(errorSpy.mock.calls.flat().join("\n"));
     expect(process.exitCode).toBe(2);
-    expect(errorSpy.mock.calls.flat().join("\n")).toContain(
-      "--sort (set from config) is not compatible with --mode semantic",
+    expect(stderr).toContain(`${flag} is not compatible with --mode semantic`);
+    expect(stderr).toContain(
+      "Not available with --mode semantic: --entry-type folder, --sort, --check-references, --capi-filter, --capi-params.",
     );
     expect(counter.requests).toBe(0);
   });
 
-  it("should accept an incompatible flag the config file leaves at its default", async () => {
+  // Strata only returns stories, so asking for stories only asks for what it does.
+  it("should accept --entry-type story", async () => {
     preconditions.canSearchByMeaning({ hits: [{ story: makeMockStory(), score: 0.8 }] });
     preconditions.capturesStdout();
-    preconditions.configFileSets({ entryType: "all" });
+
+    await find("pricing", "--mode", "semantic", "--entry-type", "story");
+
+    expect(process.exitCode).toBeFalsy();
+  });
+
+  // A config file sets defaults for full-text runs, and nothing on the command
+  // line could clear a sort it sets: there is no `--no-sort`.
+  it("should leave out an incompatible flag set in the config file", async () => {
+    const requests = preconditions.canSearchByMeaning({
+      hits: [{ story: makeMockStory(), score: 0.8 }],
+    });
+    const written = preconditions.capturesStdout();
+    preconditions.configFileSets({ sort: "name:asc", entryType: "folder" });
+
+    await find("pricing", "--mode", "semantic");
+
+    expect(process.exitCode).toBeFalsy();
+    expect(parseLines(written)).toHaveLength(1);
+    expect(requests.listing[0].has("sort_by")).toBe(false);
+    expect(requests.listing[0].has("folder_only")).toBe(false);
+  });
+
+  it.each([
+    { checkReferences: false },
+    { capiFilter: false },
+    { capiParams: "" },
+    { entryType: "all" },
+  ])("should accept a config file that switches an incompatible flag off: %o", async (config) => {
+    preconditions.canSearchByMeaning({ hits: [{ story: makeMockStory(), score: 0.8 }] });
+    preconditions.capturesStdout();
+    preconditions.configFileSets(config);
 
     await find("pricing", "--mode", "semantic");
 

@@ -14,6 +14,7 @@ export {
   omitEmptyArrays,
   resolveTagRefs,
   sortSchemaByPos,
+  toLayoutDslField,
 } from "./field";
 export type { TagRef } from "./field";
 export { partitionFieldOptions } from "./field-options";

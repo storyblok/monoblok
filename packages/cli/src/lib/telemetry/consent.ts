@@ -73,7 +73,8 @@ export function getTelemetryStatus(): TelemetryStatus {
   return { enabled: true, installId: consent.installId };
 }
 
-export async function saveConsent(enabled: boolean): Promise<void> {
+/** Returns the install ID it deleted, which a request to delete the data already sent needs. */
+export async function saveConsent(enabled: boolean): Promise<string | undefined> {
   const previous = readConsent();
   // Re-enabling after an opt-out creates a fresh ID, so runs before and after can't be linked.
   const installId = enabled ? (previous?.enabled && previous.installId) || randomUUID() : undefined;
@@ -84,4 +85,5 @@ export async function saveConsent(enabled: boolean): Promise<void> {
     ...(installId && { installId }),
   };
   await saveToFile(getConsentFilePath(), JSON.stringify(consent, null, 2), { mode: 0o600 });
+  return previous?.installId !== installId ? previous?.installId : undefined;
 }

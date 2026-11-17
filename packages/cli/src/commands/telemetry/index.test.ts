@@ -179,6 +179,21 @@ describe("telemetry command", () => {
     expect(storedConsent().installId).toBeUndefined();
   });
 
+  it("should show the deleted install ID for a deletion request", async () => {
+    preconditions.consentGiven();
+
+    await telemetryCommand.parseAsync(["node", "test", "disable"]);
+
+    expect(output()).toContain(`Deleted install ID: ${INSTALL_ID}`);
+  });
+
+  it("should not mention an install ID when there was none", async () => {
+    await telemetryCommand.parseAsync(["node", "test", "disable"]);
+
+    expect(output()).toContain("Telemetry is disabled.");
+    expect(output()).not.toContain("Deleted install ID");
+  });
+
   it("should disable telemetry even when the config can't be loaded", async () => {
     preconditions.consentGiven();
     preconditions.configIsBroken();

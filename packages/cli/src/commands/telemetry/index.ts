@@ -96,8 +96,13 @@ telemetryCommand
     const ui = getUI();
     ui.title(`${commands.TELEMETRY}`, colorPalette.TELEMETRY);
     try {
-      await saveConsent(false);
+      const deletedInstallId = await saveConsent(false);
       ui.ok("Telemetry is disabled.");
+      if (deletedInstallId) {
+        ui.info(
+          `Deleted install ID: ${deletedInstallId}. To have data already sent deleted, include it in your request: ${PRIVACY_POLICY_URL}`,
+        );
+      }
     } catch (error) {
       handleError(toError(error), program.opts().verbose);
     }

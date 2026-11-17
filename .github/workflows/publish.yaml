@@ -39,6 +39,10 @@ jobs:
         env:
           STORYBLOK_TELEMETRY_DATASET: prd-storyblok-cli
 
+      # `nx release publish` doesn't rebuild, so a build without the production dataset would ship.
+      - name: Verify telemetry dataset
+        run: grep -q '"prd-storyblok-cli"' packages/cli/dist/telemetry-sender.mjs || { echo "::error::CLI built without the production telemetry dataset"; exit 1; }
+
       - name: Print Environment Info
         run: pnpm nx report
 

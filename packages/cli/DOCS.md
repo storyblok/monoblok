@@ -54,7 +54,7 @@ to the run.
 
 Storyblok stores the data in the EU. `storyblok telemetry disable` deletes the install ID from your
 machine, but not data already sent. To request its deletion, follow the privacy policy and include
-the install ID that `storyblok telemetry status` shows.
+the install ID, which `storyblok telemetry disable` prints when it deletes it.
 
 ## Debug mode
 

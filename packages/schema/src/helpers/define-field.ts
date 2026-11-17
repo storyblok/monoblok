@@ -7,6 +7,7 @@ import type {
   FieldType,
   FieldValue,
   FieldValueInput,
+  LayoutFieldType,
   MultilinkFieldValue,
   PluginFieldValue,
   RichTextFieldValue,
@@ -339,6 +340,20 @@ type NoExtraKeys<T> = T extends { type: "custom" }
     };
 
 /**
+ * Rejects a `required` that can be `true` on a layout field. The field holds no
+ * value, so publishing any story that uses the block fails. A `type` union with
+ * a value type, such as `FieldType` in a field factory, passes; `validateSchema`
+ * catches it at runtime.
+ */
+type NoLayoutRequired<T> = T extends { type: infer TType; required: infer TRequired }
+  ? [TType] extends [LayoutFieldType]
+    ? true extends TRequired
+      ? { required: Invalid<"a layout field holds no value, so it cannot be required"> }
+      : unknown
+    : unknown
+  : unknown;
+
+/**
  * Rejects the wire restriction keys on a field that also uses `allow` / `deny`.
  * `schema push` derives them from the DSL keys and overwrites whatever was set by
  * hand, so setting both is always a mistake: pick the DSL keys or the raw ones.
@@ -356,7 +371,7 @@ type NoRestrictionConflict<T> = T extends { allow: {} } | { deny: {} }
   : unknown;
 
 /**
- * A field literal plus the two option checks {@link defineField} applies.
+ * A field literal plus the option checks {@link defineField} applies.
  *
  * Needed to write a wrapper around `defineField`. The checks are mapped types
  * over the type parameter, and TypeScript cannot prove `T` satisfies a mapped
@@ -372,7 +387,8 @@ type NoRestrictionConflict<T> = T extends { allow: {} } | { deny: {} }
  */
 export type CheckedField<TField extends FieldInput> = TField &
   NoExtraKeys<TField> &
-  NoRestrictionConflict<TField>;
+  NoRestrictionConflict<TField> &
+  NoLayoutRequired<TField>;
 
 /** Result of {@link defineField}: the field stamped with `name`, with refs normalized to strings. */
 export type DefinedField<TName extends string, TField extends FieldInput> = Prettify<

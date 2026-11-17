@@ -58,6 +58,7 @@ export type {
   StoryWithInlinedRelations,
   WithInlinedRelations,
 } from "./resources/stories";
+export type { StrataSearchQuery } from "./resources/strata";
 // Cache types
 export type {
   CacheEntry,

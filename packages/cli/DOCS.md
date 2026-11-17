@@ -52,9 +52,13 @@ exist sends these attributes, in addition to the versions and the platform:
 With telemetry enabled, requests to the Storyblok Management API include a trace ID that links them
 to the run.
 
-Storyblok stores the data in the EU. `storyblok telemetry disable` deletes the install ID from your
-machine, but not data already sent. To request its deletion, follow the privacy policy and include
-the install ID, which `storyblok telemetry disable` prints when it deletes it.
+## Where data is sent
+
+Storyblok stores the data in the EU and handles it as described in the
+[privacy policy](https://www.storyblok.com/legal/privacy-policy). `storyblok telemetry disable`
+deletes the install ID from your machine, but not data already sent. To request its deletion, follow
+the privacy policy and include the install ID, which `storyblok telemetry disable` prints when it
+deletes it.
 
 ## Debug mode
 
@@ -65,6 +69,9 @@ STORYBLOK_TELEMETRY_DEBUG=1 storyblok components pull --space 12345
 ```
 
 Debug mode also works with telemetry disabled. The output then shows the install ID as `[REDACTED]`.
+
+To check what the CLI collects without running it, read the
+[telemetry source code](https://github.com/storyblok/monoblok/tree/main/packages/cli/src/lib/telemetry).
 
 ## Opt in or out
 

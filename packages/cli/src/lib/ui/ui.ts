@@ -264,7 +264,7 @@ export class UI {
    * A terminal on stderr is not enough when stdout is a pipe: the reader, such
    * as `jq`, usually prints to that same terminal, and each redraw moves the
    * cursor back over the lines it printed, overwriting results. A redirect to a
-   * file or `/dev/null` has no such reader, so it keeps the live UI.
+   * file or `/dev/null` has no such reader, so it keeps the live UI. See ADR-0027.
    */
   private get canRedraw(): boolean {
     return getStderrTarget() === "terminal" && getStdoutTarget() !== "pipe";

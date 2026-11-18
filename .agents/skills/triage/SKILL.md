@@ -32,12 +32,18 @@ gh issue view <number> --repo storyblok/monoblok \
   --json title,body,labels,state,comments,author,createdAt,closedByPullRequestsReferences
 ```
 
-**Linear:** `scripts/linear-fetch.sh` next to this file, run from the repo root:
+**Linear:** `scripts/linear-fetch.sh` next to this file, run from the repo root (needs
+`LINEAR_API_KEY`):
 
 ```bash
 bash .agents/skills/triage/scripts/linear-fetch.sh issue DX-123 DX-456
 bash .agents/skills/triage/scripts/linear-fetch.sh triage
 ```
+
+If the script fails, use the Linear MCP server if it is connected: fetch each ticket with its
+attachments and comments, and list the triage queue as the DX team's issues in the `triage` state.
+If neither works, stop and report that Linear is unreachable. Never triage a `DX-` ticket without
+its data.
 
 Linear steps apply only to `DX-` tickets; skip them for GitHub-only runs. A ticket synced from
 GitHub has its issue in `attachments` (`.../monoblok/issues/<n>`), and its Linear comments all show

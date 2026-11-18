@@ -13,7 +13,7 @@ import type {
 } from "@storyblok/schema";
 import { CommandError, fetchAllPages, isRecord, toError } from "../../../utils";
 import { createPipelineBackpressureLock } from "../../../utils/backpressure-lock";
-import { handleAPIError } from "../../../utils/error/api-error";
+import { APIError, handleAPIError } from "../../../utils/error/api-error";
 import { fileExists } from "../../../utils/filesystem";
 import { getLogger } from "../../../lib/logger/logger";
 import { getUI } from "../../../lib/ui";
@@ -78,19 +78,25 @@ async function findCandidateStories(
   return [...ids];
 }
 
+const BLOCKS_UNAVAILABLE =
+  "Could not list the space's blocks, so no migration was applied. Every op of a content migration is checked against them first, so one a later schema push superseded doesn't undo that push. Run the command again.";
+
 /**
- * The space's blocks. Every op is checked against them before it runs, so
- * without them no content migration is applied.
+ * The space's blocks, which every op of a content migration is checked against
+ * before it runs. Fetched before any migration writes, so a failure stops
+ * migration functions too.
  */
-async function fetchSpaceBlocks(space: string): Promise<readonly Component[]> {
+export async function fetchSpaceBlocks(space: string): Promise<readonly Component[]> {
   try {
     return (await fetchComponents(space)) ?? [];
   } catch (maybeError) {
     const error = toError(maybeError);
     getLogger().error("Failed to list the space's blocks", { space, error });
-    throw new CommandError(
-      `Could not list the space's blocks, so no content migration was applied: ${error.message}. Every op is checked against them first, so one a later schema push superseded doesn't undo that push. Run the command again.`,
-    );
+    if (error instanceof APIError) {
+      error.messageStack.push(BLOCKS_UNAVAILABLE);
+      throw error;
+    }
+    throw new Error(`${BLOCKS_UNAVAILABLE} ${error.message}`);
   }
 }
 
@@ -434,6 +440,8 @@ export type ApplyContentMigrationsOptions = {
   dryRun: boolean;
   publish?: PublishMode;
   scope: StoryScopeParams;
+  /** The space's blocks, from {@link fetchSpaceBlocks}. */
+  components: readonly Component[];
 };
 
 /**
@@ -449,13 +457,11 @@ export async function applyContentMigrations({
   dryRun,
   publish,
   scope,
+  components,
 }: ApplyContentMigrationsOptions): Promise<void> {
   const ui = getUI();
   const logger = getLogger();
 
-  const components = selected.some((entry) => entry.migration.ops.length > 0)
-    ? await fetchSpaceBlocks(space)
-    : [];
   const live = liveFields(components);
   const isTranslatable = translatability(components);
   const journal = contentJournal(path);

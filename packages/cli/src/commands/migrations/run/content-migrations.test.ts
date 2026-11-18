@@ -286,12 +286,9 @@ describe("migrations run command for content migrations", () => {
       expect(space.writes).toEqual([]);
       expect(journalEntries()).toEqual([]);
       expect(error.mock.calls.flat().join("\n")).toContain(
-        "Could not list the space's blocks, so no content migration was applied:",
+        "Could not list the space's blocks, so no migration was applied. Every op of a content migration is checked against them first, so one a later schema push superseded doesn't undo that push. Run the command again.",
       );
-      expect(error.mock.calls.flat().join("\n")).toContain(
-        "Every op is checked against them first, so one a later schema push superseded doesn't undo that push. Run the command again.",
-      );
-      expect(process.exitCode).toBe(2);
+      expect(process.exitCode).toBe(1);
     });
 
     it("should not need them for a migration without ops", async () => {
@@ -1846,6 +1843,22 @@ describe("migrations run command with migration functions and content migrations
       headline: "Hi",
       migrated: true,
     });
+  });
+
+  it("should run no migration function when the space's blocks can't be listed for the content migrations", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    space.hasMigrationFunction("card.js", (block) => ({ ...block, migrated: true }));
+    space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    space.hasStories(storyWithCard());
+    server.use(
+      http.get(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/components`, () =>
+        HttpResponse.json({ error: "Internal Server Error" }, { status: 500 }),
+      ),
+    );
+
+    await apply();
+
+    expect(space.writes).toEqual([]);
   });
 
   it("should tell a .js content migration from a migration function by its default export", async () => {

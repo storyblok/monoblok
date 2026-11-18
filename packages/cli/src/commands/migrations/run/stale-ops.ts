@@ -164,7 +164,15 @@ function retypedField(op: MigrationOp, { name, fields }: SpaceBlock): Retyped | 
 }
 
 function describeOp(op: MigrationOp): string {
-  return "field" in op ? `${op.kind} ${op.block}.${op.field}` : `${op.kind} ${op.block}`;
+  switch (op.kind) {
+    case "renameField":
+    case "moveField":
+      return `${op.kind} ${op.block}.${op.field} → ${op.to}`;
+    case "renameBlock":
+      return `${op.kind} ${op.block} → ${op.to}`;
+    default:
+      return "field" in op ? `${op.kind} ${op.block}.${op.field}` : `${op.kind} ${op.block}`;
+  }
 }
 
 function skippedPrefix(op: MigrationOp, block: string): string {

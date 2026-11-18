@@ -609,6 +609,20 @@ describe("migrations run command for content migrations", () => {
     ]);
   });
 
+  it("should name both fields of a rename it skips", async () => {
+    space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    space.hasBlocks({ card: ["title", "headline"], page: { body: "bloks" } });
+    space.hasStories(storyWithCard());
+    space.canUpdateStories();
+    const warn = vi.spyOn(getUI(), "warn");
+
+    await apply();
+
+    expect(warn).toHaveBeenCalledWith(
+      '0001-rename-card-title: renameField card.title → headline skipped: the card block in the space has the field "title" again.',
+    );
+  });
+
   it("should skip renaming a block while the space holds a block by its old name", async () => {
     space.hasMigrations(["0001-card-to-teaser", renameCardToTeaser]);
     space.hasBlocks({ card: ["title"], teaser: ["title"], page: { body: "bloks" } });
@@ -620,7 +634,7 @@ describe("migrations run command for content migrations", () => {
 
     expect(space.writes).toEqual([]);
     expect(warn).toHaveBeenCalledWith(
-      "0001-card-to-teaser: renameBlock card skipped: the space has a card block again.",
+      "0001-card-to-teaser: renameBlock card → teaser skipped: the space has a card block again.",
     );
   });
 

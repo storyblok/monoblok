@@ -1,11 +1,11 @@
-# ADR-0027: Typed Content Migrations with Schema Snapshots
+# ADR-0029: Typed Content Migrations with Schema Snapshots
 
 **Status:** Accepted **Date:** 2026-10-16
 
 Supersedes the file format decision in [ADR-0009](0009-schema-push-migration-generation.md) for
 `--typed` pushes. Breaking change detection inside `schema push` stands. Content migrations run
 through `migrations run` and `migrations rollback`
-([ADR-0026](0026-one-migrations-run-and-rollback-for-both-formats.md)).
+([ADR-0028](0028-one-migrations-run-and-rollback-for-both-formats.md)).
 
 ## Context
 

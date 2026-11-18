@@ -30,19 +30,18 @@ export type MigrationOpSource = { todo?: readonly string[] } & (
   | (OpTarget & { kind: "removeField" })
   | (OpTarget & { kind: "coerceField"; from?: CoercionTarget; to: CoercionTarget })
   /**
-   * With `removedValues`, the callback leaves every other value alone and the
-   * placeholder only throws on those, as stored by an option field, or held
-   * among the values of an options field when `multiple` is set.
+   * With `removedValues`, the placeholder throws only on those values: an
+   * option field's value, or any item of an options field when `multiple` is
+   * set.
    */
   | (OpTarget & { kind: "alterField"; removedValues?: readonly string[]; multiple?: boolean })
   /** Backfills absent keys with `value`. */
   | (OpTarget & { kind: "addField"; value?: unknown })
   /**
-   * Fills an absent or `null` field, and `""` with `fillEmptyString`, with
-   * `value`. Translations are left as they are.
+   * Fills an absent or `null` field with `value`, and `""` too with
+   * `fillEmptyString`. Leaves translations alone.
    */
   | (OpTarget & { kind: "fillField"; value?: unknown; fillEmptyString?: boolean })
-  | { kind: "renameBlock"; block: string; to: string }
 );
 
 export type GenerateMigrationSourceOptions = {
@@ -96,11 +95,6 @@ function ifDoc(conditions: readonly Doc[], operator: "||" | "&&", then: Doc): Do
   ];
 }
 
-/**
- * The DSL imports an op renders to. `fillField` renders to `addField` and
- * `alterField`, not one `alterBlock`, so both name the field and `migrations
- * run` can skip them once a later schema change renames or removes it.
- */
 function importsOf(op: MigrationOpSource): string[] {
   return op.kind === "fillField" ? ["addField", "alterField"] : [op.kind];
 }
@@ -124,19 +118,6 @@ function opDocs(op: MigrationOpSource): Doc[] {
       return [callDoc("renameField", [targetDoc(op, ["to", quoteString(op.to)])], true)];
     case "removeField":
       return [callDoc("removeField", [targetDoc(op)], true)];
-    case "renameBlock":
-      return [
-        callDoc(
-          "renameBlock",
-          [
-            objectDoc([
-              ["block", quoteString(op.block)],
-              ["to", quoteString(op.to)],
-            ]),
-          ],
-          true,
-        ),
-      ];
     case "coerceField": {
       const from: [string, Doc][] = op.from ? [["from", quoteString(op.from)]] : [];
       return [callDoc("coerceField", [targetDoc(op, ...from, ["to", quoteString(op.to)])], true)];
@@ -167,6 +148,8 @@ function opDocs(op: MigrationOpSource): Doc[] {
       const hugs = op.value === undefined || isRecord(op.value) || Array.isArray(op.value);
       return [callDoc("addField", [targetDoc(op), callback], hugs)];
     }
+    // Two ops, not one `alterBlock`, so `migrations run` sees the field and can
+    // skip them once a later change renames or removes it.
     case "fillField": {
       const fill =
         op.value === undefined

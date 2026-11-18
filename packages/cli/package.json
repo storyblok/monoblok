@@ -1,6 +1,6 @@
 {
   "name": "storyblok",
-  "version": "4.26.1",
+  "version": "4.27.0",
   "description": "Storyblok CLI",
   "keywords": [
     "cli",
@@ -73,7 +73,7 @@
     "dotenv": "catalog:",
     "filenamify": "^6.0.0",
     "jiti": "catalog:",
-    "json-p3": "2.2.2",
+    "json-p3": "3.0.3",
     "json-schema-to-typescript": "^16.0.0",
     "minimatch": "^10.0.3",
     "octokit": "^5.0.3",

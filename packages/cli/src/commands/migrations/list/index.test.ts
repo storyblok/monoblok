@@ -21,6 +21,9 @@ const renameCardTitle = defineMigration([
   renameField({ block: "card", field: "title", to: "headline" }),
 ]);
 const renameCardToTeaser = defineMigration([renameBlock({ block: "card", to: "teaser" })]);
+const renameHeroSubtitle = defineMigration([
+  renameField({ block: "hero", field: "subtitle", to: "tagline" }),
+]);
 
 describe("migrations list command", () => {
   let space: ReturnType<typeof createRemoteSpace>;
@@ -71,6 +74,44 @@ describe("migrations list command", () => {
     ]);
   });
 
+  it("should name the migration of a run without a title once, since the run id ends with it", async () => {
+    space.hasMigrations(["0001-rename-hero-subtitle", renameHeroSubtitle]);
+    await run("run");
+
+    const [line] = await listed();
+
+    expect(line).toMatch(
+      /^\S+-0001-rename-hero-subtitle {2}0 stories, 0 blocks {2}\(nothing to roll back\)$/,
+    );
+  });
+
+  it("should show a run that left stories out as partial, and its migration as pending", async () => {
+    space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    await run("run", "--starts-with", "home");
+
+    expect(await listed()).toEqual([
+      expect.stringMatching(/-0001-rename-card-title {2}1 story, 1 block {2}\(partial\)$/),
+      "Pending on this machine: 0001-rename-card-title",
+    ]);
+  });
+
+  it("should show the title of a run", async () => {
+    space.hasMigrations([
+      "0001-rename-card-title",
+      defineMigration({
+        title: "Rename the card title",
+        ops: [renameField({ block: "card", field: "title", to: "headline" })],
+      }),
+    ]);
+    await run("run");
+
+    const [line] = await listed();
+
+    expect(line).toMatch(
+      /^\S+-0001-rename-card-title {2}Rename the card title {2}1 story, 1 block$/,
+    );
+  });
+
   it("should list a rolled back migration as pending again", async () => {
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
     await run("run");
@@ -103,10 +144,12 @@ describe("migrations list command", () => {
     ]);
   });
 
-  it("should print nothing with --pending once every migration ran", async () => {
+  it("should print nothing on stdout with --pending once every migration ran, and say so on stderr", async () => {
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
     await run("run");
+    const info = vi.spyOn(getUI(), "info");
 
-    expect(await listedPending()).toEqual({ stdout: "", otherOutput: false });
+    expect((await listedPending()).stdout).toBe("");
+    expect(info).toHaveBeenCalledWith("No pending content migrations.");
   });
 });

@@ -123,12 +123,13 @@ export function createComponentsResource<DefaultThrowOnError extends boolean = f
       componentId: number,
       options: {
         body: UpdateComponentData["body"];
+        query?: UpdateComponentData["query"];
         signal?: AbortSignal;
         throwOnError?: ThrowOnError;
         fetchOptions?: FetchOptions;
       } & SpaceIdPathOverride,
     ): Promise<ApiResponse<UpdateComponentResult, ThrowOnError>> {
-      const { body, signal, path, throwOnError, fetchOptions } = options;
+      const { body, query, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
       return wrapRequest<UpdateComponentResult, ThrowOnError>(
         () =>
@@ -136,6 +137,7 @@ export function createComponentsResource<DefaultThrowOnError extends boolean = f
             client,
             path: { space_id: resolvedSpaceId, id: String(componentId) },
             body,
+            query,
             signal,
             ...(throwOnError === undefined ? {} : { throwOnError }),
             ...(fetchOptions

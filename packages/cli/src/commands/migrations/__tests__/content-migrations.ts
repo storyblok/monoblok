@@ -20,8 +20,6 @@ export type RemoteStory = {
   published?: boolean;
   unpublished_changes?: boolean;
   deleted_at?: string | null;
-  is_folder?: boolean;
-  default_root?: string;
   content: Record<string, unknown>;
 };
 
@@ -151,11 +149,9 @@ export function createRemoteSpace(server: SetupServerApi) {
         http.get(`${MAPI}/stories`, ({ request }) => {
           const params = new URL(request.url).searchParams;
           const component = params.get("contain_component");
-          const folderOnly = params.get("folder_only") === "true";
           const startsWith = params.get("starts_with");
           const matching = [...stories.values()].filter(
             (story) =>
-              Boolean(story.is_folder) === folderOnly &&
               (!component || componentsIn(story.content).has(component)) &&
               (!startsWith || story.full_slug.startsWith(startsWith)),
           );

@@ -666,6 +666,27 @@ describe("migrations rollback command with runs that changed nothing", () => {
     expect(printed).not.toContain("already rolled back");
   });
 
+  it("should say a named run that changed nothing has nothing to roll back, and leave it in place", async () => {
+    const info = vi.spyOn(getUI(), "info");
+    space.hasMigrations(["0001-rename-hero-subtitle", renameHeroSubtitle]);
+    space.hasStories(storyWithCard());
+    await run("run");
+    const [recorded] = journalEntries();
+    info.mockClear();
+    process.exitCode = undefined;
+
+    await run("rollback", String(recorded.id));
+
+    expect(info).toHaveBeenCalledWith(
+      `Run ${String(recorded.id)} changed no stories, so there is nothing to roll back.`,
+    );
+    expect(info).not.toHaveBeenCalledWith(expect.stringContaining("Rolled back"));
+    expect(process.exitCode).toBeUndefined();
+    expect(journalEntries()).toEqual([
+      expect.not.objectContaining({ undoneAt: expect.anything() }),
+    ]);
+  });
+
   it("should list a run that changed nothing as having nothing to roll back", async () => {
     const info = vi.spyOn(getUI(), "info");
     space.hasMigrations(["0001-rename-hero-subtitle", renameHeroSubtitle]);
@@ -759,9 +780,7 @@ describe("migrations rollback command for rollback files", () => {
 
     expect(info.mock.calls.map(([line]) => line)).toEqual([
       "card.1767225600000  migration functions  2 stories  (rollback file)",
-      expect.stringMatching(
-        /-0001-rename-card-title {2}0001-rename-card-title {2}1 story, 1 block$/,
-      ),
+      expect.stringMatching(/-0001-rename-card-title {2}1 story, 1 block$/),
     ]);
   });
 });

@@ -10,6 +10,7 @@ import {
   resolveTagRefs,
   resolveVarNames,
   sortSchemaByPos,
+  stripKeys,
   toCamelCaseIdentifier,
   toLayoutDslField,
 } from "@storyblok/schema/internal/codegen";
@@ -22,7 +23,6 @@ import {
   COMPONENT_STRIP_KEYS,
   DATASOURCE_STRIP_KEYS,
   isRecord,
-  stripKeys,
 } from "../utils";
 
 export { componentVarName, resolveVarNames } from "@storyblok/schema/internal/codegen";

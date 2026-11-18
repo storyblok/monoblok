@@ -1,9 +1,13 @@
 import { resolvePath, saveToFile } from "../../../utils/filesystem";
 import type { Component } from "../../components/constants";
 import { join } from "pathe";
+import type { WireComponent } from "@storyblok/schema/internal/codegen";
 import { handleFileSystemError } from "../../../utils";
+import { discoverMigrations } from "@storyblok/schema";
 import { buildMigrationFilename } from "../migration-filename";
+import { migrationsDirectory } from "../content-migrations";
 import { listChangesets, loadChangeset } from "../../schema/rollback/actions";
+import { withRenamedBlocks } from "../../schema/push/block-renames";
 
 const getMigrationTemplate = () => {
   return `export default function (block) {
@@ -24,7 +28,7 @@ const getMigrationTemplate = () => {
 export const generateMigration = async (
   space: string,
   path: string | undefined,
-  component: Component,
+  component: Pick<Component, "name">,
   suffix?: string,
 ): Promise<string> => {
   const resolvedPath = resolvePath(path, `migrations/${space}`);
@@ -39,30 +43,67 @@ export const generateMigration = async (
   return migrationPath;
 };
 
+/** A `schema push` that changed a block, as `migrations generate` reads it. */
+export type PushChangingBlock = {
+  timestamp: string;
+  /** The space's components before the push, with the blocks it renamed under their new names. */
+  components: WireComponent[];
+  /** The name the push gave the block. */
+  block: string;
+  /** The ids of the content migrations the push wrote. */
+  migrations: string[];
+};
+
 /**
- * The pre-push space state of the latest `schema push` to `space` that changed
- * `block`, and the name `block` had before it. A push that renamed the block
- * records it under its new name, so either name finds it.
+ * The latest `schema push` to `space` that changed `block`, skipping pushes that
+ * failed to change it. A push that renamed the block records it under its new
+ * name and its pre-push state under the old one, so either name finds it.
  */
 export async function latestPushChanging(
   path: string | undefined,
   space: string,
   block: string,
-): Promise<{ timestamp: string; components: Component[]; blockBefore: string } | undefined> {
+): Promise<PushChangingBlock | undefined> {
   for (const file of await listChangesets(resolvePath(path, ""))) {
     const changeset = await loadChangeset(file);
     if (String(changeset.spaceId) !== space) continue;
-    for (const change of changeset.changes) {
-      if (change.type !== "component") continue;
-      const nameBefore = typeof change.before?.name === "string" ? change.before.name : change.name;
-      if (change.name === block || nameBefore === block) {
-        return {
-          timestamp: changeset.timestamp,
-          components: changeset.remote.components,
-          blockBefore: nameBefore,
-        };
-      }
-    }
+    const landed = changeset.changes.filter(
+      (change) => change.type === "component" && !change.failed,
+    );
+    const nameBefore = (change: (typeof landed)[number]) =>
+      typeof change.before?.name === "string" ? change.before.name : change.name;
+    const match = landed.find((change) => change.name === block || nameBefore(change) === block);
+    if (!match) continue;
+    // The space renames a block in its stories along with the block.
+    const renames = landed
+      .map((change) => ({ from: nameBefore(change), to: change.name }))
+      .filter(({ from, to }) => from !== to);
+    return {
+      timestamp: changeset.timestamp,
+      components: withRenamedBlocks(changeset.remote.components, renames),
+      block: match.name,
+      migrations: changeset.migrations ?? [],
+    };
   }
   return undefined;
+}
+
+const MIGRATION_TIMESTAMP = /^(\d{14})-/;
+
+/**
+ * Whether `space` holds a content migration created at or after `push`, going
+ * by the `YYYYMMDDHHmmss` creation time its id starts with. The migrations the
+ * push wrote itself don't count.
+ */
+export async function hasMigrationSince(
+  path: string | undefined,
+  space: string,
+  push: Pick<PushChangingBlock, "timestamp" | "migrations">,
+): Promise<boolean> {
+  const since = new Date(push.timestamp).toISOString().replace(/\D/g, "").slice(0, 14);
+  const migrations = await discoverMigrations(migrationsDirectory(path, space));
+  return migrations.some(({ id }) => {
+    const createdAt = MIGRATION_TIMESTAMP.exec(id)?.[1];
+    return createdAt !== undefined && createdAt >= since && !push.migrations.includes(id);
+  });
 }

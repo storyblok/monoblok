@@ -1,6 +1,6 @@
 {
   "name": "@storyblok/schema",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Storyblok schema types and helpers",
   "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/schema#readme",
   "bugs": {
@@ -25,9 +25,6 @@
       "field-plugins": [
         "./dist/field-plugins/index.d.cts"
       ],
-      "codegen": [
-        "./dist/codegen/index.d.cts"
-      ],
       "internal/codegen": [
         "./dist/internal/codegen.d.cts"
       ]
@@ -37,10 +34,6 @@
     ".": {
       "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
-    },
-    "./codegen": {
-      "import": "./dist/codegen/index.mjs",
-      "require": "./dist/codegen/index.cjs"
     },
     "./field-plugins": {
       "import": "./dist/field-plugins/index.mjs",

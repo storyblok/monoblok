@@ -1,9 +1,16 @@
 import { rm } from "node:fs/promises";
 import { confirm } from "@inquirer/prompts";
 import { Option } from "commander";
+import { basename } from "pathe";
 
 import { colorPalette, commands } from "../../../constants";
-import { CommandError, handleError, requireAuthentication, toError } from "../../../utils";
+import {
+  CommandError,
+  handleError,
+  isRecord,
+  requireAuthentication,
+  toError,
+} from "../../../utils";
 import { getLogger } from "../../../lib/logger/logger";
 import { getReporter } from "../../../lib/reporter/reporter";
 import { getUI, stderrPromptContext } from "../../../lib/ui";
@@ -12,7 +19,7 @@ import { resolvePath } from "../../../utils/filesystem";
 import { schemaCommand } from "../command";
 import { displayPath } from "../utils";
 import type { SchemaPushOptions } from "./constants";
-import type { SchemaData } from "../types";
+import type { ChangesetData, SchemaData } from "../types";
 import { loadSchema } from "../load-schema";
 import { diffSchema } from "../diff-schema";
 import { fetchRemoteSchema, localToNormalized, remoteToNormalized } from "../actions";
@@ -27,29 +34,42 @@ import {
   toMigrationOps,
   writeMigrationFile,
 } from "./migrations/generate";
-import { writeContentMigration } from "../../migrations/content-migrations";
-import { writeLocalComponents } from "./write-local-components";
-import { detectBlockRenames, withBlockRenames } from "./block-renames";
-import type { BlockRename } from "./block-renames";
 import {
-  countStoriesUsing,
-  describeFolder,
-  foldersNaming,
-  renameFolderRestrictions,
-} from "./story-folders";
-import { plural } from "../../migrations/content-migrations";
+  pendingContentMigrations,
+  plural,
+  writeContentMigration,
+} from "../../migrations/content-migrations";
+import { writeLocalComponents } from "./write-local-components";
+import { detectBlockRenames, withBlockRenames, withRenamedBlocks } from "./block-renames";
+import type { BlockRename } from "./block-renames";
+import { countStoriesUsing, describeFolder, foldersNaming } from "./story-folders";
 
 /** Quotes a path for pasting into a shell when it holds characters the shell would split or expand. */
 function shellQuote(path: string): string {
   return /^[\w./:@-]+$/.test(path) ? path : `'${path.replaceAll("'", `'\\''`)}'`;
 }
 
+const describeRename = ({ from, to }: BlockRename): string => `${from} → ${to}`;
+
+/** The ids of the content migrations among `files`, which are named after their id. */
+function contentMigrationIds(files: readonly string[]): string[] {
+  return files
+    .filter((file) => file.endsWith(".ts") && !file.endsWith(".before.ts"))
+    .map((file) => basename(file, ".ts"));
+}
+
+/** An error's message, after the HTTP status of a failed request. */
+function describeError(maybeError: unknown): string {
+  const { message } = toError(maybeError);
+  const status =
+    isRecord(maybeError) && isRecord(maybeError.response) ? maybeError.response.status : undefined;
+  return typeof status === "number" && status > 0 ? `HTTP ${status}: ${message}` : message;
+}
+
 /**
  * The blocks among `names` the space now holds as the local schema defines
  * them, or `undefined` when the space cannot be read.
  */
-const describeRename = ({ from, to }: BlockRename): string => `${from} → ${to}`;
-
 async function pushedBlocks(
   space: string,
   local: SchemaData,
@@ -110,9 +130,14 @@ schemaCommand
       return;
     }
 
+    if (options.typed && !options.migrations) {
+      ui.warn("--typed has no effect with --no-migrations.");
+    }
+
     const summary = { total: 0, succeeded: 0, failed: 0 };
     let generatedMigrations: { files: string[]; changes: ComponentBreakingChanges[] } | undefined;
     const runCommand = "migrations run";
+    const runMigrations = `storyblok ${runCommand} --space ${space}${basePath ? ` --path ${shellQuote(basePath)}` : ""}`;
 
     try {
       // 1. Load local schema
@@ -151,17 +176,13 @@ schemaCommand
       let { remote } = remoteResult;
       const migrationTimestamp = new Date().toISOString();
 
-      /** The name the block has in the space before the push, which a migration addresses it by. */
-      const blockBefore = (comp: ComponentBreakingChanges): string =>
-        comp.changes.find((change) => change.kind === "block_renamed")?.from ?? comp.componentName;
-
       const writeMigrations = async (changes: ComponentBreakingChanges[]): Promise<string[]> => {
         if (!options.typed) {
           const files: string[] = [];
           for (const comp of changes) {
             const file = await writeMigrationFile({
               spaceId: space,
-              componentName: blockBefore(comp),
+              componentName: comp.componentName,
               code: renderMigrationCode(comp.changes),
               timestamp: migrationTimestamp,
               basePath: resolvePath(basePath, ""),
@@ -174,7 +195,7 @@ schemaCommand
           }
           return files;
         }
-        const ops = changes.flatMap((comp) => toMigrationOps(blockBefore(comp), comp.changes));
+        const ops = changes.flatMap((comp) => toMigrationOps(comp.componentName, comp.changes));
         if (ops.length === 0) {
           return [];
         }
@@ -183,11 +204,13 @@ schemaCommand
           path: basePath,
           space,
           name: `update-${blocks.join("-")}`,
-          title: migrationTitle(changes, blockBefore),
+          title: migrationTitle(changes),
           schemaEntry: entryFile,
           ops,
+          // The space renames a block in its stories along with the block, so
+          // the migration reads it under its new name.
           before: options.before
-            ? { components: rawComponents, blocks: changes.map(blockBefore) }
+            ? { components: withRenamedBlocks(rawComponents, blockRenames), blocks }
             : undefined,
         });
         const files = [written.migrationPath, written.beforePath].filter(
@@ -208,14 +231,14 @@ schemaCommand
       const keepMigrationsForPushedBlocks = async (
         generated: { files: string[]; changes: ComponentBreakingChanges[] },
         pushed: ReadonlySet<string> | undefined,
-      ): Promise<void> => {
+      ): Promise<string[]> => {
         const listed = (files: string[]) =>
           files.map((file) => `  - ${displayPath(file, basePath)}`).join("\n");
         if (!pushed) {
           ui.warn(
             `The push failed after these migration files were written:\n${listed(generated.files)}\nThe space could not be read to tell which blocks were pushed. Keep the ops for the blocks the push already updated, delete the rest, then run schema push again.`,
           );
-          return;
+          return generated.files;
         }
         const pushedChanges = generated.changes.filter((comp) => pushed.has(comp.componentName));
         // Write the kept ops before removing anything, so a failed write loses no ops.
@@ -235,64 +258,52 @@ schemaCommand
           ui.warn(
             "The push failed before any block with breaking changes was updated, so no migration was kept. Fix the error and run schema push again.",
           );
-          return;
+          return [];
         }
         ui.warn(
-          `The push failed, but it updated ${[...pushed].join(", ")}. The migration for them was kept:\n${listed(files)}\nFix the error and run schema push again to generate the migration for the other blocks.`,
+          `The push failed, but it updated ${[...pushed].join(", ")}. The migration for ${pushed.size === 1 ? "it" : "them"} was kept:\n${listed(files)}\nFix the error and run schema push again to generate the migration for the other blocks.`,
         );
+        return files;
       };
       /**
-       * Folders name their default and allowed content types by block name, so
-       * a renamed block would leave them pointing at a name no block has, and
-       * editors could no longer create stories there.
+       * The space removes a deleted block from the content types of the folders
+       * that name it, which lifts the restriction of a folder left without one.
        */
-      const updateFolderRestrictions = async (
-        renames: readonly BlockRename[],
-        deleted: readonly string[],
-      ): Promise<void> => {
-        if (renames.length === 0 && deleted.length === 0) return;
+      const warnAboutFoldersNaming = async (deleted: readonly string[]): Promise<void> => {
+        if (deleted.length === 0) return;
         try {
-          const renamedFrom = new Set(renames.map((rename) => rename.from));
-          const folders = await foldersNaming(space, new Set([...renamedFrom, ...deleted]));
-          const renamedFolders = folders.filter((folder) =>
-            [folder.defaultRoot, ...folder.contentTypes].some(
-              (name) => name !== undefined && renamedFrom.has(name),
-            ),
+          const folders = await foldersNaming(space, new Set(deleted));
+          if (folders.length === 0) return;
+          const named = deleted.filter((name) =>
+            folders.some((folder) => [folder.defaultRoot, ...folder.contentTypes].includes(name)),
           );
-          await renameFolderRestrictions(space, renamedFolders, renames);
-          logger.info("Folder content types updated", {
-            renames: renames.map(describeRename),
-            folders: renamedFolders.map(describeFolder),
-          });
-          if (renamedFolders.length > 0) {
-            ui.info(
-              `Updated the content types of ${plural(renamedFolders.length, "folder", "folders")} to the renamed blocks: ${renamedFolders.map(describeFolder).join(", ")}.`,
-            );
-          }
-          for (const folder of folders) {
-            const names = [folder.defaultRoot, ...folder.contentTypes].filter(
-              (name): name is string => name !== undefined && deleted.includes(name),
-            );
-            if (names.length > 0) {
-              ui.warn(
-                `Folder ${describeFolder(folder)} still names the deleted ${[...new Set(names)].join(", ")} as a content type. Update it in the Storyblok UI.`,
-              );
-            }
-          }
+          ui.warn(
+            `Deleting ${named.join(", ")} removes ${named.length === 1 ? "it" : "them"} from the content types of ${plural(folders.length, "folder", "folders")}: ${folders.map(describeFolder).join(", ")}. A folder left without content types accepts every content type.`,
+          );
         } catch (maybeError) {
           const { message } = toError(maybeError);
-          logger.warn("Failed to update folder content types", {
-            renames: renames.map(describeRename),
+          logger.warn("Failed to check folders for deleted blocks", {
+            deleted: [...deleted],
             error: message,
           });
           ui.warn(
-            `The folders that name renamed or deleted blocks as content types could not be updated: ${message}`,
+            `The folders that name deleted blocks as content types could not be checked: ${message}`,
           );
         }
       };
 
       remoteSpinner.succeed(
         `Remote: ${remote.components.size} components, ${remote.datasources.size} datasources`,
+      );
+
+      // Read before the push writes a migration of its own.
+      const pendingMigrations = await pendingContentMigrations(basePath, space).catch(
+        (maybeError: unknown) => {
+          logger.warn("Failed to list pending content migrations", {
+            error: toError(maybeError).message,
+          });
+          return [];
+        },
       );
 
       // 3. Diff components, datasources, and folders (component groups).
@@ -306,22 +317,28 @@ schemaCommand
       let diffResult = diff();
 
       // 4. Pair blocks only the space has with blocks only the schema has, so
-      // a confirmed rename updates the block in place instead of creating a
-      // new block and leaving the stories on a stale one.
+      // a confirmed rename renames the block in place, along with the stories
+      // and folders that use it, instead of creating a new block and leaving
+      // the stories on a stale one.
       const blockRenames: BlockRename[] = [];
-      const storyCounts = new Map<string, number | undefined>();
-      const storiesUsing = async (block: string): Promise<number | undefined> => {
-        if (!storyCounts.has(block)) storyCounts.set(block, await countStoriesUsing(space, block));
-        return storyCounts.get(block);
+      const storyCounts = new Map<string, Promise<number>>();
+      const storiesUsing = (block: string): Promise<number> => {
+        const count = storyCounts.get(block) ?? countStoriesUsing(space, block);
+        storyCounts.set(block, count);
+        return count;
       };
       const usage = (count: number | undefined) =>
         count === undefined ? "" : ` (${plural(count, "story", "stories")})`;
+      const offeredRenames = new Set<string>();
       for (const rename of detectBlockRenames(diffResult, local, remote)) {
-        const stories = usage(await storiesUsing(rename.from));
+        offeredRenames.add(rename.from);
+        // The count only informs the prompt, so a failed lookup leaves it out.
+        const stories = usage(await storiesUsing(rename.from).catch(() => undefined));
         if (options.dryRun) {
           ui.info(
-            `Possible block rename: ${rename.from} → ${rename.to}${stories}. Without --dry-run, schema push asks whether to rename the block in place.`,
+            `Possible block rename: ${rename.from} → ${rename.to}${stories}. The dry run shows it as a rename. Without --dry-run, schema push asks whether to rename the block in place.`,
           );
+          blockRenames.push(rename);
           continue;
         }
         const confirmed = await confirm(
@@ -340,19 +357,37 @@ schemaCommand
 
       // Deleting a block stories still use leaves their content without a
       // schema, so it takes --force.
-      if (options.delete) {
-        const used: string[] = [];
-        for (const d of diffResult.diffs) {
-          if (d.type !== "component" || d.action !== "stale") continue;
-          const count = await storiesUsing(d.name);
-          if (count) used.push(`${d.name}${usage(count)}`);
-        }
-        if (used.length > 0 && !options.force) {
-          const message = `Stories still use ${used.length === 1 ? "this block" : "these blocks"}, which --delete would delete: ${used.join(", ")}. Rename the block, migrate its content first, or pass --force to delete it anyway.`;
+      if (options.delete && !options.force) {
+        const refuse = (message: string) => {
           if (!options.dryRun) {
             throw new CommandError(message);
           }
           ui.warn(message);
+        };
+        const used: { name: string; label: string }[] = [];
+        for (const d of diffResult.diffs) {
+          if (d.type !== "component" || d.action !== "stale") continue;
+          let count: number;
+          try {
+            count = await storiesUsing(d.name);
+          } catch (maybeError) {
+            refuse(
+              `Could not check whether stories use ${d.name}, which --delete would delete (${describeError(maybeError)}). Pass --force to delete it without checking.`,
+            );
+            continue;
+          }
+          if (count > 0) used.push({ name: d.name, label: `${d.name}${usage(count)}` });
+        }
+        if (used.length > 0) {
+          const one = used.length === 1;
+          const stories = `${one ? "the block's" : "the blocks'"} stories`;
+          const force = `pass --force to delete ${one ? "it" : "them"} anyway`;
+          const advice = used.some(({ name }) => offeredRenames.has(name))
+            ? `Confirm the rename, migrate ${stories} first, or ${force}.`
+            : `Migrate ${stories} first, or ${force}.`;
+          refuse(
+            `Stories still use ${one ? "this block" : "these blocks"}, which --delete would delete: ${used.map(({ label }) => label).join(", ")}. ${advice}`,
+          );
         }
       }
 
@@ -360,18 +395,26 @@ schemaCommand
       ui.br();
       ui.log(formatDiffOutput(diffResult, { delete: options.delete }));
 
+      const nothingToPush =
+        diffResult.creates === 0 &&
+        diffResult.updates === 0 &&
+        (!options.delete || diffResult.stale === 0);
+
+      // `migrations run` skips the ops of a migration that a later schema
+      // change no longer matches, so one written for an earlier change goes
+      // before the push, and one written for this change after it.
+      if (!nothingToPush && pendingMigrations.length > 0) {
+        const pendingList = pendingMigrations.join(", ");
+        ui.warn(
+          pendingMigrations.length === 1
+            ? `1 content migration is pending on this machine: ${pendingList}. If it was written for an earlier schema change, run it with \`${runMigrations}\` before you push: once the push changes the fields it migrates, migrations run skips its ops. If it was written for the change you're pushing, run it after the push.`
+            : `${pendingMigrations.length} content migrations are pending on this machine: ${pendingList}. Run the ones written for an earlier schema change with \`${runMigrations}\` before you push: once the push changes the fields they migrate, migrations run skips their ops. Run the ones written for the change you're pushing after the push.`,
+        );
+      }
+
       // 6. Analyze breaking changes and offer migration generation
       if (options.migrations) {
         const breakingChanges = analyzeBreakingChanges(diffResult, local, remote);
-        for (const { from, to } of blockRenames) {
-          let entry = breakingChanges.find((comp) => comp.componentName === to);
-          if (!entry) {
-            entry = { componentName: to, changes: [] };
-            breakingChanges.push(entry);
-          }
-          // Last, so the field ops before it address the block by its old name.
-          entry.changes.push({ kind: "block_renamed", from, to });
-        }
 
         if (breakingChanges.length > 0) {
           const totalChanges = breakingChanges.reduce((sum, c) => sum + c.changes.length, 0);
@@ -476,6 +519,7 @@ schemaCommand
             `Component '${comp.name}' will be deleted. Stories using it will have out-of-schema content.`,
           );
         }
+        await warnAboutFoldersNaming(deletedComponents.map((comp) => comp.name));
 
         // Warn per stale folder that still holds remote components (they will be
         // ungrouped, not deleted, when the group is removed).
@@ -534,7 +578,7 @@ schemaCommand
       const resolvedPath = resolvePath(basePath, "");
       const timestamp = new Date().toISOString();
 
-      const changesetPath = await saveChangeset(resolvedPath, {
+      const changeset: ChangesetData = {
         timestamp,
         spaceId: Number(space),
         remote: {
@@ -543,44 +587,55 @@ schemaCommand
           datasources: rawDatasources,
         },
         changes: buildChangesetEntries(diffResult, local, remote, { delete: options.delete }),
-      });
+        migrations: contentMigrationIds(generatedMigrations?.files ?? []),
+      };
+      const changesetPath = await saveChangeset(resolvedPath, changeset);
       logger.info("Changeset saved", { path: displayPath(changesetPath, basePath) });
 
       // 9. Execute push (skipped when nothing to push).
-      const nothingToPush =
-        diffResult.creates === 0 &&
-        diffResult.updates === 0 &&
-        (!options.delete || diffResult.stale === 0);
       let pushResult: Awaited<ReturnType<typeof executePush>> | null = null;
       if (!nothingToPush) {
         const pushSpinner = ui.createSpinner("Pushing schema...");
+        const pushedComponents = new Set<string>();
         try {
           pushResult = await executePush(space, local, remote, diffResult, {
             delete: options.delete,
+            renames: blockRenames,
+            onComponentPushed: (name) => pushedComponents.add(name),
+            onRenameWaiting: ({ from, to }, stories) =>
+              ui.info(
+                `Waiting for the space to rename ${from} → ${to} in ${plural(stories, "story", "stories")}...`,
+              ),
           });
         } catch (error) {
           pushSpinner.failed("Failed to push schema");
-          if (generatedMigrations || blockRenames.length > 0) {
+          let keptMigrations: string[] = [];
+          if (generatedMigrations) {
             // Blocks are updated independently, so some may have landed. A rerun
             // no longer sees their changes, so handle them now.
-            const pushed = await pushedBlocks(space, local, [
-              ...(generatedMigrations?.changes.map((comp) => comp.componentName) ?? []),
-              ...blockRenames.map((rename) => rename.to),
-            ]);
-            if (generatedMigrations) {
-              await keepMigrationsForPushedBlocks(generatedMigrations, pushed);
-            }
-            if (pushed) {
-              await updateFolderRestrictions(
-                blockRenames.filter((rename) => pushed.has(rename.to)),
-                [],
-              );
-            } else if (blockRenames.length > 0) {
-              ui.warn(
-                `The space could not be read to tell whether these blocks were renamed: ${blockRenames.map(describeRename).join(", ")}. Folders that name the old blocks as content types must be updated in the Storyblok UI.`,
-              );
-            }
+            const pushed = await pushedBlocks(
+              space,
+              local,
+              generatedMigrations.changes.map((comp) => comp.componentName),
+            );
+            keptMigrations = await keepMigrationsForPushedBlocks(generatedMigrations, pushed);
           }
+          // `migrations generate --before-push` reads the changeset, so it
+          // must not take a block the push failed to change for changed.
+          await saveChangeset(resolvedPath, {
+            ...changeset,
+            changes: changeset.changes.map((change) =>
+              change.type === "component" && !pushedComponents.has(change.name)
+                ? { ...change, failed: true }
+                : change,
+            ),
+            migrations: contentMigrationIds(keptMigrations),
+          }).catch((maybeError: unknown) => {
+            logger.warn("Failed to mark failed changes in the changeset", {
+              path: displayPath(changesetPath, basePath),
+              error: toError(maybeError).message,
+            });
+          });
           throw error;
         }
 
@@ -591,21 +646,22 @@ schemaCommand
           `Pushed ${pushResult.created} creations, ${pushResult.updated} updates${pushResult.deleted > 0 ? `, ${pushResult.deleted} deletions` : ""}.`,
         );
 
-        await updateFolderRestrictions(
-          blockRenames,
-          options.delete
-            ? diffResult.diffs
-                .filter((d) => d.type === "component" && d.action === "stale")
-                .map((d) => d.name)
-            : [],
-        );
+        if (blockRenames.length > 0) {
+          ui.info(
+            `Renamed ${blockRenames.map(describeRename).join(", ")} in the space, along with the stories and folders that use ${blockRenames.length === 1 ? "it" : "them"}.`,
+          );
+        }
+        for (const { rename, stories } of pushResult.unfinishedRenames) {
+          ui.warn(
+            `${plural(stories, "story", "stories")} still ${stories === 1 ? "uses" : "use"} ${rename.from}: the space stopped renaming the block to ${rename.to} in them. Rename it there with a content migration that holds renameBlock({ block: '${rename.from}', to: '${rename.to}' }), written without a .before.ts snapshot (migrations generate ${rename.to} --schema <entry-file> --no-before), then run it.`,
+          );
+        }
 
         if (generatedMigrations) {
           ui.info(
             `Generated migrations are scaffolds. Review and adjust them before running \`storyblok ${runCommand}\`.`,
           );
-          const pathFlag = basePath ? ` --path ${shellQuote(basePath)}` : "";
-          ui.info(`Run migrations when ready: storyblok ${runCommand} --space ${space}${pathFlag}`);
+          ui.info(`Run migrations when ready: ${runMigrations}`);
         }
 
         // Block tags are a dependency of the blocks that name them rather than a

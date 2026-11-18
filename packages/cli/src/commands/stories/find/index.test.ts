@@ -618,7 +618,7 @@ describe("stories find command", () => {
     // The point of the flag: the rest of the scope is never read.
     expect(contentFetches).toBeLessThan(total);
     const stderr = errorSpy.mock.calls.flat().join("\n");
-    expect(stderr).toMatch(/--limit 5 was reached/);
+    expect(stderr).toMatch(/Stopped at --limit 5, as asked/);
     expect(stderr).not.toMatch(/operation was aborted/i);
     // A limit that was reached is a successful run, so a script can trust this.
     expect(process.exitCode).toBeFalsy();
@@ -645,7 +645,7 @@ describe("stories find command", () => {
     expect(stderr).toMatch(/✔ Found \d+ stor(y|ies) in/);
     expect(stderr).not.toMatch(/pages? failed/);
     // ...an explicit statement that it was on purpose...
-    expect(stderr).toMatch(/Stopped early on purpose/);
+    expect(stderr).toMatch(/Stopped when the reading command closed the pipe/);
     // ...and an exit code a script can trust.
     expect(process.exitCode).toBeFalsy();
   });

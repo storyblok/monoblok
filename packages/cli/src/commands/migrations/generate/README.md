@@ -110,9 +110,9 @@ Where:
 - `{componentName}` is the name of the component
 - `{suffix}` is the suffix in the file name if provided
 
-With `--schema`, the files are `{timestamp}-{slug}.ts` and its `.before.ts` snapshot, where
-`{timestamp}` is the UTC creation time as `YYYYMMDDHHmmss` and `{slug}` is the component name and
-suffix in lowercase, joined by hyphens.
+With `--schema`, the command writes `{timestamp}-{slug}.ts` and `{timestamp}-{slug}.before.ts`,
+where `{timestamp}` is the UTC creation time as `YYYYMMDDHHmmss` and `{slug}` is the component name
+and suffix in lowercase, joined by hyphens.
 
 ### Component names that are not file names
 

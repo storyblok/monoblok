@@ -36,13 +36,13 @@ import {
 } from "./migrations/generate";
 import {
   pendingContentMigrations,
+  plural,
   writeContentMigration,
 } from "../../migrations/content-migrations";
 import { writeLocalComponents } from "./write-local-components";
 import { detectBlockRenames, withBlockRenames, withRenamedBlocks } from "./block-renames";
 import type { BlockRename } from "./block-renames";
 import { countStoriesUsing, describeFolder, foldersNaming } from "./story-folders";
-import { plural } from "../../migrations/content-migrations";
 
 /** Quotes a path for pasting into a shell when it holds characters the shell would split or expand. */
 function shellQuote(path: string): string {

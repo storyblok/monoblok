@@ -4,9 +4,8 @@
  * writing a new one, the story fields the engine reads, and the guard against
  * pending releases.
  */
-import { rm } from "node:fs/promises";
+import { readdir, rm } from "node:fs/promises";
 import { isDeepStrictEqual } from "node:util";
-import { readdir } from "node:fs/promises";
 import chalk from "chalk";
 import { dirname, join, relative, resolve } from "pathe";
 import {

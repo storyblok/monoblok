@@ -27,6 +27,7 @@ import { getUI } from "../../lib/ui";
 import { CommandError, toError } from "../../utils";
 import { APIError, handleAPIError } from "../../utils/error/api-error";
 import { fileExists, importModule, resolvePath, saveToFile } from "../../utils/filesystem";
+import { displayPath } from "../schema/utils";
 import { fetchStory, updateStory } from "../stories/actions";
 import type { Story } from "../stories/constants";
 
@@ -50,15 +51,6 @@ export async function discoverContentMigrations(directory: string): Promise<Migr
     }),
   );
   return files.filter((_, index) => isContentMigration[index]);
-}
-
-/**
- * The path relative to the current directory, or absolute when it lies outside
- * and the relative form would be a chain of `..` segments.
- */
-export function displayPath(file: string): string {
-  const relativePath = relative(process.cwd(), file);
-  return relativePath.startsWith("..") ? file : relativePath;
 }
 
 export type WriteContentMigrationOptions = {
@@ -119,7 +111,7 @@ export async function writeContentMigration(
   for (const file of [migrationPath, beforePath]) {
     if (await fileExists(file)) {
       throw new CommandError(
-        `${displayPath(file)} already exists. Move or delete it, then run again.`,
+        `${displayPath(file, options.path)} already exists. Move or delete it, then run again.`,
       );
     }
   }

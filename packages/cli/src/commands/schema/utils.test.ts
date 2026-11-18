@@ -33,6 +33,17 @@ describe("displayPath", () => {
     const filePath = join(process.cwd(), "storage/migrations/12345/hero.js");
     expect(displayPath(filePath, process.cwd())).toBe(filePath);
   });
+
+  it("should keep the absolute path when the file lies outside CWD", () => {
+    const filePath = join(process.cwd(), "../elsewhere/migrations/12345/hero.js");
+    expect(displayPath(filePath)).toBe(filePath);
+    expect(displayPath(filePath, "../elsewhere")).toBe(filePath);
+  });
+
+  it("should keep a path relative when only its name starts with dots", () => {
+    const filePath = join(process.cwd(), "..storyblok/hero.js");
+    expect(displayPath(filePath)).toBe("..storyblok/hero.js");
+  });
 });
 
 describe("applyDefaults", () => {

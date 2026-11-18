@@ -8,7 +8,8 @@ import { session } from "../../../session";
 import { fetchComponent, fetchComponents } from "../../../commands/components";
 import { migrationsCommand } from "../command";
 import { generateMigration, hasMigrationSince, latestPushChanging } from "./actions";
-import { displayPath, writeContentMigration } from "../content-migrations";
+import { writeContentMigration } from "../content-migrations";
+import { displayPath } from "../../schema/utils";
 import { getUI } from "../../../lib/ui";
 import { getLogger } from "../../../lib/logger/logger";
 import { isFile, sanitizeFilename } from "../../../utils/filesystem";
@@ -171,7 +172,7 @@ generateCmd.action(
         : { migrationPath: await generateMigration(space, path, component, suffix) };
       const [migrationPath, ...snapshotPaths] = [written.migrationPath, written.beforePath]
         .filter((file) => file !== undefined)
-        .map(displayPath);
+        .map((file) => displayPath(file, path));
 
       spinner.succeed(
         `Migration generated for component ${chalk.hex(colorPalette.MIGRATIONS)(componentName)} - Completed in ${spinner.elapsedTime.toFixed(2)}ms`,

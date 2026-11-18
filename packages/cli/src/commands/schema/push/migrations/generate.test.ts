@@ -28,6 +28,44 @@ describe("renderMigrationCode", () => {
     ]);
   });
 
+  it("should keep the old value at the old key's position when the block also holds the new key", () => {
+    const migrate = loadMigration(
+      renderMigrationCode([{ kind: "rename", field: "author", oldField: "author_name" }]),
+    );
+
+    expect(Object.entries(migrate({ author_name: "Ada", text: "Hi", author: "Bob" }))).toEqual([
+      ["author", "Ada"],
+      ["text", "Hi"],
+    ]);
+    expect(Object.entries(migrate({ author: "Bob", text: "Hi", author_name: "Ada" }))).toEqual([
+      ["text", "Hi"],
+      ["author", "Ada"],
+    ]);
+  });
+
+  it("should rename the field's translations in place", () => {
+    const migrate = loadMigration(
+      renderMigrationCode([{ kind: "rename", field: "author", oldField: "author_name" }]),
+    );
+
+    const migrated = migrate({
+      author_name: "Ada",
+      author_name__i18n__de: "Ada DE",
+      author__i18n__fr: "Bob FR",
+      text: "Hi",
+      author_name__i18n__en_US: "Ada US",
+      author__i18n__de: "Bob DE",
+    });
+
+    expect(Object.entries(migrated)).toEqual([
+      ["author", "Ada"],
+      ["author__i18n__de", "Ada DE"],
+      ["author__i18n__fr", "Bob FR"],
+      ["text", "Hi"],
+      ["author__i18n__en_US", "Ada US"],
+    ]);
+  });
+
   it("should leave a block without the renamed field unchanged", () => {
     const migrate = loadMigration(
       renderMigrationCode([{ kind: "rename", field: "author", oldField: "author_name" }]),

@@ -58,9 +58,23 @@ function typeConversion(field: string, oldType: string, newType: string): string
   }
 }
 
-/** A statement that renames a field without moving it to the end of the block. */
+const TRANSLATION_SEPARATOR = "__i18n__";
+
+/**
+ * A one-line statement that renames a field and its `__i18n__` translations
+ * without moving them to the end of the block. Where the block already holds
+ * the new key too, the old value wins and takes the old key's position.
+ */
 function renameStatement(from: string, to: string): string {
-  return `block = Object.fromEntries(Object.entries(block).map(([key, value]) => [key === ${quoteString(from)} ? ${quoteString(to)} : key, value]));`;
+  const [fromKey, toKey] = [quoteString(from), quoteString(to)];
+  const [fromTranslation, toTranslation] = [
+    quoteString(`${from}${TRANSLATION_SEPARATOR}`),
+    quoteString(`${to}${TRANSLATION_SEPARATOR}`),
+  ];
+  const isTarget = `key === ${toKey} || key.startsWith(${toTranslation})`;
+  const isSource = `key === ${fromKey} || key.startsWith(${fromTranslation})`;
+  const replacedBySource = `(${fromKey} + key.slice(${to.length}) in block)`;
+  return `block = Object.fromEntries(Object.entries(block).filter(([key]) => !(${isTarget}) || !${replacedBySource}).map(([key, value]) => [${isSource} ? ${toKey} + key.slice(${from.length}) : key, value]));`;
 }
 
 /**

@@ -18,7 +18,7 @@ import { templates } from "./constants";
 import { regionCodes } from "../../constants";
 import type { SessionState } from "../../session";
 import { session } from "../../session";
-import { loggedInSessionState, loggedOutSessionState } from "../../../test/setup";
+import { loggedInSessionState, loggedOutSessionState, withoutTerminal } from "../../../test/setup";
 
 // Mock all dependencies
 vi.mock("./actions", () => ({
@@ -72,9 +72,9 @@ const { mockedUI } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock("../../lib/ui", () => ({
+vi.mock("../../lib/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../lib/ui")>()),
   getUI: vi.fn(() => mockedUI),
-  stderrPromptContext: { output: process.stderr },
 }));
 const createMockSpace = (overrides: Partial<SpaceDetail> = {}): SpaceDetail => ({
   name: "Test Space",
@@ -2221,6 +2221,73 @@ describe("createCommand", () => {
           "react",
         );
       });
+    });
+  });
+
+  describe("without a terminal", () => {
+    beforeEach(() => {
+      vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+        {
+          name: "React",
+          value: "react",
+          template: "",
+          location: "https://localhost:5173/",
+          description: "",
+          updated_at: "",
+        },
+      ]);
+      vi.mocked(generateProject).mockResolvedValue(undefined);
+      vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
+      withoutTerminal();
+    });
+
+    const reportedError = (message: string) =>
+      expect(vi.mocked(handleError).mock.calls.map(([error]) => error.message)).toContainEqual(
+        expect.stringContaining(message),
+      );
+
+    it("should fail and name --template instead of asking for the technology", async () => {
+      await createCommand.parseAsync(["node", "test", "my-project", "--skip-space"]);
+
+      reportedError(
+        'Cannot ask "Please select the technology you would like to use:" because stdin is not a terminal. Pass --template to choose the technology.',
+      );
+      expect(select).not.toHaveBeenCalled();
+      expect(generateProject).not.toHaveBeenCalled();
+    });
+
+    it("should fail and name the project path argument instead of asking for it", async () => {
+      await createCommand.parseAsync(["node", "test", "--template", "react", "--skip-space"]);
+
+      reportedError("Pass the project path as an argument.");
+      expect(input).not.toHaveBeenCalled();
+      expect(generateProject).not.toHaveBeenCalled();
+    });
+
+    it("should fail and name the login alternatives instead of offering to log in", async () => {
+      vi.mocked(requireAuthentication).mockReturnValue(false);
+
+      await createCommand.parseAsync(["node", "test", "my-project", "--template", "react"]);
+
+      reportedError(
+        "Log in first with `storyblok login --token <token> --region <region>`, or pass --token or --skip-space.",
+      );
+      expect(confirm).not.toHaveBeenCalled();
+      expect(generateProject).not.toHaveBeenCalled();
+    });
+
+    it("should create the project without prompting when given every answer as a flag", async () => {
+      await createCommand.parseAsync([
+        "node",
+        "test",
+        "my-project",
+        "--template",
+        "react",
+        "--skip-space",
+      ]);
+
+      expect(handleError).not.toHaveBeenCalled();
+      expect(generateProject).toHaveBeenCalledWith("react", "my-project", expect.any(String));
     });
   });
 });

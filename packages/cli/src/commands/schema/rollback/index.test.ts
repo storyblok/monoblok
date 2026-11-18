@@ -7,6 +7,7 @@ import { confirm, select } from "@inquirer/prompts";
 import "../index";
 import { schemaCommand } from "../command";
 import { DEFAULT_SPACE, getID } from "../../__tests__/helpers";
+import { withoutTerminal } from "../../../../test/setup";
 import type { ChangesetData } from "../types";
 
 vi.mock("@inquirer/prompts", () => ({
@@ -449,5 +450,79 @@ describe("schema rollback command", () => {
     ]);
 
     expect(console.error).toHaveBeenCalled();
+  });
+
+  describe("without a terminal", () => {
+    const savedRollbackChangesets = () =>
+      Object.keys(vol.toJSON()).filter(
+        (f) => f.includes("schema/changesets/") && !f.endsWith(CHANGESET_PATH),
+      );
+
+    it("should fail and name --latest when no changeset file is given", async () => {
+      preconditions.hasChangeset(
+        makeChangeset([{ type: "component", name: "hero", action: "create", after: {} }]),
+      );
+      withoutTerminal();
+
+      await schemaCommand.parseAsync(["node", "test", "rollback", "--space", DEFAULT_SPACE]);
+
+      expect(process.exitCode).toBe(2);
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'Cannot ask "Select a changeset to roll back:" because stdin is not a terminal. Pass the changeset file as an argument, or --latest.',
+        ),
+      );
+      expect(select).not.toHaveBeenCalled();
+    });
+
+    it("should fail and name --yes instead of applying the rollback unconfirmed", async () => {
+      const comp = makeMockComponent({ name: "hero" });
+      preconditions.hasChangeset(
+        makeChangeset([{ type: "component", name: "hero", action: "create", after: { ...comp } }]),
+      );
+      withoutTerminal();
+
+      await schemaCommand.parseAsync([
+        "node",
+        "test",
+        "rollback",
+        CHANGESET_PATH,
+        "--space",
+        DEFAULT_SPACE,
+      ]);
+
+      expect(process.exitCode).toBe(2);
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining("Pass --yes to apply the rollback without confirming."),
+      );
+      expect(confirm).not.toHaveBeenCalled();
+      expect(savedRollbackChangesets()).toEqual([]);
+    });
+
+    it("should roll back without prompting when given --latest and --yes", async () => {
+      const comp = makeMockComponent({ name: "hero" });
+      preconditions.hasChangeset(
+        makeChangeset([{ type: "component", name: "hero", action: "create", after: { ...comp } }]),
+      );
+      preconditions.hasRemoteComponents([comp]);
+      preconditions.hasRemoteFolders();
+      preconditions.hasRemoteDatasources();
+      preconditions.hasRemoteTags();
+      preconditions.canDeleteComponents();
+      withoutTerminal();
+
+      await schemaCommand.parseAsync([
+        "node",
+        "test",
+        "rollback",
+        "--space",
+        DEFAULT_SPACE,
+        "--latest",
+        "--yes",
+      ]);
+
+      expect(process.exitCode).toBeFalsy();
+      expect(savedRollbackChangesets()).toHaveLength(1);
+    });
   });
 });

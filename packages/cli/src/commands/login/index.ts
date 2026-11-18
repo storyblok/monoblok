@@ -1,5 +1,4 @@
 import chalk from "chalk";
-import { select } from "@inquirer/prompts";
 import type { RegionCode } from "../../constants";
 import { colorPalette, commands, regionNames, regions } from "../../constants";
 import { getProgram } from "../../program";
@@ -7,7 +6,7 @@ import { CommandError, handleError, isRegion } from "../../utils";
 import { loginWithToken } from "./actions";
 import { session } from "../../session";
 import { performInteractiveLogin } from "./helpers";
-import { type CLISpinner, getUI, stderrPromptContext } from "../../lib/ui";
+import { type CLISpinner, getUI, select } from "../../lib/ui";
 
 const program = getProgram(); // Get the shared singleton instance
 
@@ -55,17 +54,15 @@ export const loginCommand = program
       try {
         let userRegion = region;
         if (!userRegion) {
-          userRegion = await select(
-            {
-              message: "Please select the region you would like to work in:",
-              choices: Object.values(regions).map((region: RegionCode) => ({
-                name: regionNames[region],
-                value: region,
-              })),
-              default: regions.EU,
-            },
-            stderrPromptContext,
-          );
+          userRegion = await select({
+            message: "Please select the region you would like to work in:",
+            choices: Object.values(regions).map((region: RegionCode) => ({
+              name: regionNames[region],
+              value: region,
+            })),
+            default: regions.EU,
+            nonInteractiveHint: "Pass --region to choose the region.",
+          });
         }
         spinner = ui.createSpinner(`Logging in with token`);
         const user = await loginWithToken(token, userRegion);

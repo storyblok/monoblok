@@ -8,6 +8,7 @@ import "../index";
 import { schemaCommand } from "../command";
 import type { SchemaData } from "../types";
 import { DEFAULT_SPACE, getID } from "../../__tests__/helpers";
+import { withoutTerminal } from "../../../../test/setup";
 
 import { loadSchema } from "../load-schema";
 
@@ -1284,5 +1285,79 @@ describe("schema push command", () => {
     );
     expect(migrationFiles).toHaveLength(0);
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Dry run"));
+  });
+
+  describe("without a terminal", () => {
+    const hasBreakingChange = () => {
+      preconditions.hasLocalSchema({
+        components: [
+          makeMockComponent({ name: "hero", schema: { title: { type: "text", pos: 0 } } }),
+        ] as any,
+        datasources: [],
+      });
+      preconditions.hasRemoteComponents([
+        makeMockComponent({
+          name: "hero",
+          schema: { subtitle: { type: "text", pos: 0 }, title: { type: "text", pos: 1 } },
+        }),
+      ]);
+      preconditions.hasRemoteFolders([]);
+      preconditions.hasRemoteDatasources([]);
+      preconditions.hasRemoteTags([]);
+    };
+
+    it("should fail before pushing and name the migration flags", async () => {
+      hasBreakingChange();
+      const updatedComponents: string[] = [];
+      server.use(
+        http.put(
+          `https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/components/:id`,
+          ({ params }) => {
+            updatedComponents.push(String(params.id));
+            return HttpResponse.json({});
+          },
+        ),
+      );
+      withoutTerminal();
+
+      await schemaCommand.parseAsync([
+        "node",
+        "test",
+        "push",
+        "schema.ts",
+        "--space",
+        DEFAULT_SPACE,
+      ]);
+
+      expect(process.exitCode).toBe(2);
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'Cannot ask "Generate migration files for breaking changes?" because stdin is not a terminal. Pass --migrations to generate them, or --no-migrations to skip them.',
+        ),
+      );
+      expect(confirm).not.toHaveBeenCalled();
+      expect(updatedComponents).toEqual([]);
+    });
+
+    it("should push without prompting when given --no-migrations", async () => {
+      hasBreakingChange();
+      preconditions.canUpdateComponents();
+      withoutTerminal();
+
+      await schemaCommand.parseAsync([
+        "node",
+        "test",
+        "push",
+        "schema.ts",
+        "--space",
+        DEFAULT_SPACE,
+        "--no-migrations",
+      ]);
+
+      expect(process.exitCode).toBeFalsy();
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining("Pushed 0 creations, 1 updates"),
+      );
+    });
   });
 });

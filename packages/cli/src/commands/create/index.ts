@@ -10,7 +10,6 @@ import { performInteractiveLogin } from "../login/helpers";
 import { getProgram } from "../../program";
 import type { CreateOptions } from "./constants";
 import { session } from "../../session";
-import { confirm, input, select } from "@inquirer/prompts";
 import {
   fetchBlueprintRepositories,
   generateProject,
@@ -23,7 +22,7 @@ import chalk from "chalk";
 import { createSpace, type SpaceCreate, type SpaceCreateQuery } from "../spaces";
 import type { User } from "../user/actions";
 import { getUser } from "../user/actions";
-import { type CLISpinner, getUI, stderrPromptContext } from "../../lib/ui";
+import { type CLISpinner, getUI, confirm, input, select } from "../../lib/ui";
 
 // Helper to show next steps and project ready message
 function showNextSteps(technologyTemplate: string, finalProjectPath: string) {
@@ -44,13 +43,12 @@ async function promptForLogin(
   const ui = getUI();
   try {
     ui.br();
-    const shouldLogin = await confirm(
-      {
-        message: "Would you like to login now?",
-        default: true,
-      },
-      stderrPromptContext,
-    );
+    const shouldLogin = await confirm({
+      message: "Would you like to login now?",
+      default: true,
+      nonInteractiveHint:
+        "Log in first with `storyblok login --token <token> --region <region>`, or pass --token or --skip-space.",
+    });
 
     if (!shouldLogin) {
       ui.warn('Login cancelled. You can login later using the "storyblok login" command.');
@@ -191,39 +189,35 @@ export const createCommand = program
 
       // Select technology template (either not provided or invalid)
       if (!technologyTemplate) {
-        technologyTemplate = await select(
-          {
-            message: "Please select the technology you would like to use:",
-            choices: templates.map((template) => ({
-              name: template.name,
-              value: template.value,
-            })),
-          },
-          stderrPromptContext,
-        );
+        technologyTemplate = await select({
+          message: "Please select the technology you would like to use:",
+          choices: templates.map((template) => ({
+            name: template.name,
+            value: template.value,
+          })),
+          nonInteractiveHint: "Pass --template to choose the technology.",
+        });
       }
 
       // Get project path and extract name
       let finalProjectPath = projectPath;
       if (!projectPath) {
-        finalProjectPath = await input(
-          {
-            message: "What is the path for your project?",
-            default: `./my-${technologyTemplate}-project`,
-            validate: (value: string) => {
-              if (!value.trim()) {
-                return "Project path is required";
-              }
-              // Basic validation for valid paths
-              const projectName = basename(value);
-              if (!/^[\w-]+$/.test(projectName)) {
-                return "Project name (last part of the path) can only contain letters, numbers, hyphens, and underscores";
-              }
-              return true;
-            },
+        finalProjectPath = await input({
+          message: "What is the path for your project?",
+          default: `./my-${technologyTemplate}-project`,
+          validate: (value: string) => {
+            if (!value.trim()) {
+              return "Project path is required";
+            }
+            // Basic validation for valid paths
+            const projectName = basename(value);
+            if (!/^[\w-]+$/.test(projectName)) {
+              return "Project name (last part of the path) can only contain letters, numbers, hyphens, and underscores";
+            }
+            return true;
           },
-          stderrPromptContext,
-        );
+          nonInteractiveHint: "Pass the project path as an argument.",
+        });
       }
 
       // Parse the path to get directory and project name
@@ -313,13 +307,12 @@ export const createCommand = program
         }
 
         if (region === regions.EU && (userData.has_partner || userData.has_org)) {
-          whereToCreateSpace = await select(
-            {
-              message: `Where would you like to create this space?`,
-              choices,
-            },
-            stderrPromptContext,
-          );
+          whereToCreateSpace = await select({
+            message: `Where would you like to create this space?`,
+            choices,
+            nonInteractiveHint:
+              "Pass --skip-space to skip space creation, or --token to use an existing space.",
+          });
         }
         if (region !== regions.EU && userData.has_org) {
           whereToCreateSpace = "org";

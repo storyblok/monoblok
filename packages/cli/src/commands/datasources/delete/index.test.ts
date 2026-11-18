@@ -4,6 +4,7 @@ import "../index";
 import { datasourcesCommand } from "../command";
 import { fetchDatasource } from "../pull/actions";
 import { confirm } from "@inquirer/prompts";
+import { withoutTerminal } from "../../../../test/setup";
 
 const loggerInfoMock = vi.hoisted(() => vi.fn());
 
@@ -124,5 +125,54 @@ describe("datasources delete command", () => {
     expect(console.warn).toHaveBeenCalledWith(
       expect.stringContaining("Both a datasource name and an id were provided"),
     );
+  });
+
+  describe("without a terminal", () => {
+    beforeEach(() => {
+      vi.mocked(fetchDatasource).mockResolvedValue({
+        id: 45678,
+        name: "Countries",
+        slug: "countries",
+        created_at: "2021-01-01",
+        updated_at: "2021-01-01",
+        dimensions: [],
+      });
+      withoutTerminal();
+    });
+
+    it("should fail and name --force instead of deleting unconfirmed", async () => {
+      await datasourcesCommand.parseAsync([
+        "node",
+        "test",
+        "delete",
+        "Countries",
+        "--space",
+        "12345",
+      ]);
+
+      expect(process.exitCode).toBe(2);
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'Cannot ask "Are you sure you want to delete the Countries datasource from space 12345? This action cannot be undone." because stdin is not a terminal. Pass --force to delete without confirming.',
+        ),
+      );
+      expect(confirm).not.toHaveBeenCalled();
+      expect(deleteDatasource).not.toHaveBeenCalled();
+    });
+
+    it("should delete without prompting when given --force", async () => {
+      await datasourcesCommand.parseAsync([
+        "node",
+        "test",
+        "delete",
+        "Countries",
+        "--space",
+        "12345",
+        "--force",
+      ]);
+
+      expect(process.exitCode).toBeFalsy();
+      expect(deleteDatasource).toHaveBeenCalledWith("12345", "45678");
+    });
   });
 });

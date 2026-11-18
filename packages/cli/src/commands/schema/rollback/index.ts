@@ -1,11 +1,10 @@
-import { confirm, select } from "@inquirer/prompts";
 import { basename } from "pathe";
 
 import { colorPalette, commands } from "../../../constants";
 import { CommandError, handleError, requireAuthentication, toError } from "../../../utils";
 import { getLogger } from "../../../lib/logger/logger";
 import { getReporter } from "../../../lib/reporter/reporter";
-import { getUI, stderrPromptContext } from "../../../lib/ui";
+import { confirm, getUI, select } from "../../../lib/ui";
 import { session } from "../../../session";
 import { resolvePath } from "../../../utils/filesystem";
 import { schemaCommand } from "../command";
@@ -73,13 +72,11 @@ schemaCommand
           ui.warn("No changesets found. Run `schema push` first to create one.");
           return;
         }
-        resolvedFile = await select(
-          {
-            message: "Select a changeset to roll back:",
-            choices: available.map((f) => ({ name: basename(f), value: f })),
-          },
-          stderrPromptContext,
-        );
+        resolvedFile = await select({
+          message: "Select a changeset to roll back:",
+          choices: available.map((f) => ({ name: basename(f), value: f })),
+          nonInteractiveHint: "Pass the changeset file as an argument, or --latest.",
+        });
       }
 
       // 2. Load changeset
@@ -114,13 +111,11 @@ schemaCommand
 
       // 6. Confirm (unless --yes)
       if (!options.yes) {
-        const confirmed = await confirm(
-          {
-            message: `Apply rollback of ${ops.length} change(s) from ${basename(resolvedFile)}?`,
-            default: false,
-          },
-          stderrPromptContext,
-        );
+        const confirmed = await confirm({
+          message: `Apply rollback of ${ops.length} change(s) from ${basename(resolvedFile)}?`,
+          default: false,
+          nonInteractiveHint: "Pass --yes to apply the rollback without confirming.",
+        });
         if (!confirmed) {
           ui.info("Rollback cancelled.");
           return;

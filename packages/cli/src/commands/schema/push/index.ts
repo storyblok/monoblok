@@ -1,11 +1,10 @@
-import { confirm } from "@inquirer/prompts";
 import { Option } from "commander";
 
 import { colorPalette, commands } from "../../../constants";
 import { CommandError, handleError, requireAuthentication, toError } from "../../../utils";
 import { getLogger } from "../../../lib/logger/logger";
 import { getReporter } from "../../../lib/reporter/reporter";
-import { getUI, stderrPromptContext } from "../../../lib/ui";
+import { confirm, getUI } from "../../../lib/ui";
 import { session } from "../../../session";
 import { resolvePath } from "../../../utils/filesystem";
 import { schemaCommand } from "../command";
@@ -130,13 +129,12 @@ schemaCommand
             const explicitMigrations = command.getOptionValueSource("migrations") === "cli";
             const shouldGenerate =
               explicitMigrations ||
-              (await confirm(
-                {
-                  message: "Generate migration files for breaking changes?",
-                  default: true,
-                },
-                stderrPromptContext,
-              ));
+              (await confirm({
+                message: "Generate migration files for breaking changes?",
+                default: true,
+                nonInteractiveHint:
+                  "Pass --migrations to generate them, or --no-migrations to skip them.",
+              }));
 
             if (shouldGenerate) {
               const migrationTimestamp = new Date().toISOString();
@@ -162,13 +160,11 @@ schemaCommand
                       ui.log(`  ${r.oldField} → ${r.field}`);
                     }
                   }
-                  const renameConfirmed = await confirm(
-                    {
-                      message: "Are these renames correct?",
-                      default: true,
-                    },
-                    stderrPromptContext,
-                  );
+                  const renameConfirmed = await confirm({
+                    message: "Are these renames correct?",
+                    default: true,
+                    nonInteractiveHint: "Pass --migrations to take detected renames as given.",
+                  });
                   if (!renameConfirmed) {
                     // Convert renames to separate removals
                     comp.changes = comp.changes.map((c) => {

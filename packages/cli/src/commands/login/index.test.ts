@@ -6,7 +6,7 @@ import { regions } from "../../constants";
 import chalk from "chalk";
 import { session } from "../../session";
 import type { User } from "../user/actions";
-import { loggedOutSessionState } from "../../../test/setup";
+import { loggedOutSessionState, withoutTerminal } from "../../../test/setup";
 
 vi.mock("./actions", () => ({
   loginWithEmailAndPassword: vi.fn(),
@@ -246,6 +246,47 @@ describe("loginCommand", () => {
       const expectedMessage = `The provided region: invalid-region is not valid. Please use one of the following values: ${Object.values(regions).join(" | ")}`;
 
       expect(console.error).toHaveBeenCalledWith(expect.stringContaining(expectedMessage));
+    });
+  });
+
+  describe("without a terminal", () => {
+    beforeEach(() => {
+      withoutTerminal();
+    });
+
+    it("should fail and name --token and --region instead of asking how to log in", async () => {
+      await loginCommand.parseAsync(["node", "test"]);
+
+      expect(process.exitCode).toBe(2);
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'Cannot ask "How would you like to login?" because stdin is not a terminal. Pass --token and --region to log in without prompts.',
+        ),
+      );
+      expect(select).not.toHaveBeenCalled();
+    });
+
+    it("should fail and name --region when only --token is given", async () => {
+      await loginCommand.parseAsync(["node", "test", "--token", "test-token"]);
+
+      expect(process.exitCode).toBe(2);
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining("Pass --region to choose the region."),
+      );
+      expect(loginWithToken).not.toHaveBeenCalled();
+    });
+
+    it("should log in without prompting when given --token and --region", async () => {
+      vi.mocked(loginWithToken).mockResolvedValue({
+        id: 1,
+        email: "test@example.com",
+        friendly_name: "Test User",
+      } as User);
+
+      await loginCommand.parseAsync(["node", "test", "--token", "test-token", "--region", "eu"]);
+
+      expect(process.exitCode).toBeFalsy();
+      expect(loginWithToken).toHaveBeenCalledWith("test-token", "eu");
     });
   });
 });

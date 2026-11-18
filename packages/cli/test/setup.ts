@@ -51,7 +51,18 @@ vi.mock("../src/lib/config/store", async (importOriginal) => {
   };
 });
 
+function setStdinIsTTY(isTTY: boolean): void {
+  Object.defineProperty(process.stdin, "isTTY", { value: isTTY, configurable: true });
+}
+
+/** Runs the rest of the test as in CI or a pipe, where prompts cannot be answered. */
+export function withoutTerminal(): void {
+  setStdinIsTTY(false);
+}
+
 beforeEach(() => {
   vol.reset();
   process.exitCode = undefined;
+  // Tests answer prompts through mocks, standing in for a user at a terminal.
+  setStdinIsTTY(true);
 });

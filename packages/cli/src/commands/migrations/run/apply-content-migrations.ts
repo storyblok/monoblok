@@ -27,6 +27,7 @@ import {
   contentJournal,
   DraftNotPublishedError,
   plural,
+  isPartialRun,
   storyAccess,
   toStoryForMigration,
 } from "../content-migrations";
@@ -432,6 +433,33 @@ function translatability(components: readonly Component[]): IsTranslatable {
   };
 }
 
+/**
+ * Why a run left stories it matched unmigrated, so its migration stays
+ * pending: once a later push makes its ops stale, no rerun could migrate them.
+ */
+function partialReason({
+  scoped,
+  allRead,
+  refusals,
+}: {
+  scoped: boolean;
+  allRead: boolean;
+  refusals: number;
+}): string | undefined {
+  if (scoped) return "it ran only on the stories --starts-with or --query selected";
+  if (!allRead) return "some stories it matched couldn't be read";
+  if (refusals > 0) return "it refused some stories";
+  return undefined;
+}
+
+function withPartial(run: MigrationRun, reason: string | undefined): MigrationRun {
+  return reason === undefined ? run : { ...run, partial: true };
+}
+
+function stillPending(reason: string | undefined): string {
+  return reason === undefined ? "" : ` It stays pending, since ${reason}.`;
+}
+
 export type ApplyContentMigrationsOptions = {
   /** The space the migrations write to. */
   space: string;
@@ -466,15 +494,22 @@ export async function applyContentMigrations({
   const isTranslatable = translatability(components);
   const journal = contentJournal(path);
   const scoped = Object.values(scope).some((value) => value !== undefined);
-  /** Migrations with a run still in place, so a run that changes nothing need not be recorded. */
-  const inPlace = new Set(
-    (await journal.list(space)).filter((run) => !run.undoneAt).map((run) => run.migration),
+  const runsInPlace = (await journal.list(space)).filter((run) => !run.undoneAt);
+  /** Migrations with a run in place, so a run that changes nothing need not be recorded. */
+  const inPlace = new Set(runsInPlace.map((run) => run.migration));
+  /** Migrations with a run in place that covered every story they matched. */
+  const completeInPlace = new Set(
+    runsInPlace.filter((run) => !isPartialRun(run)).map((run) => run.migration),
   );
   const access = storyAccess(space);
   const cache = storyCache(space, access);
   const writes = storyWrites();
   /** Migrations that changed at least one story, in the order they ran. */
-  const applied: { id: string; outcome: ApplyMigrationOutcome }[] = [];
+  const applied: {
+    id: string;
+    outcome: ApplyMigrationOutcome;
+    partial: string | undefined;
+  }[] = [];
   const refusedEverything: string[] = [];
   let failed = 0;
   let appliedAt: Date | undefined;
@@ -485,7 +520,7 @@ export async function applyContentMigrations({
       continue;
     }
     const { migration, stale } = withoutStaleOps(entry.migration, live);
-    if (migration.ops.length === 0 && inPlace.has(entry.id)) {
+    if (migration.ops.length === 0 && completeInPlace.has(entry.id)) {
       ui.info(`${entry.id}: superseded by a later schema change; nothing to do.`);
       continue;
     }
@@ -548,30 +583,24 @@ export async function applyContentMigrations({
       continue;
     }
 
+    const partial = partialReason({ scoped, allRead, refusals: outcome.refusals.length });
     if (outcome.writes.length === 0) {
-      const unrecorded = `${entry.id}: changed no stories, so nothing was recorded.`;
-      if (outcome.refusals.length > 0 || inPlace.has(entry.id)) {
-        ui.info(unrecorded);
+      // A run with nothing to change is recorded, so a complete one takes the
+      // migration off the pending list; an empty run is never the one rolled
+      // back. Only one more complete than the run in place adds anything.
+      if (completeInPlace.has(entry.id) || (partial && inPlace.has(entry.id))) {
+        ui.info(`${entry.id}: changed no stories, so nothing was recorded.`);
         continue;
       }
-      // A first run with nothing to change is recorded, so the migration no
-      // longer shows as pending; an empty run is never the one rolled back.
-      // Only one that saw every story, or the stories it missed would stay
-      // unmigrated once a later push makes its ops stale.
-      if (scoped) {
-        ui.info(
-          `${unrecorded} It stays pending until it runs on every story, without --starts-with or --query.`,
-        );
-      } else if (!allRead) {
-        ui.info(`${unrecorded} It stays pending until every story it matched can be read.`);
-      } else {
-        await journal.record(outcome.run, []);
-        inPlace.add(entry.id);
-        ui.info(`${entry.id}: changed no stories, recorded as ${chalk.bold(outcome.run.id)}.`);
-      }
+      await journal.record(withPartial(outcome.run, partial), []);
+      inPlace.add(entry.id);
+      if (!partial) completeInPlace.add(entry.id);
+      ui.info(
+        `${entry.id}: changed no stories, recorded as ${chalk.bold(outcome.run.id)}.${stillPending(partial)}`,
+      );
       continue;
     }
-    applied.push({ id: entry.id, outcome });
+    applied.push({ id: entry.id, outcome, partial });
   }
 
   const notPublished: string[] = [];
@@ -608,7 +637,7 @@ export async function applyContentMigrations({
       }
     }
 
-    for (const { id, outcome } of applied) {
+    for (const { id, outcome, partial } of applied) {
       const landedWrites: LandedWrite[] = outcome.writes.flatMap((write) => {
         const published = landed.get(write.story.id);
         return published === undefined ? [] : [{ story: write.story.id, published }];
@@ -621,8 +650,12 @@ export async function applyContentMigrations({
         continue;
       }
       const { run, inverse } = settleRun(outcome, landedWrites);
-      await journal.record(run, inverse);
-      ui.info(`${id}: changed ${changeSummary(run)}, recorded as ${chalk.bold(run.id)}.`);
+      const unwritten = landedWrites.length < outcome.writes.length;
+      const reason = partial ?? (unwritten ? "some of its writes failed" : undefined);
+      await journal.record(withPartial(run, reason), inverse);
+      ui.info(
+        `${id}: changed ${changeSummary(run)}, recorded as ${chalk.bold(run.id)}.${stillPending(reason)}`,
+      );
     }
   }
 

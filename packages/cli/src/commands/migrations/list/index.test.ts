@@ -85,6 +85,16 @@ describe("migrations list command", () => {
     );
   });
 
+  it("should show a run that left stories out as partial, and its migration as pending", async () => {
+    space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    await run("run", "--starts-with", "home");
+
+    expect(await listed()).toEqual([
+      expect.stringMatching(/-0001-rename-card-title {2}1 story, 1 block {2}\(partial\)$/),
+      "Pending on this machine: 0001-rename-card-title",
+    ]);
+  });
+
   it("should show the title of a run", async () => {
     space.hasMigrations([
       "0001-rename-card-title",

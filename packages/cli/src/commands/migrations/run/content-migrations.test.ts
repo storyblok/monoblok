@@ -56,6 +56,22 @@ const server = setupServer();
 const apply = (...args: string[]): Promise<unknown> =>
   migrationsCommand.parseAsync(["node", "test", "run", ...args, "--space", DEFAULT_SPACE]);
 
+/** The ids `migrations list --pending` prints. */
+async function pending(): Promise<string> {
+  const write = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+  await migrationsCommand.parseAsync([
+    "node",
+    "test",
+    "list",
+    "--pending",
+    "--space",
+    DEFAULT_SPACE,
+  ]);
+  const printed = write.mock.calls.map(([chunk]) => String(chunk)).join("");
+  write.mockRestore();
+  return printed;
+}
+
 const renameCardTitle = defineMigration([
   renameField({ block: "card", field: "title", to: "headline" }),
 ]);
@@ -316,7 +332,7 @@ describe("migrations run command for content migrations", () => {
       },
     });
 
-    it("should not be recorded when --starts-with left stories out", async () => {
+    it("should be recorded as partial and stay pending when --starts-with left stories out", async () => {
       space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
       space.hasStories(storyWithCard(), migrated);
       space.canUpdateStories();
@@ -324,13 +340,16 @@ describe("migrations run command for content migrations", () => {
 
       await apply("--starts-with", "blog/");
 
-      expect(journalEntries()).toEqual([]);
+      expect(journalEntries()).toEqual([expect.objectContaining({ stories: 0, partial: true })]);
       expect(info).toHaveBeenCalledWith(
-        "0001-rename-card-title: changed no stories, so nothing was recorded. It stays pending until it runs on every story, without --starts-with or --query.",
+        expect.stringMatching(
+          /^0001-rename-card-title: changed no stories, recorded as .+\. It stays pending, since it ran only on the stories --starts-with or --query selected\.$/,
+        ),
       );
+      expect(await pending()).toBe("0001-rename-card-title\n");
     });
 
-    it("should not be recorded when a story it matched couldn't be read", async () => {
+    it("should be recorded as partial and stay pending when a story it matched couldn't be read", async () => {
       space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
       space.hasStories(storyWithCard(), migrated);
       space.canUpdateStories();
@@ -339,11 +358,61 @@ describe("migrations run command for content migrations", () => {
 
       await apply();
 
-      expect(journalEntries()).toEqual([]);
+      expect(journalEntries()).toEqual([expect.objectContaining({ stories: 0, partial: true })]);
       expect(info).toHaveBeenCalledWith(
-        "0001-rename-card-title: changed no stories, so nothing was recorded. It stays pending until every story it matched can be read.",
+        expect.stringMatching(
+          /It stays pending, since some stories it matched couldn't be read\.$/,
+        ),
       );
+      expect(await pending()).toBe("0001-rename-card-title\n");
       expect(process.exitCode).toBe(2);
+    });
+  });
+
+  describe("a run that leaves stories out", () => {
+    const blogPost = () => storyWithCard({ id: 2, slug: "post", full_slug: "blog/post" });
+
+    it("should be recorded as partial and stay pending", async () => {
+      space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+      space.hasStories(storyWithCard(), blogPost());
+      space.canUpdateStories();
+      const info = vi.spyOn(getUI(), "info");
+
+      await apply("--starts-with", "blog/");
+
+      expect(journalEntries()).toEqual([expect.objectContaining({ stories: 1, partial: true })]);
+      expect(info).toHaveBeenCalledWith(
+        expect.stringMatching(
+          /^0001-rename-card-title: changed 1 story \(1 block\), recorded as .+\. It stays pending, since it ran only on the stories --starts-with or --query selected\.$/,
+        ),
+      );
+      expect(await pending()).toBe("0001-rename-card-title\n");
+    });
+
+    it("should no longer be pending once a run covered every story", async () => {
+      space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+      space.hasStories(storyWithCard(), blogPost());
+      space.canUpdateStories();
+
+      await apply("--starts-with", "blog/");
+      await apply();
+
+      expect(space.writes.map((write) => write.id)).toEqual([2, 1]);
+      expect(await pending()).toBe("");
+    });
+
+    it("should be rolled back like any other run", async () => {
+      space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+      space.hasStories(storyWithCard(), blogPost());
+      space.canUpdateStories();
+      await apply("--starts-with", "blog/");
+
+      await migrationsCommand.parseAsync(["node", "test", "rollback", "--space", DEFAULT_SPACE]);
+
+      expect(space.story(2)?.content.body).toEqual([
+        { _uid: "card-1", component: "card", title: "Hi" },
+      ]);
+      expect(journalEntries()).toEqual([expect.objectContaining({ undoneAt: expect.any(String) })]);
     });
   });
 
@@ -1041,7 +1110,7 @@ describe("migrations run command for content migrations", () => {
     await apply();
 
     expect(space.writes).toEqual([]);
-    expect(journalEntries()).toEqual([]);
+    expect(journalEntries()).toEqual([expect.objectContaining({ stories: 0, partial: true })]);
     expect(process.exitCode).toBe(2);
   });
 
@@ -1261,9 +1330,10 @@ describe("migrations run command for content migrations", () => {
     vol.fromJSON(journalAtWrite);
     await list();
 
-    expect(info).toHaveBeenLastCalledWith(
+    expect(info).toHaveBeenCalledWith(
       expect.stringMatching(/1 story, 1 block {2}\(interrupted\)$/),
     );
+    expect(info).toHaveBeenLastCalledWith("Pending on this machine: 0001-rename-card-title");
   });
 
   it("should record only the stories that were written when some writes failed, and fail", async () => {

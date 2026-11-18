@@ -148,11 +148,22 @@ export function contentJournal(path: string | undefined): Journal {
 }
 
 /**
- * The migrations without a run still in place. The journal records runs on
- * this machine only, so a migration another machine applied is pending here.
+ * Whether a run left stories it matched unmigrated: it was scoped, couldn't
+ * read or refused some stories, failed some writes, or stopped partway.
+ */
+export function isPartialRun(run: MigrationRun): boolean {
+  return run.partial === true || run.interrupted === true;
+}
+
+/**
+ * The migrations without a run in place that covered every story. The journal
+ * records runs on this machine only, so a migration another machine applied is
+ * pending here.
  */
 export function pendingMigrations(ids: readonly string[], runs: readonly MigrationRun[]): string[] {
-  const inPlace = new Set(runs.filter((run) => !run.undoneAt).map((run) => run.migration));
+  const inPlace = new Set(
+    runs.filter((run) => !run.undoneAt && !isPartialRun(run)).map((run) => run.migration),
+  );
   return ids.filter((id) => !inPlace.has(id));
 }
 

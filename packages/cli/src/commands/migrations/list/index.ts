@@ -24,13 +24,20 @@ const listCmd = migrationsCommand
   .option("-s, --space <space>", "space ID")
   .option("--pending", "List only the migrations without a recorded run that is still in place");
 
-function rollbackState(run: MigrationRun): string {
-  if (run.undoneAt) return `  (rolled back ${run.undoneAt})`;
-  if (run.partlyUndoneAt) return `  (partly rolled back ${run.partlyUndoneAt})`;
-  if (run.interrupted) return "  (interrupted)";
+function rollbackState(run: MigrationRun): string | undefined {
+  if (run.undoneAt) return `rolled back ${run.undoneAt}`;
+  if (run.partlyUndoneAt) return `partly rolled back ${run.partlyUndoneAt}`;
+  if (run.interrupted) return "interrupted";
   // `rollback` without a run passes over such a run, so it never shows as rolled back.
-  if (run.stories === 0) return "  (nothing to roll back)";
-  return "";
+  if (run.stories === 0) return "nothing to roll back";
+  return undefined;
+}
+
+function runState(run: MigrationRun): string {
+  const states = [run.partial ? "partial" : undefined, rollbackState(run)].filter(
+    (state) => state !== undefined,
+  );
+  return states.length === 0 ? "" : `  (${states.join(", ")})`;
 }
 
 listCmd.action(async (options: { pending?: boolean }, command: Command) => {
@@ -74,7 +81,7 @@ listCmd.action(async (options: { pending?: boolean }, command: Command) => {
       ...runs.map((run) => ({
         at: new Date(run.appliedAt).getTime(),
         // The run id ends with the migration id, so only a title adds to it.
-        line: `${run.id}${run.title ? `  ${run.title}` : ""}  ${plural(run.stories, "story", "stories")}, ${plural(run.blocks, "block", "blocks")}${rollbackState(run)}`,
+        line: `${run.id}${run.title ? `  ${run.title}` : ""}  ${plural(run.stories, "story", "stories")}, ${plural(run.blocks, "block", "blocks")}${runState(run)}`,
       })),
       ...rollbackFiles.map((file) => ({
         at: file.createdAt.getTime(),

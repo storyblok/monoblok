@@ -1,6 +1,6 @@
 # ADR-0020: CLI `stories find` Command
 
-**Status:** Accepted **Date:** 2026-08-03
+**Status:** Accepted; the progress rendering in §7 is superseded by ADR-0027 **Date:** 2026-08-03
 
 ## Context
 
@@ -108,6 +108,9 @@ The one collision that _is_ observable is stdout being a terminal, which puts th
 bars on the same screen with certainty rather than by guess. Progress rendering is dropped for those
 runs; text output on stderr, which scrolls rather than redraws, stays. Everything else is left to
 the user, who knows what is downstream: `2>/dev/null`, or the global `--no-ui-enabled`.
+
+> **Superseded by ADR-0027:** live progress is also dropped when stdout is a pipe, because the
+> reader usually prints to the same terminal and the redraws overwrite its lines.
 
 ### 8. Date filters as one range flag per story date
 

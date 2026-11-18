@@ -78,6 +78,13 @@ vi.mock("../../lib/ui", () => ({
 }));
 const createMockSpace = (overrides: Partial<SpaceDetail> = {}): SpaceDetail => ({
   name: "Test Space",
+  ai_features_disabled: false,
+  suspension_causes: [],
+  suspension: {
+    editor: { state: "working", reason: null },
+    website: { state: "working", reason: null },
+    causes: [],
+  },
   domain: "test-domain.com",
   uniq_domain: "test-uniq-domain",
   plan: "starter",

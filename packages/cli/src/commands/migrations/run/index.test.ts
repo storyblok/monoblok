@@ -28,6 +28,7 @@ const createMockStory = (overrides: Partial<Story> = {}): Story => {
 
   return {
     id: 517473243,
+    assigned_users_per_language: {},
     name: "Test Story",
     uuid: "uuid-1",
     slug: "test-story",

@@ -25,6 +25,8 @@ export type {
   AssetUpdateRequest,
   CreateAsset as SignedResponseObject,
   SpaceDetail,
+  StrataErrorResponse,
+  StrataSearchHit,
 } from "./generated/mapi/types.gen";
 export type {
   Asset,
@@ -106,6 +108,7 @@ export type {
   SharedAssetUploadRequest,
 } from "./resources/shared-assets";
 export type { SpaceCreateQuery } from "./resources/spaces";
+export type { StrataSearchQuery } from "./resources/strata";
 export type { StoryListQuery } from "./resources/stories";
 // Utilities
 export { normalizeAssetUrl } from "./utils/normalize-asset-url";

@@ -37,6 +37,9 @@ catalogs:
     publint:
       specifier: ^0.3.22
       version: 0.3.22
+    svelte-check:
+      specifier: ^4.7.8
+      version: 4.7.8
     tsx:
       specifier: ^4.21.0
       version: 4.21.0
@@ -1928,8 +1931,8 @@ importers:
         specifier: ^5.55.7
         version: 5.57.0(@typescript-eslint/types@8.72.0)
       svelte-check:
-        specifier: ^4.1.5
-        version: 4.4.4(picomatch@4.0.7)(svelte@5.57.0(@typescript-eslint/types@8.72.0))(typescript@6.0.3)
+        specifier: 'catalog:'
+        version: 4.7.8(picomatch@4.0.7)(svelte@5.57.0(@typescript-eslint/types@8.72.0))(typescript@6.0.3)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -1968,8 +1971,8 @@ importers:
         specifier: ^5.55.7
         version: 5.57.0(@typescript-eslint/types@8.72.0)
       svelte-check:
-        specifier: ^4.1.5
-        version: 4.4.4(picomatch@4.0.7)(svelte@5.57.0(@typescript-eslint/types@8.72.0))(typescript@6.0.3)
+        specifier: 'catalog:'
+        version: 4.7.8(picomatch@4.0.7)(svelte@5.57.0(@typescript-eslint/types@8.72.0))(typescript@6.0.3)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -2002,8 +2005,8 @@ importers:
         specifier: ^5.55.7
         version: 5.57.0(@typescript-eslint/types@8.72.0)
       svelte-check:
-        specifier: ^4.1.5
-        version: 4.4.4(picomatch@4.0.7)(svelte@5.57.0(@typescript-eslint/types@8.72.0))(typescript@6.0.3)
+        specifier: 'catalog:'
+        version: 4.7.8(picomatch@4.0.7)(svelte@5.57.0(@typescript-eslint/types@8.72.0))(typescript@6.0.3)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -8279,6 +8282,10 @@ packages:
         optional: true
       typescript:
         optional: true
+
+  '@sveltejs/load-config@0.2.3':
+    resolution: {integrity: sha512-VT3qmUb8pRV2QrZjd8iAmtg8lf4W0TIjZbvXtz5MKei/q96teWZgGJyyidJzOjzZzvdq616eSRVeMYIQChUTAQ==}
+    engines: {node: '>= 18.0.0'}
 
   '@sveltejs/package@2.5.7':
     resolution: {integrity: sha512-qqD9xa9H7TDiGFrF6rz7AirOR8k15qDK/9i4MIE8te4vWsv5GEogPks61rrZcLy+yWph+aI6pIj2MdoK3YI8AQ==}
@@ -16544,13 +16551,13 @@ packages:
     resolution: {integrity: sha512-ot0WnXS9fgdkgIcePe6RHNk1WA8+muPa6cSjeR3V8K27q9BB1rTE3R1p7Hv0z1ZyAc8s6Vvv8DIyWf681MAt0w==}
     engines: {node: '>= 0.4'}
 
-  svelte-check@4.4.4:
-    resolution: {integrity: sha512-F1pGqXc710Oi/wTI4d/x7d6lgPwwfx1U6w3Q35n4xsC2e8C/yN2sM1+mWxjlMcpAfWucjlq4vPi+P4FZ8a14sQ==}
+  svelte-check@4.7.8:
+    resolution: {integrity: sha512-laZ49GFHZ3b0z2PWinJWL0syehc/PTR8aHaUaTiBkWJ+4Y38nhxjmXsSz7CbGa3VdKopViVbrBH3bGNqIAI0bQ==}
     engines: {node: '>= 18.0.0'}
     hasBin: true
     peerDependencies:
       svelte: ^4.0.0 || ^5.0.0-next.0
-      typescript: '>=5.0.0'
+      typescript: ^5.0.0 || ^6.0.0
 
   svelte2tsx@0.7.51:
     resolution: {integrity: sha512-YbVMQi5LtQkVGOMdATTY8v3SMtkNjzYtrVDGaN3Bv+0LQ47tGXu/Oc8ryTkcYuEJWTZFJ8G2+2I8ORcQVGt9Ag==}
@@ -26062,6 +26069,8 @@ snapshots:
       '@opentelemetry/api': 1.9.1
       typescript: 6.0.3
     optional: true
+
+  '@sveltejs/load-config@0.2.3': {}
 
   '@sveltejs/package@2.5.7(svelte@5.57.0(@typescript-eslint/types@8.72.0))(typescript@6.0.3)':
     dependencies:
@@ -38100,9 +38109,10 @@ snapshots:
 
   supports-preserve-symlinks-flag@1.0.0: {}
 
-  svelte-check@4.4.4(picomatch@4.0.7)(svelte@5.57.0(@typescript-eslint/types@8.72.0))(typescript@6.0.3):
+  svelte-check@4.7.8(picomatch@4.0.7)(svelte@5.57.0(@typescript-eslint/types@8.72.0))(typescript@6.0.3):
     dependencies:
       '@jridgewell/trace-mapping': 0.3.31
+      '@sveltejs/load-config': 0.2.3
       chokidar: 4.0.3
       fdir: 6.5.0(picomatch@4.0.7)
       picocolors: 1.1.1

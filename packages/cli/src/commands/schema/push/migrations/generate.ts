@@ -1,7 +1,11 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "pathe";
-import type { MigrationOpSource } from "@storyblok/schema/internal/codegen";
-import { coercionBetween, isIdentifier, quoteString } from "@storyblok/schema/internal/codegen";
+import {
+  coercionBetween,
+  isIdentifier,
+  type MigrationOpSource,
+  quoteString,
+} from "@storyblok/schema/internal/codegen";
 
 import { resolvePath } from "../../../../utils/filesystem";
 import { buildMigrationFilename } from "../../../migrations/migration-filename";

@@ -11,9 +11,10 @@ import { dirname, join, relative, resolve } from "pathe";
 import {
   generateMigrationSource,
   generateSnapshot,
+  type MigrationOpSource,
   nextMigrationId,
+  type WireComponent,
 } from "@storyblok/schema/internal/codegen";
-import type { MigrationOpSource, WireComponent } from "@storyblok/schema/internal/codegen";
 import {
   checkPendingReleases,
   discoverMigrations,

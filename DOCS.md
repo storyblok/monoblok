@@ -14,8 +14,24 @@ with a `target` marker naming the docs platform page and heading it belongs to.
   ```
 
 - **Existing pages:** `tooling/cli/index.mdx` gets a link card, `libraries/js/schema/index.mdx` gets
-  a pointer to the CLI, `migrations/generate.mdx` and `schema/push.mdx` document the typed migration
-  files they write, and `libraries/js/management-api-client/index.mdx` gets the `releases` resource.
+  a pointer to the CLI, `tooling/cli/migrations/generate.mdx` and `tooling/cli/schema/push.mdx`
+  document the typed migration files they write, and `libraries/js/management-api-client/index.mdx`
+  gets the `releases` resource.
+
+## Behavior changes
+
+For the release notes. These changes affect existing `schema push` and `migrations` users:
+
+- `schema push --delete` refuses to delete a block that stories use, and refuses when it can’t count
+  those stories. Pass `--force` to delete the block anyway.
+- When the local schema drops a block and adds one with most of the same fields, `schema push` asks
+  whether the block was renamed. On confirmation, the space renames the block in place, along with
+  the stories, folders, and other blocks that use it.
+- Removing values an option or options field offers is a breaking change, so `schema push` offers a
+  migration for it.
+- Switching a field among text, textarea, and markdown is no longer a breaking change.
+- `migrations list` marks a content migration run that changed no stories as having nothing to roll
+  back, and `migrations rollback` reports such a run instead of rolling it back.
 
 <!-- target: src/content/docs/docs/tooling/cli/migrations/run.mdx (replaces the page) -->
 
@@ -101,8 +117,10 @@ block IDs, or when a second pass would change the story again:
 
 When several ops are refused on one story, the command lists each op on its own line.
 
-The command reads the space’s blocks to learn which fields are translatable. `splitField()` and
-`mergeFields()` write no translations to a field that isn’t translatable.
+Before any migration writes, the command lists the space’s blocks. It checks each op against them
+(see [Reruns](#reruns)), and they tell `splitField()` and `mergeFields()` which fields are
+translatable, so those ops write no translations to a field that isn’t. If the command can’t list
+the blocks, it stops and applies no migration.
 
 The command exits with an error when a content migration skipped every story that contains its
 blocks, or when a story couldn’t be read or written. When a write gets no response, the command
@@ -117,27 +135,47 @@ It then narrows the record to the stories that changed.
 [`migrations list`](/docs/tooling/cli/migrations/list) shows a run that stopped partway as
 interrupted. The directory’s `.gitignore` keeps run records on the machine that ran them.
 
-### Reruns
+## Reruns
 
 Every run applies every content migration again. A content migration that already applied changes
-nothing and records nothing. Its first run is recorded even when it changes nothing, so it no longer
-shows as pending. A first run that changes nothing because the content migration refused stories
-isn’t recorded, so the content migration stays pending and each run reports the refusals again. So
-that later schema changes don’t undo it, the command first compares each op with the blocks in the
-space. It skips and reports an op that writes a field the block no longer has, removes a field the
-block has again, or converts a field to a type it no longer has. So run each content migration
-before you push the next schema change:
+nothing and records nothing. The command records the first complete run of a content migration even
+when it changes nothing, so the content migration no longer shows as
+[pending](/docs/tooling/cli/migrations/list).
 
-- Push the schema before you run a content migration that writes new fields. `schema push --typed`
-  does this, since it pushes before you run the migration it wrote.
-- The command skips an op on a field that a later push renamed or removed, even in stories that
-  still hold the field.
-- The command skips a `renameField` while the block still has the field it renames.
-- The command skips a `renameBlock` while the space holds the block under its old name but not its
-  new one.
+A run is partial when it leaves stories the content migration matches unmigrated: when you pass
+`--starts-with` or `--query`, when the content migration refuses stories, or when a story can’t be
+read or written. The command records a partial run, but the content migration stays pending, and the
+command names the reason, for example `It stays pending, since it refused some stories.` A run that
+stops partway also leaves the content migration pending.
 
-Delete a content migration once every space it targets has applied it. A later rename, removal, or
-type change of a field it writes is a type error in that migration.
+Because every run reruns every content migration, `alterField()` and `alterBlock()` callbacks must
+change nothing on a second pass, across content migrations too. A content migration that uppercases
+a value and a later one that lowercases it change the story on every run. See
+[Write rerunnable ops](/docs/libraries/js/schema#write-rerunnable-ops).
+
+So that a rerun doesn’t undo a later schema change, the command first checks each op against the
+blocks in the space, as each block is right after the op. It skips and reports these ops:
+
+- An op that writes a field the block no longer has, even in stories that still hold the field
+- An op that removes a field the block has again
+- An op that writes a value the field’s type no longer stores, such as a `coerceField()` to a number
+  on a field that’s a text field again. Plugin fields aren’t checked.
+- A `renameField()` while the block still has the field it renames
+- A `renameBlock()` while the space has a block by its old name again
+
+```text
+⚠️  20261029141150-rename-twitter-to-x: renameField author.twitter_account → x_account skipped: the author block in the space has the field "twitter_account" again.
+```
+
+When every op of a content migration is skipped and a complete run of it is in place, the command
+reports the content migration as superseded by a later schema change in one line.
+
+Run each content migration before you push the next schema change, and push the schema before you
+run a content migration that writes new fields. `schema push --typed` pushes before you run the
+migration it writes.
+
+Delete a content migration and its snapshot once every space it targets has run it. A later rename,
+removal, or type change of a field it writes is a type error in that migration.
 
 ## Schema check
 
@@ -152,6 +190,10 @@ check.
 A snapshot’s `nameOnlyBlocks` export lists blocks that exist in the space but whose fields it
 doesn’t describe. An op that reads their fields stops the command. Wrapping blocks in or unwrapping
 them from one of them only warns.
+
+The command also stops on an invalid snapshot: one that doesn’t export `snapshotFormat`, exports a
+`snapshotFormat` the command doesn’t read, or exports a `nameOnlyBlocks` that isn’t a list of block
+names. For a snapshot format newer than it reads, the command asks you to update the Storyblok CLI.
 
 ## Pending releases
 
@@ -191,13 +233,11 @@ storyblok migrations run 20261029141150-rename-twitter-to-x --dry-run
 storyblok migrations run 20261029141150-rename-twitter-to-x --publish published
 ```
 
-Other runs:
+More examples:
 
 ```bash
 # Run the migration functions of the "hero-section" component
 storyblok migrations run hero-section
-
-
 
 # Run every migration and publish the stories that had no unpublished changes
 storyblok migrations run --publish published
@@ -261,6 +301,9 @@ the command with it. When a story can’t be restored, the command restores the 
 an error. Running it again restores every story in the file again, not only the failed ones.
 
 ## Rolled back runs
+
+A content migration run that changed no stories has nothing to roll back. Without a run, the command
+passes over such a run. Named, the command says so and leaves the run in place.
 
 The command marks a content migration run as rolled back once it restored every story, so the next
 `migrations rollback` moves on to the run before it. While blocks are left in place, the run stays
@@ -340,11 +383,15 @@ stories and blocks it changed. A rollback file shows its name and the stories it
 ℹ 2026-10-29T13-32-45-737Z-20261029132727-rename-teaser-to-excerpt  Rename teaser to excerpt on blog entries and events  478 stories, 478 blocks
 ```
 
-A content migration run also shows when it was rolled back, partly rolled back, or interrupted, or
-that it has nothing to roll back because it changed no stories. Each machine records its own runs,
-so a content migration applied elsewhere shows as pending here. The command reads local records only
-and doesn’t require a login. Like `migrations run`, it warns about migration files whose names don’t
-match the content migration pattern.
+A content migration run also shows when it was rolled back, partly rolled back, or interrupted, when
+it’s [partial](/docs/tooling/cli/migrations/run#reruns), and when it changed no stories and so has
+nothing to roll back.
+
+A content migration is pending when this machine has no complete run of it that isn’t rolled back. A
+partial or interrupted run doesn’t count. Each machine records its own runs, so a content migration
+applied on another machine shows as pending. The command reads local records only and doesn’t
+require a login. Like `migrations run`, it warns about migration files whose names don’t match the
+content migration pattern.
 
 ## Usage
 
@@ -354,13 +401,16 @@ storyblok migrations list [flags]
 
 ## Flags
 
-| Flag            | Type    | Description                                                                                                     |
-| --------------- | ------- | --------------------------------------------------------------------------------------------------------------- |
-| `--space`, `-s` | integer | _Required._ The ID of the Storyblok space to list runs for.                                                     |
-| `--pending`     | boolean | _Optional._ Print only the IDs of the content migrations with no run still in place, one per line, for scripts. |
+| Flag            | Type    | Description                                                                     |
+| --------------- | ------- | ------------------------------------------------------------------------------- |
+| `--space`, `-s` | integer | _Required._ The ID of the Storyblok space to list runs for.                     |
+| `--pending`     | boolean | _Optional._ Print only the IDs of the pending content migrations, one per line. |
 
 Migration files and run records live in the base path the global `--path` option sets, `.storyblok`
 by default. See [global options](/docs/tooling/cli/global-options).
+
+With `--pending`, the command writes only the IDs to stdout, so a script can read them. When no
+content migration is pending, it writes `No pending content migrations.` to stderr.
 
 ## Examples
 
@@ -441,7 +491,10 @@ fails your type check. Commit both files, and keep the snapshot unchanged once t
 
 Generate the migration before you push the schema change, so the snapshot holds the fields the
 migration reads. When `schema push` already changed the block, pass `--before-push` to snapshot it
-as it was before that push. Pass `--no-before` to skip the snapshot.
+as it was before that push. A push that failed to change the block doesn’t count. For a block that
+push renamed, the snapshot holds the block under its new name, since the space renamed it in its
+stories. Without `--before-push`, the command warns when a push changed the block and no content
+migration was written since. Pass `--no-before` to skip the snapshot.
 ````
 
 <!-- target: src/content/docs/docs/tooling/cli/migrations/generate.mdx#flags (add the rows after `--suffix`) -->
@@ -484,18 +537,26 @@ By default, the command writes one `.js` migration per changed block for
 [`migrations run`](/docs/tooling/cli/migrations/run). With `--dry-run`, it prints the breaking
 changes and detected renames without writing migration files.
 
+Before a push that changes the space, the command warns about content migrations pending on this
+machine. Run the ones written for an earlier schema change before the push, since `migrations run`
+skips their ops once the push changes the fields they migrate. Run the ones written for the change
+you push after the push.
+
 ### Typed content migrations
 
-Pass `--typed` to write one typed content migration for all changed blocks instead, for
-[`migrations run`](/docs/tooling/cli/migrations/run), next to a `.before.ts` snapshot of those
-blocks as they are before the push:
+Pass `--typed` to write one typed content migration for all changed blocks instead, next to a
+`.before.ts` snapshot of those blocks as they are before the push:
 
 ```bash
 storyblok schema push src/schema/schema.ts --typed
 ```
 
-This migration is what the command wrote for a renamed field, a newly required `email` field, and a
-removed `large` option, with its `TODO` ops completed:
+The content migration types the fields it writes against your schema, so it stops compiling once a
+later push renames or removes one of them. Once every space has run it, delete the content migration
+and its snapshot, or exclude them from your type check.
+
+The command wrote this migration for a renamed field, a newly required `email` field, and a removed
+`large` option. Its `TODO` ops are completed:
 
 ```ts title=".storyblok/migrations/12345/20261103093215-update-author-hero.ts"
 import { addField, alterField, defineMigration, renameField } from "@storyblok/schema";
@@ -528,41 +589,101 @@ The migration handles these changes:
 - Converts values between text, textarea, markdown, and number fields, and between those string
   fields and boolean fields.
 - Fills required boolean fields with `false` where the value is missing. For a required field of
-  another type, it writes an op that needs a default. For a newly required text, textarea, markdown,
-  or number field, that op also fills empty strings.
-- Renames a block the push renamed in place, after the ops that change its fields.
+  another type, the command writes an op that needs a default. For a newly required text, textarea,
+  markdown, or number field, that op also fills empty strings.
 - Marks the values an option or options field no longer offers. The op throws on a removed value
-  until you map it to one the field still offers. Options a datasource supplies aren’t checked.
+  until you map it to one the field still offers. Options a data source supplies aren’t checked.
 
 Comments starting with `TODO` mark ops to complete, such as a conversion between other field types
 or a default for a required field of another type. Such an op throws until you replace it, so
 `migrations run` refuses the stories it applies to. A `TODO` also marks a removed field that may
-have been renamed to a new field rename detection didn’t pair with it. Without the rename, the
-removal deletes the field’s content. Pass `--no-before` to skip the snapshot.
+have been renamed to a new field that rename detection didn’t pair with it. Without a `renameField`,
+the removal deletes the field’s content.
+
+Complete every `TODO` before the first run. `migrations run` writes a story only when every op
+succeeds on it, so one refused op also keeps the changes to the story’s other blocks out.
 
 `migrations run` runs `.js` migrations and typed content migrations from the same directory. To
-switch to typed content migrations, push with `--typed` from now on. Keep the `.js` files until
-every space ran them.
+switch to typed content migrations, push with `--typed`. Keep the `.js` files until every space has
+run them.
+
+### Multiple spaces
+
+Each space keeps its content migrations in its own directory, `.storyblok/migrations/<space-id>/`.
+To take a schema change from one space to another, such as from development to production, push it
+to each space with `--typed`, and run the content migration it writes in that space:
+
+```bash
+storyblok schema push src/schema/schema.ts --typed --space 12345
+storyblok migrations run --space 12345
+storyblok schema push src/schema/schema.ts --typed --space 67890
+storyblok migrations run --space 67890
+```
+
+In each space, run every content migration before the next schema push to that space.
+
+### Field removal propagation
+
+Storyblok can enable field removal propagation for a space or its organization. With it, the space
+deletes a removed field’s content from the drafts of stories shortly after a push removes the field
+from its block. A typed content migration that reads the removed field, such as with
+`renameField()`, `splitField()`, `mergeFields()`, or `fieldsToBlock()`, then finds nothing to
+migrate when you run it after the push. The CLI can’t detect the setting.
+
+Ask Storyblok support whether field removal propagation is enabled for your space or organization.
+If it is, have it turned off before you push, or migrate the content before the push with a
+migration function or an `alterBlock()` content migration.
 
 ### Renamed blocks
 
-When a block is missing locally and a new block shares most of its fields and is a content type
-exactly when the old one is, the command asks whether the block was renamed, naming the number of
-stories that use it. On confirmation, it renames the block in place, so it keeps its ID, and points
-the folders whose default or allowed content types name the block at the new name. Otherwise it
-creates the new block next to the old one.
+When the local schema drops a block and adds one that shares most of its fields, and both or neither
+can be a story, the command asks whether the block was renamed and shows how many stories use it. On
+confirmation, the space renames the block in place, so it keeps its ID. The space also renames the
+block in the drafts and published versions of the stories that use it, in the content types of
+folders, in other blocks’ block restrictions, and in presets. Otherwise, the command creates the new
+block next to the old one.
 
-With `--delete`, the command refuses to delete a block that stories still use. Rename the block,
-migrate its stories first, or pass `--force` to delete it anyway. The command then names the folders
-that still name the deleted block as a content type.
+The command renames blocks after it updates the other blocks. In a space with many stories, the
+space renames a block in its stories in the background, and the command waits until no story uses
+the old name:
+
+```text
+ℹ Waiting for the space to rename card → teaser in 250 stories...
+```
+
+When the number of stories that use the old name stops dropping for a minute, the command continues
+and names how many stories still use it. Rename the block in those stories with a content migration
+that holds `renameBlock()`. Generate the migration with
+`migrations generate <new-name> --schema <entry-file> --no-before`, since the space no longer holds
+the old block to snapshot. When stories still use the old name after 10 minutes, the command stops.
+Run `schema push` again once the space finishes the rename.
+
+While the space renames a block or field in the background, it refuses updates to every block. The
+command retries those updates for up to 10 minutes.
+
+A story whose published version uses the block but whose draft doesn’t keeps the old name in its
+published version until the story is published again.
+
+A dry run shows a possible rename as confirmed. It shows the block as updated, lists the field
+renames it detects, and doesn’t refuse `--delete` for the old block.
+
+### Deleted blocks
+
+With `--delete`, the command refuses to delete a block that stories use and names the number of
+stories. Confirm the rename if the command asked about one, migrate the block’s stories first, or
+pass `--force` to delete the block anyway. The command also refuses when it can’t count the stories,
+and names the error. `--force` skips the count. A dry run warns instead of refusing.
+
+Before it deletes blocks, the command names the folders whose content types include them. The space
+removes a deleted block from a folder’s content types, and a folder left without content types
+accepts every content type.
 
 ### Failed pushes
 
 The command updates blocks independently, so a failed push can leave some of them updated. A rerun
-no longer sees their changes, so when a push fails, the command reads the space again, keeps the
-migration for the updated blocks only, and points folders at the blocks it renamed. The next push
-generates the migration for the other blocks. If the space can’t be read, the command names the
-migration files and leaves them in place.
+no longer sees their changes, so when a push fails, the command reads the space again and keeps the
+migration for the updated blocks only. The next push generates the migration for the other blocks.
+If the command can’t read the space, it names the migration files and leaves them in place.
 ````
 
 <!-- target: src/content/docs/docs/tooling/cli/schema/push.mdx#flags (replace the `--migrations` row, then add the rows after it) -->
@@ -570,6 +691,6 @@ migration files and leaves them in place.
 | Flag           | Type    | Description                                                                                                                                            |
 | -------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `--migrations` | boolean | _Optional._ Generate migration files for breaking changes without asking, taking detected field renames as given. Pass `--no-migrations` to skip them. |
-| `--typed`      | boolean | _Optional._ Generate one typed content migration instead of one `.js` migration per block.                                                             |
+| `--typed`      | boolean | _Optional._ Generate one typed content migration instead of one `.js` migration per block. Has no effect with `--no-migrations`.                       |
 | `--no-before`  | boolean | _Optional._ With `--typed`, skip the schema snapshot.                                                                                                  |
 | `--force`      | boolean | _Optional._ With `--delete`, delete blocks that stories still use.                                                                                     |

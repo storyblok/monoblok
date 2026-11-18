@@ -149,9 +149,6 @@ function resolveEntry(
  * Maps Storyblok block types to React components and returns a pre-wired
  * `StoryblokBlock`.
  *
- * Rich text isn't part of the registry: use the standalone
- * `StoryblokRichText` and render embedded bloks through `components.blok`.
- *
  * Each call is fully independent: nothing is shared globally, so you can
  * define as many registries as you like (e.g. one per content area) without
  * them overwriting each other.

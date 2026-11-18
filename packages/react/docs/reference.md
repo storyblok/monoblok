@@ -170,8 +170,7 @@ To enable live editing in the Visual Editor, wrap the rendered content in
 ### `defineStoryblokBlocks`
 
 `defineStoryblokBlocks()` maps Storyblok blocks to React components and returns the `StoryblokBlock`
-component. Rich text isn’t part of the result: use the standalone
-[`StoryblokRichText`](#storyblokrichtext) component.
+component.
 
 ```js
 import { defineStoryblokBlocks } from "@storyblok/react";
@@ -469,9 +468,7 @@ export function RichTextBlok({ attrs }: StoryblokReactRichTextProps<"blok">) {
 ```
 
 ```tsx
-const richTextComponents = { blok: RichTextBlok };
-
-<StoryblokRichText document={block.richtext_field} components={richTextComponents} />;
+<StoryblokRichText document={block.richtext_field} components={{ blok: RichTextBlok }} />
 ```
 
 To pass extra props to embedded blocks, for example, `locale`, pass them as `data` and forward them

@@ -1,7 +1,7 @@
 import { resolvePath, saveToFile } from "../../../utils/filesystem";
 import type { Component } from "../../components/constants";
 import { join } from "pathe";
-import type { WireComponent } from "@storyblok/schema/codegen";
+import type { WireComponent } from "@storyblok/schema/internal/codegen";
 import { handleFileSystemError } from "../../../utils";
 import { discoverMigrations } from "@storyblok/schema";
 import { buildMigrationFilename } from "../migration-filename";

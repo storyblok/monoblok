@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "pathe";
-import type { MigrationOpSource } from "@storyblok/schema/codegen";
+import type { MigrationOpSource } from "@storyblok/schema/internal/codegen";
 import {
   coercionBetween,
   commentText,

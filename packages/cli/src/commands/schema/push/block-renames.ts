@@ -1,4 +1,4 @@
-import type { WireComponent } from "@storyblok/schema/codegen";
+import type { WireComponent } from "@storyblok/schema/internal/codegen";
 import { getMapiClient } from "../../../api";
 import type { Component, ComponentUpdate } from "../../../types";
 import { CommandError, isRecord } from "../../../utils";

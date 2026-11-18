@@ -166,6 +166,9 @@ findCmd.action(async (text: string | undefined, cliOptions: FindOptions, command
         logger.info("Ignoring config values semantic mode cannot take", {
           ignored: resolved.ignored,
         });
+        ui.info(
+          `Ignoring config values that --mode semantic cannot take: ${resolved.ignored.join(", ")}.`,
+        );
       }
     }
     // Validate and compile everything before the first request, so a bad flag or

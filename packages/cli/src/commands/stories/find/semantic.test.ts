@@ -82,10 +82,12 @@ const preconditions = {
     status,
     code,
     message,
+    headers,
   }: {
     status: number;
     code: string;
     message: string;
+    headers?: Record<string, string>;
   }) {
     const attempts = { count: 0 };
     server.use(
@@ -93,7 +95,7 @@ const preconditions = {
         attempts.count += 1;
         return HttpResponse.json(
           { error: { message, code, details: null, timestamp: "2026-11-04T00:00:00Z" } },
-          { status },
+          { status, headers },
         );
       }),
     );
@@ -509,6 +511,23 @@ describe("stories find --mode semantic", () => {
     expect(errorSpy.mock.calls.flat().join("\n")).toContain(expected);
   });
 
+  // `feature_disabled` covers the organization and the space alike: only the
+  // server's message says which one to fix.
+  it("should keep Strata's message next to the hint for a code it explains", async () => {
+    preconditions.strataRejectsSearches({
+      status: 403,
+      code: "feature_disabled",
+      message: "Strata is not available for this organization.",
+    });
+    preconditions.capturesStdout();
+
+    await find("pricing", "--mode", "semantic");
+
+    expect(errorSpy.mock.calls.flat().join("\n")).toContain(
+      "Strata is not enabled for this space or its organization (feature_disabled). Details: Strata is not available for this organization.",
+    );
+  });
+
   // What `--verbose` prints: the status and the response body.
   it("should keep the status and response body on a failed search", async () => {
     preconditions.strataRejectsSearches({
@@ -543,6 +562,35 @@ describe("stories find --mode semantic", () => {
     expect(errorSpy.mock.calls.flat().join("\n")).toContain(
       "Strata is rate limiting searches (rate_limited). Try again in a minute.",
     );
+  });
+
+  it("should not retry a search Strata throttles for longer than 2 seconds", async () => {
+    const attempts = preconditions.strataRejectsSearches({
+      status: 429,
+      code: "rate_limited",
+      message: "slow down",
+      headers: { "Retry-After": "60" },
+    });
+    preconditions.capturesStdout();
+
+    await find("pricing", "--mode", "semantic");
+
+    expect(attempts.count).toBe(1);
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("should retry a search Strata throttles for a second", async () => {
+    const attempts = preconditions.strataRejectsSearches({
+      status: 429,
+      code: "rate_limited",
+      message: "slow down",
+      headers: { "Retry-After": "0" },
+    });
+    preconditions.capturesStdout();
+
+    await find("pricing", "--mode", "semantic");
+
+    expect(attempts.count).toBe(3);
   });
 
   it("should treat a search Strata rejects as invalid as a usage error", async () => {
@@ -633,6 +681,9 @@ describe("stories find --mode semantic", () => {
     expect(parseLines(written)).toHaveLength(1);
     expect(requests.listing[0].has("sort_by")).toBe(false);
     expect(requests.listing[0].has("folder_only")).toBe(false);
+    expect(stripVTControlCharacters(errorSpy.mock.calls.flat().join("\n"))).toContain(
+      "Ignoring config values that --mode semantic cannot take: --entry-type folder, --sort.",
+    );
   });
 
   it.each([

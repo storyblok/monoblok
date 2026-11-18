@@ -311,21 +311,47 @@ export function* orderByRank(stories: Story[], ranking: SemanticRanking): Genera
   }
 }
 
+/** The longest `Retry-After` the search waits out before it retries. */
+const STRATA_MAX_RETRY_AFTER = 2_000;
+
+/** The wait a 429 asks for, in milliseconds, from `Retry-After` in seconds or as a date. */
+function retryAfterMs(error: Error): number | undefined {
+  const response = "response" in error ? error.response : undefined;
+  if (!(response instanceof Response)) {
+    return undefined;
+  }
+  const header = response.headers.get("Retry-After");
+  if (header === null) {
+    return undefined;
+  }
+  const seconds = Number(header);
+  if (header.trim() !== "" && Number.isFinite(seconds)) {
+    return seconds * 1_000;
+  }
+  const date = Date.parse(header);
+  return Number.isNaN(date) ? undefined : date - Date.now();
+}
+
 /**
  * Retries for the search request.
  *
  * A 429 from the per-second request limit clears within a second or two, so two
  * short retries absorb it. Strata's own throttling asks for a minute or more,
  * which the client's default (12 retries, each waiting the full `Retry-After`)
- * would turn into a silent wait of 12+ minutes: past 2 seconds, the search fails
- * and says why instead.
+ * would turn into a silent wait of 12+ minutes. `maxRetryAfter` only shortens
+ * each wait, so retries would still go into a throttle that rejects them: past
+ * 2 seconds, `shouldRetry` makes the search fail right away and say why instead.
  */
 const STRATA_RETRY = {
   limit: 2,
   methods: ["get"],
   statusCodes: [429],
-  maxRetryAfter: 2_000,
+  maxRetryAfter: STRATA_MAX_RETRY_AFTER,
   backoffLimit: 2_000,
+  shouldRetry: ({ error }: { error: Error }): false | undefined => {
+    const wait = retryAfterMs(error);
+    return wait !== undefined && wait > STRATA_MAX_RETRY_AFTER ? false : undefined;
+  },
 };
 
 /**
@@ -430,7 +456,9 @@ function throwStrataError(error: unknown): never {
     (code && STRATA_ERROR_HINTS[code]) ??
     (status === 429 ? STRATA_ERROR_HINTS.rate_limited : undefined);
   if (hint) {
-    handleAPIError("search_strata", error, hint);
+    // The server's message tells apart causes that share a code, e.g. whether
+    // `feature_disabled` is about the space or the organization.
+    handleAPIError("search_strata", error, message ? `${hint} Details: ${message}` : hint);
   }
   if (status === 401) {
     handleAPIError("search_strata", error);

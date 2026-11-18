@@ -1,11 +1,7 @@
 # Architecture Decision Records
 
-New ADRs are named `adr-NNNN.md`, with the next number after the highest one. Two PRs that take the
-same number add the same file, so Git blocks the second merge with a conflict. Earlier ADRs are
-named `NNNN-slug.md`. With that scheme, parallel PRs could take the same number without a conflict,
-which is why ADR-0017 and ADR-0022 each exist twice.
-
-The ADRs, one line each:
+Earlier ADRs are named `NNNN-slug.md`. With that scheme, parallel PRs could take the same number
+without a conflict, which is why ADR-0017 and ADR-0022 each exist twice.
 
 - `0001-no-shared-dependency-between-api-clients.md`: API clients duplicate shared code instead of
   sharing a dependency.

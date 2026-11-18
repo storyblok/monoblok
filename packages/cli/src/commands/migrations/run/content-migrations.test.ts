@@ -609,6 +609,34 @@ describe("migrations run command for content migrations", () => {
     ]);
   });
 
+  it("should skip renaming a block while the space holds a block by its old name", async () => {
+    space.hasMigrations(["0001-card-to-teaser", renameCardToTeaser]);
+    space.hasBlocks({ card: ["title"], teaser: ["title"], page: { body: "bloks" } });
+    space.hasStories(storyWithCard());
+    space.canUpdateStories();
+    const warn = vi.spyOn(getUI(), "warn");
+
+    await apply();
+
+    expect(space.writes).toEqual([]);
+    expect(warn).toHaveBeenCalledWith(
+      "0001-card-to-teaser: renameBlock card skipped: the space has a card block again.",
+    );
+  });
+
+  it("should rename a block in the stories left on its old name", async () => {
+    space.hasMigrations(["0001-card-to-teaser", renameCardToTeaser]);
+    space.hasBlocks({ teaser: ["title"], page: { body: "bloks" } });
+    space.hasStories(storyWithCard());
+    space.canUpdateStories();
+
+    await apply();
+
+    expect(space.story(1)?.content.body).toEqual([
+      { _uid: "card-1", component: "teaser", title: "Hi" },
+    ]);
+  });
+
   it("should backfill a field with a value that fits its type", async () => {
     space.hasMigrations([
       "0001-add-noindex",

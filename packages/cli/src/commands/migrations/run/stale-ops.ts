@@ -143,6 +143,13 @@ function staleReason(
   op: MigrationOp,
   block: SpaceBlock,
 ): { reason: string; retyped?: Retyped } | undefined {
+  // Renaming would move the stories of a block the space holds by that name
+  // again, whether renamed back or a new block reusing the name.
+  if (op.kind === "renameBlock") {
+    return block.name === op.block
+      ? { reason: `${describeOp(op)} skipped: the space has a ${op.block} block again.` }
+      : undefined;
+  }
   const { fields } = block;
   const { creates, sources } = fieldEffects(op);
   const missing = creates.find((field) => !fields.has(field));
@@ -207,8 +214,9 @@ function walk(
 
 /**
  * Splits off the ops a later schema change superseded: one that creates a field
- * the block no longer has, removes a field the block has again, or writes a
- * value the field's type no longer stores. Every migration reruns, so without
+ * the block no longer has, removes a field the block has again, writes a value
+ * the field's type no longer stores, or renames a block the space holds by its
+ * old name again. Every migration reruns, so without
  * this an old op would undo the later change, such as adding back a field that
  * was since renamed. The fields of blocks the space does not hold are not
  * checked.

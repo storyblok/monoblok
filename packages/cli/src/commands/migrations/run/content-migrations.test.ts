@@ -355,6 +355,30 @@ describe("migrations run command for content migrations", () => {
     expect(process.exitCode).toBeUndefined();
   });
 
+  it("should coerce a field whose type the check can't compare with the coercion", async () => {
+    space.hasMigrations([
+      "0001-size-to-string",
+      defineMigration([coerceField({ block: "card", field: "size", to: "string" })]),
+    ]);
+    space.hasBlocks({ card: { size: "option" } });
+    space.hasStories(
+      storyWithCard({
+        content: {
+          _uid: "root",
+          component: "page",
+          body: [{ _uid: "card-1", component: "card", size: 3 }],
+        },
+      }),
+    );
+    space.canUpdateStories();
+
+    await apply();
+
+    expect(space.story(1)?.content.body).toEqual([
+      { _uid: "card-1", component: "card", size: "3" },
+    ]);
+  });
+
   it("should apply migrations in the order of their numeric prefix", async () => {
     space.hasMigrations(
       ["10-rename-teaser-title", renameTeaserTitle],

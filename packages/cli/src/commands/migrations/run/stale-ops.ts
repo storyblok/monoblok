@@ -41,6 +41,8 @@ function fieldEffects(op: MigrationOp): { creates: readonly string[]; removes: r
 /**
  * A `coerceField` whose target no longer matches the field's type in the space,
  * such as a text → number conversion after the field was changed back to text.
+ * A field type `coerceField` has no target for, such as option, is left to the
+ * op, which converts any field.
  */
 function retypedField(
   op: MigrationOp,
@@ -50,7 +52,8 @@ function retypedField(
     return undefined;
   }
   const type = fields.get(op.field);
-  if (type === undefined || coercionBetween(type, type)?.to === op.to) {
+  const stored = type === undefined ? undefined : coercionBetween(type, type)?.to;
+  if (type === undefined || stored === undefined || stored === op.to) {
     return undefined;
   }
   return { field: op.field, type };

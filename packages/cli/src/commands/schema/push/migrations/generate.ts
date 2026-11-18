@@ -13,9 +13,6 @@ import { buildMigrationFilename } from "../../../migrations/migration-filename";
 import { fileTimestamp } from "../../utils";
 import type { BreakingChange, ComponentBreakingChanges } from "./types";
 
-/** Compatible type pairs that don't need a content migration. */
-const COMPATIBLE_TYPES = new Set(["text:textarea", "textarea:text"]);
-
 /** Returns a safe default literal for a Storyblok field type, or null if no safe default exists. */
 function defaultForType(fieldType: string): string | null {
   switch (fieldType) {
@@ -37,13 +34,9 @@ function accessor(field: string): string {
   return isIdentifier(field) ? `block.${field}` : `block[${quoteString(field)}]`;
 }
 
-/** Returns a conversion expression for a type change, or null if compatible. */
-function typeConversion(field: string, oldType: string, newType: string): string | null {
+/** Returns a conversion statement for a type change. */
+function typeConversion(field: string, oldType: string, newType: string): string {
   const key = `${oldType}:${newType}`;
-  if (COMPATIBLE_TYPES.has(key)) {
-    return null;
-  }
-
   const target = accessor(field);
   switch (key) {
     case "text:number":
@@ -101,14 +94,10 @@ export function renderMigrationCode(changes: BreakingChange[]): string {
         code(`delete ${accessor(change.field)};`);
         break;
 
-      case "type_changed": {
-        const conversion = typeConversion(change.field, change.oldType, change.newType);
-        if (conversion) {
-          comment(`Type change: ${change.field} (${change.oldType} → ${change.newType})`);
-          code(conversion);
-        }
+      case "type_changed":
+        comment(`Type change: ${change.field} (${change.oldType} → ${change.newType})`);
+        code(typeConversion(change.field, change.oldType, change.newType));
         break;
-      }
 
       case "required_added":
       case "required_changed": {

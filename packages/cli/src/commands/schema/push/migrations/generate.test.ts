@@ -99,15 +99,6 @@ describe("renderMigrationCode", () => {
     expect(code).toContain("bloks");
   });
 
-  it("should skip text-textarea conversions as compatible", () => {
-    const changes: BreakingChange[] = [
-      { kind: "type_changed", field: "body", oldType: "text", newType: "textarea" },
-    ];
-    const code = renderMigrationCode(changes);
-    expect(code).not.toContain("TODO");
-    expect(code).toContain("return block");
-  });
-
   it("should generate required_added with string default for text field", () => {
     const changes: BreakingChange[] = [
       { kind: "required_added", field: "cta_label", fieldType: "text" },

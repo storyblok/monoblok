@@ -1,5 +1,6 @@
 // Type-level tests, checked by `svelte-check` (`pnpm check`), not run by Vitest.
 import { defineStoryblokBlocks } from "../../lib/define-storyblok-blocks";
+import type { StoryblokRichTextComponentProps } from "../../lib/richtext-helpers";
 import type { StoryblokBlockComponentProps, StoryblokBlockData } from "../../lib/types";
 import BlokTypo from "../blocks/BlokTypo.svelte";
 import Fallback from "../blocks/Fallback.svelte";
@@ -47,3 +48,15 @@ bareData.headline.toUpperCase();
 
 declare const typedProps: StoryblokBlockComponentProps<{ headline: string }>;
 typedProps.block.headline.toUpperCase();
+
+// `StoryblokRichText` props: partial image options are accepted, unknown props aren't.
+const richTextProps = {
+  document: { type: "doc", content: [] },
+  optimizeImage: { width: 800 },
+} satisfies StoryblokRichTextComponentProps;
+
+const typoProps: StoryblokRichTextComponentProps = {
+  document: richTextProps.document,
+  // @ts-expect-error `optimiseImage` is not a `StoryblokRichText` prop.
+  optimiseImage: true,
+};

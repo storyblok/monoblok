@@ -1,6 +1,6 @@
 import type { storyblokEditable } from "@storyblok/live-preview";
-import type { Component, ComponentProps } from "svelte";
-import type StoryblokRichTextComponent from "./components/StoryblokRichText.svelte";
+import type { Component } from "svelte";
+import type { StoryblokRichTextComponentProps } from "./richtext-helpers";
 
 /**
  * A content block as returned by the Storyblok Content Delivery API.
@@ -121,5 +121,5 @@ export interface DefineStoryblokBlocksResult<TExtraProps extends StoryblokExtraP
    * <StoryblokRichText document={block.text} data={{ locale } satisfies ExtraProps} />
    * ```
    */
-  StoryblokRichText: Component<ComponentProps<typeof StoryblokRichTextComponent>>;
+  StoryblokRichText: Component<StoryblokRichTextComponentProps>;
 }

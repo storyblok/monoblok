@@ -1,4 +1,4 @@
-import type { Component, ComponentProps } from "svelte";
+import type { Component } from "svelte";
 import RawStoryblokBlock, {
   REGISTRY_PROP,
   type RawStoryblokBlockProps,
@@ -7,6 +7,7 @@ import RawStoryblokBlock, {
 import RawStoryblokRichText from "./components/StoryblokRichText.svelte";
 import StoryblokRichTextBlok from "./components/StoryblokRichTextBlok.svelte";
 import type {
+  StoryblokRichTextComponentProps,
   StoryblokSvelteRichTextComponentMap,
   StoryblokSvelteRichTextProps,
 } from "./richtext-helpers";
@@ -105,10 +106,8 @@ export function defineStoryblokBlocks<TExtraProps extends StoryblokExtraProps = 
   const Blok: Component<StoryblokSvelteRichTextProps<"blok">> = (internals, props) =>
     StoryblokRichTextBlok(internals, withRegistry(props, registry));
 
-  const StoryblokRichText: Component<ComponentProps<typeof RawStoryblokRichText>> = (
-    internals,
-    props,
-  ) => RawStoryblokRichText(internals, withDefaultBlok(props, Blok));
+  const StoryblokRichText: Component<StoryblokRichTextComponentProps> = (internals, props) =>
+    RawStoryblokRichText(internals, withDefaultBlok(props, Blok));
 
   return { StoryblokBlock, StoryblokRichText };
 }

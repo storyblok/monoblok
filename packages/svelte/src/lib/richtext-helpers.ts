@@ -2,6 +2,7 @@ import {
   processAttrs,
   type StoryblokRichTextElement,
   type StoryblokRichTextImageOptions,
+  type StoryblokRichTextInput,
   type StoryblokRichTextProps,
   styleToString,
 } from "@storyblok/richtext";
@@ -12,12 +13,36 @@ export type StoryblokSvelteRichTextComponentMap = {
 };
 
 export interface StoryblokSvelteRichTextRenderContext {
-  optimizeImage?: boolean | StoryblokRichTextImageOptions;
+  optimizeImage?: boolean | Partial<StoryblokRichTextImageOptions>;
   components?: StoryblokSvelteRichTextComponentMap;
   data?: unknown;
   /**
    * Logs a warning when a `blok` node has no `components.blok` renderer. Set
    * to `false` to silence it.
+   *
+   * @default true
+   */
+  warnings?: boolean;
+}
+
+/** Props accepted by the `StoryblokRichText` component. */
+export interface StoryblokRichTextComponentProps {
+  /** The Storyblok rich text field to render. */
+  document: StoryblokRichTextInput;
+  /** Resolves `StoryblokRichTextImageOptions` or enables defaults when `true`. */
+  optimizeImage?: boolean | Partial<StoryblokRichTextImageOptions>;
+  /** Overrides the default renderer for specific node/mark types. */
+  components?: StoryblokSvelteRichTextComponentMap;
+  /**
+   * Arbitrary data forwarded to custom `components`. With the
+   * `StoryblokRichText` returned by `defineStoryblokBlocks()`, a plain object
+   * is also passed to every embedded block as extra props.
+   */
+  data?: unknown;
+  /**
+   * Logs a warning when content renders nothing: a `blok` node without a
+   * renderer, or (registry-bound) an embedded block with no registered
+   * component. Set to `false` to silence it.
    *
    * @default true
    */

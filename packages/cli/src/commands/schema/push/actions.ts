@@ -17,6 +17,8 @@ import {
 } from "../transform";
 import { buildGroupPathByUuid, mapSchemaGroupLists } from "../folders";
 import { collectTagNames, mapSchemaTagLists } from "../tags";
+import { renameBlockInSpace, waitUntilStoriesRenamed, whileRenameRuns } from "./block-renames";
+import type { BlockRename } from "./block-renames";
 
 /** A resolved component group reference: its numeric id and server uuid. */
 interface GroupRef {
@@ -133,8 +135,22 @@ export async function executePush(
   local: SchemaData,
   remote: RemoteSchemaData,
   diffResult: DiffResult,
-  options: { delete: boolean },
-): Promise<{ created: number; updated: number; deleted: number; createdTags: number }> {
+  options: {
+    delete: boolean;
+    renames?: readonly BlockRename[];
+    /** Called for each block the push created, updated, or deleted. */
+    onComponentPushed?: (name: string) => void;
+    /** Called when the push waits for the space to rename a block in `stories` stories. */
+    onRenameWaiting?: (rename: BlockRename, stories: number) => void;
+  },
+): Promise<{
+  created: number;
+  updated: number;
+  deleted: number;
+  createdTags: number;
+  /** Renamed blocks whose old name stories still use after the space stopped renaming them. */
+  unfinishedRenames: { rename: BlockRename; stories: number }[];
+}> {
   const client = getMapiClient();
   const spaceIdNum = Number(spaceId);
   let created = 0;
@@ -253,8 +269,11 @@ export async function executePush(
       );
     }
   }
+  const renames = options.renames ?? [];
+  const renamedTo = new Set(renames.map((rename) => rename.to));
+  const upsertDiffs = componentDiffs.filter((diff) => !renamedTo.has(diff.name));
   const componentResults = await Promise.allSettled(
-    componentDiffs.map(async (diff) => {
+    upsertDiffs.map(async (diff) => {
       const resolvedComp = resolvedComponents.get(diff.name);
       if (diff.action === "create" && resolvedComp) {
         await client.components.create({
@@ -266,29 +285,90 @@ export async function executePush(
       }
       if (diff.action === "update" && resolvedComp) {
         const existing = remote.components.get(diff.name);
-        if (existing?.id) {
-          await client.components.update(existing.id, {
-            path: { space_id: spaceIdNum },
-            body: { component: toComponentUpdate(resolvedComp) },
-            throwOnError: true,
-          });
+        const id = existing?.id;
+        if (id) {
+          await whileRenameRuns(
+            () =>
+              client.components.update(id, {
+                path: { space_id: spaceIdNum },
+                body: { component: toComponentUpdate(resolvedComp) },
+                throwOnError: true,
+              }),
+            diff.name,
+          );
           return "updated" as const;
         }
       }
     }),
   );
+  const componentPushed = (name: string) => options.onComponentPushed?.(name);
+  // Report every block that landed before the first failure aborts the push.
+  let firstFailure: { diff: (typeof upsertDiffs)[number]; reason: unknown } | undefined;
   for (let i = 0; i < componentResults.length; i++) {
     const result = componentResults[i];
-    const diff = componentDiffs[i];
-    if (result.status === "fulfilled") {
-      if (result.value === "created") {
-        created++;
-      } else if (result.value === "updated") {
-        updated++;
-      }
+    const diff = upsertDiffs[i];
+    if (result.status === "rejected") {
+      firstFailure ??= { diff, reason: result.reason };
+      continue;
+    }
+    if (result.value === "created") {
+      created++;
+    } else if (result.value === "updated") {
+      updated++;
     } else {
-      const eventId = diff.action === "create" ? "push_component" : "update_component";
-      handleAPIError(eventId, result.reason, `Failed to ${diff.action} component ${diff.name}`);
+      continue;
+    }
+    componentPushed(diff.name);
+  }
+  if (firstFailure) {
+    const { diff, reason } = firstFailure;
+    if (reason instanceof CommandError) {
+      throw reason;
+    }
+    const eventId = diff.action === "create" ? "push_component" : "update_component";
+    handleAPIError(eventId, reason, `Failed to ${diff.action} component ${diff.name}`);
+  }
+
+  const unfinishedRenames: { rename: BlockRename; stories: number }[] = [];
+  // 2b. Rename blocks one at a time, after the other updates: while the space
+  //     renames a block in its stories in the background, it refuses every
+  //     block update.
+  for (const rename of renames) {
+    const existing = remote.components.get(rename.to);
+    const resolvedComp = resolvedComponents.get(rename.to);
+    if (!existing?.id || !resolvedComp) {
+      continue;
+    }
+    try {
+      await renameBlockInSpace(spaceId, existing.id, toComponentUpdate(resolvedComp), rename);
+    } catch (error) {
+      if (error instanceof CommandError) {
+        throw error;
+      }
+      handleAPIError(
+        "update_component",
+        error,
+        `Failed to rename component ${rename.from} to ${rename.to}`,
+      );
+    }
+    updated++;
+    componentPushed(rename.to);
+    try {
+      const stories = await waitUntilStoriesRenamed(spaceId, rename, (waitingFor) =>
+        options.onRenameWaiting?.(rename, waitingFor),
+      );
+      if (stories > 0) {
+        unfinishedRenames.push({ rename, stories });
+      }
+    } catch (error) {
+      if (error instanceof CommandError) {
+        throw error;
+      }
+      handleAPIError(
+        "pull_stories",
+        error,
+        `Failed to check whether the space renamed ${rename.from} to ${rename.to} in its stories`,
+      );
     }
   }
 
@@ -368,6 +448,7 @@ export async function executePush(
       if (result.status === "fulfilled") {
         if (result.value) {
           deleted++;
+          componentPushed(staleComponents[i].name);
         }
       } else {
         deleteErrors.push({
@@ -454,7 +535,7 @@ export async function executePush(
     }
   }
 
-  return { created, updated, deleted, createdTags };
+  return { created, updated, deleted, createdTags, unfinishedRenames };
 }
 
 /** Builds changeset entries from diff results for storage. */

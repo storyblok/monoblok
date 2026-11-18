@@ -9,6 +9,10 @@ export class RawCode {
   constructor(public readonly code: string) {}
 }
 
+// Line terminators JSON.stringify leaves raw. Escaped, a literal holding them
+// also stays on one line inside a line comment.
+const UNESCAPED_LINE_TERMINATORS = /[\u2028\u2029]/g;
+
 /**
  * Serializes a string as a single-quoted TS literal with correct escaping.
  * Uses JSON.stringify for backslash/control-char/newline handling, then converts
@@ -16,7 +20,11 @@ export class RawCode {
  * values like regexes are silently dropped and raw newlines break the parse.
  */
 export function quoteString(value: string): string {
-  const escaped = JSON.stringify(value).slice(1, -1).replace(/\\"/g, '"').replace(/'/g, "\\'");
+  const escaped = JSON.stringify(value)
+    .slice(1, -1)
+    .replace(/\\"/g, '"')
+    .replace(/'/g, "\\'")
+    .replace(UNESCAPED_LINE_TERMINATORS, (char) => `\\u${char.charCodeAt(0).toString(16)}`);
   return `'${escaped}'`;
 }
 

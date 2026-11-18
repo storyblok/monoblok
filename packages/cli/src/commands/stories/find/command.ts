@@ -20,6 +20,13 @@ import {
 import { prepareCapiFilter } from "./pipeline";
 import { runFind } from "./run";
 import { runCheckReferences } from "./check-references";
+import {
+  assertSemanticOptions,
+  buildStrataQuery,
+  parseSemanticLimit,
+  resolveSemanticOptions,
+  searchStrata,
+} from "./semantic";
 import type { FindOptions } from "./types";
 
 function collectValues(value: string, previous: string[]): string[] {
@@ -31,14 +38,28 @@ const findCmd = storiesCommand
   .description(
     "Find stories matching filters and print them to stdout as JSONL, one story per line, or as a table in a terminal. Filters combine with AND.",
   )
-  .argument("[text]", "full-text search over story name, slug and content (case-insensitive)")
+  .argument(
+    "[text]",
+    "full-text search over story name, slug and content (case-insensitive), or a search by meaning with --mode semantic",
+  )
   .option("-s, --space <space>", "space ID")
+  .addOption(
+    new Option(
+      "--mode <mode>",
+      "how [text] matches: 'fulltext', or 'semantic' to rank stories by meaning with Strata",
+    )
+      .choices(["fulltext", "semantic"])
+      .default("fulltext"),
+  )
   .addOption(
     new Option("--entry-type <type>", "filter by entry type")
       .choices(["all", "story", "folder"])
       .default("all"),
   )
-  .option("--starts-with <path>", "scope to a story subtree, e.g. 'en/blog'")
+  .option(
+    "--starts-with <path>",
+    "scope to a story subtree, e.g. 'en/blog'. With --mode semantic, only the default-language slug matches",
+  )
   .option(
     "--container-block <name>",
     "stories whose content type (root block) is this component, e.g. 'page'",
@@ -87,7 +108,10 @@ const findCmd = storiesCommand
     "--sort <fields>",
     "order by a story column or 'content.<field>', comma-separated, e.g. 'updated_at:desc' or 'content.title:asc'",
   )
-  .option("--limit <n>", "stop after this many results")
+  .option(
+    "--limit <n>",
+    "stop after this many results. With --mode semantic, 25 by default and at most 100 (50 with --starts-with or --container-block)",
+  )
   .option(
     "--references <uuids>",
     "stories that reference all of these story UUIDs, comma-separated",
@@ -109,13 +133,13 @@ const findCmd = storiesCommand
     "extra CDN query params for --capi-filter, e.g. 'version=published' or 'language=de'",
   );
 
-findCmd.action(async (text: string | undefined, options: FindOptions, command) => {
+findCmd.action(async (text: string | undefined, cliOptions: FindOptions, command) => {
   const ui = getUI();
   const logger = getLogger();
   const reporter = getReporter();
 
   ui.title(`${commands.STORIES}`, colorPalette.STORIES, "Finding stories...");
-  logger.info("Finding stories started", { text, ...options });
+  logger.info("Finding stories started", { text, ...cliOptions });
 
   const { space, verbose } = command.optsWithGlobals();
   const { state } = session();
@@ -131,23 +155,72 @@ findCmd.action(async (text: string | undefined, options: FindOptions, command) =
     return;
   }
 
+  const semantic = cliOptions.mode === "semantic";
+
   try {
+    let options = cliOptions;
+    if (semantic) {
+      const resolved = resolveSemanticOptions(command, cliOptions);
+      options = resolved.options;
+      if (resolved.ignored.length > 0) {
+        logger.info("Ignoring config values semantic mode cannot take", {
+          ignored: resolved.ignored,
+        });
+        ui.info(
+          `Ignoring config values that --mode semantic cannot take: ${resolved.ignored.join(", ")}.`,
+        );
+      }
+    }
     // Validate and compile everything before the first request, so a bad flag or
     // a malformed JSONPath fails as a usage error instead of mid-stream.
+    if (semantic) {
+      assertSemanticOptions(text, options);
+    }
     assertSupportedOptions(options);
+    const strataQuery = semantic && text ? buildStrataQuery(text, options) : undefined;
     // One clock for every date flag, so `--created 7d --updated 7d` share a "now".
     const now = new Date();
-    const params = buildQueryParams(text, options, now);
+    // In semantic mode the text, the path prefix, and the content type all went
+    // to Strata, so the listing of its matches does not repeat them.
+    const params = semantic
+      ? buildQueryParams(
+          undefined,
+          { ...options, startsWith: undefined, containerBlock: undefined },
+          now,
+        )
+      : buildQueryParams(text, options, now);
     // Decidable from the listing alone, so they narrow before any content is fetched.
     const preContentFilters = [
       ...buildPublishStatusFilters(options),
       ...buildDateFilters(options, now),
     ];
     const whereFilters = buildWhereFilters(options.where);
-    const limit = parseLimit(options.limit);
+    // Semantic mode has a default and a ceiling of its own: Strata's page.
+    const semanticLimit = strataQuery ? parseSemanticLimit(options.limit, strataQuery) : undefined;
+    const limit = semanticLimit ? semanticLimit.limit : parseLimit(options.limit);
     const issueTypes = parseIssueTypes(options.checkReferences);
 
     const context = { spaceId: space, params, ui, logger, reporter, verbose };
+
+    if (strataQuery) {
+      const search = await searchStrata({
+        spaceId: space,
+        query: strataQuery,
+        ui,
+      });
+      // Hydrating Strata's matches is one listing request: at most 100 stories.
+      await runFind({
+        ...context,
+        params: { ...params, by_ids: [...search.ranking.keys()].join(",") },
+        preContentFilters,
+        filters: whereFilters,
+        skipContent: options.skipContent === true,
+        limit,
+        limitIsDefault: semanticLimit?.isDefault,
+        semantic: search,
+      });
+      return;
+    }
 
     const capi = options.capiFilter
       ? await prepareCapiFilter({

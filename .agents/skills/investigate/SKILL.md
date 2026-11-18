@@ -21,7 +21,9 @@ Investigate the following issue: $ARGUMENTS
    - `#123`, bare number, or `github.com` URL → **GitHub issue**
 2. Fetch the ticket:
    - **GitHub:** `gh issue view <number> --json title,body,labels,comments,author,createdAt,state`
-   - **Linear:** `bash .agents/skills/triage/scripts/linear-fetch.sh issue DX-123`
+   - **Linear:** `bash .agents/skills/triage/scripts/linear-fetch.sh issue DX-123` (needs
+     `LINEAR_API_KEY`). If it fails, use the Linear MCP server if it is connected (the ticket with
+     its attachments and comments). If neither works, stop and report that Linear is unreachable.
 3. Extract: error messages, stack traces, reproduction steps, environment details
 
 ### Phase 2: Identify Affected Package(s)

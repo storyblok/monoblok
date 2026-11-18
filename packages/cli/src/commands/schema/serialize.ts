@@ -2,6 +2,7 @@ import {
   formatValue,
   partitionFieldOptions,
   sortSchemaByPos,
+  stripKeys,
 } from "@storyblok/schema/internal/codegen";
 
 import {
@@ -9,7 +10,6 @@ import {
   DATASOURCE_DIMENSION_STRIP_KEYS,
   DATASOURCE_STRIP_KEYS,
   RESTRICTION_LIST_KEYS,
-  stripKeys,
 } from "./utils";
 
 /**

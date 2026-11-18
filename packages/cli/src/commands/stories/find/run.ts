@@ -15,6 +15,8 @@ import {
 import { STORY_COLUMNS } from "./columns";
 import { runStoryPipeline } from "./pipeline";
 import type { CapiFilter } from "./pipeline";
+import { fullPageMessage, orderByRank, SEMANTIC_STORY_COLUMNS } from "./semantic";
+import type { SemanticSearch } from "./semantic";
 import type { ClientFilter, FindContext } from "./types";
 
 export async function runFind({
@@ -24,7 +26,9 @@ export async function runFind({
   filters,
   skipContent = false,
   limit,
+  limitIsDefault = false,
   capi,
+  semantic,
   ui,
   logger,
   reporter,
@@ -35,9 +39,20 @@ export async function runFind({
   skipContent?: boolean;
   /** Stop once this many results have been written. */
   limit?: number;
+  /** Whether `limit` is the mode's default rather than a `--limit` the user set. */
+  limitIsDefault?: boolean;
   capi?: CapiFilter;
+  /**
+   * Strata's answer, for `--mode semantic`. `params` then lists exactly the
+   * ranked stories, which are fetched and emitted in rank order rather than as
+   * listed, so `limit` keeps the best matches.
+   */
+  semantic?: SemanticSearch;
 }): Promise<void> {
-  const output = createResultOutput({ columns: STORY_COLUMNS, limit });
+  const ranking = semantic?.ranking;
+  const output = ranking
+    ? createResultOutput({ columns: SEMANTIC_STORY_COLUMNS, limit })
+    : createResultOutput({ columns: STORY_COLUMNS, limit });
   // What the last stage still decides depends on the stages before it: with no
   // content fetch and no filter it only writes, and under the CAPI filter it
   // tests just the stories the CDN could not settle.
@@ -55,29 +70,38 @@ export async function runFind({
   let stoppedByLimit = false;
 
   try {
-    await runStoryPipeline({
-      spaceId,
-      params,
-      preContentFilters,
-      filters,
-      tracker,
-      sink: output.sink,
-      capi,
-      skipContent,
-      signal: output.signal,
-      logger,
-      verbose,
-    });
+    // An empty `by_ids` would list the whole space, so no hits means no listing.
+    if (!ranking || ranking.size > 0) {
+      await runStoryPipeline({
+        spaceId,
+        params,
+        preContentFilters,
+        filters,
+        tracker,
+        sink: output.sink,
+        capi,
+        orderListed: ranking ? (stories) => orderByRank(stories, ranking) : undefined,
+        skipContent,
+        signal: output.signal,
+        logger,
+        verbose,
+      });
+    }
   } catch (error) {
     // `find | head -5` and `find --limit 5` are both complete, successful uses of
     // the command rather than failures: the results asked for were produced, and
     // the rest of the scope was never worth walking. Everything below still runs,
     // so the summary on stderr reports what the run managed to do.
-    if (!isDeliberateStop(error)) {
+    // Once the run has been stopped on purpose, whichever stream reports the
+    // teardown first decides what `pipeline()` rejects with — a buffered stage
+    // flushing as the stop lands surfaces it as a premature close — so the stop
+    // itself is what decides, not the error.
+    const reason = output.signal.aborted ? output.signal.reason : error;
+    if (!isDeliberateStop(error) && !isDeliberateStop(reason)) {
       throw error;
     }
     earlyExit = true;
-    stoppedByLimit = isLimitReached(error);
+    stoppedByLimit = isLimitReached(error) || isLimitReached(reason);
   } finally {
     tracker.stop();
     output.close();
@@ -108,7 +132,16 @@ export async function runFind({
     // Printed under the summary, so they are not lost above it.
     const notes: Array<() => void> = [];
     if (earlyExit) {
-      notes.push(() => ui.ok(stoppedEarlyMessage(stoppedByLimit ? limit : undefined)));
+      notes.push(() =>
+        ui.ok(stoppedEarlyMessage(stoppedByLimit ? limit : undefined, { limitIsDefault })),
+      );
+    }
+
+    // Strata has no next page: a full one may have left matches out. Not worth
+    // saying when the run stopped at --limit before using up the page anyway.
+    const fullPageOf = semantic?.fullPageOf;
+    if (fullPageOf !== undefined && !stoppedByLimit) {
+      notes.push(() => ui.warn(fullPageMessage(fullPageOf)));
     }
 
     // Zero matches here means the filters matched nothing, or were written

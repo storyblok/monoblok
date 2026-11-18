@@ -3,7 +3,9 @@ import type { Component } from "../../components/constants";
 import { join } from "pathe";
 import type { WireComponent } from "@storyblok/schema/codegen";
 import { handleFileSystemError } from "../../../utils";
+import { discoverMigrations } from "@storyblok/schema";
 import { buildMigrationFilename } from "../migration-filename";
+import { migrationsDirectory } from "../content-migrations";
 import { listChangesets, loadChangeset } from "../../schema/rollback/actions";
 import { withRenamedBlocks } from "../../schema/push/block-renames";
 
@@ -73,4 +75,23 @@ export async function latestPushChanging(
     }
   }
   return undefined;
+}
+
+const MIGRATION_TIMESTAMP = /^(\d{14})-/;
+
+/**
+ * Whether `space` holds a content migration created at or after `timestamp`,
+ * going by the `YYYYMMDDHHmmss` creation time its id starts with.
+ */
+export async function hasMigrationSince(
+  path: string | undefined,
+  space: string,
+  timestamp: string,
+): Promise<boolean> {
+  const since = new Date(timestamp).toISOString().replace(/\D/g, "").slice(0, 14);
+  const migrations = await discoverMigrations(migrationsDirectory(path, space));
+  return migrations.some(({ id }) => {
+    const createdAt = MIGRATION_TIMESTAMP.exec(id)?.[1];
+    return createdAt !== undefined && createdAt >= since;
+  });
 }

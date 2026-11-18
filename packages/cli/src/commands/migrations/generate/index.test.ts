@@ -515,6 +515,33 @@ describe("migrations generate command", () => {
         );
       });
 
+      it("should not warn about a push older than the space's newest content migration", async () => {
+        preconditions.componentExists();
+        preconditions.hasSchemaEntry();
+        preconditions.hasMigrations("20261016090000-update-component-name.ts");
+        vol.fromJSON(changesetFor(12345, "component-name"));
+
+        await generate("component-name", "--schema", "src/schema.ts");
+
+        expect(writtenFile(`${ID}.before.ts`)).toBeDefined();
+        expect(console.warn).not.toHaveBeenCalledWith(
+          expect.stringContaining("schema push changed"),
+        );
+      });
+
+      it("should warn about a push newer than the space's newest content migration", async () => {
+        preconditions.componentExists();
+        preconditions.hasSchemaEntry();
+        preconditions.hasMigrations("20261016085959-card.ts", "0001-legacy-numbering.ts");
+        vol.fromJSON(changesetFor(12345, "component-name"));
+
+        await generate("component-name", "--schema", "src/schema.ts");
+
+        expect(console.warn).toHaveBeenCalledWith(
+          expect.stringContaining(`schema push changed component-name at ${pushedAt}`),
+        );
+      });
+
       it("should refuse --before-push when no push to the space changed the block", async () => {
         preconditions.componentExists();
         preconditions.hasSchemaEntry();

@@ -7,7 +7,7 @@ import { CommandError, handleError, requireAuthentication } from "../../../utils
 import { session } from "../../../session";
 import { fetchComponent, fetchComponents } from "../../../commands/components";
 import { migrationsCommand } from "../command";
-import { generateMigration, latestPushChanging } from "./actions";
+import { generateMigration, hasMigrationSince, latestPushChanging } from "./actions";
 import { displayPath, writeContentMigration } from "../content-migrations";
 import { getUI } from "../../../lib/ui";
 import { getLogger } from "../../../lib/logger/logger";
@@ -134,7 +134,13 @@ generateCmd.action(
         );
         return;
       }
-      if (push && !beforePush) {
+      // A content migration written since the push was written against the
+      // pushed schema, so a new one most likely starts from there too.
+      if (
+        push &&
+        !beforePush &&
+        !(await hasMigrationSince(path, space, push.timestamp).catch(() => false))
+      ) {
         ui.warn(
           `schema push changed ${componentName} at ${push.timestamp}, so the snapshot describes the block after that push. Pass --before-push to snapshot it as it was before.`,
         );

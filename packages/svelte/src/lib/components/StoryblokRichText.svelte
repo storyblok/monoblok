@@ -1,9 +1,9 @@
 <!--
   @component
-  Renders a Storyblok rich text field, without a block registry: embedded
-  bloks render only through `components.blok`, and warn otherwise unless
-  `warnings={false}`. To render them through your registered components, use
-  the `StoryblokRichText` returned by `defineStoryblokBlocks()` instead.
+  Renders a Storyblok rich text field. Embedded bloks render only through
+  `components.blok`, and warn otherwise unless `warnings={false}`. To render
+  them through your registered components, pass a component that renders
+  `attrs.body` with `StoryblokBlock`.
 
   @example
   ```svelte

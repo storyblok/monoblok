@@ -4,13 +4,6 @@ import RawStoryblokBlock, {
   type RawStoryblokBlockProps,
   type StoryblokBlockRegistry,
 } from "./components/StoryblokBlock.svelte";
-import RawStoryblokRichText from "./components/StoryblokRichText.svelte";
-import StoryblokRichTextBlok from "./components/StoryblokRichTextBlok.svelte";
-import type {
-  StoryblokRichTextComponentProps,
-  StoryblokSvelteRichTextComponentMap,
-  StoryblokSvelteRichTextProps,
-} from "./richtext-helpers";
 import type {
   DefineStoryblokBlocksOptions,
   DefineStoryblokBlocksResult,
@@ -80,7 +73,12 @@ export function defineStoryblokBlocks<TExtraProps extends StoryblokExtraProps = 
   // Warnings already printed, so the Visual Editor's frequent re-renders
   // don't repeat the same warning for every update.
   const warned = new Set<string>();
-  const createRegistry = (warn: StoryblokBlockRegistry["warn"]): StoryblokBlockRegistry => ({
+  const warn: StoryblokBlockRegistry["warn"] = (key, message) => {
+    if (options().warnings === false || warned.has(key)) return;
+    warned.add(key);
+    console.warn(message);
+  };
+  const registry: StoryblokBlockRegistry = {
     resolve: (name) => {
       const { components = {}, fallback } = options();
       // Own properties only, so a block type such as `constructor` doesn't
@@ -120,14 +118,7 @@ export function defineStoryblokBlocks<TExtraProps extends StoryblokExtraProps = 
       return undefined;
     },
     warn,
-    withoutWarnings: () => silent,
-  });
-  const silent: StoryblokBlockRegistry = createRegistry(() => {});
-  const registry = createRegistry((key, message) => {
-    if (options().warnings === false || warned.has(key)) return;
-    warned.add(key);
-    console.warn(message);
-  });
+  };
 
   // A Svelte component is just a `(internals, props) => exports` function
   // (see svelte's `Component` type), so it's wrapped directly instead of
@@ -139,40 +130,7 @@ export function defineStoryblokBlocks<TExtraProps extends StoryblokExtraProps = 
   const StoryblokBlock: Component<StoryblokBlockProps<TExtraProps>> = (internals, props) =>
     RawStoryblokBlock(internals, withRegistry(props, registry));
 
-  // Renders embedded rich text bloks through this registry.
-  const Blok: Component<StoryblokSvelteRichTextProps<"blok">> = (internals, props) =>
-    StoryblokRichTextBlok(internals, withRegistry(props, registry));
-
-  const StoryblokRichText: Component<StoryblokRichTextComponentProps> = (internals, props) =>
-    RawStoryblokRichText(internals, withDefaultBlok(props, Blok));
-
-  return { StoryblokBlock, StoryblokRichText };
-}
-
-/**
- * Adds `blok` to the `components` prop, unless the caller passes their own,
- * without copying `props` (see `withRegistry`).
- */
-function withDefaultBlok<TProps extends { components?: StoryblokSvelteRichTextComponentMap }>(
-  props: TProps,
-  Blok: Component<StoryblokSvelteRichTextProps<"blok">>,
-): TProps {
-  // Cached per `components` value, so an unchanged prop keeps its identity
-  // and doesn't make the rich text rerender.
-  let cachedFor: StoryblokSvelteRichTextComponentMap | undefined;
-  let cached: StoryblokSvelteRichTextComponentMap | undefined;
-  return new Proxy(props, {
-    get: (target, key, receiver) => {
-      if (key !== "components") return Reflect.get(target, key, receiver);
-      const components = target.components;
-      if (!cached || components !== cachedFor) {
-        cachedFor = components;
-        cached = { ...components, blok: components?.blok ?? Blok };
-      }
-      return cached;
-    },
-    has: (target, key) => key === "components" || Reflect.has(target, key),
-  });
+  return { StoryblokBlock };
 }
 
 /**

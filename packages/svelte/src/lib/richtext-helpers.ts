@@ -33,16 +33,11 @@ export interface StoryblokRichTextComponentProps {
   optimizeImage?: boolean | Partial<StoryblokRichTextImageOptions>;
   /** Overrides the default renderer for specific node/mark types. */
   components?: StoryblokSvelteRichTextComponentMap;
-  /**
-   * Arbitrary data forwarded to custom `components`. With the
-   * `StoryblokRichText` returned by `defineStoryblokBlocks()`, a plain object
-   * is also passed to every embedded block as extra props.
-   */
+  /** Arbitrary data forwarded to custom `components`. */
   data?: unknown;
   /**
-   * Logs a warning when content renders nothing: a `blok` node without a
-   * renderer, or (registry-bound) an embedded block with no registered
-   * component. Set to `false` to silence it.
+   * Logs a warning when a `blok` node has no `components.blok` renderer. Set
+   * to `false` to silence it.
    *
    * @default true
    */

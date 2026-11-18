@@ -78,7 +78,7 @@
     "pathe": "catalog:",
     "publint": "catalog:",
     "svelte": "^5.55.7",
-    "svelte-check": "^4.1.5",
+    "svelte-check": "catalog:",
     "typescript": "catalog:",
     "vite": "^6.4.3",
     "vite-plugin-dts": "catalog:",

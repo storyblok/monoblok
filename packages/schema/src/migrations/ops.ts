@@ -672,7 +672,7 @@ export function renameBlock<
   const TBlock extends SourceBlockName<TAfter, TBefore>,
 >(spec: {
   block: TBlock;
-  to: BlockNameOf<TAfter> | (string & {});
+  to: BlockNameOf<TAfter>;
   under?: KeyOpUnder;
 }): RenameBlockOp<TAfter, TBefore> {
   return { kind: "renameBlock", block: spec.block, to: spec.to, ...carriedUnder(spec) };
@@ -686,10 +686,12 @@ export function wrapChildren<
   TAfter extends SchemaShape,
   TBefore extends SchemaShape,
   const TBlock extends SourceBlockName<TAfter, TBefore>,
+  // Defaulted for the same reason as on `splitField`.
+  const TContainer extends BlockNameOf<TAfter> = BlockNameOf<TAfter>,
 >(spec: {
   block: TBlock;
   field: SourceFieldName<TAfter, TBefore, TBlock>;
-  into: { block: BlockNameOf<TAfter> | (string & {}); field: string };
+  into: { block: TContainer; field: TargetFieldName<TAfter, TContainer> };
   under?: KeyOpUnder;
 }): WrapChildrenOp<TAfter, TBefore> {
   return {
@@ -710,10 +712,12 @@ export function unwrapChildren<
   TAfter extends SchemaShape,
   TBefore extends SchemaShape,
   const TBlock extends SourceBlockName<TAfter, TBefore>,
+  // Defaulted for the same reason as on `splitField`.
+  const TContainer extends SourceBlockName<TAfter, TBefore> = SourceBlockName<TAfter, TBefore>,
 >(spec: {
   block: TBlock;
   field: SourceFieldName<TAfter, TBefore, TBlock>;
-  from: { block: BlockNameOf<TBefore> | (string & {}); field: string };
+  from: { block: TContainer; field: SourceFieldName<TAfter, TBefore, TContainer> };
   under?: KeyOpUnder;
 }): UnwrapChildrenOp<TAfter, TBefore> {
   return {

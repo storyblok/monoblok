@@ -71,11 +71,11 @@ type error in the migration. Once every space has applied the migration, delete 
 
 The type arguments of `defineMigration()` decide which names the ops accept:
 
-| Call                              | Names an op reads (`block`, `field`)       | Names an op writes (`to`, `into`) |
-| --------------------------------- | ------------------------------------------ | --------------------------------- |
-| `defineMigration<Schema>`         | Names from `Schema`, plus any other string | Names from `Schema`               |
-| `defineMigration<Schema, Before>` | Names from `Before` only                   | Names from `Schema`               |
-| `defineMigration`                 | Any string                                 | Any string                        |
+| Call                              | Names an op reads (`block`, `field`, `from`) | Names an op writes (`to`, `into`) |
+| --------------------------------- | -------------------------------------------- | --------------------------------- |
+| `defineMigration<Schema>`         | Names from `Schema`, plus any other string   | Names from `Schema`               |
+| `defineMigration<Schema, Before>` | Names from `Before` only                     | Names from `Schema`               |
+| `defineMigration`                 | Any string                                   | Any string                        |
 
 Without `Before`, a field the migration renames away no longer exists in any type, so reads accept
 any string, and a typo in a name an op reads compiles. Callbacks receive values typed from `Before`,

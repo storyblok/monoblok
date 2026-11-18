@@ -258,10 +258,7 @@ export function analyzeBreakingChanges(
       continue;
     }
 
-    const classification = classifyFieldChanges(
-      remoteComp.schema as Record<string, Record<string, unknown>>,
-      localComp.schema as Record<string, Record<string, unknown>>,
-    );
+    const classification = classifyFieldChanges(remoteComp.schema, localComp.schema);
 
     const changes: BreakingChange[] = [];
 
@@ -310,12 +307,7 @@ export function analyzeBreakingChanges(
       changes.push({ kind: "required_changed", field: rc.field, fieldType: rc.type });
     }
 
-    changes.push(
-      ...removedOptionValues(
-        remoteComp.schema as Record<string, Record<string, unknown>>,
-        localComp.schema as Record<string, Record<string, unknown>>,
-      ),
-    );
+    changes.push(...removedOptionValues(remoteComp.schema, localComp.schema));
 
     if (changes.length > 0) {
       results.push({ componentName: diff.name, changes });

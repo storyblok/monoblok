@@ -89,14 +89,29 @@ function fitsStoredValue(value: unknown, stored: CoercionTarget): boolean {
   return typeof value === "string";
 }
 
+function isThenable(value: unknown): value is PromiseLike<unknown> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "then" in value &&
+    typeof value.then === "function"
+  );
+}
+
 /**
  * The value an `addField` backfills every block with, when its callback takes
- * no arguments and so can't depend on the block.
+ * no arguments and so can't depend on the block. A callback with only default
+ * or rest parameters also has none; whatever it does when called without
+ * arguments is caught. A promise says nothing about the value.
  */
 function constantBackfill(op: MigrationOp): { value: unknown } | undefined {
   if (op.kind !== "addField" || op.fn.length > 0) return undefined;
   try {
     const value: unknown = Reflect.apply(op.fn, undefined, []);
+    if (isThenable(value)) {
+      Promise.resolve(value).catch(() => {});
+      return undefined;
+    }
     return value === undefined ? undefined : { value };
   } catch {
     return undefined;
@@ -154,7 +169,6 @@ function staleReason(
   const { creates, sources } = fieldEffects(op);
   const missing = creates.find((field) => !fields.has(field));
   const restored = sources.find((field) => !creates.includes(field) && fields.has(field));
-  const retyped = retypedField(op, block);
   if (missing !== undefined) {
     return {
       reason: `${skippedPrefix(op, block.name)} has no field "${missing}". Either a later schema push removed it, or the schema change the migration was written for isn't pushed yet.`,
@@ -163,6 +177,7 @@ function staleReason(
   if (restored !== undefined) {
     return { reason: `${skippedPrefix(op, block.name)} has the field "${restored}" again.` };
   }
+  const retyped = retypedField(op, block);
   if (retyped !== undefined) {
     return { reason: retypedReason(op, retyped), retyped };
   }

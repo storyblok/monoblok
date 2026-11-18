@@ -159,6 +159,7 @@ export type { PendingReleasesCheck, ReleaseForMigration } from "./migrations/rel
 export {
   discoverMigrations,
   loadMigrations,
+  misnamedMigrationFiles,
   selectMigrationFiles,
 } from "./migrations/load-migrations";
 export type {

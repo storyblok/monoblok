@@ -104,3 +104,25 @@ export async function loadMigrations(
     }),
   );
 }
+
+const SCRIPT_FILE = /\.(?:[cm]?[jt]s|[jt]sx)$/;
+/** Type declarations and `.before.ts` schema snapshots sit beside migrations. */
+const COMPANION_FILE = /\.(?:d|before)\.[cm]?[jt]sx?$/;
+
+/**
+ * The script files among a directory's filenames that the loader skips because
+ * their name doesn't fit the migration pattern, such as `hello.ts` or
+ * `0001-Rename.ts`. Dotfiles, type declarations, and schema snapshots are left
+ * out.
+ */
+export function misnamedMigrationFiles(filenames: readonly string[]): string[] {
+  return filenames
+    .filter(
+      (filename) =>
+        !filename.startsWith(".") &&
+        SCRIPT_FILE.test(filename) &&
+        !COMPANION_FILE.test(filename) &&
+        !MIGRATION_FILE.test(filename),
+    )
+    .sort();
+}

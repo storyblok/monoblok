@@ -26,6 +26,7 @@ import {
   guardPendingReleases,
   migrationsDirectory,
   toMigrationCommandError,
+  warnAboutMisnamedMigrations,
 } from "../content-migrations";
 import {
   applyContentMigrations,
@@ -289,6 +290,7 @@ runCmd.action(async (name: string | undefined, options: MigrationsRunOptions, co
   }
 
   try {
+    await warnAboutMisnamedMigrations(migrationsDirectory(path, fromSpace));
     const spinner = ui.createSpinner(`Fetching migration files and stories...`);
 
     const selected = await selectMigrations({ space: fromSpace, path, name, filter });

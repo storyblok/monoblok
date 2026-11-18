@@ -5,7 +5,13 @@ import { CommandError, handleError } from "../../../utils";
 import { getLogger } from "../../../lib/logger/logger";
 import { getUI } from "../../../lib/ui";
 import { migrationsCommand } from "../command";
-import { contentJournal, plural, toMigrationCommandError } from "../content-migrations";
+import {
+  contentJournal,
+  migrationsDirectory,
+  plural,
+  toMigrationCommandError,
+  warnAboutMisnamedMigrations,
+} from "../content-migrations";
 import { listRollbackFiles } from "../rollback/actions";
 
 const listCmd = migrationsCommand
@@ -38,6 +44,8 @@ listCmd.action(async (_options: unknown, command: Command) => {
   logger.info("Migration list started", { space });
 
   try {
+    await warnAboutMisnamedMigrations(migrationsDirectory(path, space));
+
     const runs = await contentJournal(path).list(space);
     const rollbackFiles = await listRollbackFiles({ space, path });
     const entries = [

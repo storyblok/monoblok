@@ -81,7 +81,9 @@ by default. See [global options](/docs/tooling/cli/global-options).
 
 The command runs migration functions first, then content migrations in the order of their numeric
 prefix, so `2-...` runs before `10-...`. Files named `*.before.ts` are schema snapshots and never
-run. The command fetches only the stories that contain a block a migration targets.
+run. The command warns about files such as `hello.ts` whose names don’t match the content migration
+pattern, since they never run. The command fetches only the stories that contain a block a migration
+targets.
 
 A migration function writes each story it changes. Before the write, the command saves the story to
 a rollback file in `.storyblok/migrations/<space-id>/rollbacks/`.
@@ -297,7 +299,8 @@ file shows its name and the stories it saved:
 ```
 
 A content migration run also shows when it was rolled back, partly rolled back, or interrupted. The
-command reads local records only and doesn’t require a login.
+command reads local records only and doesn’t require a login. Like `migrations run`, it warns about
+migration files whose names don’t match the content migration pattern.
 
 ## Usage
 

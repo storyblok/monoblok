@@ -203,6 +203,42 @@ describe("migrations run command for content migrations", () => {
     expect(process.exitCode).toBeUndefined();
   });
 
+  it("should warn about migration files whose name doesn't match the pattern and run the others", async () => {
+    const warn = vi.spyOn(getUI(), "warn");
+    space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    hasSnapshot("0001-rename-card-title", cardBlock);
+    vol.fromJSON({
+      [`${MIGRATIONS_DIRECTORY}/hello.ts`]: "export default {};",
+      [`${MIGRATIONS_DIRECTORY}/0002-Rename-Card.ts`]: "export default {};",
+      [`${MIGRATIONS_DIRECTORY}/types.d.ts`]: "export {};",
+      [`${MIGRATIONS_DIRECTORY}/.gitignore`]: "*",
+    });
+    space.hasStories(storyWithCard());
+    space.canUpdateStories();
+
+    await apply();
+
+    expect(space.writes).toHaveLength(1);
+    const warnings = warn.mock.calls.map(([message]) => message);
+    expect(warnings).toContain(
+      "These files don't run, because their names don't match the content migration pattern <number>-<name>.ts, .js, or .mjs: 0002-Rename-Card.ts, hello.ts. <name> holds lowercase letters, digits, and hyphens, for example 0001-rename-card-title.ts.",
+    );
+    expect(warnings.filter((message) => message?.includes("don't run"))).toHaveLength(1);
+  });
+
+  it("should warn about a misnamed migration file when listing runs", async () => {
+    const warn = vi.spyOn(getUI(), "warn");
+    vol.fromJSON({ [`${MIGRATIONS_DIRECTORY}/hello.ts`]: "export default {};" });
+
+    await migrationsCommand.parseAsync(["node", "test", "list", "--space", DEFAULT_SPACE]);
+
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "match the content migration pattern <number>-<name>.ts, .js, or .mjs: hello.ts.",
+      ),
+    );
+  });
+
   it("should record the run so it can be listed and rolled back", async () => {
     const info = vi.spyOn(getUI(), "info");
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);

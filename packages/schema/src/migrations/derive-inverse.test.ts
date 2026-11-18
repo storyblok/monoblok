@@ -279,6 +279,43 @@ describe("deriveInverse", () => {
     });
   });
 
+  // The forward op emptied the field its inverse writes to, so a value found
+  // there is an editor's, made since the run.
+  it("refuses a block an editor changed since the run, even when the forward op overwrote", () => {
+    const forward = defineMigration<SchemaShape>({
+      ops: [
+        splitField<SchemaShape, SchemaShape, "author">(
+          {
+            block: "author",
+            field: "name",
+            into: ["first_name", "last_name"],
+            merge: joinNonEmpty,
+            overwrite: true,
+          },
+          splitOnFirstSpace,
+        ),
+      ],
+    });
+    const migrated = runMigrationOnStory(forward, {
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "author", name: "Ada Lovelace", first_name: "A." }],
+    });
+    const edited = structuredClone(migrated.content) as { body: Record<string, unknown>[] };
+    edited.body[0].name = "Augusta Ada King";
+
+    const derived = deriveInverse(forward.ops);
+    const rolledBack = runMigrationOnStory(
+      { ...forward, ops: derived.ops, targets: derived.targets },
+      edited,
+    );
+
+    expect(rolledBack.refusedOps.map((entry) => entry.reason)).toEqual([
+      expect.stringContaining('field "name" already holds a value'),
+    ]);
+    expect(rolledBack.content).toEqual(edited);
+  });
+
   it("inverts renameBlock", () => {
     const derived = deriveInverse([
       renameBlock<SchemaShape, SchemaShape, "card">({ block: "card", to: "teaser" }),

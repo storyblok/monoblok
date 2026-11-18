@@ -32,7 +32,7 @@ export type StoryblokExtraProps = object & { block?: never; editable?: never };
  */
 export type StoryblokBlockComponent<TExtraProps extends StoryblokExtraProps = {}> = Component<
   // `any` so components can narrow `block` to their own fields.
-  StoryblokBlockComponentProps<any, TExtraProps>
+  StoryblokRegisteredBlockProps<TExtraProps>
 >;
 
 /**
@@ -59,12 +59,22 @@ export type StoryblokBlockComponentProps<
   editable?: StoryblokEditableProps;
 } & TExtraProps;
 
+/**
+ * What the registration constraint accepts. `StoryblokBlock` always passes
+ * `editable` (`{}` without `_editable`), so a component may require it, which
+ * is what untyped `let { block, editable } = $props()` infers.
+ */
+type StoryblokRegisteredBlockProps<TExtraProps extends StoryblokExtraProps> = {
+  block: StoryblokBlockData<any>;
+  editable: StoryblokEditableProps;
+} & TExtraProps;
+
 /** Props accepted by the `StoryblokBlock` component returned from `defineStoryblokBlocks`. */
 export type StoryblokBlockProps<TExtraProps extends StoryblokExtraProps = {}> = {
   /**
    * The block to render. Optional so `story?.content` can be passed while the
-   * story may be missing; an undefined block renders nothing and warns in
-   * development.
+   * story may be missing; an undefined block renders nothing and logs a
+   * warning unless `warnings: false`.
    */
   block?: StoryblokBlockData;
 } & TExtraProps;

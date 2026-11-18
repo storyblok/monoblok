@@ -4,13 +4,19 @@
 
   /** The registry `defineStoryblokBlocks()` binds a `StoryblokBlock` to. */
   export type StoryblokBlockRegistry = {
-    /** The registered component for a block type, or the fallback. */
+    /**
+     * The registered component for a block type, or the fallback. Warns (via
+     * `warn`) when the registered component or the fallback isn't a valid
+     * component, or when nothing resolves.
+     */
     resolve: (name: string) => Component<any> | undefined;
     /**
      * Logs `message` once per `key`, unless the registry was defined with
      * `warnings: false`.
      */
     warn: (key: string, message: string) => void;
+    /** The same registry with every warning silenced. */
+    withoutWarnings: () => StoryblokBlockRegistry;
   };
 
   /**
@@ -36,36 +42,23 @@
 
   const editable = $derived(block ? storyblokEditable(block) : undefined);
 
-  function warnIfNothingRendered() {
-    if (!block) {
-      // Skipped in the Visual Editor, where the bridge sends a story without
-      // `content` while the editor shows a previous version (visual history).
-      const inEditor = typeof window !== 'undefined' && isInEditor(new URL(window.location.href));
-      if (!inEditor) {
-        registry.warn(
-          'undefined-block',
-          '[storyblok] <StoryblokBlock /> received an undefined `block` prop and rendered nothing. ' +
-            "Check that the value you're passing in exists, e.g. `story?.content` when the fetch " +
-            'may have failed, or a typo in the prop name (`block`, not `blok`).',
-        );
-      }
-      return;
-    }
-
-    // Content editors can add block types the code doesn't know about, so
-    // this warns by default: otherwise the content silently goes missing.
-    if (!Resolved) {
-      registry.warn(
-        `missing:${block.component}`,
-        `[storyblok] No component registered for block type "${block.component}". ` +
-          'Register it in `defineStoryblokBlocks(() => ({ components }))` or provide a `fallback`.',
-      );
-    }
+  function warnIfUndefinedBlock() {
+    if (block) return;
+    // Skipped in the Visual Editor, where the bridge sends a story without
+    // `content` while the editor shows a previous version (visual history).
+    const inEditor = typeof window !== 'undefined' && isInEditor(new URL(window.location.href));
+    if (inEditor) return;
+    registry.warn(
+      'undefined-block',
+      '[storyblok] <StoryblokBlock /> received an undefined `block` prop and rendered nothing. ' +
+        "Check that the value you're passing in exists, e.g. `story?.content` when the fetch " +
+        'may have failed, or a typo in the prop name (`block`, not `blok`).',
+    );
   }
 
   // Effects don't run during SSR, so check once up front on the server.
-  if (typeof window === 'undefined') warnIfNothingRendered();
-  $effect(warnIfNothingRendered);
+  if (typeof window === 'undefined') warnIfUndefinedBlock();
+  $effect(warnIfUndefinedBlock);
 </script>
 
 {#if Resolved && block}

@@ -35,7 +35,7 @@
   // `warnings={false}` on `StoryblokRichText` also silences the registry's
   // warnings for the embedded blocks it renders.
   const blockRegistry = $derived<StoryblokBlockRegistry>(
-    context?.warnings === false ? { ...registry, warn: () => {} } : registry,
+    context?.warnings === false ? registry.withoutWarnings() : registry,
   );
 </script>
 

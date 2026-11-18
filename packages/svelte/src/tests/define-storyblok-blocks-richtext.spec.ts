@@ -69,6 +69,19 @@ describe("defineStoryblokBlocks StoryblokRichText", () => {
     unmount(component);
   });
 
+  it("should keep rendering embedded blocks through the registry when components.blok is undefined", () => {
+    const { StoryblokRichText } = defineStoryblokBlocks(() => ({ components: { teaser: Teaser } }));
+    const target = document.createElement("div");
+    const component = mount(StoryblokRichText, {
+      target,
+      props: { document: documentWithBlok, components: { blok: undefined } },
+    });
+    flushSync();
+
+    expect(target.querySelector('[data-testid="teaser"]')?.textContent).toBe("Embedded teaser");
+    unmount(component);
+  });
+
   it("should pass a plain-object data to embedded blocks as extra props", () => {
     const { StoryblokRichText } = defineStoryblokBlocks<{ locale: string }>(() => ({
       components: { teaser: RequiresLocale },

@@ -59,3 +59,4 @@ The ADRs, one line each:
 - `0026-sync-blueprints-without-approval.md`: The blueprint sync runs without an approval.
 - `0027-cli-live-ui-follows-both-streams.md`: CLI progress bars and spinners draw only when stderr
   is a terminal and stdout is not a pipe.
+- `adr-0028.md`: New ADRs are named by number only, so a reused number causes a merge conflict.

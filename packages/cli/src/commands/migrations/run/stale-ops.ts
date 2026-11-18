@@ -261,10 +261,9 @@ function walk(
  * Splits off the ops a later schema change superseded: one that creates a field
  * the block no longer has, removes a field the block has again, writes a value
  * the field's type no longer stores, or renames a block the space holds by its
- * old name again. Every migration reruns, so without
- * this an old op would undo the later change, such as adding back a field that
- * was since renamed. The fields of blocks the space does not hold are not
- * checked.
+ * old name again. Every migration reruns, so without this an old op would undo
+ * the later change, such as adding back a field that was since renamed. The
+ * fields of blocks the space does not hold are not checked.
  *
  * Each op is checked against the fields its block holds right after it: the
  * space's fields with the effects of the migration's later ops undone, so a

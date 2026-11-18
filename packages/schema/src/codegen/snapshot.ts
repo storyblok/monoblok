@@ -175,10 +175,10 @@ function containersOf(
 }
 
 /**
- * Keeps only the keys that shape a field's content type. A space holds options
- * the editor no longer writes, in shapes `defineField` rejects; the snapshot
- * types content, so it drops them rather than failing to compile. Restrictions
- * become a plain block-name allow list.
+ * Keeps only the keys that shape the type of a field's content. A space holds
+ * options the editor no longer writes, in shapes `defineField` rejects; the
+ * snapshot types content, so it drops them rather than failing to compile.
+ * Restrictions become a plain block-name allow list.
  */
 function typingField(field: FieldRecord, allowed: string[] | undefined): Record<string, unknown> {
   const typed: Record<string, unknown> = { type: field.type };

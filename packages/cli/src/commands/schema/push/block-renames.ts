@@ -31,7 +31,7 @@ function fieldOverlap(a: Set<string>, b: Set<string>): number {
 
 /**
  * Pairs blocks only the space has with blocks only the local schema has, when
- * they share most of their fields and both are or both aren't content types.
+ * they share most of their fields and both or neither can be a story.
  * A rename otherwise reaches the space as a new block plus a stale one, and
  * the stories using the old name keep content no block describes.
  */

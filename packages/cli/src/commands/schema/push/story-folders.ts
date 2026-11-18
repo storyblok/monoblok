@@ -62,7 +62,7 @@ export async function foldersNaming(
   return restrictions;
 }
 
-/** A folder's slug and the block names it restricts to, for messages. */
+/** A folder's full slug, or its slug or ID when it has none, for messages. */
 export function describeFolder(folder: FolderRestriction): string {
   return folder.story.full_slug ?? folder.story.slug ?? String(folder.story.id);
 }

@@ -1,9 +1,4 @@
-/**
- * What `run`, `list`, `rollback`, and the commands that write content
- * migrations share: where a space's content migrations and their journal live,
- * writing a new one, the story fields the engine reads, and the guard against
- * pending releases.
- */
+/** Content migration helpers shared by the `migrations` commands and `schema push`. */
 import { readdir, rm } from "node:fs/promises";
 import { isDeepStrictEqual } from "node:util";
 import chalk from "chalk";
@@ -94,8 +89,8 @@ function importSpecifier(fromDirectory: string, file: string): string {
 
 /**
  * Writes a `defineMigration` file named after its creation time, plus its
- * `.before.ts` snapshot. Refuses to overwrite either, including a snapshot the
- * migration would not write.
+ * `.before.ts` snapshot. Refuses to overwrite either file, even the snapshot
+ * when `before` is omitted.
  */
 export async function writeContentMigration(
   options: WriteContentMigrationOptions,
@@ -162,7 +157,7 @@ export function pendingMigrations(ids: readonly string[], runs: readonly Migrati
   return ids.filter((id) => !inPlace.has(id));
 }
 
-/** The content migrations of a space that have no run in place on this machine. */
+/** The content migrations of a space without a complete run in place on this machine. */
 export async function pendingContentMigrations(
   path: string | undefined,
   space: string,

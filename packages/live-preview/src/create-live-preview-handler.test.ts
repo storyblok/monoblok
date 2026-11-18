@@ -54,6 +54,28 @@ describe("createLivePreviewHandler", () => {
     expect(onUpdated).toHaveBeenCalledWith(story);
   });
 
+  it("applies server attribute changes but keeps earlier client changes with preserveElementAttributes (issue #805)", async () => {
+    document.body.innerHTML = `<details data-blok-uid="hero" class="base"><summary>Q</summary></details>`;
+    const handler = createLivePreviewHandler({
+      currentRoot: () => document.body,
+      update: async () =>
+        createNextRoot(
+          `<details data-blok-uid="hero" class="raised"><summary>Q2</summary></details>`,
+        ),
+      morph: { preserveElementAttributes: true },
+    });
+    // The user opens the disclosure after the handler was created, before any edit.
+    document.querySelector("details")!.setAttribute("open", "");
+
+    await handler.handle({ action: "input", story });
+    await vi.advanceTimersByTimeAsync(500);
+
+    const details = document.querySelector("details")!;
+    expect(details.getAttribute("class")).toBe("raised");
+    expect(details.hasAttribute("open")).toBe(true);
+    expect(details.textContent).toBe("Q2");
+  });
+
   it("cancels an update before it reaches the update callback", async () => {
     const update = vi.fn(async () => createNextRoot("<p>After</p>"));
     const onBeforeUpdate = vi.fn(() => false);

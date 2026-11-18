@@ -238,6 +238,12 @@ The space checks content against its current schema, not the schema of the run. 
 made a field required, the space can refuse the restored content. Push the schema as it was before
 the run, then roll back again.
 
+The space accepts restored content that uses a block or field its schema no longer defines, for
+example a block a later push renamed. Before it writes, the command lists those blocks and fields
+with the stories that use them, then restores the stories anyway. Run
+[`schema rollback`](/docs/tooling/cli/schema/rollback) or push the schema as it was before the run
+to define them again.
+
 When the space saves a restored draft but refuses to publish it, the published version keeps the
 migrated content. The command names the story, keeps the run open, and exits with an error. Push the
 schema as it was before the run, then roll back again. The command then publishes the restored draft

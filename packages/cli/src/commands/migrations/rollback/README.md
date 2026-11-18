@@ -22,6 +22,11 @@ A content migration run is rolled back block by block: blocks with fields change
 left as they are unless you pass `--force`. A rollback file of migration functions restores whole
 stories.
 
+Before it writes, a content migration rollback warns about restored blocks and fields the space's
+schema no longer defines, such as a block a later schema push renamed, and restores the stories
+anyway. Run `storyblok schema rollback` or push the schema as it was before the run to define them
+again.
+
 This will rollback the specified migration file:
 
 ```

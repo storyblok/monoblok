@@ -66,6 +66,9 @@ export function createRemoteSpace(server: SetupServerApi) {
     default: jsExports.get(file.split("/").pop() ?? ""),
   }));
 
+  // No components by default; declare them with `hasBlocks`.
+  server.use(http.get(`${MAPI}/components`, () => HttpResponse.json({ components: [] })));
+
   vi.mocked(importUserModuleDefault).mockImplementation(async (file) => {
     const id =
       file
@@ -95,6 +98,22 @@ export function createRemoteSpace(server: SetupServerApi) {
         migrations.set(id, migration);
         vol.fromJSON({ [`${MIGRATIONS_DIRECTORY}/${id}.ts`]: "export default {};" });
       }
+    },
+    /** The space's blocks. A field given by name only is a text field. */
+    hasBlocks(blocks: Record<string, string[] | Record<string, string>>) {
+      const components = Object.entries(blocks).map(([name, fields], id) => {
+        const types = Array.isArray(fields)
+          ? Object.fromEntries(fields.map((field) => [field, "text"]))
+          : fields;
+        return {
+          id: id + 1,
+          name,
+          schema: Object.fromEntries(
+            Object.entries(types).map(([field, type], pos) => [field, { type, pos }]),
+          ),
+        };
+      });
+      server.use(http.get(`${MAPI}/components`, () => HttpResponse.json({ components })));
     },
     /** A content migration in a `.js` file, which a migration function could also be. */
     hasJsContentMigration(id: string, migration: CompiledMigration) {

@@ -19,10 +19,13 @@ import { listRollbackFiles } from "../rollback/actions";
 const listCmd = migrationsCommand
   .command("list")
   .description(
-    "List the migration runs recorded for a space on this machine, then the content migrations without one",
+    "List the migration runs recorded for a space on this machine, then the pending content migrations",
   )
   .option("-s, --space <space>", "space ID")
-  .option("--pending", "List only the migrations without a recorded run that is still in place");
+  .option(
+    "--pending",
+    "List only the pending content migrations: those without a complete run in place on this machine",
+  );
 
 function rollbackState(run: MigrationRun): string | undefined {
   if (run.undoneAt) return `rolled back ${run.undoneAt}`;

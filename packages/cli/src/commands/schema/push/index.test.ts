@@ -1531,7 +1531,7 @@ describe("schema push command", () => {
       ]);
       expect(console.warn).toHaveBeenCalledWith(
         expect.stringContaining(
-          "300 stories still use banner: the space stopped renaming the block to hero in them. Rename it there with a content migration that holds renameBlock({ block: 'banner', to: 'hero' })",
+          "300 stories still use banner: the space stopped renaming the block to hero in them. Rename it there with a content migration that holds renameBlock({ block: 'banner', to: 'hero' }), written without a .before.ts snapshot (migrations generate hero --schema <entry-file> --no-before), then run it.",
         ),
       );
       expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Schema pushed to space"));
@@ -2262,7 +2262,9 @@ describe("schema push command", () => {
     );
     expect(migration).not.toContain("teaser");
     expect(console.warn).toHaveBeenCalledWith(
-      expect.stringContaining("The push failed, but it updated article."),
+      expect.stringContaining(
+        "The push failed, but it updated article. The migration for it was kept:",
+      ),
     );
   });
 

@@ -24,7 +24,7 @@ const generateCmd = migrationsCommand
   .option("-s, --space <space>", "space ID")
   .option(
     "--schema <entry-file>",
-    "schema entry file that exports `type Schema`; generates a typed defineMigration file instead of a .js migration",
+    "schema entry file that exports type Schema; generates a typed defineMigration file instead of a .js migration",
   )
   .option("--no-before", "with --schema, skip the .before.ts schema snapshot")
   .option(

@@ -261,7 +261,7 @@ schemaCommand
           return [];
         }
         ui.warn(
-          `The push failed, but it updated ${[...pushed].join(", ")}. The migration for them was kept:\n${listed(files)}\nFix the error and run schema push again to generate the migration for the other blocks.`,
+          `The push failed, but it updated ${[...pushed].join(", ")}. The migration for ${pushed.size === 1 ? "it" : "them"} was kept:\n${listed(files)}\nFix the error and run schema push again to generate the migration for the other blocks.`,
         );
         return files;
       };
@@ -653,7 +653,7 @@ schemaCommand
         }
         for (const { rename, stories } of pushResult.unfinishedRenames) {
           ui.warn(
-            `${plural(stories, "story", "stories")} still ${stories === 1 ? "uses" : "use"} ${rename.from}: the space stopped renaming the block to ${rename.to} in them. Rename it there with a content migration that holds renameBlock({ block: '${rename.from}', to: '${rename.to}' }), written without a .before.ts snapshot (migrations generate --no-before), then run it.`,
+            `${plural(stories, "story", "stories")} still ${stories === 1 ? "uses" : "use"} ${rename.from}: the space stopped renaming the block to ${rename.to} in them. Rename it there with a content migration that holds renameBlock({ block: '${rename.from}', to: '${rename.to}' }), written without a .before.ts snapshot (migrations generate ${rename.to} --schema <entry-file> --no-before), then run it.`,
           );
         }
 

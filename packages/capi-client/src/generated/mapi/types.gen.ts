@@ -153,6 +153,10 @@ export type Space = {
      */
     blocked_at?: string | null;
     /**
+     * Why the space is blocked. If this list is not empty, the space is blocked. Some blocks do not set blocked_at (unpaid subscription before escalation, unpaid boost, UI and organization blocks), so do not use blocked_at alone. A block written outside the suspension flow (admin, legacy data) can carry no cause, so an empty list with blocked_at or unpaid_at set means the cause is unknown. Causes from one event can stack: an unpaid subscription invoice records subscription_unpaid first and adds payment_overdue on escalation. Group causes by kind instead of counting them. Billing: subscription_unpaid, payment_overdue, invoice_unfinalized, boost_unpaid, traffic_boost_unpaid, limit_boost_unpaid. Usage: traffic_warning, traffic_overage, joyride_traffic_overage, api_request_overage. Organization: org_deactivation, org_disable. unknown: blocked before reasons were recorded.
+     */
+    suspension_causes: Array<SpaceSuspensionCause>;
+    /**
      * Whether the space is in development mode
      */
     development_mode: boolean;
@@ -188,6 +192,11 @@ export type Space = {
     joyride_traffic_limit_exceeded?: boolean;
     [key: string]: unknown;
 };
+
+/**
+ * A recorded reason for a suspension. Billing: subscription_unpaid, payment_overdue, invoice_unfinalized, boost_unpaid, traffic_boost_unpaid, limit_boost_unpaid. Usage: traffic_warning, traffic_overage, joyride_traffic_overage, api_request_overage. Organization: org_deactivation, org_disable. unknown: blocked before reasons were recorded.
+ */
+export type SpaceSuspensionCause = 'subscription_unpaid' | 'payment_overdue' | 'invoice_unfinalized' | 'boost_unpaid' | 'traffic_boost_unpaid' | 'limit_boost_unpaid' | 'traffic_warning' | 'traffic_overage' | 'joyride_traffic_overage' | 'api_request_overage' | 'org_deactivation' | 'org_disable' | 'unknown';
 
 /**
  * Custom role definition controlling permissions within a space

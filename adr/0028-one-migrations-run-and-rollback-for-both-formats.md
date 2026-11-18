@@ -1,4 +1,4 @@
-# ADR-0026: One `migrations run` and `rollback` for Both Migration Formats
+# ADR-0028: One `migrations run` and `rollback` for Both Migration Formats
 
 **Status:** Accepted. **Date:** 2026-11-09
 

@@ -58,6 +58,7 @@ export const API_ACTIONS = {
   create_space: "Failed to create space",
   pull_spaces: "Failed to pull spaces",
   fetch_blueprints: "Failed to fetch blueprints from GitHub",
+  search_strata: "Failed to search with Strata",
 } as const;
 
 export const API_ERRORS = {

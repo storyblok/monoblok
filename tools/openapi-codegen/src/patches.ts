@@ -163,14 +163,156 @@ function requireWebhookCreateFields(spec: unknown): void {
   jsonBody.schema = { $ref: `${SCHEMA_REF_PREFIX}${WEBHOOK_CREATE_SCHEMA}` };
 }
 
+const STRATA_SEARCH_PATH = "/v1/spaces/{space_id}/strata/search";
+
+const strataErrorResponse = (description: string) => ({
+  description,
+  content: {
+    "application/json": { schema: { $ref: `${SCHEMA_REF_PREFIX}StrataErrorResponse` } },
+  },
+});
+
+/**
+ * Declare "Search the Strata index" on the Management API.
+ *
+ * The endpoint is live, and the CLI's `stories find --mode semantic` depends on
+ * it, but upstream leaves the operation out of the public spec while it keeps the
+ * schemas it returns (`StrataSearchResults`, `StrataErrorResponse`). Without the
+ * operation there is no typed client method. The parameters and responses follow
+ * the API's observed contract. No-op once upstream declares the path itself.
+ *
+ * @todo(openapi-spec): Remove this patch, `STRATA_SEARCH_PATH` and
+ * `strataErrorResponse` once the upstream Management API spec publishes
+ * `GET /v1/spaces/{space_id}/strata/search`, then regenerate every consumer.
+ * `@storyblok/management-api-client`'s `strata.search()` calls the generated
+ * `searchStrataIndex`: if upstream names the operation differently, update it.
+ */
+function addStrataSearchOperation(spec: unknown): void {
+  if (!isRecord(spec) || !isRecord(spec.paths) || !isRecord(spec.components)) {
+    return;
+  }
+  const { schemas } = spec.components;
+  if (
+    spec.paths[STRATA_SEARCH_PATH] ||
+    !isRecord(schemas) ||
+    !schemas.StrataSearchResults ||
+    !schemas.StrataErrorResponse
+  ) {
+    return;
+  }
+  spec.paths[STRATA_SEARCH_PATH] = {
+    parameters: [
+      {
+        name: "space_id",
+        in: "path",
+        required: true,
+        description: "Numeric ID of a space",
+        schema: { type: "integer" },
+      },
+    ],
+    get: {
+      summary: "Search the Strata index",
+      operationId: "searchStrataIndex",
+      description:
+        "Search the space's content by meaning. Results only include stories the user can read, " +
+        "so a user whose role limits them to certain folders searches within those folders. A " +
+        "scoped personal access token or an OAuth token also needs the `strata:read` scope. Each " +
+        "hit is one matching piece of content, so a story can appear more than once.",
+      tags: ["Strata"],
+      parameters: [
+        {
+          name: "q",
+          in: "query",
+          required: false,
+          description: "Search term, at most 2000 characters. A blank term returns no results.",
+          schema: { type: "string", maxLength: 2000 },
+        },
+        {
+          name: "version",
+          in: "query",
+          required: false,
+          description: "Content version to search.",
+          schema: { type: "string", enum: ["draft", "published"], default: "published" },
+        },
+        {
+          name: "limit",
+          in: "query",
+          required: false,
+          description:
+            "Maximum number of results, from 1 to 100. With `starts_with` or `content_type` set, at most 50. Any other value returns 400.",
+          schema: { type: "integer", default: 25, minimum: 1, maximum: 100 },
+        },
+        {
+          name: "starts_with",
+          in: "query",
+          required: false,
+          description:
+            "Only search stories whose full slug starts with this value, e.g. `docs/`. Matches the default-language slug: a language prefix such as `de/` matches nothing.",
+          schema: { type: "string" },
+        },
+        {
+          name: "content_type",
+          in: "query",
+          required: false,
+          description:
+            "Only search stories whose content type (root component) is this one, read from the draft content.",
+          schema: { type: "string" },
+        },
+      ],
+      responses: {
+        "200": {
+          description: "Search results, best match first",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: { results: { $ref: `${SCHEMA_REF_PREFIX}StrataSearchResults` } },
+                required: ["results"],
+              },
+            },
+          },
+        },
+        "400": strataErrorResponse("Invalid parameter value"),
+        "401": strataErrorResponse("Unauthorized"),
+        "403": strataErrorResponse(
+          "Forbidden: Strata is off for the space or organization (`feature_disabled`), or the token lacks `strata:read` (`insufficient_scope`)",
+        ),
+        "404": strataErrorResponse("The space does not exist or the user cannot access it"),
+        "429": strataErrorResponse("Too many requests"),
+        "503": strataErrorResponse("Search backend temporarily unavailable"),
+      },
+    },
+  };
+}
+
 function patchMapiInput(spec: unknown): void {
   moveGetOrganizationToMe(spec);
   requireWebhookCreateFields(spec);
+  // @todo(openapi-spec): Remove once upstream publishes the Strata search operation.
+  addStrataSearchOperation(spec);
+}
+
+/**
+ * Whole-document patches per spec. The generator's parser config reads them from
+ * here, and so does tooling that parses a spec on its own, so the two always see
+ * the same schemas.
+ */
+const INPUT_PATCHES: Partial<Record<SpecSource, (spec: unknown) => void>> = {
+  mapi: patchMapiInput,
+};
+
+/**
+ * Applies a spec's whole-document patches in place, exactly as the generator
+ * does. For tooling that reads the spec outside the generator and has to see the
+ * same schemas it does.
+ */
+export function applyInputPatches(source: SpecSource, spec: unknown): void {
+  INPUT_PATCHES[source]?.(spec);
 }
 
 const MAPI_PARSER: Parser = {
   patch: {
-    input: patchMapiInput,
+    input: INPUT_PATCHES.mapi,
     schemas: {
       ComponentCreateRequest: widenNullableComponentProperties,
       ComponentUpdateRequest: widenNullableComponentProperties,

@@ -1,12 +1,26 @@
 import { MultiBar } from "cli-progress";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { getStdoutTarget } from "./stream-target";
+import type { StreamTarget } from "./stream-target";
 import { UI } from "./ui";
+
+// Where stdout goes depends on how the test runner was started, so it is pinned
+// per test. Stderr keeps the real check: the tests set its `isTTY` directly.
+vi.mock("./stream-target", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./stream-target")>();
+  return { ...actual, getStdoutTarget: vi.fn() };
+});
+
+function withStdout(target: StreamTarget) {
+  vi.mocked(getStdoutTarget).mockReturnValue(target);
+}
 
 let errorSpy: ReturnType<typeof vi.spyOn>;
 let warnSpy: ReturnType<typeof vi.spyOn>;
 let logSpy: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
+  withStdout("terminal");
   errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
   warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
   logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
@@ -69,6 +83,15 @@ describe("ui", () => {
       ui.title("My Title", "#00b3b0");
       expect(errorSpy).toHaveBeenCalled();
       expect(logSpy).not.toHaveBeenCalled();
+    });
+
+    it("should follow a title with a single blank line", () => {
+      const ui = new UI({ enabled: true });
+      ui.title("My Title", "#00b3b0");
+      expect(errorSpy.mock.calls.map((call: unknown[]) => call[0])).toEqual([
+        expect.stringContaining("My Title"),
+        "",
+      ]);
     });
 
     it("should route log() through console.error (stderr)", () => {
@@ -254,6 +277,84 @@ describe("ui", () => {
 
       expect(bar.getTotal()).toBe(0);
       expect(bar.getProgress()).toBe(1);
+    });
+
+    // The reader of a pipe, such as `jq`, usually prints to the same terminal as
+    // stderr, and every redraw would move the cursor back over its lines.
+    it("should return a noop progress bar when stdout is a pipe", () => {
+      const create = vi.spyOn(MultiBar.prototype, "create");
+      const ui = new UI({ enabled: true });
+      withStdout("pipe");
+
+      withStderrTTY(true, () => {
+        ui.createProgressBar({ title: "Fetching" }).setTotal(10);
+      });
+
+      expect(create).not.toHaveBeenCalled();
+    });
+
+    it("should degrade a spinner to plain text when stdout is a pipe", () => {
+      const ui = new UI({ enabled: true });
+      withStdout("pipe");
+
+      withStderrTTY(true, () => {
+        ui.createSpinner("Fetching stories").succeed("Fetched 42 stories");
+      });
+
+      expect(errorSpy).toHaveBeenCalledWith("Fetching stories");
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("Fetched 42 stories"));
+    });
+
+    // Nothing else writes to the terminal, so a long run keeps its live progress.
+    it.each(["file", "device"] as const)(
+      "should render a real progress bar when stdout is a %s",
+      (target) => {
+        const create = vi.spyOn(MultiBar.prototype, "create");
+        const ui = new UI({ enabled: true });
+        withStdout(target);
+
+        withStderrTTY(true, () => {
+          ui.createProgressBar({ title: "Fetching" }).setTotal(10);
+        });
+        ui.stopAllProgressBars();
+
+        expect(create).toHaveBeenCalled();
+      },
+    );
+
+    it("should write nothing when stopping without any bar drawn", () => {
+      const stop = vi.spyOn(MultiBar.prototype, "stop");
+      const ui = new UI({ enabled: true });
+
+      ui.stopAllProgressBars();
+
+      expect(stop).not.toHaveBeenCalled();
+      expect(process.stderr.write).not.toHaveBeenCalled();
+    });
+
+    it("should stop the bars it drew", () => {
+      const stop = vi.spyOn(MultiBar.prototype, "stop");
+      const ui = new UI({ enabled: true });
+
+      withStderrTTY(true, () => {
+        ui.createProgressBar({ title: "Fetching" }).setTotal(10);
+      });
+      ui.stopAllProgressBars();
+      ui.stopAllProgressBars();
+
+      expect(stop).toHaveBeenCalledTimes(1);
+    });
+
+    // A spinner is progress, not diagnostics: --verbose has no say in it.
+    it("should animate a spinner on a terminal without --verbose", () => {
+      const ui = new UI({ enabled: true });
+
+      withStderrTTY(true, () => {
+        ui.createSpinner("Fetching stories").succeed("Fetched 42 stories");
+      });
+
+      const written = vi.mocked(process.stderr.write).mock.calls.join("");
+      expect(written).toContain("Fetched 42 stories");
     });
 
     // Silence would be worse than no animation: the spinner's text is the only

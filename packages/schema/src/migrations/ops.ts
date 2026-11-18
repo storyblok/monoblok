@@ -270,6 +270,18 @@ export function isKeyOp(op: MigrationOp): boolean {
 }
 
 /**
+ * The name a block carries after the forward migration ran. Every op addresses
+ * a block by its pre-migration name, so only a `renameBlock` of that name moves it.
+ */
+export function renamedBy(ops: readonly MigrationOp[], name: string): string {
+  let final = name;
+  for (const op of ops) {
+    if (op.kind === "renameBlock" && op.block === name) final = op.to;
+  }
+  return final;
+}
+
+/**
  * A key op changes the block schema, which is global: migrating only the
  * instances under one parent would leave every other instance holding a key no
  * schema describes. So the spec objects have no `under`, and passing one is an

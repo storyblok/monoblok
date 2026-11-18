@@ -609,6 +609,24 @@ describe("migrations run command for content migrations", () => {
     ]);
   });
 
+  it("should say in one line that a migration it ran before was superseded", async () => {
+    space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    space.hasBlocks({ card: ["headline"], page: { body: "bloks" } });
+    space.hasStories(storyWithCard());
+    space.canUpdateStories();
+    await apply();
+    space.hasBlocks({ card: ["heading"], page: { body: "bloks" } });
+    const warn = vi.spyOn(getUI(), "warn");
+    const info = vi.spyOn(getUI(), "info");
+
+    await apply();
+
+    expect(warn).not.toHaveBeenCalledWith(expect.stringContaining("skipped"));
+    expect(info).toHaveBeenCalledWith(
+      "0001-rename-card-title: superseded by a later schema change; nothing to do.",
+    );
+  });
+
   it("should name both fields of a rename it skips", async () => {
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
     space.hasBlocks({ card: ["title", "headline"], page: { body: "bloks" } });

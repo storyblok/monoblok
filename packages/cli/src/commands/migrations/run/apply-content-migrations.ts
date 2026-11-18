@@ -479,6 +479,10 @@ export async function applyContentMigrations({
       continue;
     }
     const { migration, stale } = withoutStaleOps(entry.migration, live);
+    if (migration.ops.length === 0 && inPlace.has(entry.id)) {
+      ui.info(`${entry.id}: superseded by a later schema change; nothing to do.`);
+      continue;
+    }
     for (const { reason } of stale) {
       ui.warn(`${entry.id}: ${reason}`);
     }

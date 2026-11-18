@@ -178,6 +178,13 @@ export async function whileRenameRuns<T>(update: () => Promise<T>, block: string
   }
 }
 
+/** Whether a request failed without an HTTP answer, such as on a timeout or a dropped connection. */
+function gotNoAnswer(error: unknown): boolean {
+  if (!isRecord(error) || !isRecord(error.response)) return true;
+  const { status } = error.response;
+  return typeof status !== "number" || status <= 0;
+}
+
 /**
  * Renames a block in place and has the space rename it in the stories,
  * folders, and other blocks that name it. The space renames the block in the
@@ -187,18 +194,39 @@ export async function renameBlockInSpace(
   space: string,
   id: number,
   component: ComponentUpdate,
-  { from }: BlockRename,
+  { from, to }: BlockRename,
 ): Promise<void> {
-  await whileRenameRuns(
-    () =>
-      getMapiClient().components.update(id, {
-        path: { space_id: Number(space) },
-        body: { component },
-        query: { update_content: true },
-        throwOnError: true,
-      }),
-    from,
-  );
+  const client = getMapiClient();
+  const path = { space_id: Number(space) };
+  try {
+    await whileRenameRuns(
+      () =>
+        client.components.update(id, {
+          path,
+          body: { component },
+          query: { update_content: true },
+          throwOnError: true,
+        }),
+      from,
+    );
+  } catch (error) {
+    if (error instanceof CommandError || !gotNoAnswer(error)) throw error;
+    // The space renames the block in the stories of a small space before it
+    // answers, which can take longer than the client waits. It may still
+    // have renamed the block.
+    const name = await client.components.get(id, { path, throwOnError: true }).then(
+      ({ data }) => data.component.name,
+      () => undefined,
+    );
+    if (name === to) return;
+    const state =
+      name === undefined
+        ? "the block could not be read back to check whether the space renamed it"
+        : `the space still holds the block as ${name}`;
+    throw new CommandError(
+      `The request to rename ${from} to ${to} timed out or lost its connection, and ${state}. Run schema push again.`,
+    );
+  }
 }
 
 /**

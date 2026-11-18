@@ -1482,6 +1482,66 @@ describe("schema push command", () => {
       expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Schema pushed to space"));
     });
 
+    /**
+     * The rename request gets no answer before the client gives up on it, and
+     * the space then holds the block as `name`.
+     */
+    const renameTimesOut = (block: MockComponent, name: string) => {
+      const url = `https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/components/:id`;
+      server.use(
+        http.put(url, () => new Promise<never>(() => {})),
+        http.get(url, () => HttpResponse.json({ component: { ...block, name } })),
+      );
+    };
+    /** Runs a push while the client's request timeout runs out on fake timers. */
+    const pushUntilTimeout = async (...args: string[]) => {
+      vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
+      let done = false;
+      const pushing = push(...args).finally(() => {
+        done = true;
+      });
+      while (!done) await vi.advanceTimersByTimeAsync(5_000);
+      await pushing;
+    };
+
+    it("should go on with a rename the space applied although the request timed out", async () => {
+      const remoteBanner = banner();
+      preconditions.hasLocalSchema({ components: [hero()] as any, datasources: [] });
+      preconditions.hasRemoteComponents([remoteBanner]);
+      componentWrites([remoteBanner], { banner: 0 });
+      renameTimesOut(remoteBanner, "hero");
+      vi.mocked(confirm).mockResolvedValue(true);
+
+      await pushUntilTimeout("--no-migrations");
+
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "Renamed banner → hero in the space, along with the stories and folders that use it.",
+        ),
+      );
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Schema pushed to space"));
+    });
+
+    it("should fail and say the rename timed out when the space didn't apply it", async () => {
+      const remoteBanner = banner();
+      preconditions.hasLocalSchema({ components: [hero()] as any, datasources: [] });
+      preconditions.hasRemoteComponents([remoteBanner]);
+      componentWrites([remoteBanner], { banner: 3 });
+      renameTimesOut(remoteBanner, "banner");
+      vi.mocked(confirm).mockResolvedValue(true);
+
+      await pushUntilTimeout("--no-migrations");
+
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "The request to rename banner to hero timed out or lost its connection, and the space still holds the block as banner. Run schema push again.",
+        ),
+      );
+      expect(console.error).not.toHaveBeenCalledWith(
+        expect.stringContaining("Schema pushed to space"),
+      );
+    });
+
     it("should fail when the space doesn't finish renaming the block in its stories in time", async () => {
       const remoteBanner = banner();
       const remoteTeaser = makeMockComponent({ name: "teaser", schema: { a: { type: "text" } } });

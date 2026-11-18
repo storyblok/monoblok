@@ -15,6 +15,7 @@ import {
   storyAccess,
   toStoryForMigration,
 } from "../content-migrations";
+import { warnAboutSchemaGaps } from "./schema-gaps";
 
 export type RollbackContentMigrationRunOptions = {
   space: string;
@@ -137,6 +138,15 @@ export async function rollbackContentMigrationRun({
       `${chalk.bold(gone.slug)}: ${plural(gone.count, "block", "blocks")} the run changed ${gone.count === 1 ? "is" : "are"} no longer in the story; nothing to roll back there.`,
     );
   }
+
+  await warnAboutSchemaGaps(
+    space,
+    outcome.writes.map((write) => ({
+      slug: write.story.slug,
+      current: write.story.content,
+      restored: write.content,
+    })),
+  );
 
   const restored = new Set<string>();
   const republished = new Set<string>();

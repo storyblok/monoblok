@@ -5,6 +5,7 @@
  * one-schema shorthand deliberately widens reads to any string.
  */
 import type { SchemaLike } from "../index";
+import { didYouMean } from "../utils/similar-names";
 import { toValues } from "../validators/shapes";
 import type { CompiledMigration } from "./define-migration";
 import { isKeyOp, type MigrationOp } from "./ops";
@@ -101,7 +102,8 @@ export function validateMigration(
   for (const name of nameOnly) known.delete(name);
   const fields = new Map([...known].map(([name, set]) => [name, new Set(set)]));
   const exists = (name: string) => known.has(name) || nameOnly.has(name);
-  const knownNames = () => listOf(new Set([...known.keys(), ...nameOnly]));
+  // A space can define hundreds of blocks, too many to list in a message.
+  const suggest = (name: string) => didYouMean(name, [...known.keys(), ...nameOnly]);
   const issues: MigrationIssue[] = [];
 
   migration.ops.forEach((op, index) => {
@@ -127,7 +129,8 @@ export function validateMigration(
         issue("`under` has to be a block name or a list of block names.");
       } else {
         for (const name of ancestors) {
-          if (!exists(name)) issue(`Unknown ancestor block "${name}" in \`under\`.`);
+          if (!exists(name))
+            issue(`Unknown ancestor block "${name}" in \`under\`.${suggest(name)}`);
         }
       }
     }
@@ -140,7 +143,7 @@ export function validateMigration(
         );
       }
     } else if (!blockFields) {
-      issue(`Unknown block "${op.block}". Known blocks: ${knownNames()}.`);
+      issue(`Unknown block "${op.block}".${suggest(op.block)}`);
       return;
     } else {
       for (const field of sourceFieldsOf(op)) {
@@ -198,7 +201,7 @@ export function validateMigration(
           `Block "${op.from.block}" is listed by name only, so whether it defines the field "${op.from.field}" can't be checked.`,
         );
       } else if (!container) {
-        issue(`Unknown block "${op.from.block}" to unwrap. Known blocks: ${knownNames()}.`);
+        issue(`Unknown block "${op.from.block}" to unwrap.${suggest(op.from.block)}`);
       } else if (!container.has(op.from.field)) {
         issue(`Block "${op.from.block}" has no field "${op.from.field}" to unwrap children from.`);
       }

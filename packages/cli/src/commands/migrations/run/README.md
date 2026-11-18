@@ -7,6 +7,8 @@ runs two kinds of migration files from the same directory:
   component.
 - **Content migrations:** `.ts`, `.js`, or `.mjs` files named `<number>-<name>` that default-export
   `defineMigration()` from `@storyblok/schema`. A `.js` file is told apart by its default export.
+  The command warns about files such as `hello.ts` whose names don't match the pattern, since they
+  never run.
 
 Migration functions run first, then content migrations in the order of their numeric prefix.
 

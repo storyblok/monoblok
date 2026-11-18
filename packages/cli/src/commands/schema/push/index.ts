@@ -401,10 +401,14 @@ schemaCommand
         (!options.delete || diffResult.stale === 0);
 
       // `migrations run` skips the ops of a migration that a later schema
-      // change no longer matches, so pending migrations go before the push.
+      // change no longer matches, so one written for an earlier change goes
+      // before the push, and one written for this change after it.
       if (!nothingToPush && pendingMigrations.length > 0) {
+        const pendingList = pendingMigrations.join(", ");
         ui.warn(
-          `${plural(pendingMigrations.length, "content migration hasn't", "content migrations haven't")} run on this machine: ${pendingMigrations.join(", ")}. Run ${pendingMigrations.length === 1 ? "it" : "them"} with \`${runMigrations}\` before you push schema changes: migrations run skips the ops that no longer match the space's schema.`,
+          pendingMigrations.length === 1
+            ? `1 content migration is pending on this machine: ${pendingList}. If it was written for an earlier schema change, run it with \`${runMigrations}\` before you push: once the push changes the fields it migrates, migrations run skips its ops. If it was written for the change you're pushing, run it after the push.`
+            : `${pendingMigrations.length} content migrations are pending on this machine: ${pendingList}. Run the ones written for an earlier schema change with \`${runMigrations}\` before you push: once the push changes the fields they migrate, migrations run skips their ops. Run the ones written for the change you're pushing after the push.`,
         );
       }
 

@@ -1781,12 +1781,12 @@ describe("schema push command", () => {
       });
     });
 
-    it("should warn about them and say to run them before the push", async () => {
+    it("should warn about them and say to run one written for an earlier change before the push", async () => {
       await pushChangingHero({ subtitle: { type: "text", pos: 0 } });
 
       expect(console.warn).toHaveBeenCalledWith(
         expect.stringContaining(
-          `1 content migration hasn't run on this machine: 20261002000000-split-name. Run it with \`storyblok migrations run --space ${DEFAULT_SPACE}\` before you push schema changes`,
+          `1 content migration is pending on this machine: 20261002000000-split-name. If it was written for an earlier schema change, run it with \`storyblok migrations run --space ${DEFAULT_SPACE}\` before you push: once the push changes the fields it migrates, migrations run skips its ops. If it was written for the change you're pushing, run it after the push.`,
         ),
       );
       expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Schema pushed to space"));
@@ -1795,7 +1795,9 @@ describe("schema push command", () => {
     it("should not warn when the push changes nothing", async () => {
       await pushChangingHero({ title: { type: "text", pos: 0 } });
 
-      expect(console.warn).not.toHaveBeenCalledWith(expect.stringContaining("run on this machine"));
+      expect(console.warn).not.toHaveBeenCalledWith(
+        expect.stringContaining("pending on this machine"),
+      );
     });
   });
 

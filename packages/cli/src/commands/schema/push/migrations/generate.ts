@@ -1,12 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "pathe";
 import type { MigrationOpSource } from "@storyblok/schema/internal/codegen";
-import {
-  coercionBetween,
-  commentText,
-  isIdentifier,
-  quoteString,
-} from "@storyblok/schema/internal/codegen";
+import { coercionBetween, isIdentifier, quoteString } from "@storyblok/schema/internal/codegen";
 
 import { resolvePath } from "../../../../utils/filesystem";
 import { buildMigrationFilename } from "../../../migrations/migration-filename";
@@ -29,6 +24,13 @@ function defaultForType(fieldType: string): string | null {
   }
 }
 
+const LINE_TERMINATORS = /[\r\n\u2028\u2029]+/g;
+
+/** Keeps text on one line, so a line comment cannot end early and run the rest as code. */
+function lineComment(text: string): string {
+  return `// ${text.replace(LINE_TERMINATORS, " ")}`;
+}
+
 /** A property access on `block` that stays one expression whatever the field name holds. */
 function accessor(field: string): string {
   return isIdentifier(field) ? `block.${field}` : `block[${quoteString(field)}]`;
@@ -48,7 +50,7 @@ function typeConversion(field: string, oldType: string, newType: string): string
     case "boolean:text":
       return `${target} = String(${target});`;
     default:
-      return `${target}; // ${commentText(`TODO: convert from ${oldType} to ${newType}`)}`;
+      return `${target}; ${lineComment(`TODO: convert from ${oldType} to ${newType}`)}`;
   }
 }
 
@@ -59,9 +61,9 @@ function typeConversion(field: string, oldType: string, newType: string): string
 export function renderMigrationCode(changes: BreakingChange[]): string {
   const lines: string[] = [];
   // Names, types, and option values come from the space, so they pass through
-  // `commentText` or `quoteString` before they reach the file.
+  // `lineComment` or `quoteString` before they reach the file.
   const code = (text: string) => lines.push(`  ${text}`);
-  const comment = (text: string) => lines.push(`  // ${commentText(text)}`);
+  const comment = (text: string) => lines.push(`  ${lineComment(text)}`);
 
   comment("Review this migration before running it against your space.");
   comment("Generated migrations are scaffolds and may need manual adjustments.");

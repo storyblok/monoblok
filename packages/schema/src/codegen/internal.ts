@@ -9,7 +9,7 @@
  */
 export { nextMigrationId } from "../migrations/load-migrations";
 export { coercionBetween } from "../migrations/ops";
-export { commentText, formatValue, INDENT, isIdentifier, quoteString, RawCode } from "./format";
+export { formatValue, INDENT, isIdentifier, quoteString, RawCode } from "./format";
 export {
   collectRestrictionFolderVars,
   generateFieldCode,

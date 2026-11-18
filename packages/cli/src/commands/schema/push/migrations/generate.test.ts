@@ -27,6 +27,22 @@ describe("renderMigrationCode", () => {
     );
   });
 
+  it("should map the exact removed option value once its commented mapping is uncommented", () => {
+    const removed = "a\u2028b\u2029c */ 'd' \"e\" \\f\ng";
+    const code = renderMigrationCode([
+      { kind: "options_removed", field: "size", values: [removed], multiple: false },
+    ]);
+    const mapping = code
+      .split("\n")
+      .find((line) => line.trim().startsWith("// if (block.size ==="));
+    const statement = mapping!.replace("//", "").replace("<value>", "'mapped'");
+
+    const migrate = new Function("block", `${statement}\nreturn block;`);
+
+    expect(migrate({ size: removed })).toEqual({ size: "mapped" });
+    expect(migrate({ size: "other" })).toEqual({ size: "other" });
+  });
+
   it("should not run code smuggled in through names or option values from the space", async () => {
     const payloads = [
       "x\u2028globalThis.PWNED=1;//",

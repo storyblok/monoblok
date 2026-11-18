@@ -5,7 +5,8 @@
  * strings, so importing this module works in any runtime.
  *
  * @internal Not meant for applications, but covered by semver: a published CLI
- * imports it across a version range.
+ * imports it across a version range. Semver covers the functions, not the text
+ * of the source they generate.
  */
 export { nextMigrationId } from "../migrations/load-migrations";
 export { coercionBetween } from "../migrations/ops";

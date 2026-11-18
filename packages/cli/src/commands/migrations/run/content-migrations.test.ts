@@ -69,7 +69,10 @@ const pageBlock = defineBlock({ name: "page", fields: [defineField("body", { typ
 /** Writes a `.before.ts` snapshot beside a migration, exporting `blocks`. */
 function hasSnapshot(id: string, ...blocks: unknown[]): void {
   vol.fromJSON({ [`${MIGRATIONS_DIRECTORY}/${id}.before.ts`]: "export {};" });
-  snapshotModules[id] = Object.fromEntries(blocks.map((block, index) => [`block${index}`, block]));
+  snapshotModules[id] = {
+    ...Object.fromEntries(blocks.map((block, index) => [`block${index}`, block])),
+    snapshotFormat: 1,
+  };
 }
 
 function hasNameOnlyBlocks(id: string, ...names: string[]): void {
@@ -1335,6 +1338,62 @@ describe("migrations run command for content migrations", () => {
       expect(space.writes).toEqual([]);
       expect(error.mock.calls.flat().join("\n")).toContain(
         "has snapshot format 2, but this version of the Storyblok CLI reads up to format 1. Update the Storyblok CLI.",
+      );
+      expect(process.exitCode).toBe(2);
+    });
+
+    it.each([
+      ["a string", "1", '"1"'],
+      ["zero", 0, "0"],
+      ["a fraction", 1.5, "1.5"],
+    ])("should refuse a snapshot whose format is %s", async (_, snapshotFormat, printed) => {
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+      hasSnapshot("0001-rename-card-title");
+      snapshotModules["0001-rename-card-title"] = { card: cardBlock, snapshotFormat };
+      server.resetHandlers();
+
+      await apply();
+
+      expect(space.writes).toEqual([]);
+      expect(error.mock.calls.flat().join("\n")).toContain(
+        `has snapshot format ${printed}, but a snapshot format is a whole number from 1 to 1, the newest this version of the Storyblok CLI reads.`,
+      );
+      expect(process.exitCode).toBe(2);
+    });
+
+    it("should refuse a snapshot without a format", async () => {
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+      hasSnapshot("0001-rename-card-title");
+      snapshotModules["0001-rename-card-title"] = { card: cardBlock };
+      server.resetHandlers();
+
+      await apply();
+
+      expect(space.writes).toEqual([]);
+      expect(error.mock.calls.flat().join("\n")).toContain(
+        "doesn't export snapshotFormat, so it isn't a schema snapshot the Storyblok CLI reads.",
+      );
+      expect(process.exitCode).toBe(2);
+    });
+
+    it("should refuse a snapshot whose name-only blocks aren't a list of block names", async () => {
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+      hasSnapshot("0001-rename-card-title", cardBlock);
+      snapshotModules["0001-rename-card-title"] = {
+        card: cardBlock,
+        snapshotFormat: 1,
+        nameOnlyBlocks: "teaser",
+      };
+      server.resetHandlers();
+
+      await apply();
+
+      expect(space.writes).toEqual([]);
+      expect(error.mock.calls.flat().join("\n")).toContain(
+        "exports nameOnlyBlocks, but not as a list of block names.",
       );
       expect(process.exitCode).toBe(2);
     });

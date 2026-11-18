@@ -247,15 +247,44 @@ function isStringArray(value: unknown): value is string[] {
 /** The newest `snapshotFormat` this CLI reads. */
 const SUPPORTED_SNAPSHOT_FORMAT = 1;
 
-/** The `nameOnlyBlocks` of a snapshot, refusing a format this CLI cannot read. */
-async function loadNameOnlyBlocks(file: string): Promise<readonly string[] | undefined> {
-  const { nameOnlyBlocks, snapshotFormat } = await loadSchemaModule(file);
-  if (typeof snapshotFormat === "number" && snapshotFormat > SUPPORTED_SNAPSHOT_FORMAT) {
+function assertSnapshotFormat(name: string, format: unknown): void {
+  if (format === undefined) {
     throw new CommandError(
-      `${relative(process.cwd(), file)} has snapshot format ${snapshotFormat}, but this version of the Storyblok CLI reads up to format ${SUPPORTED_SNAPSHOT_FORMAT}. Update the Storyblok CLI.`,
+      `${name} doesn't export snapshotFormat, so it isn't a schema snapshot the Storyblok CLI reads.`,
     );
   }
-  return isStringArray(nameOnlyBlocks) ? nameOnlyBlocks : undefined;
+  const isFormat = typeof format === "number" && Number.isInteger(format) && format >= 1;
+  if (!isFormat) {
+    const printed = typeof format === "number" ? String(format) : JSON.stringify(format);
+    throw new CommandError(
+      `${name} has snapshot format ${printed}, but a snapshot format is a whole number from 1 to ${SUPPORTED_SNAPSHOT_FORMAT}, the newest this version of the Storyblok CLI reads.`,
+    );
+  }
+  if (format > SUPPORTED_SNAPSHOT_FORMAT) {
+    throw new CommandError(
+      `${name} has snapshot format ${format}, but this version of the Storyblok CLI reads up to format ${SUPPORTED_SNAPSHOT_FORMAT}. Update the Storyblok CLI.`,
+    );
+  }
+}
+
+/**
+ * The `nameOnlyBlocks` of a schema module, refusing a snapshot this CLI cannot
+ * read. A schema entry file passed with `--schema` needs no format, but may be
+ * a snapshot.
+ */
+async function loadNameOnlyBlocks(
+  file: string,
+  { snapshot }: { snapshot: boolean },
+): Promise<readonly string[] | undefined> {
+  const { nameOnlyBlocks, snapshotFormat } = await loadSchemaModule(file);
+  const name = relative(process.cwd(), file);
+  if (snapshot || snapshotFormat !== undefined) {
+    assertSnapshotFormat(name, snapshotFormat);
+  }
+  if (nameOnlyBlocks !== undefined && !isStringArray(nameOnlyBlocks)) {
+    throw new CommandError(`${name} exports nameOnlyBlocks, but not as a list of block names.`);
+  }
+  return nameOnlyBlocks;
 }
 
 /** The `.before.ts` snapshot of the schema a migration was written against. */
@@ -271,7 +300,11 @@ async function loadSnapshotCheck(
 ): Promise<SchemaCheck | string> {
   try {
     const { schema } = await loadSchemaEntry(snapshot, { requireBlocks: true });
-    return { entry, schema, nameOnlyBlocks: await loadNameOnlyBlocks(snapshot) };
+    return {
+      entry,
+      schema,
+      nameOnlyBlocks: await loadNameOnlyBlocks(snapshot, { snapshot: true }),
+    };
   } catch (maybeError) {
     const [reason] = toError(maybeError).message.split("\n");
     return `${entry.id}: the schema snapshot ${relative(process.cwd(), snapshot)} could not be loaded: ${reason.trim()}`;
@@ -367,7 +400,7 @@ export async function assertContentMigrationsMatchSchema({
       );
     }
     const { schema } = await loadSchemaEntry(schemaEntry, { requireBlocks: true });
-    const nameOnlyBlocks = await loadNameOnlyBlocks(schemaEntry);
+    const nameOnlyBlocks = await loadNameOnlyBlocks(schemaEntry, { snapshot: false });
     assertMatchesSchemas([{ entry: migrations[0], schema, nameOnlyBlocks }]);
   } else if (validate) {
     const unchecked = await assertMatchesSnapshots(migrations);

@@ -454,6 +454,44 @@ describe("migrations generate command", () => {
         },
       );
 
+      it("should snapshot the blocks around the block under the names the same push gave them", async () => {
+        preconditions.componentExists();
+        preconditions.hasSchemaEntry();
+        const card = {
+          ...mockComponent,
+          name: "card",
+          schema: {
+            items: {
+              type: "bloks",
+              pos: 0,
+              restrict_components: true,
+              component_whitelist: ["promo"],
+            },
+          },
+        };
+        vol.fromJSON({
+          [`.storyblok/schema/changesets/${pushedAt.replace(/[:.]/g, "-")}.json`]: JSON.stringify({
+            timestamp: pushedAt,
+            spaceId: 12345,
+            remote: {
+              components: [card, { ...mockComponent, id: 7, name: "promo", schema: {} }],
+              componentFolders: [],
+              datasources: [],
+            },
+            changes: [
+              { type: "component", name: "card", action: "update", before: card },
+              { type: "component", name: "teaser", action: "update", before: { name: "promo" } },
+            ],
+          }),
+        });
+
+        await generate("card", "--schema", "src/schema.ts", "--before-push");
+
+        const before = writtenFile(".before.ts");
+        expect(before).toContain("'teaser'");
+        expect(before).not.toContain("'promo'");
+      });
+
       it("should use the latest push to the space that changed the block", async () => {
         preconditions.componentExists();
         preconditions.hasSchemaEntry();
@@ -526,6 +564,25 @@ describe("migrations generate command", () => {
         expect(writtenFile(`${ID}.before.ts`)).toBeDefined();
         expect(console.warn).not.toHaveBeenCalledWith(
           expect.stringContaining("schema push changed"),
+        );
+      });
+
+      it("should warn about a push whose only newer content migration is one the push wrote", async () => {
+        preconditions.componentExists();
+        preconditions.hasSchemaEntry();
+        preconditions.hasMigrations("20261016090000-update-component-name.ts");
+        const changeset = JSON.parse(Object.values(changesetFor(12345, "component-name"))[0]);
+        vol.fromJSON({
+          [`.storyblok/schema/changesets/${pushedAt.replace(/[:.]/g, "-")}.json`]: JSON.stringify({
+            ...changeset,
+            migrations: ["20261016090000-update-component-name"],
+          }),
+        });
+
+        await generate("component-name", "--schema", "src/schema.ts");
+
+        expect(console.warn).toHaveBeenCalledWith(
+          expect.stringContaining(`schema push changed component-name at ${pushedAt}`),
         );
       });
 

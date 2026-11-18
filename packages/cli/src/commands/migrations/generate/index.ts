@@ -136,11 +136,7 @@ generateCmd.action(
       }
       // A content migration written since the push was written against the
       // pushed schema, so a new one most likely starts from there too.
-      if (
-        push &&
-        !beforePush &&
-        !(await hasMigrationSince(path, space, push.timestamp).catch(() => false))
-      ) {
+      if (push && !beforePush && !(await hasMigrationSince(path, space, push).catch(() => false))) {
         ui.warn(
           `schema push changed ${componentName} at ${push.timestamp}, so the snapshot describes the block after that push. Pass --before-push to snapshot it as it was before.`,
         );

@@ -17,7 +17,7 @@ import {
 } from "../transform";
 import { buildGroupPathByUuid, mapSchemaGroupLists } from "../folders";
 import { collectTagNames, mapSchemaTagLists } from "../tags";
-import { renameBlockInSpace, waitUntilStoriesRenamed } from "./block-renames";
+import { renameBlockInSpace, waitUntilStoriesRenamed, whileRenameRuns } from "./block-renames";
 import type { BlockRename } from "./block-renames";
 
 /** A resolved component group reference: its numeric id and server uuid. */
@@ -140,8 +140,17 @@ export async function executePush(
     renames?: readonly BlockRename[];
     /** Called for each block the push created, updated, or deleted. */
     onComponentPushed?: (name: string) => void;
+    /** Called when the push waits for the space to rename a block in `stories` stories. */
+    onRenameWaiting?: (rename: BlockRename, stories: number) => void;
   },
-): Promise<{ created: number; updated: number; deleted: number; createdTags: number }> {
+): Promise<{
+  created: number;
+  updated: number;
+  deleted: number;
+  createdTags: number;
+  /** Renamed blocks whose old name stories still use after the space stopped renaming them. */
+  unfinishedRenames: { rename: BlockRename; stories: number }[];
+}> {
   const client = getMapiClient();
   const spaceIdNum = Number(spaceId);
   let created = 0;
@@ -276,12 +285,17 @@ export async function executePush(
       }
       if (diff.action === "update" && resolvedComp) {
         const existing = remote.components.get(diff.name);
-        if (existing?.id) {
-          await client.components.update(existing.id, {
-            path: { space_id: spaceIdNum },
-            body: { component: toComponentUpdate(resolvedComp) },
-            throwOnError: true,
-          });
+        const id = existing?.id;
+        if (id) {
+          await whileRenameRuns(
+            () =>
+              client.components.update(id, {
+                path: { space_id: spaceIdNum },
+                body: { component: toComponentUpdate(resolvedComp) },
+                throwOnError: true,
+              }),
+            diff.name,
+          );
           return "updated" as const;
         }
       }
@@ -308,10 +322,14 @@ export async function executePush(
   }
   if (firstFailure) {
     const { diff, reason } = firstFailure;
+    if (reason instanceof CommandError) {
+      throw reason;
+    }
     const eventId = diff.action === "create" ? "push_component" : "update_component";
     handleAPIError(eventId, reason, `Failed to ${diff.action} component ${diff.name}`);
   }
 
+  const unfinishedRenames: { rename: BlockRename; stories: number }[] = [];
   // 2b. Rename blocks one at a time, after the other updates: while the space
   //     renames a block in its stories in the background, it refuses every
   //     block update.
@@ -336,7 +354,12 @@ export async function executePush(
     updated++;
     componentPushed(rename.to);
     try {
-      await waitUntilStoriesRenamed(spaceId, rename);
+      const stories = await waitUntilStoriesRenamed(spaceId, rename, (waitingFor) =>
+        options.onRenameWaiting?.(rename, waitingFor),
+      );
+      if (stories > 0) {
+        unfinishedRenames.push({ rename, stories });
+      }
     } catch (error) {
       if (error instanceof CommandError) {
         throw error;
@@ -512,7 +535,7 @@ export async function executePush(
     }
   }
 
-  return { created, updated, deleted, createdTags };
+  return { created, updated, deleted, createdTags, unfinishedRenames };
 }
 
 /** Builds changeset entries from diff results for storage. */

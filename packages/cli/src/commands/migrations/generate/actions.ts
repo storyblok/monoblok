@@ -43,36 +43,47 @@ export const generateMigration = async (
   return migrationPath;
 };
 
+/** A `schema push` that changed a block, as `migrations generate` reads it. */
+export type PushChangingBlock = {
+  timestamp: string;
+  /** The space's components before the push, with the blocks it renamed under their new names. */
+  components: WireComponent[];
+  /** The name the push gave the block. */
+  block: string;
+  /** The ids of the content migrations the push wrote. */
+  migrations: string[];
+};
+
 /**
  * The latest `schema push` to `space` that changed `block`, skipping pushes that
- * failed to change it: when it ran, the
- * space's components before it, and the name the push gave the block. A push
- * that renamed the block records it under its new name and its pre-push state
- * under the old one, so either name finds it. The space renamed the block in
- * its stories along with the block, so the components hold it under its new
- * name.
+ * failed to change it. A push that renamed the block records it under its new
+ * name and its pre-push state under the old one, so either name finds it.
  */
 export async function latestPushChanging(
   path: string | undefined,
   space: string,
   block: string,
-): Promise<{ timestamp: string; components: WireComponent[]; block: string } | undefined> {
+): Promise<PushChangingBlock | undefined> {
   for (const file of await listChangesets(resolvePath(path, ""))) {
     const changeset = await loadChangeset(file);
     if (String(changeset.spaceId) !== space) continue;
-    for (const change of changeset.changes) {
-      if (change.type !== "component" || change.failed) continue;
-      const nameBefore = typeof change.before?.name === "string" ? change.before.name : change.name;
-      if (change.name === block || nameBefore === block) {
-        return {
-          timestamp: changeset.timestamp,
-          components: withRenamedBlocks(changeset.remote.components, [
-            { from: nameBefore, to: change.name },
-          ]),
-          block: change.name,
-        };
-      }
-    }
+    const landed = changeset.changes.filter(
+      (change) => change.type === "component" && !change.failed,
+    );
+    const nameBefore = (change: (typeof landed)[number]) =>
+      typeof change.before?.name === "string" ? change.before.name : change.name;
+    const match = landed.find((change) => change.name === block || nameBefore(change) === block);
+    if (!match) continue;
+    // The space renames a block in its stories along with the block.
+    const renames = landed
+      .map((change) => ({ from: nameBefore(change), to: change.name }))
+      .filter(({ from, to }) => from !== to);
+    return {
+      timestamp: changeset.timestamp,
+      components: withRenamedBlocks(changeset.remote.components, renames),
+      block: match.name,
+      migrations: changeset.migrations ?? [],
+    };
   }
   return undefined;
 }
@@ -80,18 +91,19 @@ export async function latestPushChanging(
 const MIGRATION_TIMESTAMP = /^(\d{14})-/;
 
 /**
- * Whether `space` holds a content migration created at or after `timestamp`,
- * going by the `YYYYMMDDHHmmss` creation time its id starts with.
+ * Whether `space` holds a content migration created at or after `push`, going
+ * by the `YYYYMMDDHHmmss` creation time its id starts with. The migrations the
+ * push wrote itself don't count.
  */
 export async function hasMigrationSince(
   path: string | undefined,
   space: string,
-  timestamp: string,
+  push: Pick<PushChangingBlock, "timestamp" | "migrations">,
 ): Promise<boolean> {
-  const since = new Date(timestamp).toISOString().replace(/\D/g, "").slice(0, 14);
+  const since = new Date(push.timestamp).toISOString().replace(/\D/g, "").slice(0, 14);
   const migrations = await discoverMigrations(migrationsDirectory(path, space));
   return migrations.some(({ id }) => {
     const createdAt = MIGRATION_TIMESTAMP.exec(id)?.[1];
-    return createdAt !== undefined && createdAt >= since;
+    return createdAt !== undefined && createdAt >= since && !push.migrations.includes(id);
   });
 }

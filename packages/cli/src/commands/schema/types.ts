@@ -111,4 +111,6 @@ export interface ChangesetData {
     datasources: Datasource[];
   };
   changes: ChangesetEntry[];
+  /** The ids of the content migrations the push wrote. */
+  migrations?: string[];
 }

@@ -47,6 +47,30 @@ test.describe("the Visual Editor live-updates the SSR playground", () => {
     await expect(editor.block("teaser-home-1")).toContainText(SEEDED_HEADLINE);
   });
 
+  test("attributes derived from a field update live, and client-set attributes survive", async ({
+    page,
+    request,
+  }) => {
+    // Regression test for #805: `preserveElementAttributes` kept every old
+    // attribute, so attributes rendered from a field never updated live, on
+    // the block element and on its children without a `data-blok-uid` alike.
+    const editor = new StoryblokEditor(page, QA_CONFIG);
+    await editor.openStory(await resolveStoryId(QA_CONFIG, request, "home"));
+    const teaser = editor.block("teaser-home-1");
+    await expect(teaser).toHaveAttribute("data-headline", SEEDED_HEADLINE, { timeout: 60_000 });
+
+    // Client-side state, set after the page loaded: e.g. a script toggling a disclosure.
+    await teaser.evaluate((element) => element.setAttribute("data-client-state", "open"));
+
+    await editor.selectBlock("teaser-home-1", "headline");
+    const edited = "QA teaser attributes";
+    await editor.textField("headline").fill(edited);
+
+    await expect(teaser).toHaveAttribute("data-headline", edited, { timeout: 30_000 });
+    await expect(teaser.locator("h2")).toHaveAttribute("title", edited);
+    await expect(teaser).toHaveAttribute("data-client-state", "open");
+  });
+
   test("a resolved relation and server data survive a live edit", async ({ page, request }) => {
     const editor = new StoryblokEditor(page, QA_CONFIG);
     await editor.openStory(await resolveStoryId(QA_CONFIG, request, "home"));

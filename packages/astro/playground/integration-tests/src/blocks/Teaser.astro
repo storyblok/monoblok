@@ -6,8 +6,9 @@ import Bold from "./richtext/Bold.astro";
 const { block, editable } = Astro.props;
 ---
 
-<div {...editable}>
-  <h2 class="heading">
+<!-- `data-headline` and `title` derive attributes from a field, for the live-preview attribute spec (#805). -->
+<div {...editable} data-headline={block.headline}>
+  <h2 class="heading" title={block.headline}>
     {block.headline}
   </h2>
   <StoryblokRichText document={block?.text} components={{ heading: Heading, bold: Bold }} />

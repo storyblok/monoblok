@@ -20,6 +20,10 @@ describe("createPreviewHandler", () => {
         </details>
       </main>
     `;
+    // The handler is created while the page still matches the server render;
+    // the user's interaction happens afterwards.
+    const handler = createPreviewHandler({ debounceMs: 0 });
+
     const details = document.querySelector("details") as HTMLDetailsElement;
     details.open = true;
     details.setAttribute("aria-expanded", "true");
@@ -42,7 +46,6 @@ describe("createPreviewHandler", () => {
       ),
     );
 
-    const handler = createPreviewHandler({ debounceMs: 0 });
     await handler.handle({
       action: "input",
       story: { id: 1, content: { component: "page", _uid: "1" } },

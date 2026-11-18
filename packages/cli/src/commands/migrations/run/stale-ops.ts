@@ -6,6 +6,9 @@ export type LiveFields = ReadonlyMap<string, ReadonlyMap<string, string | undefi
 
 export type StaleOp = { op: MigrationOp; reason: string };
 
+/** A field an op was written for, and the different type the space holds it as. */
+type Retyped = { field: string; type: string };
+
 /**
  * The fields an op creates and the fields it reads its values from, on the
  * block it targets; a source the op doesn't create again is gone after it.
@@ -81,7 +84,7 @@ function constantBackfill(op: MigrationOp): { value: unknown } | undefined {
 function retypedField(
   op: MigrationOp,
   fields: ReadonlyMap<string, string | undefined>,
-): { field: string; type: string } | undefined {
+): Retyped | undefined {
   if (op.kind !== "coerceField" && op.kind !== "addField") {
     return undefined;
   }
@@ -106,7 +109,7 @@ function skippedPrefix(op: MigrationOp): string {
   return `${describeOp(op)} skipped: the ${op.block} block in the space`;
 }
 
-function retypedReason(op: MigrationOp, { field, type }: { field: string; type: string }): string {
+function retypedReason(op: MigrationOp, { field, type }: Retyped): string {
   return `${skippedPrefix(op)} has "${field}" as a ${type} field.`;
 }
 
@@ -114,7 +117,7 @@ function retypedReason(op: MigrationOp, { field, type }: { field: string; type: 
 function staleReason(
   op: MigrationOp,
   fields: ReadonlyMap<string, string | undefined>,
-): { reason: string; retyped?: { field: string; type: string } } | undefined {
+): { reason: string; retyped?: Retyped } | undefined {
   const { creates, sources } = fieldEffects(op);
   const missing = creates.find((field) => !fields.has(field));
   const restored = sources.find((field) => !creates.includes(field) && fields.has(field));
@@ -137,46 +140,68 @@ function staleReason(
 const VALUE_WRITING_KINDS = new Set(["addField", "alterField", "coerceField"]);
 
 /**
+ * One pass over the ops, last first, each checked against the fields its block
+ * holds right after it. An op already known to be stale doesn't run, so its
+ * effects are not undone.
+ */
+function walk(
+  ops: readonly MigrationOp[],
+  live: LiveFields,
+  known: ReadonlyMap<MigrationOp, string>,
+): { stale: Map<MigrationOp, string>; retyped: Map<string, Retyped> } {
+  const after = new Map([...live].map(([block, fields]) => [block, new Map(fields)]));
+  const stale = new Map<MigrationOp, string>();
+  /** Fields an op was skipped for writing a value their type no longer stores, by `block.field`. */
+  const retyped = new Map<string, Retyped>();
+  for (const op of [...ops].reverse()) {
+    const fields = after.get(op.block);
+    if (!fields || known.has(op)) {
+      continue;
+    }
+    const reason = staleReason(op, fields);
+    if (reason === undefined) {
+      undoEffects(op, fields);
+      continue;
+    }
+    stale.set(op, reason.reason);
+    if (reason.retyped) retyped.set(`${op.block}.${reason.retyped.field}`, reason.retyped);
+  }
+  return { stale, retyped };
+}
+
+/**
  * Splits off the ops a later schema change superseded: one that creates a field
  * the block no longer has, removes a field the block has again, or writes a
- * value the field's type no longer stores. Every migration reruns, so without this an
- * old op would undo the later change, such as adding back a field that was
- * since renamed. The fields of blocks the space does not hold are not checked.
+ * value the field's type no longer stores. Every migration reruns, so without
+ * this an old op would undo the later change, such as adding back a field that
+ * was since renamed. The fields of blocks the space does not hold are not
+ * checked.
  *
  * Each op is checked against the fields its block holds right after it: the
  * space's fields with the effects of the migration's later ops undone, so a
  * field a later op consumes, such as one renamed only to be moved into a new
- * block, still counts.
+ * block, still counts. The ops of a migration that write one field were
+ * written for the same type, such as the backfill and the fill of a field made
+ * required, so they are skipped together. Skipping an op changes what the ops
+ * before it see, so the check repeats until no further op is skipped.
  */
 export function withoutStaleOps(
   migration: CompiledMigration,
   live: LiveFields,
 ): { migration: CompiledMigration; stale: StaleOp[] } {
-  const after = new Map([...live].map(([block, fields]) => [block, new Map(fields)]));
   const staleOps = new Map<MigrationOp, string>();
-  /** Fields an op was skipped for writing a value their type no longer stores, by `block.field`. */
-  const retypedFields = new Map<string, { field: string; type: string }>();
-  for (const op of [...migration.ops].reverse()) {
-    const fields = after.get(op.block);
-    if (!fields) {
-      continue;
+  for (;;) {
+    const before = staleOps.size;
+    const { stale, retyped } = walk(migration.ops, live, staleOps);
+    for (const [op, reason] of stale) staleOps.set(op, reason);
+    for (const op of migration.ops) {
+      const field =
+        "field" in op && VALUE_WRITING_KINDS.has(op.kind)
+          ? retyped.get(`${op.block}.${op.field}`)
+          : undefined;
+      if (field && !staleOps.has(op)) staleOps.set(op, retypedReason(op, field));
     }
-    const stale = staleReason(op, fields);
-    if (stale === undefined) {
-      undoEffects(op, fields);
-      continue;
-    }
-    staleOps.set(op, stale.reason);
-    if (stale.retyped) retypedFields.set(`${op.block}.${stale.retyped.field}`, stale.retyped);
-  }
-  // The ops of a migration that write one field were written for the same
-  // type, such as the backfill and the fill of a field made required.
-  for (const op of migration.ops) {
-    const retyped =
-      "field" in op && VALUE_WRITING_KINDS.has(op.kind)
-        ? retypedFields.get(`${op.block}.${op.field}`)
-        : undefined;
-    if (retyped && !staleOps.has(op)) staleOps.set(op, retypedReason(op, retyped));
+    if (staleOps.size === before) break;
   }
   const ops = migration.ops.filter((op) => !staleOps.has(op));
   return {

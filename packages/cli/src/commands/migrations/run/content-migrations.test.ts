@@ -523,6 +523,24 @@ describe("migrations run command for content migrations", () => {
     );
   });
 
+  it("should check earlier ops again once a later op writing the same field is skipped", async () => {
+    space.hasMigrations([
+      "0001-featured",
+      defineMigration([
+        renameField({ block: "card", field: "title", to: "headline" }),
+        addField({ block: "card", field: "title" }, (block) => block.headline !== undefined),
+        coerceField({ block: "card", field: "title", to: "boolean" }),
+      ]),
+    ]);
+    space.hasBlocks({ card: ["title", "headline"], page: { body: "bloks" } });
+    space.hasStories(storyWithCard());
+    space.canUpdateStories();
+
+    await apply();
+
+    expect(space.writes).toEqual([]);
+  });
+
   it("should backfill a field with a value that fits its type", async () => {
     space.hasMigrations([
       "0001-add-noindex",

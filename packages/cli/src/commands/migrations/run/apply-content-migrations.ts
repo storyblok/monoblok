@@ -254,22 +254,28 @@ function isStringArray(value: unknown): value is string[] {
 /** The newest `snapshotFormat` this CLI reads. */
 const SUPPORTED_SNAPSHOT_FORMAT = 1;
 
-function assertSnapshotFormat(name: string, format: unknown): void {
+/**
+ * A schema module that loaded, but isn't a snapshot this CLI reads. The
+ * message continues a sentence that starts with the module's path.
+ */
+class UnreadableSnapshotError extends Error {}
+
+const SNAPSHOT_FORMATS =
+  SUPPORTED_SNAPSHOT_FORMAT === 1 ? "1" : `a whole number from 1 to ${SUPPORTED_SNAPSHOT_FORMAT}`;
+
+function assertSnapshotFormat(format: unknown): void {
   if (format === undefined) {
-    throw new CommandError(
-      `${name} doesn't export snapshotFormat, so it isn't a schema snapshot the Storyblok CLI reads.`,
-    );
+    throw new UnreadableSnapshotError("is invalid: it doesn't export snapshotFormat.");
   }
-  const isFormat = typeof format === "number" && Number.isInteger(format) && format >= 1;
-  if (!isFormat) {
+  if (typeof format !== "number" || !Number.isInteger(format) || format < 1) {
     const printed = typeof format === "number" ? String(format) : JSON.stringify(format);
-    throw new CommandError(
-      `${name} has snapshot format ${printed}, but a snapshot format is a whole number from 1 to ${SUPPORTED_SNAPSHOT_FORMAT}, the newest this version of the Storyblok CLI reads.`,
+    throw new UnreadableSnapshotError(
+      `is invalid: its snapshotFormat is ${printed}, but must be ${SNAPSHOT_FORMATS}.`,
     );
   }
   if (format > SUPPORTED_SNAPSHOT_FORMAT) {
-    throw new CommandError(
-      `${name} has snapshot format ${format}, but this version of the Storyblok CLI reads up to format ${SUPPORTED_SNAPSHOT_FORMAT}. Update the Storyblok CLI.`,
+    throw new UnreadableSnapshotError(
+      `has snapshot format ${format}, but this version of the Storyblok CLI reads up to format ${SUPPORTED_SNAPSHOT_FORMAT}. Update the Storyblok CLI.`,
     );
   }
 }
@@ -284,12 +290,13 @@ async function loadNameOnlyBlocks(
   { snapshot }: { snapshot: boolean },
 ): Promise<readonly string[] | undefined> {
   const { nameOnlyBlocks, snapshotFormat } = await loadSchemaModule(file);
-  const name = relative(process.cwd(), file);
   if (snapshot || snapshotFormat !== undefined) {
-    assertSnapshotFormat(name, snapshotFormat);
+    assertSnapshotFormat(snapshotFormat);
   }
   if (nameOnlyBlocks !== undefined && !isStringArray(nameOnlyBlocks)) {
-    throw new CommandError(`${name} exports nameOnlyBlocks, but not as a list of block names.`);
+    throw new UnreadableSnapshotError(
+      "is invalid: its nameOnlyBlocks must be a list of block names.",
+    );
   }
   return nameOnlyBlocks;
 }
@@ -313,8 +320,12 @@ async function loadSnapshotCheck(
       nameOnlyBlocks: await loadNameOnlyBlocks(snapshot, { snapshot: true }),
     };
   } catch (maybeError) {
+    const name = `${entry.id}: the schema snapshot ${relative(process.cwd(), snapshot)}`;
+    if (maybeError instanceof UnreadableSnapshotError) {
+      return `${name} ${maybeError.message}`;
+    }
     const [reason] = toError(maybeError).message.split("\n");
-    return `${entry.id}: the schema snapshot ${relative(process.cwd(), snapshot)} could not be loaded: ${reason.trim()}`;
+    return `${name} could not be loaded: ${reason.trim()}`;
   }
 }
 
@@ -407,7 +418,13 @@ export async function assertContentMigrationsMatchSchema({
       );
     }
     const { schema } = await loadSchemaEntry(schemaEntry, { requireBlocks: true });
-    const nameOnlyBlocks = await loadNameOnlyBlocks(schemaEntry, { snapshot: false });
+    const nameOnlyBlocks = await loadNameOnlyBlocks(schemaEntry, { snapshot: false }).catch(
+      (maybeError: unknown) => {
+        throw maybeError instanceof UnreadableSnapshotError
+          ? new CommandError(`${relative(process.cwd(), schemaEntry)} ${maybeError.message}`)
+          : maybeError;
+      },
+    );
     assertMatchesSchemas([{ entry: migrations[0], schema, nameOnlyBlocks }]);
   } else if (validate) {
     const unchecked = await assertMatchesSnapshots(migrations);

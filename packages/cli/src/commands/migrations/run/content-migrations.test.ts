@@ -1433,6 +1433,20 @@ describe("migrations run command for content migrations", () => {
       expect(error.mock.calls.flat().join("\n")).toContain('Block "teaser" is listed by name only');
     });
 
+    it("should refuse a schema entry file that exports an invalid snapshot format", async () => {
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+      schemaModule = { card: cardBlock, snapshotFormat: 0 };
+      server.resetHandlers();
+
+      await apply("--schema", "src/schema.ts");
+
+      expect(space.writes).toEqual([]);
+      expect(error.mock.calls.flat().join("\n")).toContain(
+        "src/schema.ts is invalid: its snapshotFormat is 0, but must be 1.",
+      );
+    });
+
     it("should apply a migration the schema defines", async () => {
       space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
       space.hasStories(storyWithCard());
@@ -1583,7 +1597,7 @@ describe("migrations run command for content migrations", () => {
 
       expect(space.writes).toEqual([]);
       expect(error.mock.calls.flat().join("\n")).toContain(
-        "has snapshot format 2, but this version of the Storyblok CLI reads up to format 1. Update the Storyblok CLI.",
+        `0001-rename-card-title: the schema snapshot ${MIGRATIONS_DIRECTORY}/0001-rename-card-title.before.ts has snapshot format 2, but this version of the Storyblok CLI reads up to format 1. Update the Storyblok CLI.`,
       );
       expect(process.exitCode).toBe(2);
     });
@@ -1603,7 +1617,7 @@ describe("migrations run command for content migrations", () => {
 
       expect(space.writes).toEqual([]);
       expect(error.mock.calls.flat().join("\n")).toContain(
-        `has snapshot format ${printed}, but a snapshot format is a whole number from 1 to 1, the newest this version of the Storyblok CLI reads.`,
+        `0001-rename-card-title: the schema snapshot ${MIGRATIONS_DIRECTORY}/0001-rename-card-title.before.ts is invalid: its snapshotFormat is ${printed}, but must be 1.`,
       );
       expect(process.exitCode).toBe(2);
     });
@@ -1619,7 +1633,7 @@ describe("migrations run command for content migrations", () => {
 
       expect(space.writes).toEqual([]);
       expect(error.mock.calls.flat().join("\n")).toContain(
-        "doesn't export snapshotFormat, so it isn't a schema snapshot the Storyblok CLI reads.",
+        `0001-rename-card-title: the schema snapshot ${MIGRATIONS_DIRECTORY}/0001-rename-card-title.before.ts is invalid: it doesn't export snapshotFormat.`,
       );
       expect(process.exitCode).toBe(2);
     });
@@ -1639,7 +1653,7 @@ describe("migrations run command for content migrations", () => {
 
       expect(space.writes).toEqual([]);
       expect(error.mock.calls.flat().join("\n")).toContain(
-        "exports nameOnlyBlocks, but not as a list of block names.",
+        `0001-rename-card-title: the schema snapshot ${MIGRATIONS_DIRECTORY}/0001-rename-card-title.before.ts is invalid: its nameOnlyBlocks must be a list of block names.`,
       );
       expect(process.exitCode).toBe(2);
     });

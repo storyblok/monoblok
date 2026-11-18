@@ -384,6 +384,70 @@ describe("migrations run command for content migrations", () => {
     expect(process.exitCode).toBeUndefined();
   });
 
+  it("should not backfill a field a later push added back with another type", async () => {
+    space.hasMigrations(
+      [
+        "0001-add-noindex",
+        defineMigration([addField({ block: "page", field: "noindex" }, () => false)]),
+      ],
+      ["0002-remove-noindex", defineMigration([removeField({ block: "page", field: "noindex" })])],
+    );
+    space.hasBlocks({ page: { body: "bloks", noindex: "text" } });
+    space.hasStories(storyWithCard());
+    space.canUpdateStories();
+    const warn = vi.spyOn(getUI(), "warn");
+
+    await apply();
+
+    expect(space.writes).toEqual([]);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'addField page.noindex skipped: the page block in the space has "noindex" as a text field.',
+      ),
+    );
+  });
+
+  it("should skip every op filling a field that has another type now", async () => {
+    space.hasMigrations([
+      "0001-require-noindex",
+      defineMigration([
+        addField({ block: "page", field: "noindex" }, () => false),
+        alterField({ block: "page", field: "noindex" }, (value, { language }) =>
+          language === undefined && value === null ? false : undefined,
+        ),
+      ]),
+    ]);
+    space.hasBlocks({ page: { body: "bloks", noindex: "text" } });
+    space.hasStories(
+      storyWithCard({ content: { _uid: "root", component: "page", body: [], noindex: null } }),
+    );
+    space.canUpdateStories();
+    const warn = vi.spyOn(getUI(), "warn");
+
+    await apply();
+
+    expect(space.writes).toEqual([]);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'alterField page.noindex skipped: the page block in the space has "noindex" as a text field.',
+      ),
+    );
+  });
+
+  it("should backfill a field with a value that fits its type", async () => {
+    space.hasMigrations([
+      "0001-add-noindex",
+      defineMigration([addField({ block: "page", field: "noindex" }, () => false)]),
+    ]);
+    space.hasBlocks({ page: { body: "bloks", noindex: "boolean" } });
+    space.hasStories(storyWithCard());
+    space.canUpdateStories();
+
+    await apply();
+
+    expect(space.story(1)?.content).toMatchObject({ noindex: false });
+  });
+
   it("should coerce a field whose type the check can't compare with the coercion", async () => {
     space.hasMigrations([
       "0001-size-to-string",

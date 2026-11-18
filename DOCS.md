@@ -83,7 +83,9 @@ by default. See [global options](/docs/tooling/cli/global-options).
 
 The command runs migration functions first, then content migrations in the order of their numeric
 prefix, so `2-...` runs before `10-...`. Files named `*.before.ts` are schema snapshots and never
-run. The command fetches only the stories that contain a block a migration targets.
+run. The command warns about files such as `hello.ts` whose names don’t match the content migration
+pattern, since they never run. The command fetches only the stories that contain a block a migration
+targets.
 
 A migration function writes each story it changes. Before the write, the command saves the story to
 a rollback file in `.storyblok/migrations/<space-id>/rollbacks/`.
@@ -96,6 +98,11 @@ block IDs, or when a second pass would change the story again:
 ✔ 20261029142718-split-metric-value: 32 stories contain metric
 ⚠️  a/storyblok-vs-sitecore: op 0 (splitField) on block 6a7a6e9a-… was refused: the callback threw: metric value "CX " holds no amount
 ```
+
+When several ops are refused on one story, the command lists each op on its own line.
+
+The command reads the space’s blocks to learn which fields are translatable. `splitField()` and
+`mergeFields()` write no translations to a field that isn’t translatable.
 
 The command exits with an error when a content migration skipped every story that contains its
 blocks, or when a story couldn’t be read or written. When a write gets no response, the command
@@ -265,6 +272,12 @@ The space checks content against its current schema, not the schema of the run. 
 made a field required, the space can refuse the restored content. Push the schema as it was before
 the run, then roll back again.
 
+The space accepts restored content that uses a block or field its schema no longer defines, for
+example a block a later push renamed. Before it writes, the command lists those blocks and fields
+with the stories that use them, then restores the stories anyway. Run
+[`schema rollback`](/docs/tooling/cli/schema/rollback) or push the schema as it was before the run
+to define them again.
+
 When the space saves a restored draft but refuses to publish it, the published version keeps the
 migrated content. The command names the story, keeps the run open, and exits with an error. Push the
 schema as it was before the run, then roll back again. The command then publishes the restored draft
@@ -330,7 +343,8 @@ stories and blocks it changed. A rollback file shows its name and the stories it
 A content migration run also shows when it was rolled back, partly rolled back, or interrupted, or
 that it has nothing to roll back because it changed no stories. Each machine records its own runs,
 so a content migration applied elsewhere shows as pending here. The command reads local records only
-and doesn’t require a login.
+and doesn’t require a login. Like `migrations run`, it warns about migration files whose names don’t
+match the content migration pattern.
 
 ## Usage
 

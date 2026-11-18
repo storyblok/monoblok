@@ -142,6 +142,7 @@ export type {
   PublishMode,
   StoryForMigration,
 } from "./migrations/apply-migration";
+export type { IsTranslatable } from "./migrations/runner";
 
 export { MigrationError } from "./migrations/migration-error";
 export { planUndo, undoStories } from "./migrations/undo-run";
@@ -159,6 +160,7 @@ export type { PendingReleasesCheck, ReleaseForMigration } from "./migrations/rel
 export {
   discoverMigrations,
   loadMigrations,
+  misnamedMigrationFiles,
   selectMigrationFiles,
 } from "./migrations/load-migrations";
 export type {

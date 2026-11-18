@@ -3,6 +3,7 @@ import { relative } from "pathe";
 import { applyMigration, settleRun, validateMigration } from "@storyblok/schema";
 import type {
   ApplyMigrationOutcome,
+  IsTranslatable,
   LandedWrite,
   LoadedMigration,
   MigrationRun,
@@ -10,7 +11,7 @@ import type {
   SchemaLike,
   StoryForMigration,
 } from "@storyblok/schema";
-import { CommandError, fetchAllPages, toError } from "../../../utils";
+import { CommandError, fetchAllPages, isRecord, toError } from "../../../utils";
 import { createPipelineBackpressureLock } from "../../../utils/backpressure-lock";
 import { handleAPIError } from "../../../utils/error/api-error";
 import { fileExists } from "../../../utils/filesystem";
@@ -19,6 +20,8 @@ import { getUI } from "../../../lib/ui";
 import { loadSchemaEntry } from "../../../lib/validation/adapter";
 import { loadSchemaModule } from "../../../utils/schema/classify-exports";
 import { getMapiClient } from "../../../api";
+import { fetchComponents } from "../../components";
+import type { Component } from "../../components";
 import type { StoryScopeParams } from "../../stories/query-params";
 import {
   contentJournal,
@@ -28,7 +31,6 @@ import {
   toStoryForMigration,
 } from "../content-migrations";
 import type { StoryAccess } from "../content-migrations";
-import { fetchComponents } from "../../components";
 import { describeFolder, foldersNaming } from "../../schema/push/story-folders";
 import { withoutStaleOps } from "./stale-ops";
 import type { LiveFields } from "./stale-ops";
@@ -77,8 +79,7 @@ async function findCandidateStories(
   return [...ids];
 }
 
-async function liveFields(space: string): Promise<LiveFields> {
-  const components = (await fetchComponents(space)) ?? [];
+function liveFields(components: readonly Component[]): LiveFields {
   return new Map(
     components.map((component) => [
       component.name,
@@ -318,6 +319,13 @@ async function assertMatchesSnapshots(selected: LoadedMigration[]): Promise<stri
   return unchecked;
 }
 
+/** One reason on the same line, several as a list below it. */
+function formatReasons(reasons: string[]): string {
+  return reasons.length === 1
+    ? ` ${reasons[0]}`
+    : reasons.map((reason) => `\n  - ${reason}`).join("");
+}
+
 function warnPublishedDraftOnly(
   id: string,
   outcome: ApplyMigrationOutcome,
@@ -382,6 +390,20 @@ export async function assertContentMigrationsMatchSchema({
   }
 }
 
+/**
+ * Whether each field of the space's blocks is translatable, so a split or merge
+ * writes no translation keys to a field whose translations no editor sees.
+ */
+function translatability(components: readonly Component[]): IsTranslatable {
+  const fieldsByBlock = new Map(
+    components.map((component) => [component.name, component.schema ?? {}]),
+  );
+  return (block, field) => {
+    const definition: unknown = fieldsByBlock.get(block)?.[field];
+    return isRecord(definition) ? definition.translatable === true : undefined;
+  };
+}
+
 export type ApplyContentMigrationsOptions = {
   /** The space the migrations write to. */
   space: string;
@@ -409,7 +431,9 @@ export async function applyContentMigrations({
   const ui = getUI();
   const logger = getLogger();
 
-  const live = await liveFields(space);
+  const components = (await fetchComponents(space)) ?? [];
+  const live = liveFields(components);
+  const isTranslatable = translatability(components);
   const journal = contentJournal(path);
   /** Migrations with a run still in place, so a run that changes nothing need not be recorded. */
   const inPlace = new Set(
@@ -459,10 +483,11 @@ export async function applyContentMigrations({
       stories,
       publish,
       appliedAt,
+      isTranslatable,
     });
 
     for (const refusal of outcome.refusals) {
-      ui.warn(`${chalk.bold(refusal.slug)}: ${refusal.reason}`);
+      ui.warn(`${chalk.bold(refusal.slug)}:${formatReasons(refusal.reason.split("\n"))}`);
     }
     // Stories already migrated by an earlier run neither change nor refuse, so
     // only a migration that refused every story containing its blocks failed.

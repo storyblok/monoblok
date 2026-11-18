@@ -155,6 +155,49 @@ describe("applyMigration", () => {
     ]);
   });
 
+  it("should refuse a story whose split would overwrite a value the target field holds", () => {
+    const splitFullName = defineMigration([
+      splitField(
+        { block: "quote", field: "full_name", into: ["given_name", "family_name"] },
+        (value) => String(value).split(" "),
+      ),
+    ]);
+
+    const outcome = applyMigration({
+      migration: splitFullName,
+      id: "0003-split-full-name",
+      space: "12345",
+      stories: [
+        {
+          id: 1,
+          slug: "home",
+          content: {
+            _uid: "r1",
+            component: "page",
+            body: [
+              {
+                _uid: "q",
+                component: "quote",
+                full_name: "John Smith",
+                given_name: "Johnny",
+                family_name: "S.",
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    expect(outcome.writes).toEqual([]);
+    expect(outcome.refusals).toEqual([
+      {
+        slug: "home",
+        reason:
+          'op 0 (splitField) on block q was refused: fields "given_name", "family_name" already hold values, and splitting "full_name" into them would overwrite them. Pass `overwrite: true` to overwrite them on purpose.',
+      },
+    ]);
+  });
+
   it("should refuse a story whose migration keeps changing it on a rerun", () => {
     const appending = defineMigration([
       alterField({ block: "card", field: "title" }, (value) => `${String(value)}!`),

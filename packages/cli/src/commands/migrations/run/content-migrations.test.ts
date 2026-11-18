@@ -541,6 +541,49 @@ describe("migrations run command for content migrations", () => {
     expect(space.writes).toEqual([]);
   });
 
+  it("should check an op on a field a later addField of the same migration backfills", async () => {
+    space.hasMigrations([
+      "0001-featured",
+      defineMigration([
+        coerceField({ block: "card", field: "title", to: "boolean" }),
+        addField({ block: "card", field: "title" }, (block) => block.component === "card"),
+      ]),
+    ]);
+    space.hasBlocks({ card: ["title"], page: { body: "bloks" } });
+    space.hasStories(
+      storyWithCard({
+        content: {
+          _uid: "root",
+          component: "page",
+          body: [{ _uid: "card-1", component: "card", title: "true" }],
+        },
+      }),
+    );
+    space.canUpdateStories();
+
+    await apply();
+
+    expect(space.writes).toEqual([]);
+  });
+
+  it("should still remove a field and add it back in one migration when the space holds it", async () => {
+    space.hasMigrations([
+      "0001-reset-accent",
+      defineMigration([
+        removeField({ block: "card", field: "accent" }),
+        addField({ block: "card", field: "accent" }, () => "green"),
+      ]),
+    ]);
+    space.hasBlocks({ card: ["title", "accent"], page: { body: "bloks" } });
+    space.hasStories(storyWithCard());
+    space.canUpdateStories();
+    const warn = vi.spyOn(getUI(), "warn");
+
+    await apply();
+
+    expect(warn).not.toHaveBeenCalledWith(expect.stringContaining("skipped"));
+  });
+
   it("should backfill a field with a value that fits its type", async () => {
     space.hasMigrations([
       "0001-add-noindex",

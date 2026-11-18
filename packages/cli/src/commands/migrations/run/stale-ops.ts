@@ -37,8 +37,33 @@ function fieldEffects(op: MigrationOp): { creates: readonly string[]; sources: r
   }
 }
 
-/** Turns the fields a block holds after `op` into the fields it holds before. */
-function undoEffects(op: MigrationOp, fields: Map<string, string | undefined>): void {
+/**
+ * Whether the block holds `field` right before `ops[index]`, as far as the ops
+ * before it tell: one that addresses the field without consuming it means the
+ * field was there.
+ */
+function heldBefore(ops: readonly MigrationOp[], index: number, field: string): boolean {
+  const { block } = ops[index];
+  for (const op of ops.slice(0, index).reverse()) {
+    if (op.block !== block) continue;
+    const { creates, sources } = fieldEffects(op);
+    if (creates.includes(field)) return true;
+    if (sources.includes(field)) return false;
+    if ("field" in op && op.field === field) return true;
+  }
+  return false;
+}
+
+/** Turns the fields a block holds after `ops[index]` into the fields it holds before. */
+function undoEffects(
+  ops: readonly MigrationOp[],
+  index: number,
+  fields: Map<string, string | undefined>,
+): void {
+  const op = ops[index];
+  // `addField` only fills blocks without the field, so one an earlier op
+  // addresses keeps the field and its type.
+  if (op.kind === "addField" && heldBefore(ops, index, op.field)) return;
   const { creates, sources } = fieldEffects(op);
   // A renamed field keeps its type; any other source's type before the op is unknown.
   const sourceType =
@@ -153,14 +178,15 @@ function walk(
   const stale = new Map<MigrationOp, string>();
   /** Fields an op was skipped for writing a value their type no longer stores, by `block.field`. */
   const retyped = new Map<string, Retyped>();
-  for (const op of [...ops].reverse()) {
+  for (let index = ops.length - 1; index >= 0; index--) {
+    const op = ops[index];
     const fields = after.get(op.block);
     if (!fields || known.has(op)) {
       continue;
     }
     const reason = staleReason(op, fields);
     if (reason === undefined) {
-      undoEffects(op, fields);
+      undoEffects(ops, index, fields);
       continue;
     }
     stale.set(op, reason.reason);

@@ -197,7 +197,7 @@ renders the `fallback`, or, without one, renders nothing and logs a warning. The
 in development and production, so missing content shows up in your logs. Each registry logs the
 warning once per block type for the lifetime of the process, so a server logs it once per
 deployment, not once per request. A framework that hydrates in the browser, such as SvelteKit, also
-logs it in each visitor's browser console. Set `warnings` to `false` to keep production consoles
+logs it in each visitor’s browser console. Set `warnings` to `false` to keep production consoles
 clean.
 
 To silence the warnings of a registry, set `warnings` to `false`:
@@ -317,7 +317,7 @@ export const load: PageLoad = async ({ url }) => {
 ### `StoryblokRichText`
 
 `StoryblokRichText` renders a rich text field from a Storyblok story. It renders embedded blocks
-only through a `components.blok` renderer, see [Embedded blocks](#embedded-blocks).
+only through a `components.blok` renderer. Learn more in [Embedded blocks](#embedded-blocks).
 
 ```svelte
 <script lang="ts">
@@ -335,8 +335,8 @@ The component accepts the following optional props:
 - `warnings`: logs a warning for embedded blocks without a `components.blok` renderer. Defaults to
   `true`. Set it to `false` to silence it.
 
-See the [@storyblok/richtext reference](/docs/libraries/js/rich-text) for a complete list of
-supported nodes, marks, and customization options.
+For a complete list of supported nodes, marks, and customization options, refer to the
+[@storyblok/richtext reference](/docs/libraries/js/rich-text).
 
 #### Custom components
 
@@ -399,7 +399,7 @@ Marks receive their rendered child content through Svelte’s `{@render ...}` ta
 
 Nodes can access `content` and `context` to render child nodes with `StoryblokRichText`. The
 `splitTableRows` utility from `@storyblok/richtext` separates header rows from body rows. Install it
-with `npm install @storyblok/richtext@latest`, because package managers such as pnpm don’t expose
+with `npm install @storyblok/richtext@latest`, because package managers such as `pnpm` don’t expose
 the dependencies of `@storyblok/svelte` to your code.
 
 ```svelte
@@ -905,7 +905,8 @@ history). `StoryblokBlock` renders nothing for an undefined `block`.
 
 Version 7.x rendered embedded blocks through the global component registry. `StoryblokRichText` no
 longer renders them on its own: pass a `components.blok` renderer that renders `attrs.body` with
-your `StoryblokBlock`. See [Embedded blocks](#embedded-blocks).
+your `StoryblokBlock`. Learn more in the
+[@storyblok/svelte reference](/docs/libraries/js/svelte-sdk#embedded-blocks).
 
 <Tabs>
   <TabItem label="Version 8.x">

@@ -27,7 +27,10 @@ import {
   toMigrationOps,
   writeMigrationFile,
 } from "./migrations/generate";
-import { writeContentMigration } from "../../migrations/content-migrations";
+import {
+  pendingContentMigrations,
+  writeContentMigration,
+} from "../../migrations/content-migrations";
 import { writeLocalComponents } from "./write-local-components";
 import { detectBlockRenames, withBlockRenames, withRenamedBlocks } from "./block-renames";
 import type { BlockRename } from "./block-renames";
@@ -112,6 +115,7 @@ schemaCommand
     const summary = { total: 0, succeeded: 0, failed: 0 };
     let generatedMigrations: { files: string[]; changes: ComponentBreakingChanges[] } | undefined;
     const runCommand = "migrations run";
+    const runMigrations = `storyblok ${runCommand} --space ${space}${basePath ? ` --path ${shellQuote(basePath)}` : ""}`;
 
     try {
       // 1. Load local schema
@@ -269,6 +273,16 @@ schemaCommand
         `Remote: ${remote.components.size} components, ${remote.datasources.size} datasources`,
       );
 
+      // Read before the push writes a migration of its own.
+      const pendingMigrations = await pendingContentMigrations(basePath, space).catch(
+        (maybeError: unknown) => {
+          logger.warn("Failed to list pending content migrations", {
+            error: toError(maybeError).message,
+          });
+          return [];
+        },
+      );
+
       // 3. Diff components, datasources, and folders (component groups).
       // from = remote (base), to = local (target): the diff describes the push.
       // The local DSL opts into group-uuid diffing, so a block that sets
@@ -348,6 +362,19 @@ schemaCommand
       // 5. Display diffs
       ui.br();
       ui.log(formatDiffOutput(diffResult, { delete: options.delete }));
+
+      const nothingToPush =
+        diffResult.creates === 0 &&
+        diffResult.updates === 0 &&
+        (!options.delete || diffResult.stale === 0);
+
+      // `migrations run` skips the ops of a migration that a later schema
+      // change no longer matches, so pending migrations go before the push.
+      if (!nothingToPush && pendingMigrations.length > 0) {
+        ui.warn(
+          `${plural(pendingMigrations.length, "content migration hasn't", "content migrations haven't")} run on this machine: ${pendingMigrations.join(", ")}. Run ${pendingMigrations.length === 1 ? "it" : "them"} with \`${runMigrations}\` before you push schema changes: migrations run skips the ops that no longer match the space's schema.`,
+        );
+      }
 
       // 6. Analyze breaking changes and offer migration generation
       if (options.migrations) {
@@ -527,10 +554,6 @@ schemaCommand
       logger.info("Changeset saved", { path: displayPath(changesetPath, basePath) });
 
       // 9. Execute push (skipped when nothing to push).
-      const nothingToPush =
-        diffResult.creates === 0 &&
-        diffResult.updates === 0 &&
-        (!options.delete || diffResult.stale === 0);
       let pushResult: Awaited<ReturnType<typeof executePush>> | null = null;
       if (!nothingToPush) {
         const pushSpinner = ui.createSpinner("Pushing schema...");
@@ -578,8 +601,7 @@ schemaCommand
           ui.info(
             `Generated migrations are scaffolds. Review and adjust them before running \`storyblok ${runCommand}\`.`,
           );
-          const pathFlag = basePath ? ` --path ${shellQuote(basePath)}` : "";
-          ui.info(`Run migrations when ready: storyblok ${runCommand} --space ${space}${pathFlag}`);
+          ui.info(`Run migrations when ready: ${runMigrations}`);
         }
 
         // Block tags are a dependency of the blocks that name them rather than a

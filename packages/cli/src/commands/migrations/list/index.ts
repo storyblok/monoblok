@@ -9,6 +9,7 @@ import {
   contentJournal,
   discoverContentMigrations,
   migrationsDirectory,
+  pendingMigrations,
   plural,
   toMigrationCommandError,
   warnAboutMisnamedMigrations,
@@ -30,15 +31,6 @@ function rollbackState(run: MigrationRun): string {
   // `rollback` without a run passes over such a run, so it never shows as rolled back.
   if (run.stories === 0) return "  (nothing to roll back)";
   return "";
-}
-
-/**
- * The migration files with no run still in place. The journal records runs on
- * this machine only, so a migration another machine applied is pending here.
- */
-function pendingMigrations(ids: readonly string[], runs: readonly MigrationRun[]): string[] {
-  const inPlace = new Set(runs.filter((run) => !run.undoneAt).map((run) => run.migration));
-  return ids.filter((id) => !inPlace.has(id));
 }
 
 listCmd.action(async (options: { pending?: boolean }, command: Command) => {

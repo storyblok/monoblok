@@ -1668,6 +1668,63 @@ describe("schema push command", () => {
     expect(writtenFile(".before.ts")).toBeUndefined();
   });
 
+  describe("with content migrations this machine hasn't run", () => {
+    const MIGRATIONS = `.storyblok/migrations/${DEFAULT_SPACE}`;
+    const pushChangingHero = async (remoteSchema: Record<string, Record<string, unknown>>) => {
+      const remoteComp = makeMockComponent({ name: "hero", schema: remoteSchema });
+      preconditions.hasLocalSchema({
+        components: [{ ...remoteComp, schema: { title: { type: "text", pos: 0 } } }] as any,
+        datasources: [],
+      });
+      preconditions.hasRemoteComponents([remoteComp]);
+      preconditions.hasRemoteFolders([]);
+      preconditions.hasRemoteDatasources([]);
+      preconditions.hasRemoteTags([]);
+      preconditions.canUpdateComponents();
+      await schemaCommand.parseAsync([
+        "node",
+        "test",
+        "push",
+        "schema.ts",
+        "--space",
+        DEFAULT_SPACE,
+        "--no-migrations",
+      ]);
+    };
+
+    beforeEach(() => {
+      vol.fromJSON({
+        [`${MIGRATIONS}/20261001000000-rename-card-title.ts`]: "export default {};",
+        [`${MIGRATIONS}/20261002000000-split-name.ts`]: "export default {};",
+        [`${MIGRATIONS}/rollbacks/run-1.json`]: JSON.stringify({
+          id: "run-1",
+          migration: "20261001000000-rename-card-title",
+          space: DEFAULT_SPACE,
+          appliedAt: "2026-10-01T00:00:00.000Z",
+          stories: 1,
+          blocks: 1,
+        }),
+      });
+    });
+
+    it("should warn about them and say to run them before the push", async () => {
+      await pushChangingHero({ subtitle: { type: "text", pos: 0 } });
+
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining(
+          `1 content migration hasn't run on this machine: 20261002000000-split-name. Run it with \`storyblok migrations run --space ${DEFAULT_SPACE}\` before you push schema changes`,
+        ),
+      );
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Schema pushed to space"));
+    });
+
+    it("should not warn when the push changes nothing", async () => {
+      await pushChangingHero({ title: { type: "text", pos: 0 } });
+
+      expect(console.warn).not.toHaveBeenCalledWith(expect.stringContaining("run on this machine"));
+    });
+  });
+
   it("should skip migration generation with --no-migrations", async () => {
     const remoteComp = makeMockComponent({
       name: "hero",

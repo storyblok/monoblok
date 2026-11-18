@@ -19,7 +19,7 @@ import {
   MigrationError,
   misnamedMigrationFiles,
 } from "@storyblok/schema";
-import type { Journal, MigrationFile, StoryForMigration } from "@storyblok/schema";
+import type { Journal, MigrationFile, MigrationRun, StoryForMigration } from "@storyblok/schema";
 import { getMapiClient } from "../../api";
 import { getUI } from "../../lib/ui";
 import { CommandError, toError } from "../../utils";
@@ -145,6 +145,30 @@ export async function writeContentMigration(
 /** Runs are recorded in each space's `rollbacks` directory, beside the legacy rollback files. */
 export function contentJournal(path: string | undefined): Journal {
   return localJournal(resolvePath(path, "migrations"));
+}
+
+/**
+ * The migrations without a run still in place. The journal records runs on
+ * this machine only, so a migration another machine applied is pending here.
+ */
+export function pendingMigrations(ids: readonly string[], runs: readonly MigrationRun[]): string[] {
+  const inPlace = new Set(runs.filter((run) => !run.undoneAt).map((run) => run.migration));
+  return ids.filter((id) => !inPlace.has(id));
+}
+
+/** The content migrations of a space that have no run in place on this machine. */
+export async function pendingContentMigrations(
+  path: string | undefined,
+  space: string,
+): Promise<string[]> {
+  const [runs, files] = await Promise.all([
+    contentJournal(path).list(space),
+    discoverContentMigrations(migrationsDirectory(path, space)),
+  ]);
+  return pendingMigrations(
+    files.map((file) => file.id),
+    runs,
+  );
 }
 
 export function toStoryForMigration(story: Story): StoryForMigration {

@@ -1,7 +1,12 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "pathe";
 import type { MigrationOpSource } from "@storyblok/schema/codegen";
-import { coercionBetween } from "@storyblok/schema/internal/codegen";
+import {
+  coercionBetween,
+  commentText,
+  isIdentifier,
+  quoteString,
+} from "@storyblok/schema/internal/codegen";
 
 import { resolvePath } from "../../../../utils/filesystem";
 import { buildMigrationFilename } from "../../../migrations/migration-filename";
@@ -27,6 +32,11 @@ function defaultForType(fieldType: string): string | null {
   }
 }
 
+/** A property access on `block` that stays one expression whatever the field name holds. */
+function accessor(field: string): string {
+  return isIdentifier(field) ? `block.${field}` : `block[${quoteString(field)}]`;
+}
+
 /** Returns a conversion expression for a type change, or null if compatible. */
 function typeConversion(field: string, oldType: string, newType: string): string | null {
   const key = `${oldType}:${newType}`;
@@ -34,18 +44,18 @@ function typeConversion(field: string, oldType: string, newType: string): string
     return null;
   }
 
-  const accessor = `block.${field}`;
+  const target = accessor(field);
   switch (key) {
     case "text:number":
-      return `${accessor} = Number(${accessor}) || 0;`;
+      return `${target} = Number(${target}) || 0;`;
     case "number:text":
-      return `${accessor} = String(${accessor});`;
+      return `${target} = String(${target});`;
     case "text:boolean":
-      return `${accessor} = !!${accessor};`;
+      return `${target} = !!${target};`;
     case "boolean:text":
-      return `${accessor} = String(${accessor});`;
+      return `${target} = String(${target});`;
     default:
-      return `${accessor}; // TODO: convert from ${oldType} to ${newType}`;
+      return `${target}; // ${commentText(`TODO: convert from ${oldType} to ${newType}`)}`;
   }
 }
 
@@ -55,88 +65,82 @@ function typeConversion(field: string, oldType: string, newType: string): string
  */
 export function renderMigrationCode(changes: BreakingChange[]): string {
   const lines: string[] = [];
+  // Names, types, and option values come from the space, so they pass through
+  // `commentText` or `quoteString` before they reach the file.
+  const code = (text: string) => lines.push(`  ${text}`);
+  const comment = (text: string) => lines.push(`  // ${commentText(text)}`);
 
-  lines.push("  // Review this migration before running it against your space.");
-  lines.push("  // Generated migrations are scaffolds and may need manual adjustments.");
-  lines.push("  // Example rename migration:");
-  lines.push("  // block.new_field = block.old_field;");
-  lines.push("  // delete block.old_field;");
+  comment("Review this migration before running it against your space.");
+  comment("Generated migrations are scaffolds and may need manual adjustments.");
+  comment("Example rename migration:");
+  comment("block.new_field = block.old_field;");
+  comment("delete block.old_field;");
   lines.push("");
 
   for (const change of changes) {
     switch (change.kind) {
-      case "rename":
-        lines.push(`  // Rename: ${change.oldField} → ${change.field}`);
-        lines.push(`  if ('${change.oldField}' in block) {`);
-        lines.push(`    block.${change.field} = block.${change.oldField};`);
-        lines.push(`    delete block.${change.oldField};`);
-        lines.push(`  }`);
+      case "rename": {
+        const from = accessor(change.oldField);
+        comment(`Rename: ${change.oldField} → ${change.field}`);
+        code(`if (${quoteString(change.oldField)} in block) {`);
+        code(`  ${accessor(change.field)} = ${from};`);
+        code(`  delete ${from};`);
+        code(`}`);
         break;
+      }
 
       case "removed":
         if (change.renameHint) {
           for (const newField of change.renameHint.newFields) {
-            lines.push(`  // If '${change.field}' was renamed to '${newField}', uncomment:`);
-            lines.push(`  // block.${newField} = block.${change.field};`);
+            comment(`If '${change.field}' was renamed to '${newField}', uncomment:`);
+            comment(`${accessor(newField)} = ${accessor(change.field)};`);
           }
         } else {
-          lines.push(`  // Removed field: ${change.field}`);
+          comment(`Removed field: ${change.field}`);
         }
-        lines.push(`  delete block.${change.field};`);
+        code(`delete ${accessor(change.field)};`);
         break;
 
       case "type_changed": {
         const conversion = typeConversion(change.field, change.oldType, change.newType);
         if (conversion) {
-          lines.push(`  // Type change: ${change.field} (${change.oldType} → ${change.newType})`);
-          lines.push(`  ${conversion}`);
+          comment(`Type change: ${change.field} (${change.oldType} → ${change.newType})`);
+          code(conversion);
         }
         break;
       }
 
-      case "required_added": {
+      case "required_added":
+      case "required_changed": {
+        const target = accessor(change.field);
         const defaultValue = defaultForType(change.fieldType);
-        lines.push(`  // New required field: ${change.field} (${change.fieldType})`);
-        if (defaultValue !== null) {
-          lines.push(`  // TODO: provide a meaningful default value`);
-          lines.push(`  block.${change.field} = block.${change.field} ?? ${defaultValue};`);
+        if (change.kind === "required_added") {
+          comment(`New required field: ${change.field} (${change.fieldType})`);
         } else {
-          lines.push(
-            `  // TODO: provide a default value appropriate for the '${change.fieldType}' type`,
-          );
-          lines.push(`  // block.${change.field} = block.${change.field} ?? <default>;`);
+          comment(`Field is now required: ${change.field} (${change.fieldType})`);
+          comment(`Existing stories may have null/undefined values — provide a default for those.`);
+        }
+        if (defaultValue !== null) {
+          comment(`TODO: provide a meaningful default value`);
+          code(`${target} = ${target} ?? ${defaultValue};`);
+        } else {
+          comment(`TODO: provide a default value appropriate for the '${change.fieldType}' type`);
+          comment(`${target} = ${target} ?? <default>;`);
         }
         break;
       }
 
       case "options_removed": {
-        const values = change.values.map((value) => JSON.stringify(value)).join(", ");
-        lines.push(`  // Options no longer offered by ${change.field}: ${values}`);
-        lines.push(`  // TODO: map each removed value to one the field still offers`);
-        for (const value of change.values.map((value) => JSON.stringify(value))) {
-          lines.push(
+        const target = accessor(change.field);
+        const values = change.values.map(quoteString);
+        comment(`Options no longer offered by ${change.field}: ${values.join(", ")}`);
+        comment(`TODO: map each removed value to one the field still offers`);
+        for (const value of values) {
+          comment(
             change.multiple
-              ? `  // block.${change.field} = block.${change.field}?.map((value) => (value === ${value} ? <value> : value));`
-              : `  // if (block.${change.field} === ${value}) block.${change.field} = <value>;`,
+              ? `${target} = ${target}?.map((value) => (value === ${value} ? <value> : value));`
+              : `if (${target} === ${value}) ${target} = <value>;`,
           );
-        }
-        break;
-      }
-
-      case "required_changed": {
-        const defaultValue = defaultForType(change.fieldType);
-        lines.push(`  // Field is now required: ${change.field} (${change.fieldType})`);
-        lines.push(
-          `  // Existing stories may have null/undefined values — provide a default for those.`,
-        );
-        if (defaultValue !== null) {
-          lines.push(`  // TODO: provide a meaningful default value`);
-          lines.push(`  block.${change.field} = block.${change.field} ?? ${defaultValue};`);
-        } else {
-          lines.push(
-            `  // TODO: provide a default value appropriate for the '${change.fieldType}' type`,
-          );
-          lines.push(`  // block.${change.field} = block.${change.field} ?? <default>;`);
         }
         break;
       }

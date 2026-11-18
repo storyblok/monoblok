@@ -7,7 +7,7 @@
  */
 export { nextMigrationId } from "../migrations/load-migrations";
 export { coercionBetween } from "../migrations/ops";
-export { formatValue, INDENT, quoteString, RawCode } from "./format";
+export { commentText, formatValue, INDENT, isIdentifier, quoteString, RawCode } from "./format";
 export {
   collectRestrictionFolderVars,
   generateFieldCode,

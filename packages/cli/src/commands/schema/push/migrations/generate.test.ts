@@ -21,10 +21,42 @@ describe("renderMigrationCode", () => {
       { kind: "options_removed", field: "size", values: [" "], multiple: false },
       { kind: "options_removed", field: "tags", values: ["old"], multiple: true },
     ]);
-    expect(code).toContain('// if (block.size === " ") block.size = <value>;');
+    expect(code).toContain("// if (block.size === ' ') block.size = <value>;");
     expect(code).toContain(
-      '// block.tags = block.tags?.map((value) => (value === "old" ? <value> : value));',
+      "// block.tags = block.tags?.map((value) => (value === 'old' ? <value> : value));",
     );
+  });
+
+  it("should not run code smuggled in through names or option values from the space", async () => {
+    const payloads = [
+      "x\u2028globalThis.PWNED=1;//",
+      "x\u2029globalThis.PWNED=1;//",
+      "x\nglobalThis.PWNED=1;//",
+      "x\rglobalThis.PWNED=1;//",
+      "x */ globalThis.PWNED=1; /*",
+      "x'; globalThis.PWNED=1; '",
+      'x"; globalThis.PWNED=1; "',
+      "x\\'; globalThis.PWNED=1; //",
+    ];
+    const changes: BreakingChange[] = payloads.flatMap((payload): BreakingChange[] => [
+      { kind: "rename", field: payload, oldField: payload },
+      { kind: "removed", field: payload, renameHint: { newFields: [payload] } },
+      { kind: "type_changed", field: payload, oldType: payload, newType: payload },
+      { kind: "type_changed", field: payload, oldType: "text", newType: "number" },
+      { kind: "required_added", field: payload, fieldType: payload },
+      { kind: "required_changed", field: payload, fieldType: "text" },
+      { kind: "options_removed", field: payload, values: payloads, multiple: true },
+      { kind: "options_removed", field: payload, values: payloads, multiple: false },
+    ]);
+    const code = renderMigrationCode(changes);
+
+    const migration = await import(
+      /* @vite-ignore */ `data:text/javascript,${encodeURIComponent(code)}`
+    );
+    const block = Object.fromEntries(payloads.map((payload) => [payload, "value"]));
+    migration.default(block);
+
+    expect(globalThis).not.toHaveProperty("PWNED");
   });
 
   it("should generate removal code", () => {

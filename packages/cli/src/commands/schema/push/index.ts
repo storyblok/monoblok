@@ -105,6 +105,10 @@ schemaCommand
       return;
     }
 
+    if (options.typed && !options.migrations) {
+      ui.warn("--typed has no effect with --no-migrations.");
+    }
+
     const summary = { total: 0, succeeded: 0, failed: 0 };
     let generatedMigrations: { files: string[]; changes: ComponentBreakingChanges[] } | undefined;
     const runCommand = "migrations run";

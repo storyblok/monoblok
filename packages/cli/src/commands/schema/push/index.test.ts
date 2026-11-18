@@ -1703,6 +1703,39 @@ describe("schema push command", () => {
 
     expect(migrationFiles()).toHaveLength(0);
     expect(confirm).not.toHaveBeenCalled();
+    expect(console.warn).not.toHaveBeenCalledWith(expect.stringContaining("--typed"));
+  });
+
+  it("should warn that --typed has no effect with --no-migrations", async () => {
+    const remoteComp = makeMockComponent({
+      name: "hero",
+      schema: { author_name: { type: "text" } },
+    });
+    preconditions.hasLocalSchema({
+      components: [{ ...remoteComp, schema: { author: { type: "text" } } }] as any,
+      datasources: [],
+    });
+    preconditions.hasRemoteComponents([remoteComp]);
+    preconditions.hasRemoteFolders([]);
+    preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
+    preconditions.canUpdateComponents();
+
+    await schemaCommand.parseAsync([
+      "node",
+      "test",
+      "push",
+      "schema.ts",
+      "--space",
+      DEFAULT_SPACE,
+      "--typed",
+      "--no-migrations",
+    ]);
+
+    expect(migrationFiles()).toHaveLength(0);
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining("--typed has no effect with --no-migrations."),
+    );
   });
 
   it("should not generate migration files when user declines", async () => {

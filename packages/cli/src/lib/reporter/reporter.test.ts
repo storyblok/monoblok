@@ -127,6 +127,14 @@ it("should fail a run when a stage that counts the same items failed for all of 
   expect(readReport("stages.json").status).toBe(REPORT_STATUS.failure);
 });
 
+it("should count skipped items as handled when a stage has no successes", () => {
+  const reporter = new Reporter({ enabled: true, filePath: "./skipped-failed.json" });
+  reporter.addSummary("migrationResults", { total: 4, succeeded: 0, skipped: 3, failed: 1 });
+  reporter.finalize();
+
+  expect(readReport("skipped-failed.json").status).toBe(REPORT_STATUS.partialSuccess);
+});
+
 it("should fail a run that was stopped by an error and record the error", () => {
   const reporter = new Reporter({ enabled: true, filePath: "./stopped.json" });
   reporter.addSummary("jobs", { total: 2, succeeded: 2, failed: 0 });

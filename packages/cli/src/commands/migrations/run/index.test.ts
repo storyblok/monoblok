@@ -259,6 +259,16 @@ const preconditions = {
       ),
     );
   },
+  isNotAuthorizedToListStories() {
+    this.canLoadMigrationFunction();
+    vi.mocked(fetchStories).mockRejectedValue(
+      new APIError(
+        "unauthorized",
+        "pull_stories",
+        new FetchError("Unauthorized", { status: 401, statusText: "Unauthorized" }),
+      ),
+    );
+  },
   isNotAuthorizedToFetchStory() {
     this.canFetchStories();
     this.canUpdateStory();
@@ -862,6 +872,28 @@ describe("migrations run command", () => {
         `Failed to migrate "Test Story (id ${mockStory.id})": migration-component.js failed: Cannot read properties of undefined (reading 'title')`,
       ),
     );
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("should print only the error when listing stories is not authorized", async () => {
+    preconditions.isNotAuthorizedToListStories();
+    resetLogger();
+
+    await migrationsCommand.parseAsync(["node", "test", "run", "--space", "12345"]);
+
+    expect(fetchStory).not.toHaveBeenCalled();
+    expect(console.warn).not.toHaveBeenCalledWith(expect.stringContaining("Run stopped"));
+    expect(console.error).not.toHaveBeenCalledWith(expect.stringContaining("Migration Results"));
+    expect(console.error).not.toHaveBeenCalledWith(
+      expect.stringContaining("No stories required updates"),
+    );
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining("The user is not authorized to access the API"),
+    );
+    const reportFile = Object.entries(vol.toJSON()).find(([filename]) =>
+      filename.includes("reports/12345/storyblok-migrations-run-"),
+    )?.[1];
+    expect(JSON.parse(reportFile || "{}")).toMatchObject({ status: "FAILURE" });
     expect(process.exitCode).toBe(1);
   });
 

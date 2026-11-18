@@ -187,6 +187,8 @@ export class MigrationStream extends Transform {
             error,
           });
           getLogger().error(error.message, {
+            storyId: story.id,
+            storyName: story.name,
             errorCode: ERROR_CODES.MIGRATION_FILE_NOT_FOUND,
           });
           return null;

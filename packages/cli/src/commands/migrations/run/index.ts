@@ -227,7 +227,8 @@ runCmd.action(
         failed: fetchFailedStories,
       };
 
-      if (fatalError) {
+      // When the story list itself failed, there is nothing to summarize.
+      if (fatalError && listedStories > 0) {
         // Stories still on their way between stages when the run stopped
         // were neither saved nor failed, so the counts below miss them.
         const finishedStories =
@@ -237,21 +238,21 @@ runCmd.action(
           updateResults.total;
         ui.warn(`Run stopped after ${finishedStories} of ${listedStories} stories.`);
       }
-      ui.info(migrationStream.getSummary());
+      if (!fatalError || listedStories > 0) {
+        ui.info(migrationStream.getSummary());
+      }
       // "No stories required updates." would contradict the failures listed below.
       if (updateResults.total > 0 || (!fatalError && failedStories.length === 0)) {
         ui.info(updateStream.getSummary());
       }
       if (failedStories.length > 0) {
         ui.list(listFailedStories(failedStories));
-        // The list above is capped, so point to where every failed story is.
-        const fullListPath = reporter.enabled
-          ? reporter.filePath
-          : logger.transports.find((transport) => transport instanceof FileTransport)?.filePath;
-        if (fullListPath) {
-          ui.info(`All failed stories are listed in ${fullListPath}`);
-        }
       }
+      // The list above is capped, so point to where every failed story is.
+      // Without a report or log file, the list is all there is.
+      const fullListPath = reporter.enabled
+        ? reporter.filePath
+        : logger.transports.find((transport) => transport instanceof FileTransport)?.filePath;
 
       logger.info("Migration finished", {
         fetchResults,
@@ -266,6 +267,10 @@ runCmd.action(
       }
       try {
         reporter.finalize(fatalError ?? undefined);
+        // Only now does the report the path may point to exist.
+        if (failedStories.length > 0 && fullListPath) {
+          ui.info(`All failed stories are listed in ${fullListPath}`);
+        }
       } catch (error) {
         if (!fatalError) {
           throw error;

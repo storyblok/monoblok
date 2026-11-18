@@ -198,6 +198,51 @@ describe("applyMigration", () => {
     ]);
   });
 
+  it("should write no translation keys to a split target the space doesn't translate", () => {
+    const splitPrice = defineMigration([
+      splitField({ block: "offer", field: "price", into: ["amount", "currency"] }, (value) =>
+        String(value).split(" "),
+      ),
+    ]);
+
+    const outcome = applyMigration({
+      migration: splitPrice,
+      id: "0004-split-price",
+      space: "12345",
+      stories: [
+        {
+          id: 1,
+          slug: "home",
+          content: {
+            _uid: "r1",
+            component: "page",
+            body: [
+              { _uid: "o", component: "offer", price: "1000 EUR", price__i18n__de: "1000 Euro" },
+            ],
+          },
+        },
+      ],
+      isTranslatable: (block, field) => !(block === "offer" && field === "amount"),
+    });
+
+    expect(outcome.refusals).toEqual([]);
+    expect(outcome.writes.map((write) => write.content)).toEqual([
+      {
+        _uid: "r1",
+        component: "page",
+        body: [
+          {
+            _uid: "o",
+            component: "offer",
+            amount: "1000",
+            currency: "EUR",
+            currency__i18n__de: "Euro",
+          },
+        ],
+      },
+    ]);
+  });
+
   it("should refuse a story whose migration keeps changing it on a rerun", () => {
     const appending = defineMigration([
       alterField({ block: "card", field: "title" }, (value) => `${String(value)}!`),

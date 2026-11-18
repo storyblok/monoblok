@@ -73,7 +73,8 @@ listCmd.action(async (options: { pending?: boolean }, command: Command) => {
     const entries = [
       ...runs.map((run) => ({
         at: new Date(run.appliedAt).getTime(),
-        line: `${run.id}  ${run.title ?? run.migration}  ${plural(run.stories, "story", "stories")}, ${plural(run.blocks, "block", "blocks")}${rollbackState(run)}`,
+        // The run id ends with the migration id, so only a title adds to it.
+        line: `${run.id}${run.title ? `  ${run.title}` : ""}  ${plural(run.stories, "story", "stories")}, ${plural(run.blocks, "block", "blocks")}${rollbackState(run)}`,
       })),
       ...rollbackFiles.map((file) => ({
         at: file.createdAt.getTime(),

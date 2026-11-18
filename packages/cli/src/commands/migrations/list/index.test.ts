@@ -21,6 +21,9 @@ const renameCardTitle = defineMigration([
   renameField({ block: "card", field: "title", to: "headline" }),
 ]);
 const renameCardToTeaser = defineMigration([renameBlock({ block: "card", to: "teaser" })]);
+const renameHeroSubtitle = defineMigration([
+  renameField({ block: "hero", field: "subtitle", to: "tagline" }),
+]);
 
 describe("migrations list command", () => {
   let space: ReturnType<typeof createRemoteSpace>;
@@ -69,6 +72,34 @@ describe("migrations list command", () => {
       expect.stringMatching(/0001-rename-card-title {2}1 story/),
       "Pending on this machine: 0002-rename-card-to-teaser",
     ]);
+  });
+
+  it("should name the migration of a run without a title once, since the run id ends with it", async () => {
+    space.hasMigrations(["0001-rename-hero-subtitle", renameHeroSubtitle]);
+    await run("run");
+
+    const [line] = await listed();
+
+    expect(line).toMatch(
+      /^\S+-0001-rename-hero-subtitle {2}0 stories, 0 blocks {2}\(nothing to roll back\)$/,
+    );
+  });
+
+  it("should show the title of a run", async () => {
+    space.hasMigrations([
+      "0001-rename-card-title",
+      defineMigration({
+        title: "Rename the card title",
+        ops: [renameField({ block: "card", field: "title", to: "headline" })],
+      }),
+    ]);
+    await run("run");
+
+    const [line] = await listed();
+
+    expect(line).toMatch(
+      /^\S+-0001-rename-card-title {2}Rename the card title {2}1 story, 1 block$/,
+    );
   });
 
   it("should list a rolled back migration as pending again", async () => {

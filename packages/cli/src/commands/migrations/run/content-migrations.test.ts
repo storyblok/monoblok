@@ -688,9 +688,7 @@ describe("migrations run command for content migrations", () => {
       { space: DEFAULT_SPACE, migration: "0001-rename-card-title", stories: 1, blocks: 1 },
     ]);
     expect(info).toHaveBeenLastCalledWith(
-      expect.stringMatching(
-        /-0001-rename-card-title {2}0001-rename-card-title {2}1 story, 1 block$/,
-      ),
+      expect.stringMatching(/-0001-rename-card-title {2}1 story, 1 block$/),
     );
   });
 

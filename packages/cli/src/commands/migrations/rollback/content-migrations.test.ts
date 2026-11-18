@@ -779,9 +779,7 @@ describe("migrations rollback command for rollback files", () => {
 
     expect(info.mock.calls.map(([line]) => line)).toEqual([
       "card.1767225600000  migration functions  2 stories  (rollback file)",
-      expect.stringMatching(
-        /-0001-rename-card-title {2}0001-rename-card-title {2}1 story, 1 block$/,
-      ),
+      expect.stringMatching(/-0001-rename-card-title {2}1 story, 1 block$/),
     ]);
   });
 });

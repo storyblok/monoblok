@@ -2147,6 +2147,41 @@ describe("schema push command", () => {
     expect(migrationFile![1]).toContain("block.new_field = block.old_field;");
   });
 
+  it.each(["../hero", "hero/v2"])(
+    "should write the .js migration of block %s inside the migrations directory",
+    async (name) => {
+      const remoteComp = makeMockComponent({
+        name,
+        schema: { author_name: { type: "text", pos: 0 }, title: { type: "text", pos: 1 } },
+      });
+      const localComp = {
+        ...remoteComp,
+        schema: { author: { type: "text", pos: 0 }, title: { type: "text", pos: 1 } },
+      };
+      preconditions.hasLocalSchema({ components: [localComp] as any, datasources: [] });
+      preconditions.hasRemoteComponents([remoteComp]);
+      preconditions.hasRemoteFolders([]);
+      preconditions.hasRemoteDatasources([]);
+      preconditions.hasRemoteTags([]);
+      preconditions.canUpdateComponents();
+
+      await schemaCommand.parseAsync([
+        "node",
+        "test",
+        "push",
+        "schema.ts",
+        "--space",
+        DEFAULT_SPACE,
+        "--migrations",
+      ]);
+
+      const files = Object.keys(vol.toJSON()).filter((file) => file.endsWith(".js"));
+      expect(files).toEqual([
+        expect.stringMatching(new RegExp(`/migrations/${DEFAULT_SPACE}/[^/]+\\.js$`)),
+      ]);
+    },
+  );
+
   it("should not write migration files when --dry-run is used with explicit --migrations", async () => {
     const remoteComp = makeMockComponent({
       name: "hero",

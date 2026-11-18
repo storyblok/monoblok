@@ -4,6 +4,7 @@ import type { MigrationOpSource } from "@storyblok/schema/codegen";
 import { coercionBetween } from "@storyblok/schema/internal/codegen";
 
 import { resolvePath } from "../../../../utils/filesystem";
+import { buildMigrationFilename } from "../../../migrations/migration-filename";
 import { fileTimestamp } from "../../utils";
 import type { BreakingChange, ComponentBreakingChanges } from "./types";
 
@@ -316,7 +317,7 @@ export async function writeMigrationFile(options: WriteMigrationFileOptions): Pr
   const { spaceId, componentName, code, timestamp, basePath } = options;
   const dir = resolvePath(basePath, `migrations/${spaceId}`);
   await mkdir(dir, { recursive: true });
-  const fileName = `${componentName}.${fileTimestamp(timestamp)}.js`;
+  const fileName = buildMigrationFilename(componentName, fileTimestamp(timestamp));
   const filePath = join(dir, fileName);
   await writeFile(filePath, code, "utf-8");
   return filePath;

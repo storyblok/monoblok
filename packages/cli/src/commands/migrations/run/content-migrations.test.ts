@@ -8,6 +8,7 @@ import {
   defineMigration,
   renameBlock,
   renameField,
+  splitField,
   wrapChildren,
 } from "@storyblok/schema";
 import "../index";
@@ -458,6 +459,69 @@ describe("migrations run command for content migrations", () => {
       expect.stringMatching(/^ {2}- op 0 \(renameField\) on block card-1 was refused: /),
       expect.stringMatching(/^ {2}- op 0 \(renameField\) on block card-2 was refused: /),
     ]);
+  });
+
+  describe("translations of split fields", () => {
+    const splitCardPrice = defineMigration([
+      splitField({ block: "card", field: "price", into: ["amount", "currency"] }, (price) =>
+        String(price).split(" "),
+      ),
+    ]);
+    const cardWithPrice = () =>
+      storyWithCard({
+        content: {
+          _uid: "root",
+          component: "page",
+          body: [
+            {
+              _uid: "card-1",
+              component: "card",
+              price: "1000 EUR",
+              price__i18n__de: "1000 Euro",
+            },
+          ],
+        },
+      });
+
+    it("should write no translations to a target field the space doesn't translate", async () => {
+      space.hasMigrations(["0001-split-card-price", splitCardPrice]);
+      space.hasBlocks({
+        card: { amount: "number", currency: { type: "text", translatable: true } },
+      });
+      space.hasStories(cardWithPrice());
+      space.canUpdateStories();
+
+      await apply();
+
+      expect(space.story(1)?.content.body).toEqual([
+        {
+          _uid: "card-1",
+          component: "card",
+          amount: "1000",
+          currency: "EUR",
+          currency__i18n__de: "Euro",
+        },
+      ]);
+    });
+
+    it("should write translations to every target field when the space's blocks can't be read", async () => {
+      const warn = vi.spyOn(getUI(), "warn");
+      space.hasMigrations(["0001-split-card-price", splitCardPrice]);
+      space.failsToListBlocks();
+      space.hasStories(cardWithPrice());
+      space.canUpdateStories();
+
+      await apply();
+
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "Could not read the space's blocks, so split and merge ops write translations to every target field",
+        ),
+      );
+      expect(space.story(1)?.content.body).toMatchObject([
+        { amount: "1000", amount__i18n__de: "1000", currency__i18n__de: "Euro" },
+      ]);
+    });
   });
 
   it("should succeed and record the stories it wrote when it refused others", async () => {

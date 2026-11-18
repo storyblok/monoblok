@@ -99,21 +99,36 @@ export function createRemoteSpace(server: SetupServerApi) {
         vol.fromJSON({ [`${MIGRATIONS_DIRECTORY}/${id}.ts`]: "export default {};" });
       }
     },
-    /** The space's blocks. A field given by name only is a text field. */
-    hasBlocks(blocks: Record<string, string[] | Record<string, string>>) {
+    /**
+     * The space's blocks. A field given by name only is a text field, and one
+     * given by type only isn't translatable.
+     */
+    hasBlocks(
+      blocks: Record<
+        string,
+        string[] | Record<string, string | { type: string; translatable?: boolean }>
+      >,
+    ) {
       const components = Object.entries(blocks).map(([name, fields], id) => {
-        const types = Array.isArray(fields)
+        const definitions = Array.isArray(fields)
           ? Object.fromEntries(fields.map((field) => [field, "text"]))
           : fields;
         return {
           id: id + 1,
           name,
           schema: Object.fromEntries(
-            Object.entries(types).map(([field, type], pos) => [field, { type, pos }]),
+            Object.entries(definitions).map(([field, definition], pos) => [
+              field,
+              typeof definition === "string" ? { type: definition, pos } : { ...definition, pos },
+            ]),
           ),
         };
       });
       server.use(http.get(`${MAPI}/components`, () => HttpResponse.json({ components })));
+    },
+    /** Listing the space's blocks fails. */
+    failsToListBlocks() {
+      server.use(http.get(`${MAPI}/components`, () => new HttpResponse(null, { status: 500 })));
     },
     /** A content migration in a `.js` file, which a migration function could also be. */
     hasJsContentMigration(id: string, migration: CompiledMigration) {

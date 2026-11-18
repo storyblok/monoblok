@@ -3,6 +3,7 @@ import { relative } from "pathe";
 import { applyMigration, settleRun, validateMigration } from "@storyblok/schema";
 import type {
   ApplyMigrationOutcome,
+  IsTranslatable,
   LandedWrite,
   LoadedMigration,
   MigrationRun,
@@ -10,7 +11,7 @@ import type {
   SchemaLike,
   StoryForMigration,
 } from "@storyblok/schema";
-import { CommandError, fetchAllPages, toError } from "../../../utils";
+import { CommandError, fetchAllPages, isRecord, toError } from "../../../utils";
 import { createPipelineBackpressureLock } from "../../../utils/backpressure-lock";
 import { handleAPIError } from "../../../utils/error/api-error";
 import { fileExists } from "../../../utils/filesystem";
@@ -19,6 +20,7 @@ import { getUI } from "../../../lib/ui";
 import { loadSchemaEntry } from "../../../lib/validation/adapter";
 import { loadSchemaModule } from "../../../utils/schema/classify-exports";
 import { getMapiClient } from "../../../api";
+import { fetchComponents } from "../../components";
 import type { StoryScopeParams } from "../../stories/query-params";
 import {
   contentJournal,
@@ -339,6 +341,44 @@ export async function assertContentMigrationsMatchSchema({
   }
 }
 
+/**
+ * Whether each field of the space's blocks is translatable, so a split or merge
+ * writes no translation keys to a field whose translations no editor sees. The
+ * components are fetched only for migrations that split or merge.
+ */
+async function spaceTranslatability(
+  space: string,
+  migrations: readonly LoadedMigration[],
+): Promise<IsTranslatable | undefined> {
+  const reshapes = migrations.some(({ migration }) =>
+    migration.ops.some((op) => op.kind === "splitField" || op.kind === "mergeFields"),
+  );
+  if (!reshapes) {
+    return undefined;
+  }
+  let components: Awaited<ReturnType<typeof fetchComponents>>;
+  try {
+    components = await fetchComponents(space);
+  } catch (maybeError) {
+    const error = toError(maybeError);
+    getUI().warn(
+      `Could not read the space's blocks, so split and merge ops write translations to every target field: ${error.message}`,
+    );
+    getLogger().warn("Failed to read the space's blocks for translatable fields", {
+      space,
+      error,
+    });
+    return undefined;
+  }
+  const fieldsByBlock = new Map(
+    (components ?? []).map((component) => [component.name, component.schema ?? {}]),
+  );
+  return (block, field) => {
+    const definition: unknown = fieldsByBlock.get(block)?.[field];
+    return isRecord(definition) ? definition.translatable === true : undefined;
+  };
+}
+
 export type ApplyContentMigrationsOptions = {
   /** The space the migrations write to. */
   space: string;
@@ -375,6 +415,7 @@ export async function applyContentMigrations({
   const refusedEverything: string[] = [];
   let failed = 0;
   let appliedAt: Date | undefined;
+  const isTranslatable = await spaceTranslatability(space, selected);
 
   for (const entry of selected) {
     const spinner = ui.createSpinner(`${entry.id}: fetching stories...`);
@@ -393,6 +434,7 @@ export async function applyContentMigrations({
       stories,
       publish,
       appliedAt,
+      isTranslatable,
     });
 
     for (const refusal of outcome.refusals) {

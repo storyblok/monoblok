@@ -74,6 +74,9 @@ listCmd.action(async (options: { pending?: boolean }, command: Command) => {
       for (const id of pending) {
         ui.writeMachineOutput(id);
       }
+      if (pending.length === 0) {
+        ui.info("No pending content migrations.");
+      }
       return;
     }
     const rollbackFiles = await listRollbackFiles({ space, path });

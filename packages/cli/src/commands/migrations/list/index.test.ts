@@ -144,10 +144,12 @@ describe("migrations list command", () => {
     ]);
   });
 
-  it("should print nothing with --pending once every migration ran", async () => {
+  it("should print nothing on stdout with --pending once every migration ran, and say so on stderr", async () => {
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
     await run("run");
+    const info = vi.spyOn(getUI(), "info");
 
-    expect(await listedPending()).toEqual({ stdout: "", otherOutput: false });
+    expect((await listedPending()).stdout).toBe("");
+    expect(info).toHaveBeenCalledWith("No pending content migrations.");
   });
 });

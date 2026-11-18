@@ -3,7 +3,7 @@
  * undone where its recorded patches are unavailable. It cannot see edits made
  * since the run, so recorded patches take precedence whenever they exist.
  */
-import type { MigrationOp } from "./ops";
+import { type MigrationOp, renamedBy } from "./ops";
 
 export interface UnderivableOp {
   index: number;
@@ -33,18 +33,6 @@ export interface DerivedInverse {
   targets: string[];
 }
 
-/**
- * The name a block carries after the forward migration ran. Every op addresses
- * a block by its pre-migration name, so only a `renameBlock` of that name moves it.
- */
-function renamedBy(ops: readonly MigrationOp[], name: string): string {
-  let final = name;
-  for (const op of ops) {
-    if (op.kind === "renameBlock" && op.block === name) final = op.to;
-  }
-  return final;
-}
-
 function invert(op: MigrationOp, block: string): MigrationOp | string {
   switch (op.kind) {
     case "renameField":
@@ -66,6 +54,9 @@ function invert(op: MigrationOp, block: string): MigrationOp | string {
       return "the blocks it wrote are known only to the closure that wrote them";
     case "addField":
       return { kind: "removeField", block, field: op.field };
+    // Neither counterpart carries `overwrite`: the forward op emptied the
+    // fields its inverse writes to, so a value found there is an editor's
+    // since the run, and the inverse refuses that block instead.
     case "splitField":
       return op.merge === undefined
         ? "no `merge` counterpart was stated, so the parts cannot be put back together"
@@ -125,7 +116,8 @@ export function deriveInverse(ops: readonly MigrationOp[]): DerivedInverse {
     // A split/merge round trip is lossy either direction: splitting then
     // merging normalizes whatever the merge discards (whitespace, a
     // separator), and merging then splitting cannot recover a separator the
-    // merge already threw away.
+    // merge already threw away. With `overwrite`, the values either op wrote
+    // over are gone too.
     // `unwrapChildren` collapses every container it dissolves into one
     // rebuilt wrapper, cannot recall which child came from which, and drops
     // the containers' own fields.

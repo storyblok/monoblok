@@ -11,6 +11,7 @@ import {
   migrationsDirectory,
   plural,
   toMigrationCommandError,
+  warnAboutMisnamedMigrations,
 } from "../content-migrations";
 import { listRollbackFiles } from "../rollback/actions";
 
@@ -61,6 +62,8 @@ listCmd.action(async (options: { pending?: boolean }, command: Command) => {
   logger.info("Migration list started", { space });
 
   try {
+    await warnAboutMisnamedMigrations(migrationsDirectory(path, space));
+
     const runs = await contentJournal(path).list(space);
     const files = await discoverContentMigrations(migrationsDirectory(path, space));
     const pending = pendingMigrations(

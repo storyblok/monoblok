@@ -475,6 +475,42 @@ describe("migrations run command for content migrations", () => {
     expect(process.exitCode).toBeUndefined();
   });
 
+  it("should warn about migration files whose name doesn't match the pattern and run the others", async () => {
+    const warn = vi.spyOn(getUI(), "warn");
+    space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    hasSnapshot("0001-rename-card-title", cardBlock);
+    vol.fromJSON({
+      [`${MIGRATIONS_DIRECTORY}/hello.ts`]: "export default {};",
+      [`${MIGRATIONS_DIRECTORY}/0002-Rename-Card.ts`]: "export default {};",
+      [`${MIGRATIONS_DIRECTORY}/types.d.ts`]: "export {};",
+      [`${MIGRATIONS_DIRECTORY}/.gitignore`]: "*",
+    });
+    space.hasStories(storyWithCard());
+    space.canUpdateStories();
+
+    await apply();
+
+    expect(space.writes).toHaveLength(1);
+    const warnings = warn.mock.calls.map(([message]) => message);
+    expect(warnings).toContain(
+      "These files don't run, because their names don't match the content migration pattern <number>-<name>.ts, .js, or .mjs: 0002-Rename-Card.ts, hello.ts. <name> holds lowercase letters, digits, and hyphens, for example 0001-rename-card-title.ts.",
+    );
+    expect(warnings.filter((message) => message?.includes("don't run"))).toHaveLength(1);
+  });
+
+  it("should warn about a misnamed migration file when listing runs", async () => {
+    const warn = vi.spyOn(getUI(), "warn");
+    vol.fromJSON({ [`${MIGRATIONS_DIRECTORY}/hello.ts`]: "export default {};" });
+
+    await migrationsCommand.parseAsync(["node", "test", "list", "--space", DEFAULT_SPACE]);
+
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "match the content migration pattern <number>-<name>.ts, .js, or .mjs: hello.ts.",
+      ),
+    );
+  });
+
   it("should record the run so it can be listed and rolled back", async () => {
     const info = vi.spyOn(getUI(), "info");
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
@@ -667,6 +703,77 @@ describe("migrations run command for content migrations", () => {
     expect(space.writes).toEqual([]);
     expect(journalEntries()).toEqual([]);
     expect(process.exitCode).toBe(2);
+  });
+
+  it("should list each refused op of a story on its own line", async () => {
+    const warn = vi.spyOn(getUI(), "warn");
+    space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    space.hasStories(
+      storyWithCard({
+        content: {
+          _uid: "root",
+          component: "page",
+          body: [
+            { _uid: "card-1", component: "card", title: "Hi", headline: "Taken" },
+            { _uid: "card-2", component: "card", title: "Ho", headline: "Taken" },
+          ],
+        },
+      }),
+    );
+    space.canUpdateStories();
+
+    await apply();
+
+    const refusal = warn.mock.calls.map(([message]) => message).find((m) => m?.includes("home"));
+    expect(refusal?.split("\n")).toEqual([
+      expect.stringMatching(/home.*:$/),
+      expect.stringMatching(/^ {2}- op 0 \(renameField\) on block card-1 was refused: /),
+      expect.stringMatching(/^ {2}- op 0 \(renameField\) on block card-2 was refused: /),
+    ]);
+  });
+
+  describe("translations of split fields", () => {
+    const splitCardPrice = defineMigration([
+      splitField({ block: "card", field: "price", into: ["amount", "currency"] }, (price) =>
+        String(price).split(" "),
+      ),
+    ]);
+    const cardWithPrice = () =>
+      storyWithCard({
+        content: {
+          _uid: "root",
+          component: "page",
+          body: [
+            {
+              _uid: "card-1",
+              component: "card",
+              price: "1000 EUR",
+              price__i18n__de: "1000 Euro",
+            },
+          ],
+        },
+      });
+
+    it("should write no translations to a target field the space doesn't translate", async () => {
+      space.hasMigrations(["0001-split-card-price", splitCardPrice]);
+      space.hasBlocks({
+        card: { amount: "number", currency: { type: "text", translatable: true } },
+      });
+      space.hasStories(cardWithPrice());
+      space.canUpdateStories();
+
+      await apply();
+
+      expect(space.story(1)?.content.body).toEqual([
+        {
+          _uid: "card-1",
+          component: "card",
+          amount: "1000",
+          currency: "EUR",
+          currency__i18n__de: "Euro",
+        },
+      ]);
+    });
   });
 
   it("should succeed and record the stories it wrote when it refused others", async () => {

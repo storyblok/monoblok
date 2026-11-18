@@ -4,7 +4,7 @@
  */
 import type { CompiledMigration } from "./define-migration";
 import { type MigrationRun, type PublishState, runId, type StoryInverse } from "./journal";
-import { runMigrationOnStory } from "./runner";
+import { type IsTranslatable, runMigrationOnStory } from "./runner";
 import { isRecord } from "../utils/is-record";
 
 export type StoryForMigration = {
@@ -34,6 +34,12 @@ export type ApplyMigrationInput = {
   stories: StoryForMigration[];
   /** Omitted: write drafts only. */
   publish?: PublishMode;
+  /**
+   * Whether a field is translatable in the space, so `splitField` and
+   * `mergeFields` write no translation keys to a field that is not. Omitted:
+   * they write translation keys to every target.
+   */
+  isTranslatable?: IsTranslatable;
   appliedAt?: Date;
 };
 
@@ -51,6 +57,7 @@ export type ApplyMigrationOutcome = {
   run: MigrationRun;
   inverse: StoryInverse[];
   writes: MigrationWrite[];
+  /** A story refused for several ops has one line per op in its reason. */
   refusals: { slug: string; reason: string }[];
   /**
    * Written stories that are published but whose write is not. Their live
@@ -104,7 +111,7 @@ function refusalReason(
   if (result.refusedOps.length > 0) {
     return result.refusedOps
       .map((entry) => `${opLabel(entry)} was refused: ${entry.reason}`)
-      .join(" ");
+      .join("\n");
   }
   if (result.nonIdempotent.length > 0) {
     return `Running the migration again would keep changing this story: ${result.nonIdempotent.map(opLabel).join(", ")} changed it again on a second pass.`;
@@ -119,7 +126,9 @@ export function applyMigration(input: ApplyMigrationInput): ApplyMigrationOutcom
   const inverse: StoryInverse[] = [];
 
   for (const story of input.stories) {
-    const result = runMigrationOnStory(input.migration, story.content);
+    const result = runMigrationOnStory(input.migration, story.content, {
+      isTranslatable: input.isTranslatable,
+    });
     const reason = refusalReason(input.migration, result);
     if (reason) {
       refusals.push({ slug: story.slug, reason });

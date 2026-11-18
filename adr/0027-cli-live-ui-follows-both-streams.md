@@ -44,7 +44,7 @@ when it never drew a bar, which left a stray blank line on every run without bar
 ## Consequences
 
 - `find … | jq` prints clean results. The rest of ADR-0020 §7 stands: results stream as they are
-  produced, stdout never waits for the UI, and a terminal on stdout still drops the bars.
+  produced, and stdout never waits for the UI. Bars draw when both streams are terminals.
 - `find … | jq … > out.jsonl` runs without live progress, though nothing would have been garbled:
   the CLI sees a pipe either way. The stage summary still prints at the end. Passing
   `--no-ui-enabled` remains the way to silence stderr entirely.

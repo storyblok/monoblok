@@ -451,7 +451,7 @@ export async function applyContentMigrations({
     }
     if (migration.ops.length === 0) {
       ui.info(
-        `${entry.id}: every op was skipped because the space's blocks don't match it, so nothing was applied. Push the schema the migration was written for, then run it again.`,
+        `${entry.id}: every op was skipped because the space's blocks don't match it, so nothing was applied. If a later schema push changed these fields, the migration is superseded and there's nothing left to do. If the schema change it was written for isn't pushed yet, run "storyblok schema push" first, then run the migration again.`,
       );
       continue;
     }

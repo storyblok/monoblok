@@ -121,7 +121,7 @@ function staleReason(
   const retyped = retypedField(op, fields);
   if (missing !== undefined) {
     return {
-      reason: `${skippedPrefix(op)} has no field "${missing}". Push the schema the migration was written for, unless a later push removed the field.`,
+      reason: `${skippedPrefix(op)} has no field "${missing}". Either a later schema push removed it, or the schema change the migration was written for isn't pushed yet.`,
     };
   }
   if (restored !== undefined) {

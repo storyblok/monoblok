@@ -149,15 +149,17 @@ describe("migrations run command for content migrations", () => {
     );
     space.canUpdateStories();
     const warn = vi.spyOn(getUI(), "warn");
+    const info = vi.spyOn(getUI(), "info");
     process.exitCode = undefined;
 
     await apply();
 
     expect(space.writes).toEqual([]);
     expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining(
-        'addField page.noindex skipped: the page block in the space has no field "noindex".',
-      ),
+      '0001-add-noindex: addField page.noindex skipped: the page block in the space has no field "noindex". Either a later schema push removed it, or the schema change the migration was written for isn\'t pushed yet.',
+    );
+    expect(info).toHaveBeenCalledWith(
+      "0001-add-noindex: every op was skipped because the space's blocks don't match it, so nothing was applied. If a later schema push changed these fields, the migration is superseded and there's nothing left to do. If the schema change it was written for isn't pushed yet, run \"storyblok schema push\" first, then run the migration again.",
     );
     expect(process.exitCode).toBeUndefined();
   });

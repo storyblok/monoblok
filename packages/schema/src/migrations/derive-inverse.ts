@@ -3,7 +3,7 @@
  * undone where its recorded patches are unavailable. It cannot see edits made
  * since the run, so recorded patches take precedence whenever they exist.
  */
-import type { MigrationOp } from "./ops";
+import { type MigrationOp, renamedBy } from "./ops";
 
 export interface UnderivableOp {
   index: number;
@@ -31,18 +31,6 @@ export interface DerivedInverse {
    * wherever a `renameBlock` changed a name.
    */
   targets: string[];
-}
-
-/**
- * The name a block carries after the forward migration ran. Every op addresses
- * a block by its pre-migration name, so only a `renameBlock` of that name moves it.
- */
-function renamedBy(ops: readonly MigrationOp[], name: string): string {
-  let final = name;
-  for (const op of ops) {
-    if (op.kind === "renameBlock" && op.block === name) final = op.to;
-  }
-  return final;
 }
 
 function invert(op: MigrationOp, block: string): MigrationOp | string {

@@ -142,6 +142,7 @@ export type {
   PublishMode,
   StoryForMigration,
 } from "./migrations/apply-migration";
+export type { IsTranslatable } from "./migrations/runner";
 
 export { MigrationError } from "./migrations/migration-error";
 export { planUndo, undoStories } from "./migrations/undo-run";

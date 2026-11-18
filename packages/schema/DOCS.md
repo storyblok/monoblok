@@ -232,6 +232,11 @@ the base key plus all its translation keys:
   which is what the language shows. The result lands on the `into` field's matching key.
 - With `overwrite: true`, `splitField()` and `mergeFields()` delete the targets’ translation keys,
   so old translations don’t attach to the new values.
+- `splitField()` and `mergeFields()` write no translation keys to an `into` field that isn’t
+  translatable in the space, because editors can’t see translation keys on such a field. They drop a
+  translated result that’s empty or matches the default language’s result, since the language shows
+  the default value. Any other translated result refuses the story, so no translation gets lost.
+  Without information about the space’s fields, they write translation keys to every `into` field.
 - `alterBlock()` receives the raw keys, translation keys included.
 - `addField()` sets the base key only. With `translatable: true`, it calls `fn` once more per
   language the block holds a translation for, in any field, with `context.language` set. Leave it
@@ -320,6 +325,10 @@ const { writes, refusals } = applyMigration({
   stories,
 });
 ```
+
+Pass `isTranslatable(block, field)` to `applyMigration()` to tell `splitField()` and `mergeFields()`
+which fields the space translates. It receives the block name the space has after the migration and
+returns `undefined` for a field it doesn’t know.
 
 Pass `{ nameOnlyBlocks }` as the third argument of `validateMigration()` to name blocks that exist
 but whose fields the schema doesn’t describe. An op that reads their fields is an error. A check

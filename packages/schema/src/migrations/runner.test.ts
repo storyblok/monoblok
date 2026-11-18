@@ -1816,6 +1816,146 @@ describe("mergeFields onto an occupied target", () => {
   });
 });
 
+describe("splitField and mergeFields into fields the space doesn't translate", () => {
+  // "£2M+" → "£", "2", "M+"
+  const splitMetric = defineMigration<TestSchema>({
+    ops: [
+      splitField(
+        { block: "metric", field: "value", into: ["prefix", "amount", "suffix"] },
+        (value) => {
+          const [, prefix = "", amount = "", suffix = ""] =
+            /^(\D*?)\s*(\d+)\s*(.*)$/.exec(String(value)) ?? [];
+          return [prefix, amount, suffix];
+        },
+      ),
+    ],
+  });
+
+  const mergeName = defineMigration<TestSchema>({
+    ops: [
+      mergeFields(
+        { block: "author", fields: ["first_name", "last_name"], into: "name" },
+        (values) => values.filter(Boolean).join(" "),
+      ),
+    ],
+  });
+
+  const untranslated: Record<string, string[]> = { metric: ["amount"], author: ["name"] };
+  const isTranslatable = (blockName: string, field: string) =>
+    untranslated[blockName] ? !untranslated[blockName].includes(field) : undefined;
+
+  function story(content: Record<string, unknown>): Record<string, unknown> {
+    return { _uid: "root", component: "page", body: [{ _uid: "b", ...content }] };
+  }
+
+  it("should write no translation keys to a target the space doesn't translate", () => {
+    const original = story({ component: "metric", value: "£2M+", value__i18n__de: "2 Mio. £" });
+
+    const result = runMigrationOnStory(splitMetric, original, { isTranslatable });
+
+    expect(result.refusedOps).toEqual([]);
+    expect(block(result.content, "b")).toEqual({
+      _uid: "b",
+      component: "metric",
+      prefix: "£",
+      amount: "2",
+      suffix: "M+",
+      prefix__i18n__de: "",
+      suffix__i18n__de: "Mio. £",
+    });
+
+    const rolledBack = structuredClone(result.content);
+    expect(applyPatches(rolledBack, result.inverse).conflicts).toEqual([]);
+    expect(rolledBack).toEqual(original);
+  });
+
+  it("should write translation keys to every target when the space's fields are unknown", () => {
+    const result = runMigrationOnStory(
+      splitMetric,
+      story({ component: "metric", value: "£2M+", value__i18n__de: "2 Mio. £" }),
+    );
+
+    expect(block(result.content, "b")).toMatchObject({ amount__i18n__de: "2" });
+  });
+
+  it("should refuse a block whose translation splits into a different value for a target the space doesn't translate", () => {
+    const original = story({ component: "metric", value: "£2M+", value__i18n__de: "3 Mio. £" });
+
+    const result = runMigrationOnStory(splitMetric, original, { isTranslatable });
+
+    expect(result.refusedOps).toEqual([
+      {
+        uid: "b",
+        op: 0,
+        reason:
+          '"amount__i18n__de" would get "3", which differs from the default language\'s "2", but "amount" is not translatable. Make "amount" translatable, or have `split` return the default language\'s value for it.',
+      },
+    ]);
+    expect(result.content).toEqual(original);
+  });
+
+  it("should look a field up under the name a renameBlock in the same migration gives the block", () => {
+    const splitAndRename = defineMigration<TestSchema>({
+      ops: [...splitMetric.ops, renameBlock({ block: "metric", to: "stat" })],
+    });
+    const lookups: string[] = [];
+
+    runMigrationOnStory(
+      splitAndRename,
+      story({ component: "metric", value: "£2M+", value__i18n__de: "2 Mio. £" }),
+      {
+        isTranslatable: (blockName, field) => {
+          lookups.push(`${blockName}.${field}`);
+          return undefined;
+        },
+      },
+    );
+
+    expect(new Set(lookups)).toEqual(new Set(["stat.prefix", "stat.amount", "stat.suffix"]));
+  });
+
+  it("should refuse a block whose translation merges into a different value for a target the space doesn't translate", () => {
+    const original = story({
+      component: "author",
+      first_name: "Ada",
+      last_name: "Lovelace",
+      last_name__i18n__de: "von Lovelace",
+    });
+
+    const result = runMigrationOnStory(mergeName, original, { isTranslatable });
+
+    expect(result.refusedOps).toEqual([
+      {
+        uid: "b",
+        op: 0,
+        reason:
+          '"name__i18n__de" would get "Ada von Lovelace", which differs from the default language\'s "Ada Lovelace", but "name" is not translatable. Make "name" translatable, or have `merge` return the default language\'s value for it.',
+      },
+    ]);
+    expect(result.content).toEqual(original);
+  });
+
+  it("should drop a translation that merges into the default value for a target the space doesn't translate", () => {
+    const result = runMigrationOnStory(
+      mergeName,
+      story({
+        component: "author",
+        first_name: "Ada",
+        last_name: "Lovelace",
+        last_name__i18n__de: "Lovelace",
+      }),
+      { isTranslatable },
+    );
+
+    expect(result.refusedOps).toEqual([]);
+    expect(block(result.content, "b")).toEqual({
+      _uid: "b",
+      component: "author",
+      name: "Ada Lovelace",
+    });
+  });
+});
+
 describe("mergeFields", () => {
   const mergeName = defineMigration<TestSchema>({
     ops: [

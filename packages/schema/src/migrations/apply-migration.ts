@@ -4,7 +4,7 @@
  */
 import type { CompiledMigration } from "./define-migration";
 import { type MigrationRun, type PublishState, runId, type StoryInverse } from "./journal";
-import { runMigrationOnStory } from "./runner";
+import { type IsTranslatable, runMigrationOnStory } from "./runner";
 import { isRecord } from "../utils/is-record";
 
 export type StoryForMigration = {
@@ -34,6 +34,12 @@ export type ApplyMigrationInput = {
   stories: StoryForMigration[];
   /** Omitted: write drafts only. */
   publish?: PublishMode;
+  /**
+   * Whether a field is translatable in the space, so `splitField` and
+   * `mergeFields` write no translation keys to a field that is not. Omitted:
+   * they write translation keys to every target.
+   */
+  isTranslatable?: IsTranslatable;
   appliedAt?: Date;
 };
 
@@ -119,7 +125,9 @@ export function applyMigration(input: ApplyMigrationInput): ApplyMigrationOutcom
   const inverse: StoryInverse[] = [];
 
   for (const story of input.stories) {
-    const result = runMigrationOnStory(input.migration, story.content);
+    const result = runMigrationOnStory(input.migration, story.content, {
+      isTranslatable: input.isTranslatable,
+    });
     const reason = refusalReason(input.migration, result);
     if (reason) {
       refusals.push({ slug: story.slug, reason });

@@ -16,6 +16,7 @@ export {
   omitEmptyArrays,
   resolveTagRefs,
   sortSchemaByPos,
+  stripKeys,
   toLayoutDslField,
 } from "./field";
 export type { TagRef } from "./field";

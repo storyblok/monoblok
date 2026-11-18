@@ -121,17 +121,3 @@ export function fileTimestamp(iso: string): string {
 export function displayPath(filePath: string, userPath?: string): string {
   return userPath && isAbsolute(userPath) ? filePath : relative(process.cwd(), filePath);
 }
-
-/** Strips keys from an object, removing undefined and null values from optional fields. */
-export function stripKeys(
-  obj: Record<string, unknown>,
-  keysToStrip: Set<string>,
-): Record<string, unknown> {
-  const result: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(obj)) {
-    if (!keysToStrip.has(key) && value !== undefined && value !== null) {
-      result[key] = value;
-    }
-  }
-  return result;
-}

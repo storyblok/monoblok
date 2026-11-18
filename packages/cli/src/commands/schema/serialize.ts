@@ -1,11 +1,10 @@
-import { formatValue } from "@storyblok/schema/internal/codegen";
+import { formatValue, stripKeys } from "@storyblok/schema/internal/codegen";
 
 import {
   COMPONENT_STRIP_KEYS,
   DATASOURCE_DIMENSION_STRIP_KEYS,
   DATASOURCE_STRIP_KEYS,
   RESTRICTION_LIST_KEYS,
-  stripKeys,
 } from "./utils";
 
 /** Sorts schema fields by `pos` for stable ordering and strips API-assigned field-level keys. */

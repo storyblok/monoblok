@@ -66,6 +66,9 @@ function invert(op: MigrationOp, block: string): MigrationOp | string {
       return "the blocks it wrote are known only to the closure that wrote them";
     case "addField":
       return { kind: "removeField", block, field: op.field };
+    // Neither counterpart carries `overwrite`: the forward op emptied the
+    // fields its inverse writes to, so a value found there is an editor's
+    // since the run, and the inverse refuses that block instead.
     case "splitField":
       return op.merge === undefined
         ? "no `merge` counterpart was stated, so the parts cannot be put back together"
@@ -125,7 +128,8 @@ export function deriveInverse(ops: readonly MigrationOp[]): DerivedInverse {
     // A split/merge round trip is lossy either direction: splitting then
     // merging normalizes whatever the merge discards (whitespace, a
     // separator), and merging then splitting cannot recover a separator the
-    // merge already threw away.
+    // merge already threw away. With `overwrite`, the values either op wrote
+    // over are gone too.
     // `unwrapChildren` collapses every container it dissolves into one
     // rebuilt wrapper, cannot recall which child came from which, and drops
     // the containers' own fields.

@@ -118,6 +118,30 @@ function isEmptyValue(value: unknown): boolean {
   );
 }
 
+/**
+ * Refuses a reshape whose targets already hold a value, translations included,
+ * unless the op overwrites on purpose. A target that is also a source is not
+ * occupied: the op reads its value before writing over it.
+ */
+function occupiedTargetRefusal(
+  block: AnyBlock,
+  op: { kind: string; overwrite?: boolean },
+  sources: readonly string[],
+  targets: readonly string[],
+): string | undefined {
+  if (op.overwrite) return undefined;
+  const occupied = targets
+    .filter((name) => !sources.includes(name))
+    .flatMap((name) => familyKeys(block, name))
+    .filter((key) => !isEmptyValue(block[key]));
+  if (occupied.length === 0) return undefined;
+  const quoted = (names: readonly string[]) => names.map((name) => `"${name}"`).join(", ");
+  const reshaping = `${op.kind === "splitField" ? "splitting" : "merging"} ${quoted(sources)}`;
+  return occupied.length === 1
+    ? `field ${quoted(occupied)} already holds a value, and ${reshaping} into it would overwrite it. Pass \`overwrite: true\` to overwrite it on purpose.`
+    : `fields ${quoted(occupied)} already hold values, and ${reshaping} into them would overwrite them. Pass \`overwrite: true\` to overwrite them on purpose.`;
+}
+
 /** Rewrites a key in place while keeping its position in the object. */
 function renameKey(block: AnyBlock, from: string, to: string): void {
   if (!(from in block)) return;
@@ -239,6 +263,8 @@ function applyOp(block: AnyBlock, op: MigrationOp): string | undefined {
         (key) => block[key] !== undefined && block[key] !== null,
       );
       if (sources.length === 0) break;
+      const occupied = occupiedTargetRefusal(block, op, [op.field], op.into);
+      if (occupied) return occupied;
       const parts = sources.map((key) => ({
         suffix: key.slice(op.field.length),
         values: op.split(block[key] as never),
@@ -260,6 +286,8 @@ function applyOp(block: AnyBlock, op: MigrationOp): string | undefined {
     }
     case "mergeFields": {
       if (!op.fields.some((name) => familyKeys(block, name).length > 0)) break;
+      const occupied = occupiedTargetRefusal(block, op, op.fields, [op.into]);
+      if (occupied) return occupied;
       const suffixes = new Set([""]);
       for (const name of op.fields) {
         for (const key of translationKeysFor(block, name)) suffixes.add(key.slice(name.length));

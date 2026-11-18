@@ -105,15 +105,15 @@ internal detail with no public prop name.
 ### 8. No shared core, aligned implementations
 
 There is no shared code across the SDKs for now. Each SDK has its own registry implementation, and
-they follow the same patterns and stay consistent wherever possible. Two details that have already
-drifted are decided here:
+they follow the same patterns and stay consistent wherever possible. One detail that has already
+drifted is decided here:
 
 - **`StoryblokBlockData` uses `unknown`, not `any`**, for the fields of a block (for example
   `Record<string, unknown>`). It is stricter, so a component has to narrow a field before using it.
-  Components that know their block's shape type it with their own generic.
-- **Warnings are silenced with a `withoutWarnings()` helper on the registry**, not an inline
-  override at each call site. It is named, covers every warning in one place, and can be tested on
-  its own.
+  Components that know their block's shape type it with their own generic. The exception is the
+  constraint a registered component is checked against, which uses `any` for `block`, so that a
+  component can narrow `block` to its own fields. Internal registry code may use `any` for the same
+  reason, so the registry doesn't need to know which extra props the components take.
 
 A shared abstraction can be revisited once more SDKs have adopted the model.
 

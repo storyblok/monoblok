@@ -54,6 +54,7 @@ export class UpdateStream extends Writable {
     chunk: {
       storyId: number;
       name: string | undefined;
+      full_slug?: string;
       content: BlokContent;
       published?: boolean;
       unpublished_changes?: boolean;
@@ -72,20 +73,12 @@ export class UpdateStream extends Writable {
 
       this.updateStory(chunk)
         .catch((maybeError) => {
-          // `updateStory` records its own failures. This only keeps anything
-          // it couldn't handle from becoming an unhandled rejection, which
-          // would end the process in the middle of the run.
+          // `updateStory` records its own failures. This only keeps a bug in it
+          // from becoming an unhandled rejection that ends the process mid-run.
           const error = toError(maybeError);
-          const storyName = chunk.name || chunk.storyId.toString();
-          const isRecorded = [...this.results.successful, ...this.results.failed].some(
-            (story) => story.storyId === chunk.storyId,
-          );
-          if (!isRecorded) {
-            this.recordFailure({ storyId: chunk.storyId, name: storyName, error });
-          }
           getLogger().error(error.message, {
             storyId: chunk.storyId,
-            storyName,
+            storyName: chunk.name,
             error,
             errorCode: ERROR_CODES.MIGRATION_STORY_UPDATE_ERROR,
           });
@@ -103,11 +96,12 @@ export class UpdateStream extends Writable {
   private async updateStory(migrationResult: {
     storyId: number;
     name: string | undefined;
+    full_slug?: string;
     content: BlokContent;
     published?: boolean;
     unpublished_changes?: boolean;
   }): Promise<void> {
-    const { storyId, name, content, published, unpublished_changes } = migrationResult;
+    const { storyId, name, full_slug, content, published, unpublished_changes } = migrationResult;
     const storyName = name || storyId.toString();
 
     try {
@@ -148,7 +142,7 @@ export class UpdateStream extends Writable {
         getLogger().info("Updated story", { storyId });
       } else {
         const error = new Error("Update returned null");
-        this.recordFailure({ storyId, name: storyName, error });
+        this.recordFailure({ storyId, name: storyName, full_slug, error });
         getLogger().error(`Failed to update story: ${error.message}`, {
           storyId,
           storyName,
@@ -157,7 +151,7 @@ export class UpdateStream extends Writable {
       }
     } catch (maybeError) {
       const error = toError(maybeError);
-      this.recordFailure({ storyId, name: storyName, error });
+      this.recordFailure({ storyId, name: storyName, full_slug, error });
       getLogger().error(error.message, {
         storyId,
         storyName,
@@ -171,7 +165,7 @@ export class UpdateStream extends Writable {
     }
   }
 
-  private recordFailure(failed: { storyId: number; name: string; error: Error }): void {
+  private recordFailure(failed: FailedStory & { name: string }): void {
     this.results.failed.push(failed);
     this.results.totalProcessed++;
     this.options.onProgress?.(this.results.totalProcessed);

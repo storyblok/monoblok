@@ -1,11 +1,25 @@
 import { APIError } from "../../../utils/error";
 import { FailureReasonGroup } from "../../../utils/failure-reason-group";
 
-/** A story that couldn't be fetched, migrated, or updated, with the reason. */
+/** A story that couldn't be fetched, migrated, or updated, as written to the report. */
 export interface FailedStoryReport {
-  storyId: number;
+  id: number;
   name: string | undefined;
-  reason: string;
+  full_slug?: string;
+  step: "fetch" | "migrate" | "update";
+  /** The migration file that threw, when the story failed in one. */
+  migration?: string;
+  error: string;
+}
+
+function toReason({ step, migration, error }: FailedStoryReport): string {
+  if (step === "fetch") {
+    return `Fetch failed: ${error}`;
+  }
+  if (step === "update") {
+    return `Update failed: ${error}`;
+  }
+  return migration ? `${migration} failed: ${error}` : error;
 }
 
 /**
@@ -15,10 +29,11 @@ export interface FailedStoryReport {
  */
 export function listFailedStories(failed: FailedStoryReport[]): string[] {
   const group = new FailureReasonGroup();
-  for (const { storyId, name, reason } of failed) {
+  for (const story of failed) {
+    const { id, name } = story;
     group.record(
-      reason,
-      name && name !== storyId.toString() ? `${name} (id ${storyId})` : `id ${storyId}`,
+      toReason(story),
+      name && name !== id.toString() ? `${name} (id ${id})` : `id ${id}`,
     );
   }
   return group.toListLines("migrate", ["story", "stories"]);

@@ -43,7 +43,7 @@ export interface ReporterOptions {
 export class Reporter {
   public static readonly FILE_EXTENSION = ".json";
   public filePath: string;
-  private enabled: boolean;
+  public readonly enabled: boolean;
   private startedAt: Date = new Date();
   private maxFiles?: number;
   private report: Report = {

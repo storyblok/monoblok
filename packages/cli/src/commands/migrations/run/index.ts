@@ -2,6 +2,7 @@ import type { Command } from "commander";
 import chalk from "chalk";
 import { getUI } from "../../../lib/ui";
 import { getLogger } from "../../../lib/logger/logger";
+import { FileTransport } from "../../../lib/logger/logger-transport-file";
 import { getReporter } from "../../../lib/reporter/reporter";
 import { colorPalette, commands } from "../../../constants";
 import {
@@ -145,12 +146,12 @@ runCmd.action(
           fetchedStories++;
           storiesProgress.increment();
         },
-        onError: ({ storyId, name, error }) => {
+        onError: ({ storyId, name, full_slug, error }) => {
           fetchFailedStories++;
           storiesProgress.increment();
           // The story never reaches the migration stage, which would count it.
           migrationsProgress.increment();
-          failedStories.push({ storyId, name, reason: `Fetch failed: ${error.message}` });
+          failedStories.push({ id: storyId, name, full_slug, step: "fetch", error: error.message });
         },
       });
 
@@ -166,11 +167,15 @@ runCmd.action(
         onProgress: () => {
           migrationsProgress.increment();
         },
-        onError: ({ storyId, name, error, migrationName }) => {
-          const reason = migrationName
-            ? `${migrationName} failed: ${error.message}`
-            : error.message;
-          failedStories.push({ storyId, name, reason });
+        onError: ({ storyId, name, full_slug, error, migrationName }) => {
+          failedStories.push({
+            id: storyId,
+            name,
+            full_slug,
+            step: "migrate",
+            migration: migrationName,
+            error: error.message,
+          });
         },
       });
 
@@ -181,8 +186,14 @@ runCmd.action(
         onProgress: () => {
           updateProgress.increment();
         },
-        onError: ({ storyId, name, error }) => {
-          failedStories.push({ storyId, name, reason: `Update failed: ${error.message}` });
+        onError: ({ storyId, name, full_slug, error }) => {
+          failedStories.push({
+            id: storyId,
+            name,
+            full_slug,
+            step: "update",
+            error: error.message,
+          });
         },
       });
 
@@ -227,11 +238,19 @@ runCmd.action(
         ui.warn(`Run stopped after ${finishedStories} of ${listedStories} stories.`);
       }
       ui.info(migrationStream.getSummary());
-      if (!fatalError || updateResults.total > 0) {
+      // "No stories required updates." would contradict the failures listed below.
+      if (updateResults.total > 0 || (!fatalError && failedStories.length === 0)) {
         ui.info(updateStream.getSummary());
       }
       if (failedStories.length > 0) {
         ui.list(listFailedStories(failedStories));
+        // The list above is capped, so point to where every failed story is.
+        const fullListPath = reporter.enabled
+          ? reporter.filePath
+          : logger.transports.find((transport) => transport instanceof FileTransport)?.filePath;
+        if (fullListPath) {
+          ui.info(`All failed stories are listed in ${fullListPath}`);
+        }
       }
 
       logger.info("Migration finished", {

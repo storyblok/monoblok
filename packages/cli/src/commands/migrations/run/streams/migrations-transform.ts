@@ -106,6 +106,7 @@ export class MigrationStream extends Transform {
     Array<{
       storyId: number;
       name: string | undefined;
+      full_slug?: string;
       content: BlokContent;
       published?: boolean;
       unpublished_changes?: boolean;
@@ -122,6 +123,7 @@ export class MigrationStream extends Transform {
       this.recordFailure({
         storyId: story.id,
         name: story.name,
+        full_slug: story.full_slug,
         migrationNames: relevantMigrations.map((m) => m.name),
         error: new Error("Story content is missing"),
       });
@@ -136,6 +138,7 @@ export class MigrationStream extends Transform {
     const successfulResults: Array<{
       storyId: number;
       name: string | undefined;
+      full_slug?: string;
       content: BlokContent;
       published?: boolean;
       unpublished_changes?: boolean;
@@ -156,6 +159,7 @@ export class MigrationStream extends Transform {
   ): Promise<{
     storyId: number;
     name: string | undefined;
+    full_slug?: string;
     content: BlokContent;
     published?: boolean;
     unpublished_changes?: boolean;
@@ -178,6 +182,7 @@ export class MigrationStream extends Transform {
           this.recordFailure({
             storyId: story.id,
             name: story.name,
+            full_slug: story.full_slug,
             migrationNames,
             error,
           });
@@ -229,6 +234,7 @@ export class MigrationStream extends Transform {
         return {
           storyId: story.id,
           name: story.name,
+          full_slug: story.full_slug,
           content: storyContent,
           published: story.published ?? undefined,
           unpublished_changes: story.unpublished_changes ?? undefined,
@@ -264,6 +270,7 @@ export class MigrationStream extends Transform {
       this.recordFailure({
         storyId: story.id,
         name: story.name,
+        full_slug: story.full_slug,
         migrationNames,
         migrationName,
         error,
@@ -299,7 +306,7 @@ export class MigrationStream extends Transform {
 
     const successfulStoryIds = new Set(successful.map((result) => result.storyId));
 
-    let summary = `Migration Results: ${successfulStoryIds.size} stories updated, ${skipped.length} stories skipped`;
+    let summary = `Migration Results: ${successfulStoryIds.size} stories migrated, ${skipped.length} stories skipped`;
 
     if (skipped.length > 0) {
       const skippedByReason = skipped.reduce(

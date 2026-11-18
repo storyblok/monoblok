@@ -430,23 +430,6 @@ describe("updateStream", () => {
       }
     });
 
-    it("should record a story whose update failed unexpectedly", async () => {
-      const updateStream = new UpdateStream({ space: "12345", publish: "all" });
-      // @ts-expect-error Simulates a failure `updateStory` doesn't handle itself.
-      vi.spyOn(updateStream, "updateStory").mockRejectedValue(new Error("Unexpected failure"));
-
-      await writeStories(updateStream);
-      await new Promise((resolve) => setImmediate(resolve));
-
-      const results = updateStream.getResults();
-      expect(results.failed).toEqual([
-        { storyId: 1, name: "Home", error: new Error("Unexpected failure") },
-        { storyId: 2, name: "About", error: new Error("Unexpected failure") },
-        { storyId: 3, name: "Contact", error: new Error("Unexpected failure") },
-      ]);
-      expect(results.totalProcessed).toBe(3);
-    });
-
     it("should stop updating stories when the API rejects the credentials", async () => {
       vi.mocked(updateStory).mockRejectedValue(
         new APIError(

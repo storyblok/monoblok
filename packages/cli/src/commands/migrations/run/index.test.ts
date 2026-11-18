@@ -562,7 +562,7 @@ describe("migrations run command", () => {
     expect(logFile).toContain("MIGRATION_LOAD_ERROR");
     // UI
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Migration Results:"));
-    expect(console.error).toHaveBeenCalledWith(
+    expect(console.error).not.toHaveBeenCalledWith(
       expect.stringContaining("No stories required updates"),
     );
   });
@@ -763,7 +763,12 @@ describe("migrations run command", () => {
       ),
     );
     expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining("Migration Results: 1 stories updated, 0 stories skipped."),
+      expect.stringContaining("Migration Results: 1 stories migrated, 0 stories skipped."),
+    );
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /All failed stories are listed in .*reports\/12345\/storyblok-migrations-run-/,
+      ),
     );
     expect(process.exitCode).toBe(1);
     // Report
@@ -780,9 +785,11 @@ describe("migrations run command", () => {
       meta: {
         failedStories: [
           {
-            storyId: unfetchableStory.id,
+            id: unfetchableStory.id,
             name: "Unfetchable Story",
-            reason: "Fetch failed: Story could not be loaded",
+            full_slug: unfetchableStory.full_slug,
+            step: "fetch",
+            error: "Story could not be loaded",
           },
         ],
       },
@@ -890,13 +897,20 @@ describe("migrations run command", () => {
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining("Update Results: 0 stories updated, 1 stories failed."),
     );
+    // Only a stopped run prints these; the failed-stories list repeats the message too.
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining("Run stopped after 1 of 1 stories."),
+    );
     expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining("The user is not authorized to access the API"),
+      expect.stringContaining("error The user is not authorized to access the API"),
     );
     const reportFile = Object.entries(vol.toJSON()).find(([filename]) =>
       filename.includes("reports/12345/storyblok-migrations-run-"),
     )?.[1];
-    expect(JSON.parse(reportFile || "{}")).toMatchObject({ status: "FAILURE" });
+    expect(JSON.parse(reportFile || "{}")).toMatchObject({
+      status: "FAILURE",
+      meta: { error: "The user is not authorized to access the API" },
+    });
     expect(process.exitCode).toBe(1);
   });
 

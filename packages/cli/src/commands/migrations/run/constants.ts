@@ -40,6 +40,7 @@ export interface SuccessfulMigration {
 export interface FailedStory {
   storyId: number;
   name: string | undefined;
+  full_slug?: string;
   error: Error;
 }
 

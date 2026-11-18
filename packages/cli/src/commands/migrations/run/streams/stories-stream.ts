@@ -129,7 +129,7 @@ class StoriesStream extends Transform {
         error,
         errorCode: ERROR_CODES.MIGRATION_STORY_FETCH_ERROR,
       });
-      this.onError?.({ storyId: chunk.id, name: chunk.name, error });
+      this.onError?.({ storyId: chunk.id, name: chunk.name, full_slug: chunk.full_slug, error });
       callback(isSystemicError(error) ? error : null);
     } finally {
       this.semaphore.release();

@@ -153,7 +153,7 @@ transferCmd.action(async (assetIds: string[], options, command) => {
         failures.record(result.reason ?? "Unknown error");
       }
     }
-    ui.list(failures.toListLines("transfer"));
+    ui.list(failures.toListLines("transfer", ["asset", "assets"]));
   }
 
   reporter.addSummary("transferResults", summary);

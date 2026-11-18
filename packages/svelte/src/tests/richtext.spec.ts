@@ -8,6 +8,7 @@ import {
   tableFixtures,
 } from "@storyblok/richtext/test-utils";
 import StoryblokRichText from "../lib/components/StoryblokRichText.svelte";
+import RegistryBlok from "./richtext/RegistryBlok.svelte";
 import { flushSync, mount, unmount } from "svelte";
 import CustomTable from "./richtext/CustomTable.svelte";
 import Bold from "./richtext/Bold.svelte";
@@ -162,6 +163,41 @@ describe("storyblok Richtext", () => {
       expect(target.querySelector('[data-testid="embedded-block"]')?.textContent).toBe(
         "Embedded teaser",
       );
+      unmount(component);
+    });
+
+    it("should render embedded bloks through a registry with a StoryblokBlock renderer", () => {
+      const target = document.createElement("div");
+      const component = mount(StoryblokRichText, {
+        target,
+        props: {
+          document: {
+            type: "doc",
+            content: [
+              {
+                type: "blok",
+                attrs: {
+                  id: "blok-1",
+                  body: [
+                    {
+                      _uid: "1",
+                      component: "teaser",
+                      headline: "Embedded teaser",
+                      _editable:
+                        '<!--#storyblok#{"name": "teaser", "space": "1", "uid": "1", "id": "1"}-->',
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+          components: { blok: RegistryBlok },
+        },
+      });
+      flushSync();
+
+      expect(target.querySelector('[data-testid="teaser"]')?.textContent).toBe("Embedded teaser");
+      expect(target.querySelector("[data-blok-uid]")).not.toBeNull();
       unmount(component);
     });
 

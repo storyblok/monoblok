@@ -15,8 +15,6 @@
      * `warnings: false`.
      */
     warn: (key: string, message: string) => void;
-    /** The same registry with every warning silenced. */
-    withoutWarnings: () => StoryblokBlockRegistry;
   };
 
   /**

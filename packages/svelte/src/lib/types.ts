@@ -1,6 +1,5 @@
 import type { storyblokEditable } from "@storyblok/live-preview";
 import type { Component } from "svelte";
-import type { StoryblokRichTextComponentProps } from "./richtext-helpers";
 
 /**
  * A content block as returned by the Storyblok Content Delivery API.
@@ -119,17 +118,4 @@ export interface DefineStoryblokBlocksResult<TExtraProps extends StoryblokExtraP
    * ```
    */
   StoryblokBlock: Component<StoryblokBlockProps<TExtraProps>>;
-
-  /**
-   * Renders a rich text field. Embedded blocks render through this
-   * registry, like `StoryblokBlock`. A `components.blok` renderer replaces
-   * that, and a plain-object `data` is passed to every embedded block as
-   * extra props. `data` isn't checked against `TExtraProps`: use
-   * `satisfies` to check it.
-   *
-   * ```svelte
-   * <StoryblokRichText document={block.text} data={{ locale } satisfies ExtraProps} />
-   * ```
-   */
-  StoryblokRichText: Component<StoryblokRichTextComponentProps>;
 }

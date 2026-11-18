@@ -13,8 +13,7 @@
     if (!warnings || warned) return;
     warned = true;
     console.warn(
-      '[storyblok] "blok" nodes require a custom renderer passed through `components.blok`, ' +
-        'or use the `StoryblokRichText` returned by `defineStoryblokBlocks()`.',
+      '[storyblok] "blok" nodes require a custom renderer passed through `components.blok`.',
     );
   }
 

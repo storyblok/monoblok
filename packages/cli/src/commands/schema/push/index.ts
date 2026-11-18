@@ -309,15 +309,17 @@ schemaCommand
       // a confirmed rename updates the block in place instead of creating a
       // new block and leaving the stories on a stale one.
       const blockRenames: BlockRename[] = [];
-      const storyCounts = new Map<string, number | undefined>();
-      const storiesUsing = async (block: string): Promise<number | undefined> => {
-        if (!storyCounts.has(block)) storyCounts.set(block, await countStoriesUsing(space, block));
-        return storyCounts.get(block);
+      const storyCounts = new Map<string, Promise<number>>();
+      const storiesUsing = (block: string): Promise<number> => {
+        const count = storyCounts.get(block) ?? countStoriesUsing(space, block);
+        storyCounts.set(block, count);
+        return count;
       };
       const usage = (count: number | undefined) =>
         count === undefined ? "" : ` (${plural(count, "story", "stories")})`;
       for (const rename of detectBlockRenames(diffResult, local, remote)) {
-        const stories = usage(await storiesUsing(rename.from));
+        // The count only informs the prompt, so a failed lookup leaves it out.
+        const stories = usage(await storiesUsing(rename.from).catch(() => undefined));
         if (options.dryRun) {
           ui.info(
             `Possible block rename: ${rename.from} → ${rename.to}${stories}. Without --dry-run, schema push asks whether to rename the block in place.`,
@@ -340,19 +342,31 @@ schemaCommand
 
       // Deleting a block stories still use leaves their content without a
       // schema, so it takes --force.
-      if (options.delete) {
-        const used: string[] = [];
-        for (const d of diffResult.diffs) {
-          if (d.type !== "component" || d.action !== "stale") continue;
-          const count = await storiesUsing(d.name);
-          if (count) used.push(`${d.name}${usage(count)}`);
-        }
-        if (used.length > 0 && !options.force) {
-          const message = `Stories still use ${used.length === 1 ? "this block" : "these blocks"}, which --delete would delete: ${used.join(", ")}. Rename the block, migrate its content first, or pass --force to delete it anyway.`;
+      if (options.delete && !options.force) {
+        const refuse = (message: string) => {
           if (!options.dryRun) {
             throw new CommandError(message);
           }
           ui.warn(message);
+        };
+        const used: string[] = [];
+        for (const d of diffResult.diffs) {
+          if (d.type !== "component" || d.action !== "stale") continue;
+          let count: number;
+          try {
+            count = await storiesUsing(d.name);
+          } catch (maybeError) {
+            refuse(
+              `Could not check whether stories use ${d.name}, which --delete would delete (${toError(maybeError).message}). Pass --force to delete it without checking.`,
+            );
+            continue;
+          }
+          if (count > 0) used.push(`${d.name}${usage(count)}`);
+        }
+        if (used.length > 0) {
+          refuse(
+            `Stories still use ${used.length === 1 ? "this block" : "these blocks"}, which --delete would delete: ${used.join(", ")}. Rename the block, migrate its content first, or pass --force to delete it anyway.`,
+          );
         }
       }
 

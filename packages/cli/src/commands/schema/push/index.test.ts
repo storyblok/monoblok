@@ -269,6 +269,13 @@ const preconditions = {
     );
     return folderUpdates;
   },
+  failsToCountStories(status: number) {
+    server.use(
+      http.get(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/stories`, () =>
+        HttpResponse.json({ error: "Stories unavailable" }, { status }),
+      ),
+    );
+  },
   confirmsMigrations() {
     vi.mocked(confirm).mockResolvedValue(true);
   },
@@ -1410,6 +1417,42 @@ describe("schema push command", () => {
       expect(console.warn).toHaveBeenCalledWith(
         expect.stringContaining("Folder banners still names the deleted banner as a content type."),
       );
+    });
+
+    it.each([403, 500])(
+      "should refuse to delete a block when its stories can't be counted (%i)",
+      async (status) => {
+        const page = makeMockComponent({ name: "page" });
+        preconditions.hasLocalSchema({ components: [page] as any, datasources: [] });
+        preconditions.hasRemoteComponents([page, banner()]);
+        preconditions.failsToCountStories(status);
+        const writes = componentWrites();
+
+        await push("--no-migrations", "--delete");
+
+        expect(writes).toEqual([]);
+        expect(console.error).toHaveBeenCalledWith(
+          expect.stringContaining(
+            "Could not check whether stories use banner, which --delete would delete",
+          ),
+        );
+        expect(console.error).toHaveBeenCalledWith(
+          expect.stringContaining("Pass --force to delete it without checking."),
+        );
+      },
+    );
+
+    it("should delete a block without counting its stories with --force", async () => {
+      const remoteBanner = banner();
+      const page = makeMockComponent({ name: "page" });
+      preconditions.hasLocalSchema({ components: [page] as any, datasources: [] });
+      preconditions.hasRemoteComponents([page, remoteBanner]);
+      preconditions.failsToCountStories(500);
+      const writes = componentWrites();
+
+      await push("--no-migrations", "--delete", "--force");
+
+      expect(writes).toEqual([{ method: "DELETE", id: String(remoteBanner.id), name: undefined }]);
     });
 
     it("should name the possible rename on a dry run without asking", async () => {

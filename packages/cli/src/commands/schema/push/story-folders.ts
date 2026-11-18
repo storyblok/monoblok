@@ -4,22 +4,18 @@ import { fetchStory, updateStory } from "../../stories/actions";
 import type { Story } from "../../stories/constants";
 import type { BlockRename } from "./block-renames";
 
-/**
- * The number of stories that contain `block`, or `undefined` when the space
- * can't be read.
- */
-export async function countStoriesUsing(space: string, block: string): Promise<number | undefined> {
-  try {
-    const { response } = await getMapiClient().stories.list({
-      path: { space_id: Number(space) },
-      query: { contain_component: block, per_page: 1, story_only: true },
-      throwOnError: true,
-    });
-    const total = Number(response.headers.get("total"));
-    return Number.isFinite(total) ? total : undefined;
-  } catch {
-    return undefined;
+/** The number of stories that contain `block`. */
+export async function countStoriesUsing(space: string, block: string): Promise<number> {
+  const { response } = await getMapiClient().stories.list({
+    path: { space_id: Number(space) },
+    query: { contain_component: block, per_page: 1, story_only: true },
+    throwOnError: true,
+  });
+  const total = Number(response.headers.get("total") ?? Number.NaN);
+  if (!Number.isFinite(total)) {
+    throw new TypeError(`The Management API returned no story count for ${block}.`);
   }
+  return total;
 }
 
 /** A folder's default content type and the content types it allows, by block name. */

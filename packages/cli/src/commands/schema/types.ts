@@ -96,6 +96,8 @@ export interface ChangesetEntry {
   before?: Record<string, unknown>;
   after?: Record<string, unknown>;
   fieldChanges?: FieldChange[];
+  /** The push failed to apply this change, so the space doesn't reflect it. */
+  failed?: true;
 }
 
 /** Persisted record of a push operation. Contains the full pre-push remote state for rollback and a list of what changed. */

@@ -42,7 +42,8 @@ export const generateMigration = async (
 };
 
 /**
- * The latest `schema push` to `space` that changed `block`: when it ran, the
+ * The latest `schema push` to `space` that changed `block`, skipping pushes that
+ * failed to change it: when it ran, the
  * space's components before it, and the name the push gave the block. A push
  * that renamed the block records it under its new name and its pre-push state
  * under the old one, so either name finds it. The space renamed the block in
@@ -58,7 +59,7 @@ export async function latestPushChanging(
     const changeset = await loadChangeset(file);
     if (String(changeset.spaceId) !== space) continue;
     for (const change of changeset.changes) {
-      if (change.type !== "component") continue;
+      if (change.type !== "component" || change.failed) continue;
       const nameBefore = typeof change.before?.name === "string" ? change.before.name : change.name;
       if (change.name === block || nameBefore === block) {
         return {

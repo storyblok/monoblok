@@ -385,6 +385,7 @@ describe("migrations generate command", () => {
         changed: string,
         timestamp = pushedAt,
         field = "old_title",
+        failed = false,
       ) => ({
         [`.storyblok/schema/changesets/${timestamp.replace(/[:.]/g, "-")}.json`]: JSON.stringify({
           timestamp,
@@ -397,7 +398,9 @@ describe("migrations generate command", () => {
             componentFolders: [],
             datasources: [],
           },
-          changes: [{ type: "component", name: changed, action: "update" }],
+          changes: [
+            { type: "component", name: changed, action: "update", ...(failed && { failed }) },
+          ],
         }),
       });
 
@@ -463,6 +466,38 @@ describe("migrations generate command", () => {
         await generate("component-name", "--schema", "src/schema.ts", "--before-push");
 
         expect(writtenFile(`${ID}.before.ts`)).toContain("defineField('old_title'");
+      });
+
+      it("should skip a push that failed to change the block with --before-push", async () => {
+        preconditions.componentExists();
+        preconditions.hasSchemaEntry();
+        vol.fromJSON({
+          ...changesetFor(12345, "component-name"),
+          ...changesetFor(
+            12345,
+            "component-name",
+            "2026-10-16T09:01:00.000Z",
+            "failed_title",
+            true,
+          ),
+        });
+
+        await generate("component-name", "--schema", "src/schema.ts", "--before-push");
+
+        expect(writtenFile(`${ID}.before.ts`)).toContain("defineField('old_title'");
+      });
+
+      it("should not warn about a push that failed to change the block", async () => {
+        preconditions.componentExists();
+        preconditions.hasSchemaEntry();
+        vol.fromJSON(changesetFor(12345, "component-name", pushedAt, "old_title", true));
+
+        await generate("component-name", "--schema", "src/schema.ts");
+
+        expect(writtenFile(`${ID}.before.ts`)).toContain("defineField('title'");
+        expect(console.warn).not.toHaveBeenCalledWith(
+          expect.stringContaining("schema push changed"),
+        );
       });
 
       it("should warn that the snapshot describes the pushed block without --before-push", async () => {

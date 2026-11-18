@@ -5,7 +5,9 @@ import { vol } from "memfs";
 import { confirm } from "@inquirer/prompts";
 
 import "../index";
+import "../../migrations/index";
 import { schemaCommand } from "../command";
+import { migrationsCommand } from "../../migrations/command";
 import type { SchemaData } from "../types";
 import { DEFAULT_SPACE, getID } from "../../__tests__/helpers";
 
@@ -2187,6 +2189,61 @@ describe("schema push command", () => {
     expect(migration).not.toContain("teaser");
     expect(console.warn).toHaveBeenCalledWith(
       expect.stringContaining("The push failed, but it updated article."),
+    );
+  });
+
+  it("should leave the blocks a failed push didn't change out of migrations generate --before-push", async () => {
+    const remoteArticle = makeMockComponent({
+      name: "article",
+      schema: { slug_override: { type: "text", pos: 0 } },
+    });
+    const remoteTeaser = makeMockComponent({
+      name: "teaser",
+      schema: { link: { type: "text", pos: 0 }, title: { type: "text", pos: 1 } },
+    });
+    const localArticle = { ...remoteArticle, schema: { slug_custom: { type: "text", pos: 0 } } };
+    const localTeaser = { ...remoteTeaser, schema: { title: { type: "text", pos: 0 } } };
+    preconditions.hasLocalSchema({
+      components: [localArticle, localTeaser] as any,
+      datasources: [],
+    });
+    preconditions.hasRemoteFolders([]);
+    preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
+    preconditions.updatesOnlyComponent(localArticle, [remoteArticle, remoteTeaser]);
+    vol.fromJSON({ "schema.ts": "export type Schema = {};" });
+    await schemaCommand.parseAsync([
+      "node",
+      "test",
+      "push",
+      "schema.ts",
+      "--space",
+      DEFAULT_SPACE,
+      "--no-migrations",
+    ]);
+    vi.mocked(console.error).mockClear();
+
+    const generate = (block: string) =>
+      migrationsCommand.parseAsync([
+        "node",
+        "test",
+        "generate",
+        block,
+        "--space",
+        DEFAULT_SPACE,
+        "--schema",
+        "schema.ts",
+        "--before-push",
+      ]);
+    await generate("article");
+    await generate("teaser");
+
+    expect(writtenFile("-article.before.ts")).toContain("defineField('slug_override'");
+    expect(writtenFile("-teaser.ts")).toBeUndefined();
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining(
+        `No schema push to space ${DEFAULT_SPACE} recorded a change to teaser`,
+      ),
     );
   });
 

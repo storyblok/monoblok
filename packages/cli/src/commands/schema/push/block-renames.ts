@@ -148,9 +148,8 @@ function isRenameRunning(error: unknown): boolean {
 
 /**
  * Renames a block in place and has the space rename it in the stories,
- * folders, and other blocks that name it, then waits until no story uses the
- * old name. The space renames the block in the stories of a small space right
- * away and in the background otherwise.
+ * folders, and other blocks that name it. The space renames the block in the
+ * stories of a small space right away and in the background otherwise.
  */
 export async function renameBlockInSpace(
   space: string,
@@ -167,7 +166,7 @@ export async function renameBlockInSpace(
         query: { update_content: true },
         throwOnError: true,
       });
-      break;
+      return;
     } catch (error) {
       if (!isRenameRunning(error)) throw error;
       if (Date.now() >= deadline) {
@@ -178,6 +177,14 @@ export async function renameBlockInSpace(
       await delay(RENAME_POLL_INTERVAL_MS);
     }
   }
+}
+
+/** Waits until no story uses the name a block had before `rename`. */
+export async function waitUntilStoriesRenamed(
+  space: string,
+  { from, to }: BlockRename,
+): Promise<void> {
+  const deadline = Date.now() + RENAME_TIMEOUT_MS;
   while ((await countStoriesUsing(space, from)) > 0) {
     if (Date.now() >= deadline) {
       throw new CommandError(

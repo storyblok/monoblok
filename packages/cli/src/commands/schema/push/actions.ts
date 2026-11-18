@@ -17,7 +17,7 @@ import {
 } from "../transform";
 import { buildGroupPathByUuid, mapSchemaGroupLists } from "../folders";
 import { collectTagNames, mapSchemaTagLists } from "../tags";
-import { renameBlockInSpace } from "./block-renames";
+import { renameBlockInSpace, waitUntilStoriesRenamed } from "./block-renames";
 import type { BlockRename } from "./block-renames";
 
 /** A resolved component group reference: its numeric id and server uuid. */
@@ -135,7 +135,12 @@ export async function executePush(
   local: SchemaData,
   remote: RemoteSchemaData,
   diffResult: DiffResult,
-  options: { delete: boolean; renames?: readonly BlockRename[] },
+  options: {
+    delete: boolean;
+    renames?: readonly BlockRename[];
+    /** Called for each block the push created, updated, or deleted. */
+    onComponentPushed?: (name: string) => void;
+  },
 ): Promise<{ created: number; updated: number; deleted: number; createdTags: number }> {
   const client = getMapiClient();
   const spaceIdNum = Number(spaceId);
@@ -282,19 +287,29 @@ export async function executePush(
       }
     }),
   );
+  const componentPushed = (name: string) => options.onComponentPushed?.(name);
+  // Report every block that landed before the first failure aborts the push.
+  let firstFailure: { diff: (typeof upsertDiffs)[number]; reason: unknown } | undefined;
   for (let i = 0; i < componentResults.length; i++) {
     const result = componentResults[i];
     const diff = upsertDiffs[i];
-    if (result.status === "fulfilled") {
-      if (result.value === "created") {
-        created++;
-      } else if (result.value === "updated") {
-        updated++;
-      }
-    } else {
-      const eventId = diff.action === "create" ? "push_component" : "update_component";
-      handleAPIError(eventId, result.reason, `Failed to ${diff.action} component ${diff.name}`);
+    if (result.status === "rejected") {
+      firstFailure ??= { diff, reason: result.reason };
+      continue;
     }
+    if (result.value === "created") {
+      created++;
+    } else if (result.value === "updated") {
+      updated++;
+    } else {
+      continue;
+    }
+    componentPushed(diff.name);
+  }
+  if (firstFailure) {
+    const { diff, reason } = firstFailure;
+    const eventId = diff.action === "create" ? "push_component" : "update_component";
+    handleAPIError(eventId, reason, `Failed to ${diff.action} component ${diff.name}`);
   }
 
   // 2b. Rename blocks one at a time, after the other updates: while the space
@@ -319,6 +334,19 @@ export async function executePush(
       );
     }
     updated++;
+    componentPushed(rename.to);
+    try {
+      await waitUntilStoriesRenamed(spaceId, rename);
+    } catch (error) {
+      if (error instanceof CommandError) {
+        throw error;
+      }
+      handleAPIError(
+        "pull_stories",
+        error,
+        `Failed to check whether the space renamed ${rename.from} to ${rename.to} in its stories`,
+      );
+    }
   }
 
   // 3. Upsert datasources
@@ -397,6 +425,7 @@ export async function executePush(
       if (result.status === "fulfilled") {
         if (result.value) {
           deleted++;
+          componentPushed(staleComponents[i].name);
         }
       } else {
         deleteErrors.push({

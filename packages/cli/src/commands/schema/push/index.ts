@@ -12,7 +12,7 @@ import { resolvePath } from "../../../utils/filesystem";
 import { schemaCommand } from "../command";
 import { displayPath } from "../utils";
 import type { SchemaPushOptions } from "./constants";
-import type { SchemaData } from "../types";
+import type { ChangesetData, SchemaData } from "../types";
 import { loadSchema } from "../load-schema";
 import { diffSchema } from "../diff-schema";
 import { fetchRemoteSchema, localToNormalized, remoteToNormalized } from "../actions";
@@ -541,7 +541,7 @@ schemaCommand
       const resolvedPath = resolvePath(basePath, "");
       const timestamp = new Date().toISOString();
 
-      const changesetPath = await saveChangeset(resolvedPath, {
+      const changeset: ChangesetData = {
         timestamp,
         spaceId: Number(space),
         remote: {
@@ -550,20 +550,38 @@ schemaCommand
           datasources: rawDatasources,
         },
         changes: buildChangesetEntries(diffResult, local, remote, { delete: options.delete }),
-      });
+      };
+      const changesetPath = await saveChangeset(resolvedPath, changeset);
       logger.info("Changeset saved", { path: displayPath(changesetPath, basePath) });
 
       // 9. Execute push (skipped when nothing to push).
       let pushResult: Awaited<ReturnType<typeof executePush>> | null = null;
       if (!nothingToPush) {
         const pushSpinner = ui.createSpinner("Pushing schema...");
+        const pushedComponents = new Set<string>();
         try {
           pushResult = await executePush(space, local, remote, diffResult, {
             delete: options.delete,
             renames: blockRenames,
+            onComponentPushed: (name) => pushedComponents.add(name),
           });
         } catch (error) {
           pushSpinner.failed("Failed to push schema");
+          // `migrations generate --before-push` reads the changeset, so it
+          // must not take a block the push failed to change for changed.
+          await saveChangeset(resolvedPath, {
+            ...changeset,
+            changes: changeset.changes.map((change) =>
+              change.type === "component" && !pushedComponents.has(change.name)
+                ? { ...change, failed: true }
+                : change,
+            ),
+          }).catch((maybeError: unknown) => {
+            logger.warn("Failed to mark failed changes in the changeset", {
+              path: displayPath(changesetPath, basePath),
+              error: toError(maybeError).message,
+            });
+          });
           if (generatedMigrations) {
             // Blocks are updated independently, so some may have landed. A rerun
             // no longer sees their changes, so handle them now.

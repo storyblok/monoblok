@@ -1122,11 +1122,11 @@ describe("under smuggled onto a key op", () => {
         { block: "card", fields: ["title", "description"], into: "slug", under },
         (values) => values.join(" "),
       ),
-      renameBlock({ block: "card", to: "teaser", under }),
+      renameBlock({ block: "card", to: "banner", under }),
       wrapChildren({
         block: "section",
         field: "items",
-        into: { block: "card", field: "items" },
+        into: { block: "card", field: "meta" },
         under,
       }),
       unwrapChildren({

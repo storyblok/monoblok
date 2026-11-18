@@ -248,7 +248,7 @@ describe("the under rule", () => {
       mergeFields(mergeSpec, (values) => values.join(" ")),
     ]);
 
-    const renameSpec = { block: "card", to: "teaser", under: "section" } as const;
+    const renameSpec = { block: "card", to: "banner", under: "section" } as const;
     defineMigration<FixtureSchema>([
       // @ts-expect-error same for renameBlock
       renameBlock(renameSpec),
@@ -257,7 +257,7 @@ describe("the under rule", () => {
     const wrapSpec = {
       block: "section",
       field: "items",
-      into: { block: "card", field: "items" },
+      into: { block: "card", field: "meta" },
       under: "page",
     } as const;
     defineMigration<FixtureSchema>([
@@ -555,6 +555,93 @@ describe("fieldsToBlock", () => {
         into: { block: "meta", field: "meta" },
         // @ts-expect-error a key op applies to every instance
         under: "section",
+      }),
+    ]);
+  });
+});
+
+describe("block names", () => {
+  it("should accept a renameBlock target the post-migration schema declares", () => {
+    defineMigration<AfterRenameArticleAuthor, FixtureSchema>([
+      renameBlock({ block: "card", to: "banner" }),
+    ]);
+  });
+
+  it("should reject a renameBlock target the post-migration schema does not declare", () => {
+    defineMigration<AfterRenameArticleAuthor, FixtureSchema>([
+      // @ts-expect-error After has no block "does_not_exist"
+      renameBlock({ block: "card", to: "does_not_exist" }),
+    ]);
+    defineMigration<FixtureSchema>([
+      // @ts-expect-error the one schema has no block "does_not_exist" either
+      renameBlock({ block: "card", to: "does_not_exist" }),
+    ]);
+  });
+
+  it("should check the wrapChildren container and its field against the post-migration schema", () => {
+    defineMigration<FixtureSchema>([
+      wrapChildren({ block: "section", field: "items", into: { block: "card", field: "meta" } }),
+    ]);
+    defineMigration<FixtureSchema>([
+      wrapChildren({
+        block: "section",
+        field: "items",
+        // @ts-expect-error there is no block "row"
+        into: { block: "row", field: "meta" },
+      }),
+    ]);
+    defineMigration<FixtureSchema>([
+      wrapChildren({
+        block: "section",
+        field: "items",
+        // @ts-expect-error card has no field "columns"
+        into: { block: "card", field: "columns" },
+      }),
+    ]);
+  });
+
+  it("should check the unwrapChildren container and its field against the pre-migration schema", () => {
+    defineMigration<AfterRenameArticleAuthor, FixtureSchema>([
+      unwrapChildren({ block: "section", field: "items", from: { block: "card", field: "meta" } }),
+    ]);
+    defineMigration<AfterRenameArticleAuthor, FixtureSchema>([
+      unwrapChildren({
+        block: "section",
+        field: "items",
+        // @ts-expect-error Before has no block "row"
+        from: { block: "row", field: "meta" },
+      }),
+    ]);
+    defineMigration<AfterRenameArticleAuthor, FixtureSchema>([
+      unwrapChildren({
+        block: "section",
+        field: "items",
+        // @ts-expect-error card has no field "columns" in Before
+        from: { block: "card", field: "columns" },
+      }),
+    ]);
+  });
+
+  it("should accept an unwrapChildren container the one schema no longer has", () => {
+    // Under the shorthand the container is a read, and dissolving it is
+    // usually why it is gone from the schema.
+    defineMigration<FixtureSchema>([
+      unwrapChildren({
+        block: "section",
+        field: "items",
+        from: { block: "row", field: "columns" },
+      }),
+    ]);
+  });
+
+  it("should accept any block name without schema types", () => {
+    defineMigration([
+      renameBlock({ block: "card", to: "teaser" }),
+      wrapChildren({ block: "section", field: "items", into: { block: "row", field: "columns" } }),
+      unwrapChildren({
+        block: "section",
+        field: "items",
+        from: { block: "row", field: "columns" },
       }),
     ]);
   });

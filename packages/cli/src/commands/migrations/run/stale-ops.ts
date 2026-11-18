@@ -1,5 +1,4 @@
-import type { CoercionTarget, CompiledMigration, MigrationOp } from "@storyblok/schema";
-import { coercionBetween } from "@storyblok/schema/internal/codegen";
+import type { CompiledMigration, MigrationOp } from "@storyblok/schema";
 
 /** The fields of each block the space holds now, mapped to their field types. */
 export type LiveFields = ReadonlyMap<string, ReadonlyMap<string, string | undefined>>;
@@ -76,17 +75,40 @@ function undoEffects(
   if (op.kind === "coerceField") fields.set(op.field, undefined);
 }
 
-/** What a field of `type` stores, for the types `coerceField` converts to. */
-function storedValue(type: string | undefined): CoercionTarget | undefined {
-  return type === undefined ? undefined : coercionBetween(type, type)?.to;
-}
+/** What a value is, as far as the check tells field types apart. */
+type ValueKind = "string" | "number" | "boolean" | "array" | "object";
 
-function fitsStoredValue(value: unknown, stored: CoercionTarget): boolean {
+/** The kind of value each built-in field type stores. Plugin fields store anything. */
+const STORED_KIND: ReadonlyMap<string, ValueKind> = new Map([
+  ["text", "string"],
+  ["textarea", "string"],
+  ["markdown", "string"],
+  ["option", "string"],
+  ["datetime", "string"],
+  ["number", "number"],
+  ["boolean", "boolean"],
+  ["options", "array"],
+  ["bloks", "array"],
+  ["multiasset", "array"],
+  ["richtext", "object"],
+  ["asset", "object"],
+  ["multilink", "object"],
+  ["table", "object"],
+]);
+
+function fitsKind(value: unknown, kind: ValueKind): boolean {
   if (value === null) return true;
-  if (stored === "boolean") return typeof value === "boolean";
-  // A number field stores its value as a string.
-  if (stored === "number") return typeof value === "number" || typeof value === "string";
-  return typeof value === "string";
+  switch (kind) {
+    case "array":
+      return Array.isArray(value);
+    case "object":
+      return typeof value === "object" && !Array.isArray(value);
+    // A number field stores its value as a string.
+    case "number":
+      return typeof value === "number" || typeof value === "string";
+    default:
+      return typeof value === kind;
+  }
 }
 
 function isThenable(value: unknown): value is PromiseLike<unknown> {
@@ -122,22 +144,22 @@ function constantBackfill(op: MigrationOp): { value: unknown } | undefined {
  * An op that writes a value the field's type in the space no longer stores,
  * such as a text → number coercion after the field was changed back to text,
  * or a boolean backfill of a field added back as text. A field type the check
- * knows no stored value for, such as option, is left to the op.
+ * doesn't know, such as a plugin's, is left to the op.
  */
 function retypedField(op: MigrationOp, { name, fields }: SpaceBlock): Retyped | undefined {
   if (op.kind !== "coerceField" && op.kind !== "addField") {
     return undefined;
   }
   const type = fields.get(op.field);
-  const stored = storedValue(type);
-  if (type === undefined || stored === undefined) {
+  const kind = type === undefined ? undefined : STORED_KIND.get(type);
+  if (type === undefined || kind === undefined) {
     return undefined;
   }
   const backfill = constantBackfill(op);
   const fits =
     op.kind === "coerceField"
-      ? op.to === stored
-      : backfill === undefined || fitsStoredValue(backfill.value, stored);
+      ? op.to === kind
+      : backfill === undefined || fitsKind(backfill.value, kind);
   return fits ? undefined : { block: name, field: op.field, type };
 }
 

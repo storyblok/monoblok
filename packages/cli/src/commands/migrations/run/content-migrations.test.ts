@@ -637,6 +637,41 @@ describe("migrations run command for content migrations", () => {
     ]);
   });
 
+  it.each<[string, string | boolean | string[]]>([
+    ["option", false],
+    ["bloks", "none"],
+    ["richtext", []],
+  ])(
+    "should not backfill a field of type %s with a value it doesn't store",
+    async (type, value) => {
+      space.hasMigrations([
+        "0001-add-extra",
+        defineMigration([addField({ block: "page", field: "extra" }, () => value)]),
+      ]);
+      space.hasBlocks({ page: { body: "bloks", extra: type } });
+      space.hasStories(storyWithCard());
+      space.canUpdateStories();
+
+      await apply();
+
+      expect(space.writes).toEqual([]);
+    },
+  );
+
+  it("should backfill a field of a type the check doesn't know", async () => {
+    space.hasMigrations([
+      "0001-add-extra",
+      defineMigration([addField({ block: "page", field: "extra" }, () => false)]),
+    ]);
+    space.hasBlocks({ page: { body: "bloks", extra: "custom" } });
+    space.hasStories(storyWithCard());
+    space.canUpdateStories();
+
+    await apply();
+
+    expect(space.story(1)?.content).toMatchObject({ extra: false });
+  });
+
   it("should backfill a field with a value that fits its type", async () => {
     space.hasMigrations([
       "0001-add-noindex",

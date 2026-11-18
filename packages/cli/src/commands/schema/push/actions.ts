@@ -17,6 +17,8 @@ import {
 } from "../transform";
 import { buildGroupPathByUuid, mapSchemaGroupLists } from "../folders";
 import { collectTagNames, mapSchemaTagLists } from "../tags";
+import { renameBlockInSpace } from "./block-renames";
+import type { BlockRename } from "./block-renames";
 
 /** A resolved component group reference: its numeric id and server uuid. */
 interface GroupRef {
@@ -133,7 +135,7 @@ export async function executePush(
   local: SchemaData,
   remote: RemoteSchemaData,
   diffResult: DiffResult,
-  options: { delete: boolean },
+  options: { delete: boolean; renames?: readonly BlockRename[] },
 ): Promise<{ created: number; updated: number; deleted: number; createdTags: number }> {
   const client = getMapiClient();
   const spaceIdNum = Number(spaceId);
@@ -253,8 +255,11 @@ export async function executePush(
       );
     }
   }
+  const renames = options.renames ?? [];
+  const renamedTo = new Set(renames.map((rename) => rename.to));
+  const upsertDiffs = componentDiffs.filter((diff) => !renamedTo.has(diff.name));
   const componentResults = await Promise.allSettled(
-    componentDiffs.map(async (diff) => {
+    upsertDiffs.map(async (diff) => {
       const resolvedComp = resolvedComponents.get(diff.name);
       if (diff.action === "create" && resolvedComp) {
         await client.components.create({
@@ -279,7 +284,7 @@ export async function executePush(
   );
   for (let i = 0; i < componentResults.length; i++) {
     const result = componentResults[i];
-    const diff = componentDiffs[i];
+    const diff = upsertDiffs[i];
     if (result.status === "fulfilled") {
       if (result.value === "created") {
         created++;
@@ -290,6 +295,30 @@ export async function executePush(
       const eventId = diff.action === "create" ? "push_component" : "update_component";
       handleAPIError(eventId, result.reason, `Failed to ${diff.action} component ${diff.name}`);
     }
+  }
+
+  // 2b. Rename blocks one at a time, after the other updates: while the space
+  //     renames a block in its stories in the background, it refuses every
+  //     block update.
+  for (const rename of renames) {
+    const existing = remote.components.get(rename.to);
+    const resolvedComp = resolvedComponents.get(rename.to);
+    if (!existing?.id || !resolvedComp) {
+      continue;
+    }
+    try {
+      await renameBlockInSpace(spaceId, existing.id, toComponentUpdate(resolvedComp), rename);
+    } catch (error) {
+      if (error instanceof CommandError) {
+        throw error;
+      }
+      handleAPIError(
+        "update_component",
+        error,
+        `Failed to rename component ${rename.from} to ${rename.to}`,
+      );
+    }
+    updated++;
   }
 
   // 3. Upsert datasources

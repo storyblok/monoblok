@@ -1,9 +1,11 @@
 import { resolvePath, saveToFile } from "../../../utils/filesystem";
 import type { Component } from "../../components/constants";
 import { join } from "pathe";
+import type { WireComponent } from "@storyblok/schema/codegen";
 import { handleFileSystemError } from "../../../utils";
 import { buildMigrationFilename } from "../migration-filename";
 import { listChangesets, loadChangeset } from "../../schema/rollback/actions";
+import { withRenamedBlocks } from "../../schema/push/block-renames";
 
 const getMigrationTemplate = () => {
   return `export default function (block) {
@@ -24,7 +26,7 @@ const getMigrationTemplate = () => {
 export const generateMigration = async (
   space: string,
   path: string | undefined,
-  component: Component,
+  component: Pick<Component, "name">,
   suffix?: string,
 ): Promise<string> => {
   const resolvedPath = resolvePath(path, `migrations/${space}`);
@@ -40,15 +42,18 @@ export const generateMigration = async (
 };
 
 /**
- * The pre-push space state of the latest `schema push` to `space` that changed
- * `block`, and the name `block` had before it. A push that renamed the block
- * records it under its new name, so either name finds it.
+ * The latest `schema push` to `space` that changed `block`: when it ran, the
+ * space's components before it, and the name the push gave the block. A push
+ * that renamed the block records it under its new name and its pre-push state
+ * under the old one, so either name finds it. The space renamed the block in
+ * its stories along with the block, so the components hold it under its new
+ * name.
  */
 export async function latestPushChanging(
   path: string | undefined,
   space: string,
   block: string,
-): Promise<{ timestamp: string; components: Component[]; blockBefore: string } | undefined> {
+): Promise<{ timestamp: string; components: WireComponent[]; block: string } | undefined> {
   for (const file of await listChangesets(resolvePath(path, ""))) {
     const changeset = await loadChangeset(file);
     if (String(changeset.spaceId) !== space) continue;
@@ -58,8 +63,10 @@ export async function latestPushChanging(
       if (change.name === block || nameBefore === block) {
         return {
           timestamp: changeset.timestamp,
-          components: changeset.remote.components,
-          blockBefore: nameBefore,
+          components: withRenamedBlocks(changeset.remote.components, [
+            { from: nameBefore, to: change.name },
+          ]),
+          block: change.name,
         };
       }
     }

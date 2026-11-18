@@ -1,5 +1,10 @@
-import type { Component } from "../../../types";
+import type { WireComponent } from "@storyblok/schema/codegen";
+import { getMapiClient } from "../../../api";
+import type { Component, ComponentUpdate } from "../../../types";
+import { CommandError, isRecord } from "../../../utils";
+import { delay } from "../../../utils/fetch";
 import type { DiffResult, RemoteSchemaData, SchemaData } from "../types";
+import { countStoriesUsing } from "./story-folders";
 
 export type BlockRename = { from: string; to: string };
 
@@ -85,4 +90,100 @@ export function withBlockRenames(
     components.set(to, component);
   }
   return { ...remote, components };
+}
+
+const BLOCK_LIST_KEYS = ["component_whitelist", "component_denylist"];
+
+/**
+ * `components` as the space holds them once it renamed each block in `renames`:
+ * the block under its new name, and the fields that allow or deny it naming it
+ * so.
+ */
+export function withRenamedBlocks(
+  components: readonly WireComponent[],
+  renames: readonly BlockRename[],
+): WireComponent[] {
+  if (renames.length === 0) return [...components];
+  const renamed = new Map(renames.map(({ from, to }) => [from, to]));
+  const rename = (name: unknown) => (typeof name === "string" ? (renamed.get(name) ?? name) : name);
+  const renameLists = (field: unknown) => {
+    if (!isRecord(field)) return field;
+    const lists = BLOCK_LIST_KEYS.filter((key) => Array.isArray(field[key])).map((key) => {
+      const list: unknown[] = Array.isArray(field[key]) ? field[key] : [];
+      return [key, list.map(rename)];
+    });
+    return lists.length === 0 ? field : { ...field, ...Object.fromEntries(lists) };
+  };
+  return components.map((component) => ({
+    ...component,
+    name: renamed.get(component.name) ?? component.name,
+    schema: isRecord(component.schema)
+      ? Object.fromEntries(
+          Object.entries(component.schema).map(([key, field]) => [key, renameLists(field)]),
+        )
+      : component.schema,
+  }));
+}
+
+/** How often to check whether the space finished renaming a block in its stories. */
+const RENAME_POLL_INTERVAL_MS = 2_000;
+/** How long to wait for the space to rename a block in its stories. */
+export const RENAME_TIMEOUT_MS = 10 * 60_000;
+
+/**
+ * Whether the space refused the request because it is renaming a block or a
+ * field in its stories in the background, which blocks every block update
+ * until it finishes.
+ */
+function isRenameRunning(error: unknown): boolean {
+  if (!isRecord(error) || !isRecord(error.response)) return false;
+  const { status, data } = error.response;
+  return (
+    status === 422 &&
+    isRecord(data) &&
+    typeof data.error === "string" &&
+    /running in the background/i.test(data.error)
+  );
+}
+
+/**
+ * Renames a block in place and has the space rename it in the stories,
+ * folders, and other blocks that name it, then waits until no story uses the
+ * old name. The space renames the block in the stories of a small space right
+ * away and in the background otherwise.
+ */
+export async function renameBlockInSpace(
+  space: string,
+  id: number,
+  component: ComponentUpdate,
+  { from, to }: BlockRename,
+): Promise<void> {
+  const deadline = Date.now() + RENAME_TIMEOUT_MS;
+  for (;;) {
+    try {
+      await getMapiClient().components.update(id, {
+        path: { space_id: Number(space) },
+        body: { component },
+        query: { update_content: true },
+        throwOnError: true,
+      });
+      break;
+    } catch (error) {
+      if (!isRenameRunning(error)) throw error;
+      if (Date.now() >= deadline) {
+        throw new CommandError(
+          `The space is still renaming a block or field in the background, so ${from} could not be renamed to ${to}. Wait until it finishes, then run schema push again.`,
+        );
+      }
+      await delay(RENAME_POLL_INTERVAL_MS);
+    }
+  }
+  while ((await countStoriesUsing(space, from)) > 0) {
+    if (Date.now() >= deadline) {
+      throw new CommandError(
+        `The space is still renaming ${from} to ${to} in the stories that use it. Wait until it finishes, then run schema push again to push the rest of the schema before you run content migrations.`,
+      );
+    }
+    await delay(RENAME_POLL_INTERVAL_MS);
+  }
 }

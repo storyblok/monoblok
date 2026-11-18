@@ -188,27 +188,6 @@ describe("migrations run command for content migrations", () => {
     );
   });
 
-  it("should skip a block rename while the space still holds the block under its old name", async () => {
-    space.hasMigrations(["0001-rename-card-to-teaser", renameCardToTeaser]);
-    space.hasBlocks({ card: ["title"], page: ["body"] });
-    space.hasStories(storyWithCard());
-    space.canUpdateStories();
-    const warn = vi.spyOn(getUI(), "warn");
-    const info = vi.spyOn(getUI(), "info");
-
-    await apply();
-
-    expect(space.writes).toEqual([]);
-    expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining(
-        "renameBlock card skipped: the space has no teaser block. Push the schema that renames it first",
-      ),
-    );
-    expect(info).toHaveBeenCalledWith(
-      expect.stringContaining("Push the schema the migration was written for, then run it again."),
-    );
-  });
-
   it("should say a migration without ops has none, instead of blaming the space's blocks", async () => {
     space.hasMigrations(["0001-card", defineMigration([])]);
     space.hasBlocks({ card: ["title"], page: ["body"] });
@@ -287,27 +266,6 @@ describe("migrations run command for content migrations", () => {
     expect(space.story(1)?.content.body).toEqual([
       { _uid: "card-1", component: "card", first: "Ada", last: "Lovelace" },
     ]);
-  });
-
-  it("should warn about folders that still name a block the migration renamed", async () => {
-    space.hasMigrations(["0001-rename-card-to-teaser", renameCardToTeaser]);
-    space.hasStories(storyWithCard(), {
-      id: 9,
-      name: "Cards",
-      slug: "cards",
-      full_slug: "cards",
-      is_folder: true,
-      default_root: "card",
-      content: { content_types: ["card"], lock_subfolders_content_types: false },
-    });
-    space.canUpdateStories();
-    const warn = vi.spyOn(getUI(), "warn");
-
-    await apply();
-
-    expect(warn).toHaveBeenCalledWith(
-      "Folder cards still names card as a content type. Change it to teaser, or schema push renames it when it renames the block.",
-    );
   });
 
   it("should keep a field a later schema change added back", async () => {

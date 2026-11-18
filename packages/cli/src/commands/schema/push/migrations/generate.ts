@@ -108,11 +108,6 @@ export function renderMigrationCode(changes: BreakingChange[]): string {
         break;
       }
 
-      case "block_renamed":
-        lines.push(`  // Block renamed: ${change.from} → ${change.to}`);
-        lines.push(`  block.component = '${change.to}';`);
-        break;
-
       case "options_removed": {
         const values = change.values.map((value) => JSON.stringify(value)).join(", ");
         lines.push(`  // Options no longer offered by ${change.field}: ${values}`);
@@ -229,8 +224,6 @@ export function toMigrationOps(block: string, changes: BreakingChange[]): Migrat
           },
         ];
       }
-      case "block_renamed":
-        return [{ kind: "renameBlock", block, to: change.to }];
       case "options_removed":
         return [
           {
@@ -287,8 +280,6 @@ function describeChange(change: BreakingChange): string {
       return `require ${change.field}`;
     case "options_removed":
       return `remove options from ${change.field}`;
-    case "block_renamed":
-      return `rename to ${change.to}`;
   }
 }
 
@@ -298,19 +289,14 @@ const listFormat = new Intl.ListFormat("en", { type: "conjunction" });
 
 /**
  * The title of a typed migration: its changes by block, or only the blocks
- * when the changes don't fit. Blocks go by their name before the push, as the
- * migration addresses them.
+ * when the changes don't fit.
  */
-export function migrationTitle(
-  changes: readonly ComponentBreakingChanges[],
-  blockBefore: (comp: ComponentBreakingChanges) => string,
-): string {
+export function migrationTitle(changes: readonly ComponentBreakingChanges[]): string {
+  const blocks = changes.map((comp) => comp.componentName);
   const detailed = `Update ${changes
-    .map((comp) => `${blockBefore(comp)}: ${comp.changes.map(describeChange).join(", ")}`)
+    .map((comp) => `${comp.componentName}: ${comp.changes.map(describeChange).join(", ")}`)
     .join("; ")}`;
-  return detailed.length <= MAX_TITLE_LENGTH
-    ? detailed
-    : `Update ${listFormat.format(changes.map(blockBefore))}`;
+  return detailed.length <= MAX_TITLE_LENGTH ? detailed : `Update ${listFormat.format(blocks)}`;
 }
 
 /** Options for writing a migration file. */

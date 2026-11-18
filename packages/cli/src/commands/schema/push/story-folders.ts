@@ -1,8 +1,7 @@
 import { getMapiClient } from "../../../api";
 import { fetchAllPages, isRecord } from "../../../utils";
-import { fetchStory, updateStory } from "../../stories/actions";
+import { fetchStory } from "../../stories/actions";
 import type { Story } from "../../stories/constants";
-import type { BlockRename } from "./block-renames";
 
 /** The number of stories that contain `block`. */
 export async function countStoriesUsing(space: string, block: string): Promise<number> {
@@ -66,27 +65,4 @@ export async function foldersNaming(
 /** A folder's slug and the block names it restricts to, for messages. */
 export function describeFolder(folder: FolderRestriction): string {
   return folder.story.full_slug ?? folder.story.slug ?? String(folder.story.id);
-}
-
-/** Points each folder's default and allowed content types at the blocks' new names. */
-export async function renameFolderRestrictions(
-  space: string,
-  folders: readonly FolderRestriction[],
-  renames: readonly BlockRename[],
-): Promise<void> {
-  const renamed = new Map(renames.map(({ from, to }) => [from, to]));
-  const rename = (name: string) => renamed.get(name) ?? name;
-  for (const { story, defaultRoot, contentTypes } of folders) {
-    const content = isRecord(story.content) ? story.content : {};
-    await updateStory(space, story.id, {
-      story: {
-        name: story.name,
-        slug: story.slug,
-        parent_id: story.parent_id,
-        is_folder: true,
-        ...(defaultRoot !== undefined && { default_root: rename(defaultRoot) }),
-        content: { ...content, content_types: contentTypes.map(rename) },
-      },
-    });
-  }
 }

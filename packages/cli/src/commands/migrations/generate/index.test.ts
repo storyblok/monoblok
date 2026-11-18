@@ -414,7 +414,7 @@ describe("migrations generate command", () => {
       });
 
       it.each(["renamed-block", "component-name"])(
-        "should snapshot a block a push renamed when asked for it as %s with --before-push",
+        "should snapshot a block a push renamed under its new name when asked for it as %s with --before-push",
         async (name) => {
           preconditions.componentExists();
           preconditions.hasSchemaEntry();
@@ -444,7 +444,10 @@ describe("migrations generate command", () => {
 
           await generate(name, "--schema", "src/schema.ts", "--before-push");
 
-          expect(writtenFile(".before.ts")).toContain("defineField('old_title'");
+          const before = writtenFile(".before.ts");
+          expect(before).toContain("name: 'renamed-block'");
+          expect(before).toContain("defineField('old_title'");
+          expect(before).not.toContain("name: 'component-name'");
         },
       );
 

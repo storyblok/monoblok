@@ -56,16 +56,6 @@ function retypedField(
   return { field: op.field, type };
 }
 
-/**
- * The target of a `renameBlock` while the space still holds the source block
- * but not the target. `schema push` renames the block in place before the
- * migration moves its content, so this means the schema change isn't pushed
- * yet, and the content would end up in a block the space doesn't have.
- */
-function missingRenameTarget(op: MigrationOp, live: LiveFields): string | undefined {
-  return op.kind === "renameBlock" && live.has(op.block) && !live.has(op.to) ? op.to : undefined;
-}
-
 function describeOp(op: MigrationOp): string {
   return "field" in op ? `${op.kind} ${op.block}.${op.field}` : `${op.kind} ${op.block}`;
 }
@@ -73,8 +63,7 @@ function describeOp(op: MigrationOp): string {
 /**
  * Splits off the ops a later schema change superseded: one that creates a field
  * the block no longer has, removes a field the block has again, or coerces a
- * field to a type it no longer has, and a block rename whose target the space
- * doesn't hold. Every migration reruns, so without this an old op would undo
+ * field to a type it no longer has. Every migration reruns, so without this an old op would undo
  * the later change, such as adding back a field that was since renamed. The
  * fields of blocks the space does not hold are not checked.
  */
@@ -84,14 +73,6 @@ export function withoutStaleOps(
 ): { migration: CompiledMigration; stale: StaleOp[] } {
   const stale: StaleOp[] = [];
   const ops = migration.ops.filter((op) => {
-    const renameTarget = missingRenameTarget(op, live);
-    if (renameTarget !== undefined) {
-      stale.push({
-        op,
-        reason: `${describeOp(op)} skipped: the space has no ${renameTarget} block. Push the schema that renames it first, unless a later push renamed it again.`,
-      });
-      return false;
-    }
     const fields = live.get(op.block);
     if (!fields) {
       return true;

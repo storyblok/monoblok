@@ -144,7 +144,7 @@ generateCmd.action(
         : beforePush && push
           ? push.components
           : await fetchComponents(space);
-      const nameInComponents = beforePush && push ? push.blockBefore : componentName;
+      const nameInComponents = beforePush && push ? push.block : componentName;
       const component = components
         ? components.find((candidate) => candidate.name === nameInComponents)
         : await fetchComponent(space, componentName);

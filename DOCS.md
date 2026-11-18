@@ -24,9 +24,10 @@ For the release notes. These changes affect existing `schema push` and `migratio
 
 - `schema push --delete` refuses to delete a block that stories use, and refuses when it can’t count
   those stories. Pass `--force` to delete the block anyway.
-- When the local schema drops a block and adds one with most of the same fields, `schema push` asks
-  whether the block was renamed. On confirmation, the space renames the block in place, along with
-  the stories, folders, and other blocks that use it.
+- When the local schema drops a block and adds one that shares at least half the fields of the
+  smaller one by name and type, `schema push` asks whether the block was renamed. On confirmation,
+  the space renames the block in place, along with the stories, folders, and other blocks that use
+  it.
 - Removing values an option or options field offers is a breaking change, so `schema push` offers a
   migration for it.
 - Switching a field among text, textarea, and markdown is no longer a breaking change.
@@ -156,12 +157,16 @@ a value and a later one that lowercases it change the story on every run. See
 So that a rerun doesn’t undo a later schema change, the command first checks each op against the
 blocks in the space, as each block is right after the op. It skips and reports these ops:
 
-- An op that writes a field the block no longer has, even in stories that still hold the field
+- An op that creates a field the block no longer has, such as a `renameField()` to a field a later
+  push renamed. The command skips it even in stories that still hold the source field.
 - An op that removes a field the block has again
 - An op that writes a value the field’s type no longer stores, such as a `coerceField()` to a number
-  on a field that’s a text field again. Plugin fields aren’t checked.
+  on a field that’s a text field again
 - A `renameField()` while the block still has the field it renames
 - A `renameBlock()` while the space has a block by its old name again
+
+`alterField()` and `coerceField()` aren’t skipped for a missing field, since they leave blocks
+without it alone. Plugin fields aren’t checked for the value they store.
 
 ```text
 ⚠️  20261029141150-rename-twitter-to-x: renameField author.twitter_account → x_account skipped: the author block in the space has the field "twitter_account" again.
@@ -302,8 +307,8 @@ an error. Running it again restores every story in the file again, not only the 
 
 ## Rolled back runs
 
-A content migration run that changed no stories has nothing to roll back. Without a run, the command
-passes over such a run. Named, the command says so and leaves the run in place.
+A content migration run that changed no stories has nothing to roll back. Without a run argument,
+the command passes over such runs. When you name one, it says so and leaves the run in place.
 
 The command marks a content migration run as rolled back once it restored every story, so the next
 `migrations rollback` moves on to the run before it. While blocks are left in place, the run stays
@@ -622,26 +627,26 @@ storyblok migrations run --space 67890
 
 In each space, run every content migration before the next schema push to that space.
 
-### Field removal propagation
+### Removed field content
 
-Storyblok can enable field removal propagation for a space or its organization. With it, the space
-deletes a removed field’s content from the drafts of stories shortly after a push removes the field
-from its block. A typed content migration that reads the removed field, such as with
-`renameField()`, `splitField()`, `mergeFields()`, or `fieldsToBlock()`, then finds nothing to
-migrate when you run it after the push. The CLI can’t detect the setting.
+In some spaces, Storyblok deletes a removed field’s content from story drafts shortly after a push
+removes the field from its block. A typed content migration that reads the removed field, such as
+with `renameField()`, `splitField()`, `mergeFields()`, or `fieldsToBlock()`, then finds nothing to
+migrate when you run it after the push. The CLI can’t detect whether your space does this.
 
-Ask Storyblok support whether field removal propagation is enabled for your space or organization.
-If it is, have it turned off before you push, or migrate the content before the push with a
-migration function or an `alterBlock()` content migration.
+Ask Storyblok support whether removed fields’ content is deleted in your space. If it is, migrate
+the content before the push that removes the fields, with a migration function or an `alterBlock()`
+content migration.
 
 ### Renamed blocks
 
-When the local schema drops a block and adds one that shares most of its fields, and both or neither
-can be a story, the command asks whether the block was renamed and shows how many stories use it. On
-confirmation, the space renames the block in place, so it keeps its ID. The space also renames the
-block in the drafts and published versions of the stories that use it, in the content types of
-folders, in other blocks’ block restrictions, and in presets. Otherwise, the command creates the new
-block next to the old one.
+When the local schema drops a block and adds a new one, the command asks whether the block was
+renamed if the two share at least half the fields of the smaller one by name and type, and both or
+neither can be a story. The prompt shows how many stories use the old block. On confirmation, the
+space renames the block in place, so it keeps its ID. The space also renames the block wherever the
+space names it, such as in the drafts and published versions of the stories that use it, experiment
+variants, the content types of folders, other blocks’ block restrictions, workflows, and presets.
+Otherwise, the command creates the new block next to the old one.
 
 The command renames blocks after it updates the other blocks. In a space with many stories, the
 space renames a block in its stories in the background, and the command waits until no story uses

@@ -31,19 +31,22 @@ migrations a space has already received.
 - The snapshot holds the blocks the migration reads with their fields, plus name-only stubs for the
   blocks those fields allow and for every block that can contain a read block through a `bloks`
   field or an allow list, so `under` can name it. `nameOnlyBlocks` lists every other block of the
-  space, so `migrations run` can tell an existing block from a new one. `--no-before` skips it.
+  space, so `migrations run` can tell an existing block from a new one. `--no-before` skips the
+  snapshot.
 - A snapshot's `schema`, `Before`, and `nameOnlyBlocks` exports are a stable contract.
   `snapshotFormat` versions it, and `migrations run` refuses a snapshot without a valid format or
   with one newer than it reads.
 - Before it applies a migration, `migrations run` checks each op against the space's components, as
-  the block holds them right after that op. It skips and reports an op that writes a field the block
-  no longer has, removes a field the block has again, or writes a value the field's type no longer
-  stores, and a `renameBlock` while the space holds a block by the old name. The check repeats until
-  no further op is skipped. A migration whose ops are all skipped after a complete run is reported
-  as superseded.
+  the block holds them right after that op. It skips and reports an op that creates a field the
+  block no longer has, removes a field the block has again, or writes a value the field's type no
+  longer stores, and a `renameBlock` while the space holds a block by the old name. The check
+  repeats until no further op is skipped. A migration whose ops are all skipped after a complete run
+  is reported as superseded.
 - A confirmed block rename updates the block with the Management API's content rename, so the space
   renames the block wherever it's used. The push waits until no story uses the old name, and
-  generated migrations hold no `renameBlock`.
+  generated migrations hold no `renameBlock`. When that count stops dropping for a minute, the push
+  continues and warns, pointing to a `renameBlock` migration for the remaining stories. It stops
+  after 10 minutes.
 - A migration stays pending until a run covers every story it matches. A run scoped with
   `--starts-with` or `--query`, or one that left stories unread, refused, or unwritten, is recorded
   as partial.
@@ -82,6 +85,9 @@ migrations a space has already received.
   can't reach: published versions, experiment variants, the content types of folders, other blocks'
   allow and deny lists, and presets. It also leaves no gap between the push and `migrations run` in
   which stories name a block the space no longer holds.
+- **Stall detection for block renames.** The space doesn't report a failed background rename, so a
+  count that stops dropping is the only sign of one. Waiting until the timeout would hold up a push
+  for 10 minutes on every failed rename.
 - **Partial runs stay pending.** A rerun after a later push skips the migration's stale ops, so the
   stories a partial run left out could never be migrated once the next push lands.
 - **Semver for the internal subpath.** ADR-0014 publishes the CLI's dependency on
@@ -144,11 +150,10 @@ migrations a space has already received.
   that only change an existing value (`alterField`, `coerceField`, `reorderField`) are not skipped
   for a missing field: they leave blocks without it alone, and stories that still hold it reach the
   later migration in the shape it expects.
-- With field removal propagation enabled for a space or its organization, the space deletes a
-  removed field's content from stories shortly after the push that removes it. A `--typed` push then
-  loses the source of a `renameField`, `fieldsToBlock`, `mergeFields`, or `splitField` before
-  `migrations run` reads it. The CLI can't tell, because the Management API doesn't return the
-  setting.
+- Some spaces delete a removed field's content from story drafts shortly after the push that removes
+  the field. There, a `--typed` push loses the source of a `renameField`, `fieldsToBlock`,
+  `mergeFields`, or `splitField` before `migrations run` reads it. The CLI can't detect whether a
+  space does this.
 - A story whose published version uses a renamed block but whose draft doesn't keeps the old name in
   its published version.
 - Ops on blocks nested inside a read block need a migration generated for that block, because a stub

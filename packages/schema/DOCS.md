@@ -90,9 +90,9 @@ export default defineMigration<Schema, Before>([
 ]);
 ```
 
-A callback that converts a value checks the value’s shape first, since the value can already hold
-the converted result. The same holds across migrations: a migration that uppercases a value and a
-later one that lowercases it change the story on every run.
+Check a value’s shape before you convert it, since it can already hold the converted value. A second
+pass must change nothing across migrations too: a migration that uppercases a value and a later one
+that lowercases it change the story on every run.
 
 ### Schema types
 

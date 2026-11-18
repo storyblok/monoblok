@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { morphStoryblokDom } from "./morph-storyblok-dom";
+import { captureServerAttributes, morphStoryblokDom } from "./morph-storyblok-dom";
 
 describe("morphStoryblokDom", () => {
   it("morphs only the focused Storyblok block", () => {
@@ -129,6 +129,125 @@ describe("morphStoryblokDom", () => {
       document.querySelector('[data-blok-uid="block"]')?.getAttribute("data-client-state"),
     ).toBe("open");
     expect(document.querySelector('[data-blok-uid="block"]')?.textContent).toBe("After");
+  });
+
+  describe("preserveElementAttributes (issue #805)", () => {
+    const renderNext = (html: string) => {
+      const nextBody = document.implementation.createHTMLDocument().body;
+      nextBody.innerHTML = html;
+      return nextBody;
+    };
+    const section = () => document.querySelector('[data-blok-uid="hero"]')!;
+
+    it("applies a server-rendered attribute change the client never touched", () => {
+      // `class:list={[blok.elevation === "raised" && "raised"]}`: `base` -> `raised`.
+      document.body.innerHTML = `<section data-blok-uid="hero" class="hero" aria-label="Old" data-variant="base">Headline</section>`;
+
+      morphStoryblokDom(
+        document.body,
+        renderNext(
+          `<section data-blok-uid="hero" class="hero raised" aria-label="New" data-variant="raised">Headline</section>`,
+        ),
+        { preserveElementAttributes: true },
+      );
+
+      expect(section().getAttribute("class")).toBe("hero raised");
+      expect(section().getAttribute("aria-label")).toBe("New");
+      expect(section().getAttribute("data-variant")).toBe("raised");
+    });
+
+    it("applies server attribute changes on elements without a key attribute", () => {
+      document.body.innerHTML = `<main><img src="old.png" class="a" /></main>`;
+
+      morphStoryblokDom(document.body, renderNext(`<main><img src="new.png" class="b" /></main>`), {
+        preserveElementAttributes: true,
+      });
+
+      const img = document.querySelector("img")!;
+      expect(img.getAttribute("src")).toBe("new.png");
+      expect(img.getAttribute("class")).toBe("b");
+    });
+
+    it("keeps server attribute changes flowing across consecutive updates", () => {
+      document.body.innerHTML = `<section data-blok-uid="hero" class="base">A</section>`;
+
+      for (const elevation of ["raised", "base", "raised"]) {
+        morphStoryblokDom(
+          document.body,
+          renderNext(`<section data-blok-uid="hero" class="${elevation}">A</section>`),
+          { preserveElementAttributes: true },
+        );
+        expect(section().getAttribute("class")).toBe(elevation);
+      }
+    });
+
+    it("still keeps attributes the client changed or added after the server render", () => {
+      document.body.innerHTML = `<details data-blok-uid="hero" class="faq"><summary>Q</summary>A</details>`;
+      captureServerAttributes(document.body);
+      // Client-side state: the user opens the disclosure and a script toggles a class.
+      section().setAttribute("open", "");
+      section().setAttribute("class", "faq is-active");
+
+      morphStoryblokDom(
+        document.body,
+        renderNext(`<details data-blok-uid="hero" class="faq"><summary>Q</summary>A2</details>`),
+        { preserveElementAttributes: true },
+      );
+
+      expect(section().hasAttribute("open")).toBe(true);
+      expect(section().getAttribute("class")).toBe("faq is-active");
+      expect(section().textContent).toBe("QA2");
+    });
+
+    it("keeps client state across later updates while still applying server changes", () => {
+      document.body.innerHTML = `<details data-blok-uid="hero" class="faq" data-variant="base"><summary>Q</summary></details>`;
+      captureServerAttributes(document.body);
+      section().setAttribute("open", "");
+
+      for (const variant of ["raised", "base"]) {
+        morphStoryblokDom(
+          document.body,
+          renderNext(
+            `<details data-blok-uid="hero" class="faq" data-variant="${variant}"><summary>Q</summary></details>`,
+          ),
+          { preserveElementAttributes: true },
+        );
+        expect(section().hasAttribute("open")).toBe(true);
+        expect(section().getAttribute("data-variant")).toBe(variant);
+      }
+    });
+
+    it("keeps an attribute the client removed removed", () => {
+      document.body.innerHTML = `<details data-blok-uid="hero" open><summary>Q</summary></details>`;
+      captureServerAttributes(document.body);
+      section().removeAttribute("open");
+
+      morphStoryblokDom(
+        document.body,
+        renderNext(`<details data-blok-uid="hero" open><summary>Q2</summary></details>`),
+        { preserveElementAttributes: true },
+      );
+
+      expect(section().hasAttribute("open")).toBe(false);
+      expect(section().textContent).toBe("Q2");
+    });
+
+    it("treats attributes of newly inserted blocks as server-rendered", () => {
+      document.body.innerHTML = `<main></main>`;
+
+      morphStoryblokDom(
+        document.body,
+        renderNext(`<main><section data-blok-uid="hero" class="base">A</section></main>`),
+        { preserveElementAttributes: true },
+      );
+      morphStoryblokDom(
+        document.body,
+        renderNext(`<main><section data-blok-uid="hero" class="raised">A</section></main>`),
+        { preserveElementAttributes: true },
+      );
+
+      expect(section().getAttribute("class")).toBe("raised");
+    });
   });
 
   it("skips elements marked with the preserve-state attribute entirely", () => {

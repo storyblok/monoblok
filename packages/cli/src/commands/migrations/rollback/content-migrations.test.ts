@@ -1,4 +1,5 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { defineMigration, renameBlock, renameField } from "@storyblok/schema";
 import "../index";
@@ -387,6 +388,82 @@ describe("migrations rollback command for content migration runs", () => {
     await run("rollback", "--allow-pending-releases");
 
     expect(cardOf(space.story(1))).toEqual({ _uid: "card-1", component: "card", title: "Hi" });
+  });
+
+  describe("content the space's schema doesn't define", () => {
+    it("should warn before writing when the restored content uses a block the schema no longer defines", async () => {
+      const warn = vi.spyOn(getUI(), "warn");
+      const warningsAtFirstWrite: string[] = [];
+      space.hasMigrations(["0001-rename-card-to-teaser", renameCardToTeaser]);
+      space.hasStories(
+        storyWithCard(),
+        storyWithCard({ id: 2, slug: "about", full_slug: "about" }),
+      );
+      await run("run");
+      space.hasBlocks({ page: ["body"], teaser: ["title"] });
+      space.canUpdateStories(() => {
+        if (warningsAtFirstWrite.length === 0) {
+          warningsAtFirstWrite.push(...warn.mock.calls.map(([message]) => String(message)));
+        }
+      });
+
+      await run("rollback");
+
+      expect(cardOf(space.story(1))).toEqual({ _uid: "card-1", component: "card", title: "Hi" });
+      expect(warningsAtFirstWrite).toContain(
+        `The rollback restores content that uses blocks or fields the space's schema doesn't define:\n  - block "card": home, about\nRoll back the schema to its version from before the run with "storyblok schema rollback", or push that version, so the space defines them again.`,
+      );
+    });
+
+    it("should warn when the restored content uses a field its block's schema no longer defines", async () => {
+      const warn = vi.spyOn(getUI(), "warn");
+      space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+      space.hasStories(storyWithCard());
+      await run("run");
+      space.hasBlocks({ page: ["body"], card: ["headline"] });
+
+      await run("rollback");
+
+      expect(cardOf(space.story(1))).toEqual({ _uid: "card-1", component: "card", title: "Hi" });
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining(`\n  - field "title" of block "card": home\n`),
+      );
+    });
+
+    it("should not warn about blocks and fields the story held before the rollback", async () => {
+      const warn = vi.spyOn(getUI(), "warn");
+      const story = storyWithCard();
+      story.content.body = [
+        { _uid: "card-1", component: "card", title: "Hi" },
+        { _uid: "legacy-1", component: "legacy", text: "Old" },
+      ];
+      space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+      space.hasStories(story);
+      await run("run");
+
+      await run("rollback");
+
+      expect(warn).not.toHaveBeenCalledWith(expect.stringContaining("schema doesn't define"));
+    });
+
+    it("should roll back and warn when the space's schema can't be read", async () => {
+      const warn = vi.spyOn(getUI(), "warn");
+      space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+      space.hasStories(storyWithCard());
+      await run("run");
+      server.use(
+        http.get(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/components`, () =>
+          HttpResponse.json({ error: "Forbidden" }, { status: 403 }),
+        ),
+      );
+
+      await run("rollback");
+
+      expect(cardOf(space.story(1))).toEqual({ _uid: "card-1", component: "card", title: "Hi" });
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringMatching(/^Could not check the restored content against the space's schema: /),
+      );
+    });
   });
 
   describe("publishing", () => {

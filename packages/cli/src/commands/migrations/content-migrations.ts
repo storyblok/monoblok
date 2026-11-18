@@ -6,6 +6,7 @@
  */
 import { rm } from "node:fs/promises";
 import { isDeepStrictEqual } from "node:util";
+import { readdir } from "node:fs/promises";
 import chalk from "chalk";
 import { dirname, join, relative, resolve } from "pathe";
 import { generateMigrationSource, generateSnapshot } from "@storyblok/schema/codegen";
@@ -16,6 +17,7 @@ import {
   discoverMigrations,
   localJournal,
   MigrationError,
+  misnamedMigrationFiles,
 } from "@storyblok/schema";
 import type { Journal, MigrationFile, StoryForMigration } from "@storyblok/schema";
 import { getMapiClient } from "../../api";
@@ -291,5 +293,22 @@ export async function guardPendingReleases(
   }
   getUI().warn(
     `Space ${space} has ${chalk.bold(plural(check.pending.length, "pending release", "pending releases"))}. ${consequence}:\n${names}`,
+  );
+}
+
+/**
+ * Warns about script files in a migrations directory that no run picks up
+ * because of their name. A `.js` file is left out: it runs as a migration
+ * function, which reports a misnamed content migration itself.
+ */
+export async function warnAboutMisnamedMigrations(directory: string): Promise<void> {
+  const filenames = await readdir(directory).catch((): string[] => []);
+  const misnamed = misnamedMigrationFiles(filenames).filter((file) => !file.endsWith(".js"));
+  if (misnamed.length === 0) {
+    return;
+  }
+  const one = misnamed.length === 1;
+  getUI().warn(
+    `${one ? "This file doesn't" : "These files don't"} run, because ${one ? "its name doesn't" : "their names don't"} match the content migration pattern <number>-<name>.ts, .js, or .mjs: ${misnamed.join(", ")}. <name> holds lowercase letters, digits, and hyphens, for example 0001-rename-card-title.ts.`,
   );
 }

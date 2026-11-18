@@ -15,7 +15,8 @@ updating component structures or content.
 
 Typed content migrations are `.ts`, `.js`, or `.mjs` files named `<number>-<name>` that
 default-export `defineMigration()` from `@storyblok/schema`. A `.js` file is told apart from a
-migration function by its default export.
+migration function by its default export. `run` and `list` warn about files such as `hello.ts` whose
+names don't match the pattern.
 
 > See each subcommand for detailed usage, options, and examples.
 

@@ -11,6 +11,7 @@ import {
   isKeyOp,
   type MigrationOp,
   type ReorderContext,
+  renamedBy,
 } from "./ops";
 import {
   type AnyBlock,
@@ -25,6 +26,20 @@ import {
   TRANSLATION_SEPARATOR,
   translationKeysFor,
 } from "./patch";
+
+/**
+ * Whether a field of a block is translatable in the space the content lives in,
+ * by the names the space has after the migration. `undefined` when unknown.
+ */
+export type IsTranslatable = (block: string, field: string) => boolean | undefined;
+
+export type RunMigrationOptions = {
+  /**
+   * Without it, `splitField` and `mergeFields` write translation keys to every
+   * target, since the space may translate any of them.
+   */
+  isTranslatable?: IsTranslatable;
+};
 
 export interface StoryMigrationResult {
   changed: boolean;
@@ -118,6 +133,51 @@ function isEmptyValue(value: unknown): boolean {
   );
 }
 
+/**
+ * Refuses a reshape whose targets already hold a value, translations included,
+ * unless the op overwrites on purpose. A target that is also a source is not
+ * occupied: the op reads its value before writing over it.
+ */
+function occupiedTargetRefusal(
+  block: AnyBlock,
+  op: { kind: string; overwrite?: boolean },
+  sources: readonly string[],
+  targets: readonly string[],
+): string | undefined {
+  if (op.overwrite) return undefined;
+  const occupied = targets
+    .filter((name) => !sources.includes(name))
+    .flatMap((name) => familyKeys(block, name))
+    .filter((key) => !isEmptyValue(block[key]));
+  if (occupied.length === 0) return undefined;
+  const quoted = (names: readonly string[]) => names.map((name) => `"${name}"`).join(", ");
+  const reshaping = `${op.kind === "splitField" ? "splitting" : "merging"} ${quoted(sources)}`;
+  return occupied.length === 1
+    ? `field ${quoted(occupied)} already holds a value, and ${reshaping} into it would overwrite it. Pass \`overwrite: true\` to overwrite it on purpose.`
+    : `fields ${quoted(occupied)} already hold values, and ${reshaping} into them would overwrite them. Pass \`overwrite: true\` to overwrite them on purpose.`;
+}
+
+function preview(value: unknown): string {
+  return value === undefined ? "nothing" : String(JSON.stringify(value)).slice(0, 80);
+}
+
+/**
+ * A translation of a field that is not translatable is content no editor sees,
+ * and the language shows the default value anyway. So such a translation is
+ * dropped when it is empty or equals the default value, and the block is
+ * refused when dropping it would lose a value.
+ */
+function untranslatableRefusal(
+  key: string,
+  value: unknown,
+  defaultValue: unknown,
+  callback: "split" | "merge",
+): string | undefined {
+  if (isEmptyValue(value) || deepEqual(value, defaultValue)) return undefined;
+  const field = key.slice(0, key.indexOf(TRANSLATION_SEPARATOR));
+  return `"${key}" would get ${preview(value)}, which differs from the default language's ${preview(defaultValue)}, but "${field}" is not translatable. Make "${field}" translatable, or have \`${callback}\` return the default language's value for it.`;
+}
+
 /** Rewrites a key in place while keeping its position in the object. */
 function renameKey(block: AnyBlock, from: string, to: string): void {
   if (!(from in block)) return;
@@ -162,7 +222,11 @@ function renameFieldFamily(
  * Applies one op to one block. Returns the reason instead of writing anything
  * when the op would lose data or corrupt the block.
  */
-function applyOp(block: AnyBlock, op: MigrationOp): string | undefined {
+function applyOp(
+  block: AnyBlock,
+  op: MigrationOp,
+  isTranslatable: (field: string) => boolean | undefined,
+): string | undefined {
   switch (op.kind) {
     case "renameField":
     case "moveField":
@@ -236,27 +300,45 @@ function applyOp(block: AnyBlock, op: MigrationOp): string | undefined {
         (key) => block[key] !== undefined && block[key] !== null,
       );
       if (sources.length === 0) break;
+      const occupied = occupiedTargetRefusal(block, op, [op.field], op.into);
+      if (occupied) return occupied;
       const parts = sources.map((key) => ({
         suffix: key.slice(op.field.length),
         values: op.split(block[key] as never),
       }));
+      const defaultParts = parts.find(({ suffix }) => suffix === "")?.values ?? [];
+      const writes: [key: string, value: unknown][] = [];
+      for (const { suffix, values } of parts) {
+        for (const [at, name] of op.into.entries()) {
+          if (suffix === "" || isTranslatable(name) !== false) {
+            writes.push([`${name}${suffix}`, values[at]]);
+            continue;
+          }
+          const refusal = untranslatableRefusal(
+            `${name}${suffix}`,
+            values[at],
+            defaultParts[at],
+            "split",
+          );
+          if (refusal) return refusal;
+        }
+      }
       // The sources go first: `into` may name the source itself, and deleting
       // afterwards would take the part that landed on it with it. The op does
       // not become usable that way — a part sitting on the source name is split
-      // again on the next pass, so the idempotency probe reports it and a
-      // runner refuses it — but a loud refusal is not silent data loss.
+      // again on the next pass, which either changes it, so the idempotency
+      // probe reports it, or finds the other targets occupied and refuses — but
+      // a loud refusal is not silent data loss.
       for (const key of familyKeys(block, op.field)) delete block[key];
       // A translation a target kept would read as a translation of the new part.
       for (const name of op.into) deleteTranslations(block, name);
-      for (const { suffix, values } of parts) {
-        op.into.forEach((name, at) => {
-          block[`${name}${suffix}`] = values[at];
-        });
-      }
+      for (const [key, value] of writes) block[key] = value;
       break;
     }
     case "mergeFields": {
       if (!op.fields.some((name) => familyKeys(block, name).length > 0)) break;
+      const occupied = occupiedTargetRefusal(block, op, op.fields, [op.into]);
+      if (occupied) return occupied;
       const suffixes = new Set([""]);
       for (const name of op.fields) {
         for (const key of translationKeysFor(block, name)) suffixes.add(key.slice(name.length));
@@ -270,13 +352,28 @@ function applyOp(block: AnyBlock, op: MigrationOp): string | undefined {
         suffix,
         value: op.merge(op.fields.map((name) => valueIn(name, suffix))),
       }));
+      const defaultValue = merged.find(({ suffix }) => suffix === "")?.value;
+      const translatable = isTranslatable(op.into) !== false;
+      const writes = translatable ? merged : merged.filter(({ suffix }) => suffix === "");
+      if (!translatable) {
+        for (const { suffix, value } of merged) {
+          if (suffix === "") continue;
+          const refusal = untranslatableRefusal(
+            `${op.into}${suffix}`,
+            value,
+            defaultValue,
+            "merge",
+          );
+          if (refusal) return refusal;
+        }
+      }
       // Same reason as `splitField`: `into` may be one of the sources, so the
       // sources are cleared before the merged values land on the target.
       for (const name of op.fields) {
         for (const key of familyKeys(block, name)) delete block[key];
       }
       deleteTranslations(block, op.into);
-      for (const { suffix, value } of merged) block[`${op.into}${suffix}`] = value;
+      for (const { suffix, value } of writes) block[`${op.into}${suffix}`] = value;
       break;
     }
     case "fieldsToBlock": {
@@ -519,7 +616,11 @@ function thrown(error: unknown): string {
  * earlier op replaced with a copy. The original is looked up by object first,
  * so a repeated uid cannot borrow another block's name, then by uid.
  */
-function runPass(content: unknown, ops: readonly MigrationOp[]): PassReport {
+function runPass(
+  content: unknown,
+  ops: readonly MigrationOp[],
+  options: RunMigrationOptions,
+): PassReport {
   const report: PassReport = {
     matched: new Set(),
     changed: [],
@@ -537,6 +638,9 @@ function runPass(content: unknown, ops: readonly MigrationOp[]): PassReport {
 
   ops.forEach((op, index) => {
     if (op.kind === "expandBlock") return;
+    // The space holds the block under the name the migration leaves it with.
+    const spaceName = renamedBy(ops, op.block);
+    const isTranslatable = (field: string) => options.isTranslatable?.(spaceName, field);
     for (const { block } of walkBlocks(content)) {
       const origin = byObject.get(block) ?? byUid.get(block._uid);
       if (!origin || op.block !== origin.component || !inScope(op, origin.chain)) continue;
@@ -544,7 +648,7 @@ function runPass(content: unknown, ops: readonly MigrationOp[]): PassReport {
       const before = structuredClone(comparableKeys(block));
       let refusal: string | undefined;
       try {
-        refusal = applyOp(block, op);
+        refusal = applyOp(block, op, isTranslatable);
       } catch (error) {
         refusal = thrown(error);
       }
@@ -608,13 +712,14 @@ function assignMissingUids(content: unknown): void {
 export function runMigrationOnStory(
   migration: CompiledMigration,
   content: unknown,
+  options: RunMigrationOptions = {},
 ): StoryMigrationResult {
   const before = structuredClone(content);
   const after = structuredClone(content);
 
   const beforeIndex = indexBlocks(before);
   const unstableBefore = findUnstableUids(before);
-  const pass = runPass(after, migration.ops);
+  const pass = runPass(after, migration.ops, options);
   assignMissingUids(after);
 
   // The whole migration runs a second time over its own output, which is what
@@ -629,7 +734,7 @@ export function runMigrationOnStory(
   // into the field the op reads, where the following run dissolves that one
   // too. And two ops can feed each other, like a rename onto a field that a
   // later op renames another field onto.
-  const rerun = runPass(structuredClone(after), migration.ops);
+  const rerun = runPass(structuredClone(after), migration.ops, options);
   const nonIdempotent = rerun.changed.filter(
     (entry, at, all) =>
       all.findIndex((other) => other.uid === entry.uid && other.op === entry.op) === at,

@@ -184,6 +184,8 @@ export interface SplitFieldOp<TAfter extends SchemaShape, TBefore extends Schema
   split: (value: never) => readonly unknown[];
   /** Present only when the author stated it; without it the op cannot be inverted. */
   merge?: (values: readonly unknown[]) => unknown;
+  /** Write over `into` fields that already hold a value instead of refusing the block. */
+  overwrite?: boolean;
   readonly [schemaBrand]?: [TAfter, TBefore];
 }
 
@@ -195,6 +197,8 @@ export interface MergeFieldsOp<TAfter extends SchemaShape, TBefore extends Schem
   merge: (values: readonly unknown[]) => unknown;
   /** Present only when the author stated it; without it the op cannot be inverted. */
   split?: (value: never) => readonly unknown[];
+  /** Write over an `into` field that already holds a value instead of refusing the block. */
+  overwrite?: boolean;
   readonly [schemaBrand]?: [TAfter, TBefore];
 }
 
@@ -294,6 +298,18 @@ export const KEY_OP_KINDS = [
 
 export function isKeyOp(op: MigrationOp): boolean {
   return (KEY_OP_KINDS as readonly string[]).includes(op.kind);
+}
+
+/**
+ * The name a block carries after the forward migration ran. Every op addresses
+ * a block by its pre-migration name, so only a `renameBlock` of that name moves it.
+ */
+export function renamedBy(ops: readonly MigrationOp[], name: string): string {
+  let final = name;
+  for (const op of ops) {
+    if (op.kind === "renameBlock" && op.block === name) final = op.to;
+  }
+  return final;
 }
 
 /**
@@ -603,6 +619,9 @@ export function addField<
  *
  * Splits each translation on its own, into the same translation of every
  * `into` field.
+ *
+ * A block whose `into` fields already hold a value, in any language, is refused
+ * rather than overwritten, unless `overwrite` is set.
  */
 export function splitField<
   TAfter extends SchemaShape,
@@ -623,6 +642,7 @@ export function splitField<
     field: TField;
     into: readonly TargetFieldName<TAfter, TBlock>[];
     merge?: (values: readonly unknown[]) => WritableValue<TBefore, TBlock, TField>;
+    overwrite?: boolean;
     under?: KeyOpUnder;
   },
   split: (value: FieldValue<TBefore, TBlock, TField>) => readonly unknown[],
@@ -634,6 +654,7 @@ export function splitField<
     into: spec.into,
     split: split as SplitFieldOp<TAfter, TBefore>["split"],
     ...(spec.merge === undefined ? {} : { merge: spec.merge }),
+    ...(spec.overwrite ? { overwrite: true } : {}),
     ...carriedUnder(spec),
   };
 }
@@ -644,6 +665,10 @@ export function splitField<
  * Merges once per language any source field holds a translation for; a source
  * field without that translation contributes its default-language value, which
  * is what the language shows.
+ *
+ * A block whose `into` field already holds a value, in any language, is refused
+ * rather than overwritten, unless `overwrite` is set or `into` is one of
+ * `fields`.
  */
 export function mergeFields<
   TAfter extends SchemaShape,
@@ -658,6 +683,7 @@ export function mergeFields<
     fields: readonly SourceFieldName<TAfter, TBefore, TBlock>[];
     into: TInto;
     split?: (value: never) => readonly unknown[];
+    overwrite?: boolean;
     under?: KeyOpUnder;
   },
   merge: (values: readonly unknown[]) => TValue & WritableValue<TAfter, TBlock, TInto>,
@@ -669,6 +695,7 @@ export function mergeFields<
     into: spec.into,
     merge,
     ...(spec.split === undefined ? {} : { split: spec.split }),
+    ...(spec.overwrite ? { overwrite: true } : {}),
     ...carriedUnder(spec),
   };
 }
@@ -716,7 +743,7 @@ export function renameBlock<
   const TBlock extends SourceBlockName<TAfter, TBefore>,
 >(spec: {
   block: TBlock;
-  to: BlockNameOf<TAfter> | (string & {});
+  to: BlockNameOf<TAfter>;
   under?: KeyOpUnder;
 }): RenameBlockOp<TAfter, TBefore> {
   return { kind: "renameBlock", block: spec.block, to: spec.to, ...carriedUnder(spec) };
@@ -730,10 +757,12 @@ export function wrapChildren<
   TAfter extends SchemaShape,
   TBefore extends SchemaShape,
   const TBlock extends SourceBlockName<TAfter, TBefore>,
+  // Defaulted for the same reason as on `splitField`.
+  const TContainer extends BlockNameOf<TAfter> = BlockNameOf<TAfter>,
 >(spec: {
   block: TBlock;
   field: SourceFieldName<TAfter, TBefore, TBlock>;
-  into: { block: BlockNameOf<TAfter> | (string & {}); field: string };
+  into: { block: TContainer; field: TargetFieldName<TAfter, TContainer> };
   under?: KeyOpUnder;
 }): WrapChildrenOp<TAfter, TBefore> {
   return {
@@ -754,10 +783,12 @@ export function unwrapChildren<
   TAfter extends SchemaShape,
   TBefore extends SchemaShape,
   const TBlock extends SourceBlockName<TAfter, TBefore>,
+  // Defaulted for the same reason as on `splitField`.
+  const TContainer extends SourceBlockName<TAfter, TBefore> = SourceBlockName<TAfter, TBefore>,
 >(spec: {
   block: TBlock;
   field: SourceFieldName<TAfter, TBefore, TBlock>;
-  from: { block: BlockNameOf<TBefore> | (string & {}); field: string };
+  from: { block: TContainer; field: SourceFieldName<TAfter, TBefore, TContainer> };
   under?: KeyOpUnder;
 }): UnwrapChildrenOp<TAfter, TBefore> {
   return {

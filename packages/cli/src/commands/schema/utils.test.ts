@@ -40,6 +40,11 @@ describe("displayPath", () => {
     expect(displayPath(filePath, "../elsewhere")).toBe(filePath);
   });
 
+  it("should show the working directory itself as a dot", () => {
+    expect(displayPath(process.cwd())).toBe(".");
+    expect(displayPath(process.cwd(), ".")).toBe(".");
+  });
+
   it("should keep a path relative when only its name starts with dots", () => {
     const filePath = join(process.cwd(), "..storyblok/hero.js");
     expect(displayPath(filePath)).toBe("..storyblok/hero.js");

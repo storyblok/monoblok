@@ -124,5 +124,8 @@ export function displayPath(filePath: string, userPath?: string): string {
     return filePath;
   }
   const relativePath = relative(process.cwd(), filePath);
+  if (relativePath === "") {
+    return ".";
+  }
   return relativePath === ".." || relativePath.startsWith("../") ? filePath : relativePath;
 }

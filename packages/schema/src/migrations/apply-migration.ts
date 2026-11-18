@@ -51,6 +51,7 @@ export type ApplyMigrationOutcome = {
   run: MigrationRun;
   inverse: StoryInverse[];
   writes: MigrationWrite[];
+  /** A story refused for several ops has one line per op in its reason. */
   refusals: { slug: string; reason: string }[];
   /**
    * Written stories that are published but whose write is not. Their live
@@ -104,7 +105,7 @@ function refusalReason(
   if (result.refusedOps.length > 0) {
     return result.refusedOps
       .map((entry) => `${opLabel(entry)} was refused: ${entry.reason}`)
-      .join(" ");
+      .join("\n");
   }
   if (result.nonIdempotent.length > 0) {
     return `Running the migration again would keep changing this story: ${result.nonIdempotent.map(opLabel).join(", ")} changed it again on a second pass.`;

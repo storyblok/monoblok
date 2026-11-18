@@ -433,6 +433,33 @@ describe("migrations run command for content migrations", () => {
     expect(process.exitCode).toBe(2);
   });
 
+  it("should list each refused op of a story on its own line", async () => {
+    const warn = vi.spyOn(getUI(), "warn");
+    space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    space.hasStories(
+      storyWithCard({
+        content: {
+          _uid: "root",
+          component: "page",
+          body: [
+            { _uid: "card-1", component: "card", title: "Hi", headline: "Taken" },
+            { _uid: "card-2", component: "card", title: "Ho", headline: "Taken" },
+          ],
+        },
+      }),
+    );
+    space.canUpdateStories();
+
+    await apply();
+
+    const refusal = warn.mock.calls.map(([message]) => message).find((m) => m?.includes("home"));
+    expect(refusal?.split("\n")).toEqual([
+      expect.stringMatching(/home.*:$/),
+      expect.stringMatching(/^ {2}- op 0 \(renameField\) on block card-1 was refused: /),
+      expect.stringMatching(/^ {2}- op 0 \(renameField\) on block card-2 was refused: /),
+    ]);
+  });
+
   it("should succeed and record the stories it wrote when it refused others", async () => {
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
     space.hasStories(storyWithCard(), storyWithRepeatedIds(2));

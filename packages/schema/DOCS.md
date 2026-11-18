@@ -322,6 +322,9 @@ const { writes, refusals } = applyMigration({
 });
 ```
 
+`refusals` lists the stories `applyMigration()` skipped. A story refused for several ops has one
+line per op in its `reason`.
+
 Pass `{ nameOnlyBlocks }` as the third argument of `validateMigration()` to name blocks that exist
 but whose fields the schema doesn’t describe. An op that reads their fields is an error. A check
 that needs their fields, such as wrapping blocks into one of them, returns a warning.

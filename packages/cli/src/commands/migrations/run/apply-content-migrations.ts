@@ -269,6 +269,13 @@ async function assertMatchesSnapshots(selected: LoadedMigration[]): Promise<stri
   return unchecked;
 }
 
+/** One reason on the same line, several as a list below it. */
+function formatReasons(reasons: string[]): string {
+  return reasons.length === 1
+    ? ` ${reasons[0]}`
+    : reasons.map((reason) => `\n  - ${reason}`).join("");
+}
+
 function warnPublishedDraftOnly(
   id: string,
   outcome: ApplyMigrationOutcome,
@@ -389,7 +396,7 @@ export async function applyContentMigrations({
     });
 
     for (const refusal of outcome.refusals) {
-      ui.warn(`${chalk.bold(refusal.slug)}: ${refusal.reason}`);
+      ui.warn(`${chalk.bold(refusal.slug)}:${formatReasons(refusal.reason.split("\n"))}`);
     }
     // Stories already migrated by an earlier run neither change nor refuse, so
     // only a migration that refused every story containing its blocks failed.

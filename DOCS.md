@@ -97,6 +97,8 @@ block IDs, or when a second pass would change the story again:
 ⚠️  a/storyblok-vs-sitecore: op 0 (splitField) on block 6a7a6e9a-… was refused: the callback threw: metric value "CX " holds no amount
 ```
 
+When several ops are refused on one story, the command lists each op on its own line.
+
 The command exits with an error when a content migration skipped every story that contains its
 blocks, or when a story couldn’t be read or written. When a write gets no response, the command
 reads the story back, and writes it again up to twice if the write didn’t land.

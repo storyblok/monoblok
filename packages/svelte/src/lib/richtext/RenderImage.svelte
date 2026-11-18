@@ -10,15 +10,14 @@
   };
 
   const { node, options }: Props = $props();
-  const optimizedNode: ImageNode = $derived(
+  const optimizedNode = $derived(
     options.optimizeImage && node?.attrs?.src
       ? {
           ...node,
           attrs: {
             ...node.attrs,
-            ...buildStoryblokImage(node.attrs.src as string, options.optimizeImage),
+            ...buildStoryblokImage(node.attrs.src, options.optimizeImage),
           },
-          type: 'image',
         }
       : node,
   );

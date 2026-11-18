@@ -1622,7 +1622,16 @@ describe("splitField", () => {
   // A stale sibling left on a target would be read as the translation of the
   // part that landed on it.
   it("should drop translations a target field held that the source does not replace", () => {
-    const result = runMigrationOnStory(splitName, {
+    const splitNameOverwriting = defineMigration<TestSchema>({
+      ops: [
+        splitField(
+          { block: "author", field: "name", into: ["first_name", "last_name"], overwrite: true },
+          (name) => String(name).split(" "),
+        ),
+      ],
+    });
+
+    const result = runMigrationOnStory(splitNameOverwriting, {
       _uid: "root",
       component: "page",
       body: [
@@ -1640,6 +1649,170 @@ describe("splitField", () => {
       component: "page",
       body: [{ _uid: "a", component: "author", first_name: "Ada", last_name: "Lovelace" }],
     });
+  });
+});
+
+describe("splitField onto occupied targets", () => {
+  const splitFullName = (overwrite?: boolean) =>
+    defineMigration<TestSchema>({
+      ops: [
+        splitField(
+          {
+            block: "quote",
+            field: "full_name",
+            into: ["given_name", "family_name"],
+            ...(overwrite ? { overwrite } : {}),
+          },
+          (name) => String(name).split(" "),
+        ),
+      ],
+    });
+
+  function quoteStory(quote: Record<string, unknown>): Record<string, unknown> {
+    return { _uid: "root", component: "page", body: [{ _uid: "q", component: "quote", ...quote }] };
+  }
+
+  it("should refuse a block whose target fields already hold values", () => {
+    const original = quoteStory({
+      full_name: "John Smith",
+      given_name: "Johnny",
+      family_name: "S.",
+    });
+
+    const result = runMigrationOnStory(splitFullName(), original);
+
+    expect(result.refusedOps).toEqual([
+      {
+        uid: "q",
+        op: 0,
+        reason:
+          'fields "given_name", "family_name" already hold values, and splitting "full_name" into them would overwrite them. Pass `overwrite: true` to overwrite them on purpose.',
+      },
+    ]);
+    expect(result.content).toEqual(original);
+  });
+
+  it("should refuse a block whose target field holds only a translation", () => {
+    const result = runMigrationOnStory(
+      splitFullName(),
+      quoteStory({ full_name: "John Smith", family_name__i18n__de: "Schmidt" }),
+    );
+
+    expect(result.refusedOps.map((entry) => entry.reason)).toEqual([
+      'field "family_name__i18n__de" already holds a value, and splitting "full_name" into it would overwrite it. Pass `overwrite: true` to overwrite it on purpose.',
+    ]);
+  });
+
+  it("should split into target fields that hold only empty values", () => {
+    const result = runMigrationOnStory(
+      splitFullName(),
+      quoteStory({ full_name: "John Smith", given_name: "", family_name: null }),
+    );
+
+    expect(result.refusedOps).toEqual([]);
+    expect(block(result.content, "q")).toEqual({
+      _uid: "q",
+      component: "quote",
+      given_name: "John",
+      family_name: "Smith",
+    });
+  });
+
+  it("should overwrite the targets with overwrite, and restore them on undo", () => {
+    const original = quoteStory({
+      full_name: "John Smith",
+      given_name: "Johnny",
+      family_name: "S.",
+      family_name__i18n__de: "Schmidt",
+    });
+
+    const result = runMigrationOnStory(splitFullName(true), original);
+
+    expect(result.refusedOps).toEqual([]);
+    expect(block(result.content, "q")).toEqual({
+      _uid: "q",
+      component: "quote",
+      given_name: "John",
+      family_name: "Smith",
+    });
+
+    const rolledBack = structuredClone(result.content);
+    expect(applyPatches(rolledBack, result.inverse).conflicts).toEqual([]);
+    expect(rolledBack).toEqual(original);
+  });
+});
+
+describe("mergeFields onto an occupied target", () => {
+  const mergeName = (overwrite?: boolean) =>
+    defineMigration<TestSchema>({
+      ops: [
+        mergeFields(
+          {
+            block: "author",
+            fields: ["first_name", "last_name"],
+            into: "name",
+            ...(overwrite ? { overwrite } : {}),
+          },
+          (values) => values.filter(Boolean).join(" "),
+        ),
+      ],
+    });
+
+  function authorStory(author: Record<string, unknown>): Record<string, unknown> {
+    return {
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "author", ...author }],
+    };
+  }
+
+  it("should refuse a block whose target field already holds a value", () => {
+    const original = authorStory({ first_name: "Ada", last_name: "Lovelace", name: "A. L." });
+
+    const result = runMigrationOnStory(mergeName(), original);
+
+    expect(result.refusedOps).toEqual([
+      {
+        uid: "a",
+        op: 0,
+        reason:
+          'field "name" already holds a value, and merging "first_name", "last_name" into it would overwrite it. Pass `overwrite: true` to overwrite it on purpose.',
+      },
+    ]);
+    expect(result.content).toEqual(original);
+  });
+
+  it("should refuse a block whose target field holds only a translation", () => {
+    const result = runMigrationOnStory(
+      mergeName(),
+      authorStory({ first_name: "Ada", last_name: "Lovelace", name__i18n__de: "stale" }),
+    );
+
+    expect(result.refusedOps.map((entry) => entry.reason)).toEqual([
+      'field "name__i18n__de" already holds a value, and merging "first_name", "last_name" into it would overwrite it. Pass `overwrite: true` to overwrite it on purpose.',
+    ]);
+  });
+
+  it("should overwrite the target with overwrite, and restore it on undo", () => {
+    const original = authorStory({
+      first_name: "Ada",
+      last_name: "Lovelace",
+      name: "A. L.",
+      name__i18n__de: "A. v. L.",
+    });
+
+    const result = runMigrationOnStory(mergeName(true), original);
+
+    expect(result.refusedOps).toEqual([]);
+    expect(block(result.content, "a")).toEqual({
+      _uid: "a",
+      component: "author",
+      name: "Ada Lovelace",
+    });
+
+    const rolledBack = structuredClone(result.content);
+    expect(applyPatches(rolledBack, result.inverse).conflicts).toEqual([]);
+    expect(rolledBack).toEqual(original);
   });
 });
 
@@ -1761,7 +1934,16 @@ describe("mergeFields", () => {
   });
 
   it("should drop translations the target field held that no source replaces", () => {
-    const result = runMigrationOnStory(mergeName, {
+    const mergeNameOverwriting = defineMigration<TestSchema>({
+      ops: [
+        mergeFields(
+          { block: "author", fields: ["first_name", "last_name"], into: "name", overwrite: true },
+          (values) => values.filter(Boolean).join(" "),
+        ),
+      ],
+    });
+
+    const result = runMigrationOnStory(mergeNameOverwriting, {
       _uid: "root",
       component: "page",
       body: [

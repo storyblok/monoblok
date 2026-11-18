@@ -153,6 +153,8 @@ export interface SplitFieldOp<TAfter extends SchemaShape, TBefore extends Schema
   split: (value: never) => readonly unknown[];
   /** Present only when the author stated it; without it the op cannot be inverted. */
   merge?: (values: readonly unknown[]) => unknown;
+  /** Write over `into` fields that already hold a value instead of refusing the block. */
+  overwrite?: boolean;
   readonly [schemaBrand]?: [TAfter, TBefore];
 }
 
@@ -164,6 +166,8 @@ export interface MergeFieldsOp<TAfter extends SchemaShape, TBefore extends Schem
   merge: (values: readonly unknown[]) => unknown;
   /** Present only when the author stated it; without it the op cannot be inverted. */
   split?: (value: never) => readonly unknown[];
+  /** Write over an `into` field that already holds a value instead of refusing the block. */
+  overwrite?: boolean;
   readonly [schemaBrand]?: [TAfter, TBefore];
 }
 
@@ -535,6 +539,9 @@ export function addField<
  *
  * Splits each translation on its own, into the same translation of every
  * `into` field.
+ *
+ * A block whose `into` fields already hold a value, in any language, is refused
+ * rather than overwritten, unless `overwrite` is set.
  */
 export function splitField<
   TAfter extends SchemaShape,
@@ -555,6 +562,7 @@ export function splitField<
     field: TField;
     into: readonly TargetFieldName<TAfter, TBlock>[];
     merge?: (values: readonly unknown[]) => unknown;
+    overwrite?: boolean;
     under?: KeyOpUnder;
   },
   split: (value: SourceValue<TBefore, TBlock, TField>) => readonly unknown[],
@@ -566,6 +574,7 @@ export function splitField<
     into: spec.into,
     split: split as SplitFieldOp<TAfter, TBefore>["split"],
     ...(spec.merge === undefined ? {} : { merge: spec.merge }),
+    ...(spec.overwrite ? { overwrite: true } : {}),
     ...carriedUnder(spec),
   };
 }
@@ -576,6 +585,10 @@ export function splitField<
  * Merges once per language any source field holds a translation for; a source
  * field without that translation contributes its default-language value, which
  * is what the language shows.
+ *
+ * A block whose `into` field already holds a value, in any language, is refused
+ * rather than overwritten, unless `overwrite` is set or `into` is one of
+ * `fields`.
  */
 export function mergeFields<
   TAfter extends SchemaShape,
@@ -587,6 +600,7 @@ export function mergeFields<
     fields: readonly SourceFieldName<TAfter, TBefore, TBlock>[];
     into: TargetFieldName<TAfter, TBlock>;
     split?: (value: never) => readonly unknown[];
+    overwrite?: boolean;
     under?: KeyOpUnder;
   },
   merge: (values: readonly unknown[]) => unknown,
@@ -598,6 +612,7 @@ export function mergeFields<
     into: spec.into,
     merge,
     ...(spec.split === undefined ? {} : { split: spec.split }),
+    ...(spec.overwrite ? { overwrite: true } : {}),
     ...carriedUnder(spec),
   };
 }

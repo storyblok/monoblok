@@ -667,20 +667,21 @@ describe("migrations rollback command with runs that changed nothing", () => {
   });
 
   it("should say a named run that changed nothing has nothing to roll back, and leave it in place", async () => {
-    const error = vi.spyOn(console, "error").mockImplementation(() => {});
     const info = vi.spyOn(getUI(), "info");
     space.hasMigrations(["0001-rename-hero-subtitle", renameHeroSubtitle]);
     space.hasStories(storyWithCard());
     await run("run");
     const [recorded] = journalEntries();
     info.mockClear();
+    process.exitCode = undefined;
 
     await run("rollback", String(recorded.id));
 
-    expect(error.mock.calls.flat().join("\n")).toContain(
+    expect(info).toHaveBeenCalledWith(
       `Run ${String(recorded.id)} changed no stories, so there is nothing to roll back.`,
     );
     expect(info).not.toHaveBeenCalledWith(expect.stringContaining("Rolled back"));
+    expect(process.exitCode).toBeUndefined();
     expect(journalEntries()).toEqual([
       expect.not.objectContaining({ undoneAt: expect.anything() }),
     ]);

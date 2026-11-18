@@ -70,9 +70,10 @@ export async function rollbackContentMigrationRun({
       );
     }
     if (run.stories === 0) {
-      throw new CommandError(
-        `Run ${requestedRun} changed no stories, so there is nothing to roll back.`,
+      ui.info(
+        `Run ${chalk.bold(requestedRun)} changed no stories, so there is nothing to roll back.`,
       );
+      return;
     }
   }
 

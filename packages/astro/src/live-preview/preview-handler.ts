@@ -18,12 +18,10 @@ export function createPreviewHandler(
     currentRoot: () => document.body,
     update: ({ story, signal }) => getNewHTMLBody(story, signal),
     debounceMs: options.debounceMs,
-    // Keeps client-side attribute changes (an opened `<details>`, a toggled
-    // `class`) intact across an edit, as v10 did, while attributes the client
-    // never touched still follow the server render (e.g. a `class:list`
-    // derived from a field, see #805). The morph's own default
-    // (`preserveElementAttributes: false`) would reset that client state on
-    // every keystroke.
+    // v10 always kept client-side attribute changes (an opened `<details>`,
+    // a toggled `class`) intact across an edit. The morph's own default
+    // (`preserveElementAttributes: false`) instead applies the next render's
+    // attributes verbatim, which would reset that state on every keystroke.
     morph: { preserveElementAttributes: true },
     onBeforeUpdate: (story) =>
       !dispatchStoryblokEvent(LIVE_PREVIEW_UPDATING_EVENT, { story }, true).defaultPrevented,

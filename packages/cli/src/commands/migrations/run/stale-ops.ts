@@ -7,7 +7,10 @@ export type LiveFields = ReadonlyMap<string, ReadonlyMap<string, string | undefi
 export type StaleOp = { op: MigrationOp; reason: string };
 
 /** A field an op was written for, and the different type the space holds it as. */
-type Retyped = { field: string; type: string };
+type Retyped = { block: string; field: string; type: string };
+
+/** The fields of the block an op addresses, under the name the space holds the block by. */
+type SpaceBlock = { name: string; fields: Map<string, string | undefined> };
 
 /**
  * The fields an op creates and the fields it reads its values from, on the
@@ -106,10 +109,7 @@ function constantBackfill(op: MigrationOp): { value: unknown } | undefined {
  * or a boolean backfill of a field added back as text. A field type the check
  * knows no stored value for, such as option, is left to the op.
  */
-function retypedField(
-  op: MigrationOp,
-  fields: ReadonlyMap<string, string | undefined>,
-): Retyped | undefined {
+function retypedField(op: MigrationOp, { name, fields }: SpaceBlock): Retyped | undefined {
   if (op.kind !== "coerceField" && op.kind !== "addField") {
     return undefined;
   }
@@ -123,37 +123,38 @@ function retypedField(
     op.kind === "coerceField"
       ? op.to === stored
       : backfill === undefined || fitsStoredValue(backfill.value, stored);
-  return fits ? undefined : { field: op.field, type };
+  return fits ? undefined : { block: name, field: op.field, type };
 }
 
 function describeOp(op: MigrationOp): string {
   return "field" in op ? `${op.kind} ${op.block}.${op.field}` : `${op.kind} ${op.block}`;
 }
 
-function skippedPrefix(op: MigrationOp): string {
-  return `${describeOp(op)} skipped: the ${op.block} block in the space`;
+function skippedPrefix(op: MigrationOp, block: string): string {
+  return `${describeOp(op)} skipped: the ${block} block in the space`;
 }
 
-function retypedReason(op: MigrationOp, { field, type }: Retyped): string {
-  return `${skippedPrefix(op)} has "${field}" as a ${type} field.`;
+function retypedReason(op: MigrationOp, { block, field, type }: Retyped): string {
+  return `${skippedPrefix(op, block)} has "${field}" as a ${type} field.`;
 }
 
 /** Why `op` is stale, given the fields its block holds right after it. */
 function staleReason(
   op: MigrationOp,
-  fields: ReadonlyMap<string, string | undefined>,
+  block: SpaceBlock,
 ): { reason: string; retyped?: Retyped } | undefined {
+  const { fields } = block;
   const { creates, sources } = fieldEffects(op);
   const missing = creates.find((field) => !fields.has(field));
   const restored = sources.find((field) => !creates.includes(field) && fields.has(field));
-  const retyped = retypedField(op, fields);
+  const retyped = retypedField(op, block);
   if (missing !== undefined) {
     return {
-      reason: `${skippedPrefix(op)} has no field "${missing}". Either a later schema push removed it, or the schema change the migration was written for isn't pushed yet.`,
+      reason: `${skippedPrefix(op, block.name)} has no field "${missing}". Either a later schema push removed it, or the schema change the migration was written for isn't pushed yet.`,
     };
   }
   if (restored !== undefined) {
-    return { reason: `${skippedPrefix(op)} has the field "${restored}" again.` };
+    return { reason: `${skippedPrefix(op, block.name)} has the field "${restored}" again.` };
   }
   if (retyped !== undefined) {
     return { reason: retypedReason(op, retyped), retyped };
@@ -174,19 +175,28 @@ function walk(
   live: LiveFields,
   known: ReadonlyMap<MigrationOp, string>,
 ): { stale: Map<MigrationOp, string>; retyped: Map<string, Retyped> } {
-  const after = new Map([...live].map(([block, fields]) => [block, new Map(fields)]));
+  const after = new Map<string, SpaceBlock>(
+    [...live].map(([name, fields]) => [name, { name, fields: new Map(fields) }]),
+  );
+  // Ops address a block by the name it had before the migration, which the
+  // space no longer holds once the migration's schema change renamed it.
+  for (const op of ops) {
+    if (op.kind !== "renameBlock" || live.has(op.block)) continue;
+    const renamed = live.get(op.to);
+    if (renamed) after.set(op.block, { name: op.to, fields: new Map(renamed) });
+  }
   const stale = new Map<MigrationOp, string>();
   /** Fields an op was skipped for writing a value their type no longer stores, by `block.field`. */
   const retyped = new Map<string, Retyped>();
   for (let index = ops.length - 1; index >= 0; index--) {
     const op = ops[index];
-    const fields = after.get(op.block);
-    if (!fields || known.has(op)) {
+    const block = after.get(op.block);
+    if (!block || known.has(op)) {
       continue;
     }
-    const reason = staleReason(op, fields);
+    const reason = staleReason(op, block);
     if (reason === undefined) {
-      undoEffects(ops, index, fields);
+      undoEffects(ops, index, block.fields);
       continue;
     }
     stale.set(op, reason.reason);

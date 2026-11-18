@@ -584,6 +584,31 @@ describe("migrations run command for content migrations", () => {
     expect(warn).not.toHaveBeenCalledWith(expect.stringContaining("skipped"));
   });
 
+  it("should check the ops on a block the migration renames against the block's new name", async () => {
+    space.hasMigrations([
+      "0001-card-to-teaser",
+      defineMigration([
+        renameBlock({ block: "card", to: "teaser" }),
+        addField({ block: "card", field: "noindex" }, () => false),
+      ]),
+    ]);
+    space.hasBlocks({ teaser: { title: "text", noindex: "text" }, page: { body: "bloks" } });
+    space.hasStories(storyWithCard());
+    space.canUpdateStories();
+    const warn = vi.spyOn(getUI(), "warn");
+
+    await apply();
+
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'addField card.noindex skipped: the teaser block in the space has "noindex" as a text field.',
+      ),
+    );
+    expect(space.story(1)?.content.body).toEqual([
+      { _uid: "card-1", component: "teaser", title: "Hi" },
+    ]);
+  });
+
   it("should backfill a field with a value that fits its type", async () => {
     space.hasMigrations([
       "0001-add-noindex",

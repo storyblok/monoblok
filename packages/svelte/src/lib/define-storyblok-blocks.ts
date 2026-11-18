@@ -73,24 +73,61 @@ export function defineStoryblokBlocks<TExtraProps extends StoryblokExtraProps = 
 ): DefineStoryblokBlocksResult<TExtraProps> {
   // Cached after the first call so a factory with side effects (e.g. logging)
   // only ever runs once, no matter how many blocks render.
-  let resolved: DefineStoryblokBlocksOptions<TExtraProps> | undefined;
-  const options = () => (resolved ??= factory());
+  // `any` so the registry doesn't care which extra props the components take:
+  // the `factory` signature already checked them.
+  let resolved: DefineStoryblokBlocksOptions<any> | undefined;
+  const options = (): DefineStoryblokBlocksOptions<any> => (resolved ??= factory());
   // Warnings already printed, so the Visual Editor's frequent re-renders
   // don't repeat the same warning for every update.
   const warned = new Set<string>();
-  const registry: StoryblokBlockRegistry = {
+  const createRegistry = (warn: StoryblokBlockRegistry["warn"]): StoryblokBlockRegistry => ({
     resolve: (name) => {
       const { components = {}, fallback } = options();
       // Own properties only, so a block type such as `constructor` doesn't
       // resolve to an `Object.prototype` member.
-      return (Object.hasOwn(components, name) ? components[name] : undefined) ?? fallback;
+      const registered = Object.hasOwn(components, name) ? components[name] : undefined;
+
+      // Svelte 5 components are plain functions.
+      if (typeof registered === "function") return registered;
+      if (Object.hasOwn(components, name)) {
+        warn(
+          `invalid:${name}`,
+          `[storyblok] The component registered for block type "${name}" isn't a valid component. ` +
+            "Check that it's imported as a default import (`import Teaser from './Teaser.svelte'`) " +
+            "and isn't `undefined`, e.g. because of a circular import.",
+        );
+      }
+
+      if (fallback) {
+        if (typeof fallback === "function") return fallback;
+        warn(
+          "invalid-fallback",
+          "[storyblok] The `fallback` passed to `defineStoryblokBlocks` isn't a valid component. " +
+            "Check that it's imported as a default import and isn't `undefined`.",
+        );
+        return undefined;
+      }
+
+      if (!Object.hasOwn(components, name)) {
+        // Content editors can add block types the code doesn't know about, so
+        // this warns by default: otherwise the content silently goes missing.
+        warn(
+          `missing:${name}`,
+          `[storyblok] No component registered for block type "${name}". ` +
+            "Register it in `defineStoryblokBlocks(() => ({ components }))` or provide a `fallback`.",
+        );
+      }
+      return undefined;
     },
-    warn: (key, message) => {
-      if (options().warnings === false || warned.has(key)) return;
-      warned.add(key);
-      console.warn(message);
-    },
-  };
+    warn,
+    withoutWarnings: () => silent,
+  });
+  const silent: StoryblokBlockRegistry = createRegistry(() => {});
+  const registry = createRegistry((key, message) => {
+    if (options().warnings === false || warned.has(key)) return;
+    warned.add(key);
+    console.warn(message);
+  });
 
   // A Svelte component is just a `(internals, props) => exports` function
   // (see svelte's `Component` type), so it's wrapped directly instead of
@@ -130,7 +167,7 @@ function withDefaultBlok<TProps extends { components?: StoryblokSvelteRichTextCo
       const components = target.components;
       if (!cached || components !== cachedFor) {
         cachedFor = components;
-        cached = { blok: Blok, ...components };
+        cached = { ...components, blok: components?.blok ?? Blok };
       }
       return cached;
     },

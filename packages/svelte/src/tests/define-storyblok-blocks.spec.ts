@@ -294,4 +294,87 @@ describe("defineStoryblokBlocks", () => {
     unmount(second);
     consoleWarn.mockRestore();
   });
+
+  it("should warn about an invalid registered component and render the fallback", () => {
+    const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { StoryblokBlock } = defineStoryblokBlocks(() => ({
+      // @ts-expect-error a module namespace is not a component.
+      components: { teaser: { default: Teaser } },
+      fallback: Fallback,
+    }));
+
+    const target = document.createElement("div");
+    const component = mount(StoryblokBlock, {
+      target,
+      props: { block: { _uid: "1", component: "teaser" } },
+    });
+    flushSync();
+
+    expect(target.querySelector('[data-testid="fallback"]')).not.toBeNull();
+    expect(consoleWarn).toHaveBeenCalledTimes(1);
+    expect(consoleWarn).toHaveBeenCalledWith(expect.stringContaining("isn't a valid component"));
+    unmount(component);
+    consoleWarn.mockRestore();
+  });
+
+  it("should name the likely cause for an undefined registered component", () => {
+    const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { StoryblokBlock } = defineStoryblokBlocks(() => ({
+      // @ts-expect-error `undefined` is not a component.
+      components: { teaser: undefined },
+    }));
+
+    const target = document.createElement("div");
+    const component = mount(StoryblokBlock, {
+      target,
+      props: { block: { _uid: "1", component: "teaser" } },
+    });
+    flushSync();
+
+    expect(target.querySelector("[data-testid]")).toBeNull();
+    expect(consoleWarn).toHaveBeenCalledWith(expect.stringContaining("isn't a valid component"));
+    unmount(component);
+    consoleWarn.mockRestore();
+  });
+
+  it("should warn about an invalid fallback and render nothing", () => {
+    const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { StoryblokBlock } = defineStoryblokBlocks(() => ({
+      components: {},
+      // @ts-expect-error a module namespace is not a component.
+      fallback: { default: Fallback },
+    }));
+
+    const target = document.createElement("div");
+    const component = mount(StoryblokBlock, {
+      target,
+      props: { block: { _uid: "1", component: "unregistered" } },
+    });
+    flushSync();
+
+    expect(target.querySelector("[data-testid]")).toBeNull();
+    expect(consoleWarn).toHaveBeenCalledWith(expect.stringContaining("`fallback`"));
+    unmount(component);
+    consoleWarn.mockRestore();
+  });
+
+  it("should not warn about an invalid component when warnings is false", () => {
+    const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { StoryblokBlock } = defineStoryblokBlocks(() => ({
+      // @ts-expect-error a module namespace is not a component.
+      components: { teaser: { default: Teaser } },
+      warnings: false,
+    }));
+
+    const target = document.createElement("div");
+    const component = mount(StoryblokBlock, {
+      target,
+      props: { block: { _uid: "1", component: "teaser" } },
+    });
+    flushSync();
+
+    expect(consoleWarn).not.toHaveBeenCalled();
+    unmount(component);
+    consoleWarn.mockRestore();
+  });
 });

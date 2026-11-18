@@ -30,7 +30,7 @@
 ## Features
 
 - Render Storyblok content with Svelte components
-- Connect frontend components with the Visual Editor via StoryblokBridge
+- Update your content live in the Visual Editor with `onStoryblokEditorEvent`
 - Render rich text content with the Storyblok Rich Text Renderer based on `@storyblok/richtext`
 - Svelte-specific block registry function: `defineStoryblokBlocks`
 - Editable attributes injected on every block's `editable` prop for Visual Editor integration

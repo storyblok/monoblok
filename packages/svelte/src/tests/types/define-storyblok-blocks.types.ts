@@ -4,6 +4,7 @@ import type { StoryblokRichTextComponentProps } from "../../lib/richtext-helpers
 import type { StoryblokBlockComponentProps, StoryblokBlockData } from "../../lib/types";
 import BlokTypo from "../blocks/BlokTypo.svelte";
 import Fallback from "../blocks/Fallback.svelte";
+import RequiresEditable from "../blocks/RequiresEditable.svelte";
 import RequiresLocale from "../blocks/RequiresLocale.svelte";
 import Teaser from "../blocks/Teaser.svelte";
 
@@ -31,6 +32,11 @@ defineStoryblokBlocks<{ locale: string }>(() => ({
   fallback: Fallback,
 }));
 
+// `StoryblokBlock` always passes `editable`, so a component may require it.
+defineStoryblokBlocks(() => ({
+  components: { editable: RequiresEditable },
+}));
+
 // `block` and `editable` are injected by `StoryblokBlock` and can't be extra props.
 // @ts-expect-error `block` is reserved.
 defineStoryblokBlocks<{ block: string }>(() => ({ components: {} }));
@@ -55,7 +61,7 @@ const richTextProps = {
   optimizeImage: { width: 800 },
 } satisfies StoryblokRichTextComponentProps;
 
-const typoProps: StoryblokRichTextComponentProps = {
+export const typoProps: StoryblokRichTextComponentProps = {
   document: richTextProps.document,
   // @ts-expect-error `optimiseImage` is not a `StoryblokRichText` prop.
   optimiseImage: true,

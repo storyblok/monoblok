@@ -78,6 +78,22 @@ async function findCandidateStories(
   return [...ids];
 }
 
+/**
+ * The space's blocks. Every op is checked against them before it runs, so
+ * without them no content migration is applied.
+ */
+async function fetchSpaceBlocks(space: string): Promise<readonly Component[]> {
+  try {
+    return (await fetchComponents(space)) ?? [];
+  } catch (maybeError) {
+    const error = toError(maybeError);
+    getLogger().error("Failed to list the space's blocks", { space, error });
+    throw new CommandError(
+      `Could not list the space's blocks, so no content migration was applied: ${error.message}. Every op is checked against them first, so one a later schema push superseded doesn't undo that push. Run the command again.`,
+    );
+  }
+}
+
 function liveFields(components: readonly Component[]): LiveFields {
   return new Map(
     components.map((component) => [
@@ -404,7 +420,9 @@ export async function applyContentMigrations({
   const ui = getUI();
   const logger = getLogger();
 
-  const components = (await fetchComponents(space)) ?? [];
+  const components = selected.some((entry) => entry.migration.ops.length > 0)
+    ? await fetchSpaceBlocks(space)
+    : [];
   const live = liveFields(components);
   const isTranslatable = translatability(components);
   const journal = contentJournal(path);

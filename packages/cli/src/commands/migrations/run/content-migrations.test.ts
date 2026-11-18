@@ -261,6 +261,47 @@ describe("migrations run command for content migrations", () => {
     expect(stdout).not.toHaveBeenCalled();
   });
 
+  describe("when the space's blocks can't be listed", () => {
+    const failsToListBlocks = () =>
+      server.use(
+        http.get(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/components`, () =>
+          HttpResponse.json({ error: "Internal Server Error" }, { status: 500 }),
+        ),
+      );
+
+    it("should apply nothing and say the ops couldn't be checked", async () => {
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+      space.hasStories(storyWithCard());
+      space.canUpdateStories();
+      failsToListBlocks();
+
+      await apply();
+
+      expect(space.writes).toEqual([]);
+      expect(journalEntries()).toEqual([]);
+      expect(error.mock.calls.flat().join("\n")).toContain(
+        "Could not list the space's blocks, so no content migration was applied:",
+      );
+      expect(error.mock.calls.flat().join("\n")).toContain(
+        "Every op is checked against them first, so one a later schema push superseded doesn't undo that push. Run the command again.",
+      );
+      expect(process.exitCode).toBe(2);
+    });
+
+    it("should not need them for a migration without ops", async () => {
+      space.hasMigrations(["0001-card", defineMigration([])]);
+      failsToListBlocks();
+      const info = vi.spyOn(getUI(), "info");
+      process.exitCode = undefined;
+
+      await apply();
+
+      expect(info).toHaveBeenCalledWith("0001-card: has no ops yet, so nothing was applied.");
+      expect(process.exitCode).toBeUndefined();
+    });
+  });
+
   describe("a first run that changes nothing", () => {
     const migrated = storyWithCard({
       id: 2,

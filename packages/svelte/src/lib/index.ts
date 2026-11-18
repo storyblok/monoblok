@@ -1,4 +1,5 @@
 export {
+  type StoryblokRichTextComponentProps,
   type StoryblokSvelteRichTextComponentMap,
   type StoryblokSvelteRichTextProps,
   type StoryblokSvelteRichTextRenderContext,

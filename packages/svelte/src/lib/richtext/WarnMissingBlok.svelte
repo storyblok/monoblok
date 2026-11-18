@@ -12,7 +12,10 @@
   function warnOnce() {
     if (!warnings || warned) return;
     warned = true;
-    console.warn('[storyblok] "blok" nodes require a custom renderer passed through `components.blok`.');
+    console.warn(
+      '[storyblok] "blok" nodes require a custom renderer passed through `components.blok`, ' +
+        'or use the `StoryblokRichText` returned by `defineStoryblokBlocks()`.',
+    );
   }
 
   // Effects don't run during SSR, so check once up front on the server.

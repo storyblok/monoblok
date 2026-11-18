@@ -188,6 +188,35 @@ describe("migrations run command for content migrations", () => {
     );
   });
 
+  it("should apply an op whose field a later op of the same migration consumes", async () => {
+    space.hasMigrations([
+      "0001-card-hero",
+      defineMigration([
+        renameField({ block: "card", field: "title", to: "heading" }),
+        fieldsToBlock({
+          block: "card",
+          fields: { heading: "headline" },
+          into: { block: "hero", field: "hero" },
+        }),
+      ]),
+    ]);
+    space.hasBlocks({ card: { hero: "bloks" }, hero: ["headline"], page: { body: "bloks" } });
+    space.hasStories(storyWithCard());
+    space.canUpdateStories();
+    const warn = vi.spyOn(getUI(), "warn");
+
+    await apply();
+
+    expect(warn).not.toHaveBeenCalledWith(expect.stringContaining("skipped"));
+    expect(space.story(1)?.content.body).toEqual([
+      {
+        _uid: "card-1",
+        component: "card",
+        hero: [expect.objectContaining({ component: "hero", headline: "Hi" })],
+      },
+    ]);
+  });
+
   it("should say a migration without ops has none, instead of blaming the space's blocks", async () => {
     space.hasMigrations(["0001-card", defineMigration([])]);
     space.hasBlocks({ card: ["title"], page: ["body"] });

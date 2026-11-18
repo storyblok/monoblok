@@ -7,35 +7,42 @@ export type LiveFields = ReadonlyMap<string, ReadonlyMap<string, string | undefi
 export type StaleOp = { op: MigrationOp; reason: string };
 
 /**
- * The fields an op creates and the fields it removes, on the block it targets.
+ * The fields an op creates and the fields it reads its values from, on the
+ * block it targets; a source the op doesn't create again is gone after it.
  * Ops that only change a value a block already holds create nothing: they skip
  * blocks without the field, so a rerun on migrated content changes nothing,
  * while content that still holds the field reaches a later migration
  * consuming it in the shape that migration expects.
  */
-function fieldEffects(op: MigrationOp): { creates: readonly string[]; removes: readonly string[] } {
+function fieldEffects(op: MigrationOp): { creates: readonly string[]; sources: readonly string[] } {
   switch (op.kind) {
     case "renameField":
     case "moveField":
-      return { creates: [op.to], removes: [op.field] };
+      return { creates: [op.to], sources: [op.field] };
     case "removeField":
-      return { creates: [], removes: [op.field] };
+      return { creates: [], sources: [op.field] };
     case "addField":
-      return { creates: [op.field], removes: [] };
+      return { creates: [op.field], sources: [] };
     case "splitField":
-      return { creates: op.into, removes: op.into.includes(op.field) ? [] : [op.field] };
+      return { creates: op.into, sources: [op.field] };
     case "mergeFields":
-      return { creates: [op.into], removes: op.fields.filter((field) => field !== op.into) };
-    case "fieldsToBlock": {
-      const moved = Object.keys(op.fields);
-      return {
-        creates: [op.into.field],
-        removes: moved.filter((field) => field !== op.into.field),
-      };
-    }
+      return { creates: [op.into], sources: op.fields };
+    case "fieldsToBlock":
+      return { creates: [op.into.field], sources: Object.keys(op.fields) };
     default:
-      return { creates: [], removes: [] };
+      return { creates: [], sources: [] };
   }
+}
+
+/** Turns the fields a block holds after `op` into the fields it holds before. */
+function undoEffects(op: MigrationOp, fields: Map<string, string | undefined>): void {
+  const { creates, sources } = fieldEffects(op);
+  // A renamed field keeps its type; any other source's type before the op is unknown.
+  const sourceType =
+    op.kind === "renameField" || op.kind === "moveField" ? fields.get(op.to) : undefined;
+  for (const field of creates) fields.delete(field);
+  for (const field of sources) fields.set(field, sourceType);
+  if (op.kind === "coerceField") fields.set(op.field, undefined);
 }
 
 /**
@@ -63,44 +70,64 @@ function describeOp(op: MigrationOp): string {
   return "field" in op ? `${op.kind} ${op.block}.${op.field}` : `${op.kind} ${op.block}`;
 }
 
+/** Why `op` is stale, given the fields its block holds right after it. */
+function staleReason(
+  op: MigrationOp,
+  fields: ReadonlyMap<string, string | undefined>,
+): string | undefined {
+  const { creates, sources } = fieldEffects(op);
+  const missing = creates.find((field) => !fields.has(field));
+  const restored = sources.find((field) => !creates.includes(field) && fields.has(field));
+  const retyped = retypedField(op, fields);
+  const prefix = `${describeOp(op)} skipped: the ${op.block} block in the space`;
+  if (missing !== undefined) {
+    return `${prefix} has no field "${missing}". Push the schema the migration was written for, unless a later push removed the field.`;
+  }
+  if (restored !== undefined) {
+    return `${prefix} has the field "${restored}" again.`;
+  }
+  if (retyped !== undefined) {
+    return `${prefix} has "${retyped.field}" as a ${retyped.type} field.`;
+  }
+  return undefined;
+}
+
 /**
  * Splits off the ops a later schema change superseded: one that creates a field
  * the block no longer has, removes a field the block has again, or coerces a
- * field to a type it no longer has. Every migration reruns, so without this an old op would undo
- * the later change, such as adding back a field that was since renamed. The
- * fields of blocks the space does not hold are not checked.
+ * field to a type it no longer has. Every migration reruns, so without this an
+ * old op would undo the later change, such as adding back a field that was
+ * since renamed. The fields of blocks the space does not hold are not checked.
+ *
+ * Each op is checked against the fields its block holds right after it: the
+ * space's fields with the effects of the migration's later ops undone, so a
+ * field a later op consumes, such as one renamed only to be moved into a new
+ * block, still counts.
  */
 export function withoutStaleOps(
   migration: CompiledMigration,
   live: LiveFields,
 ): { migration: CompiledMigration; stale: StaleOp[] } {
-  const stale: StaleOp[] = [];
-  const ops = migration.ops.filter((op) => {
-    const fields = live.get(op.block);
+  const after = new Map([...live].map(([block, fields]) => [block, new Map(fields)]));
+  const staleOps = new Map<MigrationOp, string>();
+  for (const op of [...migration.ops].reverse()) {
+    const fields = after.get(op.block);
     if (!fields) {
-      return true;
+      continue;
     }
-    const { creates, removes } = fieldEffects(op);
-    const missing = creates.find((field) => !fields.has(field));
-    const restored = removes.find((field) => fields.has(field));
-    const retyped = retypedField(op, fields);
-    const prefix = `${describeOp(op)} skipped: the ${op.block} block in the space`;
-    if (missing !== undefined) {
-      stale.push({
-        op,
-        reason: `${prefix} has no field "${missing}". Push the schema the migration was written for, unless a later push removed the field.`,
-      });
-    } else if (restored !== undefined) {
-      stale.push({ op, reason: `${prefix} has the field "${restored}" again.` });
-    } else if (retyped !== undefined) {
-      stale.push({ op, reason: `${prefix} has "${retyped.field}" as a ${retyped.type} field.` });
+    const reason = staleReason(op, fields);
+    if (reason === undefined) {
+      undoEffects(op, fields);
     } else {
-      return true;
+      staleOps.set(op, reason);
     }
-    return false;
-  });
+  }
+  const ops = migration.ops.filter((op) => !staleOps.has(op));
   return {
     migration: { ...migration, ops, targets: [...new Set(ops.map((op) => op.block))] },
-    stale,
+    stale: migration.ops.flatMap((op) => {
+      const reason = staleOps.get(op);
+      return reason === undefined ? [] : [{ op, reason }];
+    }),
   };
 }

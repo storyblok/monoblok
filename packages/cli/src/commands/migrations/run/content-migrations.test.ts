@@ -261,6 +261,49 @@ describe("migrations run command for content migrations", () => {
     expect(stdout).not.toHaveBeenCalled();
   });
 
+  describe("a first run that changes nothing", () => {
+    const migrated = storyWithCard({
+      id: 2,
+      slug: "post",
+      full_slug: "blog/post",
+      content: {
+        _uid: "root",
+        component: "page",
+        body: [{ _uid: "card-1", component: "card", headline: "Hi" }],
+      },
+    });
+
+    it("should not be recorded when --starts-with left stories out", async () => {
+      space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+      space.hasStories(storyWithCard(), migrated);
+      space.canUpdateStories();
+      const info = vi.spyOn(getUI(), "info");
+
+      await apply("--starts-with", "blog/");
+
+      expect(journalEntries()).toEqual([]);
+      expect(info).toHaveBeenCalledWith(
+        "0001-rename-card-title: changed no stories, so nothing was recorded. It stays pending until it runs on every story, without --starts-with or --query.",
+      );
+    });
+
+    it("should not be recorded when a story it matched couldn't be read", async () => {
+      space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+      space.hasStories(storyWithCard(), migrated);
+      space.canUpdateStories();
+      space.failsToReadStory(1);
+      const info = vi.spyOn(getUI(), "info");
+
+      await apply();
+
+      expect(journalEntries()).toEqual([]);
+      expect(info).toHaveBeenCalledWith(
+        "0001-rename-card-title: changed no stories, so nothing was recorded. It stays pending until every story it matched can be read.",
+      );
+      expect(process.exitCode).toBe(2);
+    });
+  });
+
   it("should alter a field a later migration split, in stories that still hold it", async () => {
     space.hasMigrations(
       [

@@ -137,11 +137,11 @@ function storyCache(space: string, access: StoryAccess) {
      */
     async storiesFor(
       candidates: number[],
-    ): Promise<{ stories: StoryForMigration[]; unread: number }> {
+    ): Promise<{ stories: StoryForMigration[]; unread: number; allRead: boolean }> {
       const unread = await readMissing(candidates);
       const ids = new Set([...candidates, ...changed]);
       const stories = [...ids].flatMap((id) => known.get(id) ?? []);
-      return { stories, unread };
+      return { stories, unread, allRead: candidates.every((id) => !unreadable.has(id)) };
     },
     /**
      * What a migration changed. The publish state stays as it was read: the run
@@ -408,6 +408,7 @@ export async function applyContentMigrations({
   const live = liveFields(components);
   const isTranslatable = translatability(components);
   const journal = contentJournal(path);
+  const scoped = Object.values(scope).some((value) => value !== undefined);
   /** Migrations with a run still in place, so a run that changes nothing need not be recorded. */
   const inPlace = new Set(
     (await journal.list(space)).filter((run) => !run.undoneAt).map((run) => run.migration),
@@ -438,7 +439,7 @@ export async function applyContentMigrations({
     }
     const spinner = ui.createSpinner(`${entry.id}: fetching stories...`);
     const candidates = await findCandidateStories(space, migration.targets, scope);
-    const { stories, unread } = await cache.storiesFor(candidates);
+    const { stories, unread, allRead } = await cache.storiesFor(candidates);
     failed += unread;
     spinner.succeed(
       `${entry.id}: ${plural(candidates.length, "story contains", "stories contain")} ${migration.targets.join(", ")}`,
@@ -487,15 +488,26 @@ export async function applyContentMigrations({
     }
 
     if (outcome.writes.length === 0) {
+      const unrecorded = `${entry.id}: changed no stories, so nothing was recorded.`;
+      if (outcome.refusals.length > 0 || inPlace.has(entry.id)) {
+        ui.info(unrecorded);
+        continue;
+      }
       // A first run with nothing to change is recorded, so the migration no
       // longer shows as pending; an empty run is never the one rolled back.
-      if (outcome.refusals.length === 0 && !inPlace.has(entry.id)) {
+      // Only one that saw every story, or the stories it missed would stay
+      // unmigrated once a later push makes its ops stale.
+      if (scoped) {
+        ui.info(
+          `${unrecorded} It stays pending until it runs on every story, without --starts-with or --query.`,
+        );
+      } else if (!allRead) {
+        ui.info(`${unrecorded} It stays pending until every story it matched can be read.`);
+      } else {
         await journal.record(outcome.run, []);
         inPlace.add(entry.id);
         ui.info(`${entry.id}: changed no stories, recorded as ${chalk.bold(outcome.run.id)}.`);
-        continue;
       }
-      ui.info(`${entry.id}: changed no stories, so nothing was recorded.`);
       continue;
     }
     applied.push({ id: entry.id, outcome });

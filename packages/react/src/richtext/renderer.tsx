@@ -53,9 +53,8 @@ export interface StoryblokReactRichTextRenderContext {
   components?: StoryblokReactRichTextComponentMap;
   data?: unknown;
   /**
-   * Set to `false` to silence the warning for a `blok` node without a
-   * renderer, and, in the `StoryblokRichText` returned by
-   * `defineStoryblokBlocks()`, the registry's warnings for embedded blocks.
+   * Logs a warning when a `blok` node has no `components.blok` renderer. Set
+   * to `false` to silence it.
    *
    * @default true
    */
@@ -93,8 +92,9 @@ function warnMissingBlokOnce(warnings: boolean | undefined): void {
   }
   warnedMissingBlok = true;
   console.warn(
-    '[storyblok] "blok" nodes require a custom renderer passed through `components.blok`, ' +
-      "or use the `StoryblokRichText` returned by `defineStoryblokBlocks()`.",
+    '[storyblok] The rich text contains "blok" nodes, but no `components.blok` renderer was ' +
+      "passed, so they render nothing. Pass one that renders `attrs.body` with " +
+      "`StoryblokBlock`, or set `warnings: false` to silence this.",
   );
 }
 

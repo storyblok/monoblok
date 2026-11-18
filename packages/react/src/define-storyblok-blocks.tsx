@@ -8,7 +8,6 @@ import type {
   StoryblokBlockEntry,
   StoryblokExtraProps,
 } from "./types";
-import { createStoryblokRichText } from "./richtext/create-storyblok-richtext";
 
 /**
  * Check if a component is a lazy component (created with React.lazy).
@@ -147,8 +146,11 @@ function resolveEntry(
 }
 
 /**
- * Maps Storyblok block types to React components and returns pre-wired
- * `StoryblokBlock` and `StoryblokRichText`.
+ * Maps Storyblok block types to React components and returns a pre-wired
+ * `StoryblokBlock`.
+ *
+ * Rich text isn't part of the registry: use the standalone
+ * `StoryblokRichText` and render embedded bloks through `components.blok`.
  *
  * Each call is fully independent: nothing is shared globally, so you can
  * define as many registries as you like (e.g. one per content area) without
@@ -168,7 +170,7 @@ function resolveEntry(
  *
  * @example
  * ```tsx
- * export const { StoryblokBlock, StoryblokRichText } = defineStoryblokBlocks<{
+ * export const { StoryblokBlock } = defineStoryblokBlocks<{
  *   locale: string;
  * }>(() => ({
  *   components: {
@@ -262,12 +264,12 @@ export function defineStoryblokBlocks<TExtraProps extends StoryblokExtraProps = 
     }
   }
 
-  function renderBlock({ block, ...rest }: RuntimeBlockProps, silent: boolean): ReactNode {
+  function StoryblokBlock({ block, ...rest }: RuntimeBlockProps): ReactNode {
     if (!block) {
       // Skipped in the Visual Editor, where the bridge sends a story without
       // `content` while the editor shows a previous version (visual history).
       const inEditor = typeof window !== "undefined" && isInEditor(new URL(window.location.href));
-      if (!silent && !inEditor && !warned.has("undefined-block")) {
+      if (!inEditor && !warned.has("undefined-block")) {
         warn(
           "undefined-block",
           "[storyblok] <StoryblokBlock /> received an undefined `block` prop and rendered nothing. " +
@@ -283,11 +285,11 @@ export function defineStoryblokBlocks<TExtraProps extends StoryblokExtraProps = 
     const resolvedEntry = entries.get(block.component);
     const editable = storyblokEditable(block);
 
-    // `rest` first in every branch, so an untyped extra prop (e.g. from rich
-    // text `data`) can't replace the injected `block` or `editable`.
+    // `rest` first in every branch, so an untyped extra prop can't replace
+    // the injected `block` or `editable`.
     if (!resolvedEntry) {
       const invalidMessage = invalid.get(block.component);
-      if (invalidMessage !== undefined && !silent) {
+      if (invalidMessage !== undefined) {
         warn(`invalid:${block.component}`, invalidMessage, warnings);
       }
       if (fallback) {
@@ -295,20 +297,18 @@ export function defineStoryblokBlocks<TExtraProps extends StoryblokExtraProps = 
         return <FallbackComponent {...rest} block={block} editable={editable} />;
       }
       if (invalidFallback) {
-        if (!silent) {
-          warn(
-            "invalid-fallback",
-            "[storyblok] defineStoryblokBlocks: `fallback` isn't a valid React component. " +
-              NOT_A_COMPONENT_HINT,
-            warnings,
-          );
-        }
+        warn(
+          "invalid-fallback",
+          "[storyblok] defineStoryblokBlocks: `fallback` isn't a valid React component. " +
+            NOT_A_COMPONENT_HINT,
+          warnings,
+        );
         return null;
       }
       // Content editors can add block types the code doesn't know about, so
       // this warns by default: otherwise the content silently goes missing.
       // An invalid entry already warned above, with the actual cause.
-      if (!silent && invalidMessage === undefined) {
+      if (invalidMessage === undefined) {
         warn(
           `missing:${block.component}`,
           `[storyblok] No component registered for block type "${block.component}". ` +
@@ -324,23 +324,9 @@ export function defineStoryblokBlocks<TExtraProps extends StoryblokExtraProps = 
     return needsSuspense ? <Suspense fallback={fallbackNode}>{element}</Suspense> : element;
   }
 
-  function StoryblokBlock(props: RuntimeBlockProps): ReactNode {
-    return renderBlock(props, false);
-  }
   StoryblokBlock.displayName = "StoryblokBlock";
-
-  function SilentStoryblokBlock(props: RuntimeBlockProps): ReactNode {
-    return renderBlock(props, true);
-  }
-  SilentStoryblokBlock.displayName = "StoryblokBlock";
-
-  // Pre-computed once so every access returns the same function reference.
-  // A getter would call createStoryblokRichText() on each access, producing a
-  // new component type per render and causing React to unmount + remount the
-  // entire richtext subtree on every render.
-  const StoryblokRichText = createStoryblokRichText({ StoryblokBlock, SilentStoryblokBlock });
 
   // No cast needed: `RuntimeBlockProps` accepts any extra props, which is a
   // superset of whatever `TExtraProps` the caller supplied.
-  return { StoryblokBlock, StoryblokRichText };
+  return { StoryblokBlock };
 }

@@ -1,6 +1,10 @@
 import type { BlockContent, StoryblokBlockComponentProps } from "@storyblok/react";
-import { StoryblokBlock, StoryblokRichText } from "../storyblok";
+import { StoryblokRichText } from "@storyblok/react";
+import { StoryblokBlock } from "../storyblok";
+import RichTextBlok from "./rich-text-blok";
 import type { StoryblokRichTextDoc } from "@storyblok/richtext";
+
+const richTextComponents = { blok: RichTextBlok };
 
 type PageProps = StoryblokBlockComponentProps<{
   body: BlockContent[];
@@ -14,7 +18,9 @@ const Page = ({ block, editable }: PageProps) => (
         <StoryblokBlock block={nestedBlock} />
       </div>
     ))}
-    {block.richText ? <StoryblokRichText document={block.richText} /> : null}
+    {block.richText ? (
+      <StoryblokRichText document={block.richText} components={richTextComponents} />
+    ) : null}
   </div>
 );
 

@@ -59,7 +59,7 @@ export const apiClient = createApiClient({
   region: "eu",
 });
 
-export const { StoryblokBlock, StoryblokRichText } = defineStoryblokBlocks(() => ({
+export const { StoryblokBlock } = defineStoryblokBlocks(() => ({
   components: {
     page: Page,
     teaser: Teaser,
@@ -170,12 +170,13 @@ To enable live editing in the Visual Editor, wrap the rendered content in
 ### `defineStoryblokBlocks`
 
 `defineStoryblokBlocks()` maps Storyblok blocks to React components and returns the `StoryblokBlock`
-and `StoryblokRichText` components, which share the same component map.
+component. Rich text isn’t part of the result: use the standalone
+[`StoryblokRichText`](#storyblokrichtext) component.
 
 ```js
 import { defineStoryblokBlocks } from "@storyblok/react";
 
-export const { StoryblokBlock, StoryblokRichText } = defineStoryblokBlocks(() => OPTIONS);
+export const { StoryblokBlock } = defineStoryblokBlocks(() => OPTIONS);
 ```
 
 `defineStoryblokBlocks()` accepts a function that returns the options. The function runs on the
@@ -205,7 +206,7 @@ Suspense behavior of that component. This configuration is especially useful for
 Components that fetch their own data.
 
 ```jsx
-export const { StoryblokBlock, StoryblokRichText } = defineStoryblokBlocks(() => ({
+export const { StoryblokBlock } = defineStoryblokBlocks(() => ({
   components: {
     hero: {
       component: Hero,
@@ -428,13 +429,12 @@ export default function Feature({ block }) {
 
 ### `StoryblokRichText`
 
-`StoryblokRichText` renders a rich text field from a Storyblok story. Use the `StoryblokRichText`
-component returned by `defineStoryblokBlocks`, so that blocks embedded in the rich text field render
-through the registered components. The component works in both Server Components and Client
-Components.
+`StoryblokRichText` renders a rich text field from a Storyblok story. The component works in both
+Server Components and Client Components. It isn’t bound to a component map, so apps that don’t
+render rich text don’t bundle the renderer.
 
 ```jsx
-import { StoryblokRichText } from "@/lib/storyblok";
+import { StoryblokRichText } from "@storyblok/react";
 
 <StoryblokRichText document={block.richtext_field} />;
 ```
@@ -447,20 +447,38 @@ The component accepts the following optional props:
   `{ width: 800 }`.
 - `data` shares custom data with all custom rich text components. Each component receives the data
   as `context.data`.
-- `warnings` set to `false` silences the warnings for embedded blocks that render nothing. Defaults
-  to `true`.
+- `warnings` set to `false` silences the warning for embedded blocks without a `blok` renderer.
+  Defaults to `true`.
 
-If `data` is a plain object, `StoryblokRichText` also passes it to every embedded block as extra
-props, like the extra props of `StoryblokBlock`. TypeScript doesn’t check `data` against the extra
-props of the component map. To check it, use `satisfies`, for example,
-`data={{ locale } satisfies ExtraProps}`.
+#### Embedded blocks
 
-A custom component for the `blok` node replaces the component map for embedded blocks.
+Blocks embedded in a rich text field render only through a custom component for the `blok` node. The
+component receives the node’s `attrs`. Render `attrs.body` with `StoryblokBlock`, so embedded blocks
+use the component map, the `editable` attributes, and the `fallback` of the application.
 
-To render rich text without the component map, use the standalone
-[`createRichTextRenderer`](#createrichtextrenderer) function. The function renders embedded blocks
-only when its `components` option includes a custom component for the `blok` node, the rich text
-node that holds embedded blocks.
+```tsx
+// src/components/RichTextBlok.tsx
+import type { StoryblokReactRichTextProps } from "@storyblok/react";
+import { StoryblokBlock } from "@/lib/storyblok";
+
+export function RichTextBlok({ attrs }: StoryblokReactRichTextProps<"blok">) {
+  return attrs.body?.map((block, index) => (
+    <StoryblokBlock key={block._uid ?? index} block={block} />
+  ));
+}
+```
+
+```tsx
+const richTextComponents = { blok: RichTextBlok };
+
+<StoryblokRichText document={block.richtext_field} components={richTextComponents} />;
+```
+
+To pass extra props to embedded blocks, for example, `locale`, pass them as `data` and forward them
+from `context.data` in the `blok` component.
+
+If a document contains a `blok` node and no `blok` component is passed, `StoryblokRichText` renders
+nothing for it and logs a warning once. Documents without embedded blocks never warn.
 
 When using TypeScript, custom components are fully type-safe through the
 `StoryblokReactRichTextProps<T>` utility type. For example, `StoryblokReactRichTextProps<"link">`
@@ -537,8 +555,7 @@ To render semantic table nodes, use the `splitTableRows` utility from `@storyblo
 create `<thead>` and `<tbody>` elements.
 
 ```tsx
-import type { StoryblokReactRichTextProps } from "@storyblok/react";
-import { StoryblokRichText } from "@/lib/storyblok";
+import { StoryblokRichText, type StoryblokReactRichTextProps } from "@storyblok/react";
 import { splitTableRows } from "@storyblok/richtext";
 
 export function CustomTable({ content, context }: StoryblokReactRichTextProps<"table">) {

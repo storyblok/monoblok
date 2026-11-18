@@ -11,9 +11,15 @@ import {
 import { describe, it, expect, vi, expectTypeOf } from "vitest";
 import type { ReactNode } from "react";
 import { render, waitFor, act } from "@testing-library/react";
-import type { BlockContent, StoryblokBlockComponentProps, StoryblokEditableProps } from "./types";
+import type {
+  BlockContent,
+  StoryblokBlockComponentProps,
+  StoryblokBlockData,
+  StoryblokEditableProps,
+} from "./types";
 import type { StoryblokRichTextInput } from "@storyblok/richtext";
 import { defineStoryblokBlocks } from "./define-storyblok-blocks";
+import { StoryblokRichText, type StoryblokReactRichTextProps } from "./richtext";
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -57,10 +63,10 @@ function Fallback({ block }: { block: BlockContent }) {
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
 describe("defineStoryblokBlocks", () => {
-  it("should return StoryblokBlock and StoryblokRichText", () => {
+  it("should return StoryblokBlock only", () => {
     const result = defineStoryblokBlocks(() => ({ components: {} }));
+    expect(Object.keys(result)).toEqual(["StoryblokBlock"]);
     expect(typeof result.StoryblokBlock).toBe("function");
-    expect(typeof result.StoryblokRichText).toBe("function");
   });
 
   // ─── StoryblokBlock — single block ────────────────────────────────────
@@ -203,43 +209,52 @@ describe("defineStoryblokBlocks", () => {
     });
   });
 
-  // ─── StoryblokRichText ─────────────────────────────────────────────────────
+  // ─── Embedded bloks via `components.blok` (ADR-0027 §7) ──────────────────
+  //
+  // Rich text is standalone: embedded bloks render only through a
+  // `components.blok` renderer, which renders `attrs.body` with the app's
+  // registry `StoryblokBlock`.
 
-  describe("StoryblokRichText", () => {
-    it("is a function (renderable component)", () => {
-      const { StoryblokRichText } = defineStoryblokBlocks(() => ({ components: {} }));
-      expect(typeof StoryblokRichText).toBe("function");
+  describe("embedded bloks via components.blok", () => {
+    const blokDoc = (body: StoryblokBlockData[]): StoryblokRichTextInput => ({
+      type: "doc",
+      content: [{ type: "blok", attrs: { id: "blok-1", body } }],
     });
 
-    it("renders a simple rich-text document", () => {
-      const { StoryblokRichText } = defineStoryblokBlocks(() => ({ components: {} }));
-      const doc: StoryblokRichTextInput = {
-        type: "doc",
-        content: [{ type: "paragraph", content: [{ type: "text", text: "Hello" }] }],
-      };
-      const { container } = render(<StoryblokRichText document={doc} />);
-      expect(container.textContent).toContain("Hello");
+    it("renders embedded bloks through the registry", () => {
+      const { StoryblokBlock } = defineStoryblokBlocks(() => ({ components: { page: Page } }));
+      function RichTextBlok({ attrs }: StoryblokReactRichTextProps<"blok">) {
+        return attrs.body?.map((block) => <StoryblokBlock key={block._uid} block={block} />);
+      }
+      const { getByTestId } = render(
+        <StoryblokRichText
+          document={blokDoc([{ component: "page", _uid: "uid-page" }])}
+          components={{ blok: RichTextBlok }}
+        />,
+      );
+      expect(getByTestId("page")).toHaveTextContent("uid-page");
     });
 
-    it("renders embedded blocks via the same component map's StoryblokBlock", () => {
-      const { StoryblokRichText } = defineStoryblokBlocks(() => ({ components: { page: Page } }));
-      const doc: StoryblokRichTextInput = {
-        type: "doc",
-        content: [
-          {
-            type: "blok",
-            attrs: {
-              id: "blok-1",
-              body: [{ component: "page", _uid: "uid-page" }],
-            },
-          },
-        ],
-      };
-      const { getByTestId } = render(<StoryblokRichText document={doc} />);
-      expect(getByTestId("page")).toBeInTheDocument();
+    it("gives embedded bloks the registry's fallback and editable attributes", () => {
+      function Echo({ block, editable }: { block: BlockContent; editable?: object }) {
+        return <span data-testid="echo" data-uid={block._uid} {...editable} />;
+      }
+      const { StoryblokBlock } = defineStoryblokBlocks(() => ({ components: {}, fallback: Echo }));
+      function RichTextBlok({ attrs }: StoryblokReactRichTextProps<"blok">) {
+        return attrs.body?.map((block) => <StoryblokBlock key={block._uid} block={block} />);
+      }
+      const editable = `<!--#storyblok#${JSON.stringify({ id: "1", uid: "uid-x" })}-->`;
+      const { getByTestId } = render(
+        <StoryblokRichText
+          document={blokDoc([{ component: "ghost", _uid: "uid-x", _editable: editable }])}
+          components={{ blok: RichTextBlok }}
+        />,
+      );
+      expect(getByTestId("echo")).toHaveAttribute("data-uid", "uid-x");
+      expect(getByTestId("echo")).toHaveAttribute("data-blok-uid", "1-uid-x");
     });
 
-    it("forwards a plain-object `data` prop to embedded blocks as extra props", () => {
+    it("lets the blok renderer forward `context.data` as extra props", () => {
       function PageWithLocale({ block, locale }: { block: BlockContent; locale?: string }) {
         return (
           <div data-testid="page" data-locale={locale}>
@@ -247,201 +262,36 @@ describe("defineStoryblokBlocks", () => {
           </div>
         );
       }
-      const { StoryblokRichText } = defineStoryblokBlocks(() => ({
+      const { StoryblokBlock } = defineStoryblokBlocks<{ locale?: string }>(() => ({
         components: { page: PageWithLocale },
       }));
-      const doc: StoryblokRichTextInput = {
-        type: "doc",
-        content: [
-          {
-            type: "blok",
-            attrs: {
-              id: "blok-1",
-              body: [{ component: "page", _uid: "uid-page" }],
-            },
-          },
-        ],
-      };
-      const { getByTestId } = render(<StoryblokRichText document={doc} data={{ locale: "de" }} />);
+      function RichTextBlok({ attrs, context }: StoryblokReactRichTextProps<"blok">) {
+        const { locale } = (context?.data ?? {}) as { locale?: string };
+        return attrs.body?.map((block) => (
+          <StoryblokBlock key={block._uid} block={block} locale={locale} />
+        ));
+      }
+      const { getByTestId } = render(
+        <StoryblokRichText
+          document={blokDoc([{ component: "page", _uid: "uid-page" }])}
+          components={{ blok: RichTextBlok }}
+          data={{ locale: "de" }}
+        />,
+      );
       expect(getByTestId("page")).toHaveAttribute("data-locale", "de");
     });
 
-    it("does not forward `data` when it isn't a plain object", () => {
-      function PageWithLocale({ block, locale }: { block: BlockContent; locale?: string }) {
-        return (
-          <div data-testid="page" data-locale={locale ?? "none"}>
-            {block._uid}
-          </div>
-        );
-      }
-      const { StoryblokRichText } = defineStoryblokBlocks(() => ({
-        components: { page: PageWithLocale },
-      }));
-      const doc: StoryblokRichTextInput = {
-        type: "doc",
-        content: [
-          {
-            type: "blok",
-            attrs: {
-              id: "blok-1",
-              body: [{ component: "page", _uid: "uid-page" }],
-            },
-          },
-        ],
-      };
-      const { getByTestId } = render(<StoryblokRichText document={doc} data="not-an-object" />);
-      expect(getByTestId("page")).toHaveAttribute("data-locale", "none");
-    });
-
-    it("forwards the same `data` prop to every embedded blok in a document with multiple bloks", () => {
-      function Widget({ block, locale }: { block: BlockContent; locale?: string }) {
-        return (
-          <div data-testid={`widget-${block._uid}`} data-locale={locale}>
-            {block.component}
-          </div>
-        );
-      }
-      const { StoryblokRichText } = defineStoryblokBlocks(() => ({
-        components: { widget: Widget },
-      }));
-      const doc: StoryblokRichTextInput = {
-        type: "doc",
-        content: [
-          { type: "blok", attrs: { id: "b1", body: [{ component: "widget", _uid: "uid-1" }] } },
-          { type: "paragraph", content: [{ type: "text", text: "sep" }] },
-          { type: "blok", attrs: { id: "b2", body: [{ component: "widget", _uid: "uid-2" }] } },
-        ],
-      };
-      const { getByTestId } = render(<StoryblokRichText document={doc} data={{ locale: "es" }} />);
-      expect(getByTestId("widget-uid-1")).toHaveAttribute("data-locale", "es");
-      expect(getByTestId("widget-uid-2")).toHaveAttribute("data-locale", "es");
-    });
-
-    it("re-renders embedded bloks with fresh values when the `data` prop changes", () => {
-      function Widget({ block: _block, locale }: { block: BlockContent; locale?: string }) {
-        return <div data-testid="widget">{locale}</div>;
-      }
-      const { StoryblokRichText } = defineStoryblokBlocks(() => ({
-        components: { widget: Widget },
-      }));
-      const doc: StoryblokRichTextInput = {
-        type: "doc",
-        content: [
-          { type: "blok", attrs: { id: "b1", body: [{ component: "widget", _uid: "uid-1" }] } },
-        ],
-      };
-      const { getByTestId, rerender } = render(
-        <StoryblokRichText document={doc} data={{ locale: "en" }} />,
-      );
-      expect(getByTestId("widget")).toHaveTextContent("en");
-      rerender(<StoryblokRichText document={doc} data={{ locale: "fr" }} />);
-      expect(getByTestId("widget")).toHaveTextContent("fr");
-    });
-
-    it("lets a `blok` entry passed in the `components` prop override the built-in embedded-block renderer", () => {
-      const { StoryblokRichText } = defineStoryblokBlocks(() => ({ components: { page: Page } }));
-      const doc: StoryblokRichTextInput = {
-        type: "doc",
-        content: [
-          {
-            type: "blok",
-            attrs: { id: "blok-1", body: [{ component: "page", _uid: "uid-page" }] },
-          },
-        ],
-      };
-      const { getByTestId, queryByTestId } = render(
+    it("does not render embedded bloks through any registry without components.blok", () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      defineStoryblokBlocks(() => ({ components: { page: Page } }));
+      const { queryByTestId } = render(
         <StoryblokRichText
-          document={doc}
-          components={{
-            blok: ({ attrs }: any) => (
-              <div data-testid="custom-blok">{attrs?.body?.[0]?.component}</div>
-            ),
-          }}
+          document={blokDoc([{ component: "page", _uid: "uid-page" }])}
+          warnings={false}
         />,
       );
-      // The caller's `blok` renderer wins — the built-in one (which would have
-      // rendered "page" via StoryblokBlock) is not used.
-      expect(getByTestId("custom-blok")).toHaveTextContent("page");
       expect(queryByTestId("page")).toBeNull();
-    });
-
-    it("keeps the built-in embedded-block renderer when `components.blok` is explicitly undefined", () => {
-      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-      warnSpy.mockClear();
-      const { StoryblokRichText } = defineStoryblokBlocks(() => ({ components: { page: Page } }));
-      const doc: StoryblokRichTextInput = {
-        type: "doc",
-        content: [
-          {
-            type: "blok",
-            attrs: { id: "blok-1", body: [{ component: "page", _uid: "uid-page" }] },
-          },
-        ],
-      };
-      const { getByTestId } = render(
-        <StoryblokRichText document={doc} components={{ blok: undefined }} />,
-      );
-      expect(getByTestId("page")).toBeInTheDocument();
-      expect(warnSpy).not.toHaveBeenCalled();
       warnSpy.mockRestore();
-    });
-
-    it("renders nested bloks when a custom component re-passes `context.components`", () => {
-      // The renderer sets a custom component's own type to `undefined` in the
-      // context it receives (recursion guard). A custom `blok` renderer that
-      // forwards `context.components` to a nested StoryblokRichText must
-      // still get the registry's built-in `blok` renderer there.
-      const { StoryblokRichText } = defineStoryblokBlocks(() => ({ components: { page: Page } }));
-      const inner: StoryblokRichTextInput = {
-        type: "doc",
-        content: [
-          {
-            type: "blok",
-            attrs: { id: "blok-2", body: [{ component: "page", _uid: "uid-nested" }] },
-          },
-        ],
-      };
-      const outer: StoryblokRichTextInput = {
-        type: "doc",
-        content: [{ type: "blok", attrs: { id: "blok-1", body: [] } }],
-      };
-      function WrappingBlok({ context }: any) {
-        return (
-          <section data-testid="wrapper">
-            <StoryblokRichText document={inner} components={context?.components} />
-          </section>
-        );
-      }
-      const { getByTestId } = render(
-        <StoryblokRichText document={outer} components={{ blok: WrappingBlok }} />,
-      );
-      expect(getByTestId("wrapper")).toContainElement(getByTestId("page"));
-      expect(getByTestId("page")).toHaveTextContent("uid-nested");
-    });
-
-    it("accepts a partial `optimizeImage` object", () => {
-      const { StoryblokRichText } = defineStoryblokBlocks(() => ({ components: {} }));
-      const doc: StoryblokRichTextInput = {
-        type: "doc",
-        content: [
-          {
-            type: "image",
-            attrs: {
-              id: 1,
-              src: "https://a.storyblok.com/f/1/100x100/abc/photo.jpg",
-              alt: null,
-              title: null,
-              source: null,
-              copyright: null,
-              meta_data: {},
-            },
-          },
-        ],
-      };
-      const { container } = render(
-        <StoryblokRichText document={doc} optimizeImage={{ width: 800 }} />,
-      );
-      expect(container.querySelector("img")?.getAttribute("src")).toContain("/m/800x0");
     });
   });
 
@@ -598,7 +448,7 @@ describe("defineStoryblokBlocks", () => {
           </div>
         );
       }
-      const { StoryblokBlock, StoryblokRichText } = defineStoryblokBlocks<{
+      const { StoryblokBlock } = defineStoryblokBlocks<{
         locale?: string;
       }>(() => ({
         components: { page: PageWithRichText },
@@ -634,7 +484,7 @@ describe("defineStoryblokBlocks", () => {
           </div>
         );
       }
-      const { StoryblokBlock, StoryblokRichText } = defineStoryblokBlocks<{
+      const { StoryblokBlock } = defineStoryblokBlocks<{
         locale?: string;
       }>(() => ({
         components: { page: PageWithRichText },
@@ -853,24 +703,6 @@ describe("defineStoryblokBlocks", () => {
         ],
       ]);
       warnSpy.mockRestore();
-    });
-  });
-
-  // ─── StoryblokRichText stable reference ───────────────────────────────────
-
-  describe("StoryblokRichText stable reference", () => {
-    it("returns the same StoryblokRichText reference on every property access", () => {
-      const result = defineStoryblokBlocks(() => ({ components: {} }));
-      const first = result.StoryblokRichText;
-      const second = result.StoryblokRichText;
-      expect(first).toBe(second);
-    });
-
-    it("two different defineStoryblokBlocks calls produce different StoryblokRichText types", () => {
-      const resultA = defineStoryblokBlocks(() => ({ components: { page: Page } }));
-      const resultB = defineStoryblokBlocks(() => ({ components: { teaser: Teaser } }));
-      // Each registry has its own pre-computed component — they must not be the same reference
-      expect(resultA.StoryblokRichText).not.toBe(resultB.StoryblokRichText);
     });
   });
 
@@ -1606,22 +1438,6 @@ describe("warnings", () => {
       warnSpy.mockRestore();
     }
   });
-
-  it("should silence embedded block warnings when StoryblokRichText has warnings={false}", () => {
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    // `console.warn` is a shared mock (see test-setup.ts): drop earlier calls.
-    warnSpy.mockClear();
-    const { StoryblokRichText } = defineStoryblokBlocks(() => ({ components: {} }));
-    const doc: StoryblokRichTextInput = {
-      type: "doc",
-      content: [{ type: "blok", attrs: { id: "b1", body: [{ component: "ghost", _uid: "g" }] } }],
-    };
-    render(<StoryblokRichText document={doc} warnings={false} />);
-    expect(warnSpy).not.toHaveBeenCalled();
-    render(<StoryblokRichText document={doc} />);
-    expect(warnSpy).toHaveBeenCalledWith(missingMessage("ghost"));
-    warnSpy.mockRestore();
-  });
 });
 
 describe("injected props", () => {
@@ -1638,48 +1454,11 @@ describe("injected props", () => {
   it("should not let an extra prop replace the injected block or editable", () => {
     const { StoryblokBlock } = defineStoryblokBlocks(() => ({ components: { page: Echo } }));
     const extra: Record<string, unknown> = { block: teaserBlock, editable: undefined };
-    // Untyped extra props, as rich text `data` would pass them.
+    // Untyped extra props, e.g. spread from an untyped source.
     const Untyped: ComponentType<Record<string, unknown>> = StoryblokBlock;
     const { getByTestId } = render(<Untyped {...extra} block={pageBlock} />);
     expect(getByTestId("echo")).toHaveAttribute("data-uid", "uid-page");
     expect(getByTestId("echo")).toHaveAttribute("data-editable", "true");
-  });
-
-  it("should not let rich text data replace an embedded block", () => {
-    const { StoryblokRichText } = defineStoryblokBlocks(() => ({ components: { page: Echo } }));
-    const doc: StoryblokRichTextInput = {
-      type: "doc",
-      content: [{ type: "blok", attrs: { id: "b1", body: [pageBlock] } }],
-    };
-    const { getByTestId } = render(
-      <StoryblokRichText document={doc} data={{ block: teaserBlock }} />,
-    );
-    expect(getByTestId("echo")).toHaveAttribute("data-uid", "uid-page");
-  });
-
-  it("should render an embedded blok without a _uid", () => {
-    const { StoryblokRichText } = defineStoryblokBlocks(() => ({ components: { page: Page } }));
-    const doc: StoryblokRichTextInput = {
-      type: "doc",
-      content: [{ type: "blok", attrs: { id: "b1", body: [{ component: "page" }] } }],
-    };
-    const { getByTestId } = render(<StoryblokRichText document={doc} />);
-    expect(getByTestId("page")).toBeInTheDocument();
-  });
-
-  it("should not forward an array data as extra props", () => {
-    let received: Record<string, unknown> | undefined;
-    function Spy(props: { block: BlockContent }) {
-      received = props;
-      return null;
-    }
-    const { StoryblokRichText } = defineStoryblokBlocks(() => ({ components: { page: Spy } }));
-    const doc: StoryblokRichTextInput = {
-      type: "doc",
-      content: [{ type: "blok", attrs: { id: "b1", body: [pageBlock] } }],
-    };
-    render(<StoryblokRichText document={doc} data={["a", "b"]} />);
-    expect(received).not.toHaveProperty("0");
   });
 });
 

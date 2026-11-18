@@ -1,9 +1,7 @@
 import type { ComponentType, ReactNode } from "react";
 import type { storyblokEditable } from "@storyblok/live-preview";
-import type { StoryblokReactRichTextComponentProps } from "./richtext/renderer";
 import type { BlockContent, BlockContentInput } from "./generated/types/field";
 import type { Story } from "./generated/types/story";
-import { Prettify } from "./generated/types/_utils";
 
 /**
  * Attributes returned by `storyblokEditable` — spread onto the root element of a
@@ -148,19 +146,6 @@ export interface DefineStoryblokBlocksResult<TExtraProps extends StoryblokExtraP
    */
   // Inlined (not aliased to `StoryblokBlockProps`) so hovers show the real props.
   StoryblokBlock: (props: { block?: StoryblokBlockData } & TExtraProps) => ReactNode;
-
-  /**
-   * Renders a rich text field. Embedded blocks render through this
-   * registry, like `StoryblokBlock`. A `components.blok` renderer replaces
-   * that, and a plain-object `data` is passed to every embedded block as
-   * extra props. `data` isn't checked against `TExtraProps`: use
-   * `satisfies` to check it.
-   *
-   * ```tsx
-   * <StoryblokRichText document={block.text} data={{ locale } satisfies ExtraProps} />
-   * ```
-   */
-  StoryblokRichText: (props: StoryblokReactRichTextComponentProps) => ReactNode;
 }
 
 export type { BlockContent, BlockContentInput, Story };
@@ -176,8 +161,11 @@ export type { BlockContent, BlockContentInput, Story };
  * or `StoryblokBlockComponentProps<T>`), which is what an individual block
  * component should type its own `block` prop with.
  */
-export type StoryblokBlockData = Prettify<
-  Pick<BlockContent, "_uid" | "component" | "_editable">
-> & {
+export type StoryblokBlockData = {
+  // Optional, as in the Astro and Svelte SDKs: blocks embedded in rich text
+  // (`attrs.body` of a `blok` node) may come without one.
+  _uid?: string;
+  component: string;
+  _editable?: string;
   [key: string]: unknown;
 };

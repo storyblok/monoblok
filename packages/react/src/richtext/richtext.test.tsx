@@ -17,12 +17,7 @@ import CustomTable from "./fixtures/custom-table";
 import CustomText from "./fixtures/custom-text";
 import HeadingWithRichText from "./fixtures/heading-with-rich-text";
 import CustomBoldWithRichText from "./fixtures/custom-bold-with-rich-text";
-import { defineStoryblokBlocks } from "../define-storyblok-blocks";
-import { createStoryblokRichText } from "./create-storyblok-richtext";
-
-const { StoryblokRichText } = defineStoryblokBlocks(() => ({ components: {} }));
-// Standalone renderer with no embedded block support.
-const RootStoryblokRichText = createStoryblokRichText();
+import { StoryblokRichText } from "./storyblok-richtext";
 
 interface AttributePositionRule {
   key: string;
@@ -257,9 +252,9 @@ describe("react StoryblokRichText component", () => {
     });
   });
 
-  // ─── Root StoryblokRichText — blok nodes (finding #5) ─────────────────────
+  // ─── StoryblokRichText — blok nodes ────────────────────────────────────────
 
-  describe("root StoryblokRichText — blok node handling", () => {
+  describe("StoryblokRichText — blok node handling", () => {
     const blokDoc: StoryblokRichTextInput = {
       type: "doc",
       content: [
@@ -275,16 +270,34 @@ describe("react StoryblokRichText component", () => {
 
     it("warns when a blok node appears with no blok component registered", () => {
       const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-      const { container } = render(<RootStoryblokRichText document={blokDoc} />);
+      const { container } = render(<StoryblokRichText document={blokDoc} />);
       expect(container.textContent).toBe("");
       expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('"blok"'));
+      warnSpy.mockRestore();
+    });
+
+    it("should not warn about a document without blok nodes", async () => {
+      vi.resetModules();
+      const { createRichTextRenderer } = await import("../index");
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      // `console.warn` is a shared mock (see test-setup.ts): drop earlier calls.
+      warnSpy.mockClear();
+      render(
+        <>
+          {createRichTextRenderer({})({
+            type: "doc",
+            content: [{ type: "paragraph", content: [{ type: "text", text: "hi" }] }],
+          })}
+        </>,
+      );
+      expect(warnSpy).not.toHaveBeenCalled();
       warnSpy.mockRestore();
     });
 
     it("does NOT warn when a blok component is provided via the components prop", () => {
       const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
       render(
-        <RootStoryblokRichText
+        <StoryblokRichText
           document={blokDoc}
           components={{
             blok: ({ attrs }: any) => (
@@ -309,8 +322,9 @@ describe("react StoryblokRichText component", () => {
       render(<>{createRichTextRenderer({})(blokDoc)}</>);
       expect(warnSpy).toHaveBeenCalledTimes(1);
       expect(warnSpy).toHaveBeenCalledWith(
-        '[storyblok] "blok" nodes require a custom renderer passed through `components.blok`, ' +
-          "or use the `StoryblokRichText` returned by `defineStoryblokBlocks()`.",
+        '[storyblok] The rich text contains "blok" nodes, but no `components.blok` renderer was ' +
+          "passed, so they render nothing. Pass one that renders `attrs.body` with " +
+          "`StoryblokBlock`, or set `warnings: false` to silence this.",
       );
       warnSpy.mockRestore();
     });
@@ -330,9 +344,9 @@ describe("react StoryblokRichText component", () => {
     });
   });
 
-  // ─── Root StoryblokRichText — data prop forwarding (finding #6) ───────────
+  // ─── StoryblokRichText — data prop forwarding ──────────────────────────────
 
-  describe("root StoryblokRichText — data prop forwarding", () => {
+  describe("StoryblokRichText — data prop forwarding", () => {
     it("forwards the data prop to custom node components via context", () => {
       const doc: StoryblokRichTextInput = {
         type: "doc",
@@ -346,7 +360,7 @@ describe("react StoryblokRichText component", () => {
       };
 
       render(
-        <RootStoryblokRichText
+        <StoryblokRichText
           document={doc}
           data={{ locale: "de-AT" }}
           components={{ paragraph: Paragraph }}
@@ -370,11 +384,7 @@ describe("react StoryblokRichText component", () => {
       };
 
       render(
-        <RootStoryblokRichText
-          document={doc}
-          data={dataObj}
-          components={{ paragraph: Paragraph }}
-        />,
+        <StoryblokRichText document={doc} data={dataObj} components={{ paragraph: Paragraph }} />,
       );
 
       expect(received).toBe(dataObj);
@@ -423,7 +433,7 @@ describe("react StoryblokRichText component", () => {
       };
 
       render(
-        <RootStoryblokRichText
+        <StoryblokRichText
           document={doc}
           components={{ text: ProbeText }}
           data={{ prefix: "[tag]" }}
@@ -434,7 +444,7 @@ describe("react StoryblokRichText component", () => {
       expect(receivedPrefix).toBe("[tag]");
     });
 
-    it("does NOT spread `data` keys as top-level props on a custom node component — only `blok`'s default embed does that", () => {
+    it("does NOT spread `data` keys as top-level props on a custom node component", () => {
       let receivedProps: Record<string, unknown> | undefined;
       function ProbeText(props: any) {
         receivedProps = props;
@@ -446,7 +456,7 @@ describe("react StoryblokRichText component", () => {
       };
 
       render(
-        <RootStoryblokRichText
+        <StoryblokRichText
           document={doc}
           components={{ text: ProbeText }}
           data={{ locale: "de" }}

@@ -12,7 +12,7 @@ export const apiClient = createApiClient({
   inlineRelations: true,
 }).withTypes<Schema>();
 
-export const { StoryblokBlock, StoryblokRichText } = defineStoryblokBlocks(() => ({
+export const { StoryblokBlock } = defineStoryblokBlocks(() => ({
   components: {
     page: Page,
     teaser: Teaser,

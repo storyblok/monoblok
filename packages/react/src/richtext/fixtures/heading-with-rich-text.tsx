@@ -4,10 +4,8 @@
  * HeadingWithRichText -> StoryblokRichText -> HeadingWithRichText -> ...
  */
 import type { StoryblokReactRichTextProps } from "../renderer";
-import { defineStoryblokBlocks } from "../../define-storyblok-blocks";
+import { StoryblokRichText } from "../storyblok-richtext";
 import type { JSX } from "react";
-
-const { StoryblokRichText } = defineStoryblokBlocks(() => ({ components: {} }));
 
 export default function HeadingWithRichText({
   content,

@@ -7,9 +7,7 @@
  */
 import type { StoryblokRichTextInput } from "@storyblok/richtext";
 import type { StoryblokReactRichTextProps } from "../renderer";
-import { defineStoryblokBlocks } from "../../define-storyblok-blocks";
-
-const { StoryblokRichText } = defineStoryblokBlocks(() => ({ components: {} }));
+import { StoryblokRichText } from "../storyblok-richtext";
 
 const nestedBoldDocument: StoryblokRichTextInput = {
   type: "doc",

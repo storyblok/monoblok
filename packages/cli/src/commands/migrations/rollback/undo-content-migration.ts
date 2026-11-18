@@ -62,10 +62,18 @@ export async function rollbackContentMigrationRun({
     );
   }
 
-  if (requestedRun && !(await journal.read(requestedRun))) {
-    throw new CommandError(
-      `No recorded run or rollback file "${requestedRun}" for space ${space}. List them with "storyblok migrations list --space ${space}".`,
-    );
+  if (requestedRun) {
+    const run = await journal.read(requestedRun);
+    if (!run) {
+      throw new CommandError(
+        `No recorded run or rollback file "${requestedRun}" for space ${space}. List them with "storyblok migrations list --space ${space}".`,
+      );
+    }
+    if (run.stories === 0) {
+      throw new CommandError(
+        `Run ${requestedRun} changed no stories, so there is nothing to roll back.`,
+      );
+    }
   }
 
   const plan = await planUndo({ journal, space, id });

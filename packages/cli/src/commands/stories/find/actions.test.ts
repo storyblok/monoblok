@@ -555,4 +555,13 @@ describe("buildWhereFilters", () => {
 
     expect(matchesSlug(listed)).toBe(true);
   });
+
+  // A relevance score sits between 0 and 1, so every useful threshold is a
+  // literal like this one.
+  it("should compare against a number literal below 1", () => {
+    const [matchesScore] = buildWhereFilters(["$[?($._score > 0.5)]"]);
+
+    expect(matchesScore({ id: 1, _score: 0.8 } as unknown as Story)).toBe(true);
+    expect(matchesScore({ id: 1, _score: 0.2 } as unknown as Story)).toBe(false);
+  });
 });

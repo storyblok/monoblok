@@ -1,17 +1,15 @@
-/**
- * What `run`, `list`, `rollback`, and the commands that write content
- * migrations share: where a space's content migrations and their journal live,
- * writing a new one, the story fields the engine reads, and the guard against
- * pending releases.
- */
-import { rm } from "node:fs/promises";
+/** Content migration helpers shared by the `migrations` commands and `schema push`. */
+import { readdir, rm } from "node:fs/promises";
 import { isDeepStrictEqual } from "node:util";
-import { readdir } from "node:fs/promises";
 import chalk from "chalk";
 import { dirname, join, relative, resolve } from "pathe";
-import { generateMigrationSource, generateSnapshot } from "@storyblok/schema/codegen";
-import type { MigrationOpSource, WireComponent } from "@storyblok/schema/codegen";
-import { nextMigrationId } from "@storyblok/schema/internal/codegen";
+import {
+  generateMigrationSource,
+  generateSnapshot,
+  type MigrationOpSource,
+  nextMigrationId,
+  type WireComponent,
+} from "@storyblok/schema/internal/codegen";
 import {
   checkPendingReleases,
   discoverMigrations,
@@ -19,12 +17,13 @@ import {
   MigrationError,
   misnamedMigrationFiles,
 } from "@storyblok/schema";
-import type { Journal, MigrationFile, StoryForMigration } from "@storyblok/schema";
+import type { Journal, MigrationFile, MigrationRun, StoryForMigration } from "@storyblok/schema";
 import { getMapiClient } from "../../api";
 import { getUI } from "../../lib/ui";
 import { CommandError, toError } from "../../utils";
 import { APIError, handleAPIError } from "../../utils/error/api-error";
 import { fileExists, importModule, resolvePath, saveToFile } from "../../utils/filesystem";
+import { displayPath } from "../schema/utils";
 import { fetchStory, updateStory } from "../stories/actions";
 import type { Story } from "../stories/constants";
 
@@ -48,15 +47,6 @@ export async function discoverContentMigrations(directory: string): Promise<Migr
     }),
   );
   return files.filter((_, index) => isContentMigration[index]);
-}
-
-/**
- * The path relative to the current directory, or absolute when it lies outside
- * and the relative form would be a chain of `..` segments.
- */
-export function displayPath(file: string): string {
-  const relativePath = relative(process.cwd(), file);
-  return relativePath.startsWith("..") ? file : relativePath;
 }
 
 export type WriteContentMigrationOptions = {
@@ -99,8 +89,8 @@ function importSpecifier(fromDirectory: string, file: string): string {
 
 /**
  * Writes a `defineMigration` file named after its creation time, plus its
- * `.before.ts` snapshot. Refuses to overwrite either, including a snapshot the
- * migration would not write.
+ * `.before.ts` snapshot. Refuses to overwrite either file, even the snapshot
+ * when `before` is omitted.
  */
 export async function writeContentMigration(
   options: WriteContentMigrationOptions,
@@ -117,7 +107,7 @@ export async function writeContentMigration(
   for (const file of [migrationPath, beforePath]) {
     if (await fileExists(file)) {
       throw new CommandError(
-        `${displayPath(file)} already exists. Move or delete it, then run again.`,
+        `${displayPath(file, options.path)} already exists. Move or delete it, then run again.`,
       );
     }
   }
@@ -145,6 +135,41 @@ export async function writeContentMigration(
 /** Runs are recorded in each space's `rollbacks` directory, beside the legacy rollback files. */
 export function contentJournal(path: string | undefined): Journal {
   return localJournal(resolvePath(path, "migrations"));
+}
+
+/**
+ * Whether a run left stories it matched unmigrated: it was scoped, couldn't
+ * read or refused some stories, failed some writes, or stopped partway.
+ */
+export function isPartialRun(run: MigrationRun): boolean {
+  return run.partial === true || run.interrupted === true;
+}
+
+/**
+ * The migrations without a run in place that covered every story. The journal
+ * records runs on this machine only, so a migration another machine applied is
+ * pending here.
+ */
+export function pendingMigrations(ids: readonly string[], runs: readonly MigrationRun[]): string[] {
+  const inPlace = new Set(
+    runs.filter((run) => !run.undoneAt && !isPartialRun(run)).map((run) => run.migration),
+  );
+  return ids.filter((id) => !inPlace.has(id));
+}
+
+/** The content migrations of a space without a complete run in place on this machine. */
+export async function pendingContentMigrations(
+  path: string | undefined,
+  space: string,
+): Promise<string[]> {
+  const [runs, files] = await Promise.all([
+    contentJournal(path).list(space),
+    discoverContentMigrations(migrationsDirectory(path, space)),
+  ]);
+  return pendingMigrations(
+    files.map((file) => file.id),
+    runs,
+  );
 }
 
 export function toStoryForMigration(story: Story): StoryForMigration {

@@ -103,4 +103,10 @@ describe("quoteString", () => {
   it("should escape a backslash followed by a quote", () => {
     expect(quoteString(String.raw`a\"b`)).toBe(String.raw`'a\\"b'`);
   });
+
+  it("should escape line and paragraph separators", () => {
+    const literal = quoteString("a\u2028b\u2029c");
+    expect(literal).toBe(String.raw`'a\u2028b\u2029c'`);
+    expect(new Function(`return ${literal}`)()).toBe("a\u2028b\u2029c");
+  });
 });

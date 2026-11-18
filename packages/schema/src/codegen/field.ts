@@ -81,7 +81,11 @@ export function toLayoutDslField(field: Record<string, unknown>): {
   return { field: out, removedRequired };
 }
 
-function stripKeys(obj: Record<string, unknown>, keys: Set<string>): Record<string, unknown> {
+/** Drops `keys` and every `undefined` or `null` value from `obj`. */
+export function stripKeys(
+  obj: Record<string, unknown>,
+  keys: ReadonlySet<string>,
+): Record<string, unknown> {
   return Object.fromEntries(
     Object.entries(obj).filter(
       ([key, value]) => !keys.has(key) && value !== undefined && value !== null,

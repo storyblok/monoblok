@@ -5,17 +5,28 @@ import { vol } from "memfs";
 import { confirm } from "@inquirer/prompts";
 
 import "../index";
+import "../../migrations/index";
 import { schemaCommand } from "../command";
+import { migrationsCommand } from "../../migrations/command";
 import type { SchemaData } from "../types";
 import { DEFAULT_SPACE, getID } from "../../__tests__/helpers";
 
 import { loadSchema } from "../load-schema";
+import { delay } from "../../../utils/fetch";
+import { RENAME_STALL_MS, RENAME_TIMEOUT_MS } from "./block-renames";
 
 // loadSchema uses jiti to dynamically import TypeScript entry files at runtime.
 // jiti cannot resolve @storyblok/schema imports in the test environment, so we
 // mock this module and provide schema data directly via preconditions.
 vi.mock("../load-schema", () => ({
   loadSchema: vi.fn(),
+}));
+
+// Waiting for the space to rename a block in its stories polls with `delay`,
+// which here moves the faked clock instead of waiting.
+vi.mock("../../../utils/fetch", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../../utils/fetch")>()),
+  delay: vi.fn(),
 }));
 
 vi.mock("@inquirer/prompts", () => ({
@@ -269,6 +280,13 @@ const preconditions = {
     );
     return folderUpdates;
   },
+  failsToCountStories(status: number) {
+    server.use(
+      http.get(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/stories`, () =>
+        HttpResponse.json({ error: "Stories unavailable" }, { status }),
+      ),
+    );
+  },
   confirmsMigrations() {
     vi.mocked(confirm).mockResolvedValue(true);
   },
@@ -302,6 +320,9 @@ describe("schema push command", () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-10-16T09:05:03Z"));
+    vi.mocked(delay).mockImplementation(async (ms) => {
+      vi.setSystemTime(Date.now() + ms);
+    });
     preconditions.hasStories({});
   });
 
@@ -1234,18 +1255,53 @@ describe("schema push command", () => {
         is_root: true,
         schema: { title: { type: "text", pos: 0 }, body: { type: "textarea", pos: 1 } },
       });
-    const componentWrites = () => {
-      const writes: { method: string; id?: string; name?: string }[] = [];
+    /**
+     * Records block writes. With `usage`, the stories by the blocks they
+     * contain, a rename with `update_content` moves the stories using the old
+     * name to the new one, after `pollsUntilRenamed` story counts when the
+     * space renames them in the background, `renamedPerPoll` at a time until
+     * then. The first `busyUpdates` updates are refused, as a space does while
+     * it renames in the background.
+     */
+    const componentWrites = (
+      remote: MockComponent[] = [],
+      usage?: Record<string, number>,
+      { pollsUntilRenamed = 0, renamedPerPoll = 0, busyUpdates = 0, failing = [] as number[] } = {},
+    ) => {
+      const writes: { method: string; id?: string; name?: string; updateContent?: boolean }[] = [];
+      let pollsLeft = 0;
+      let busyLeft = busyUpdates;
+      let pendingRename: { from: string; to: string } | undefined;
       const record =
         (method: string) =>
         async ({ request, params }: { request: Request; params: Record<string, unknown> }) => {
+          if (method === "PUT" && busyLeft > 0) {
+            busyLeft--;
+            return HttpResponse.json(
+              {
+                error:
+                  "A job to rename the component or it's attribute is running in the background. Please wait until it is finished.",
+              },
+              { status: 422 },
+            );
+          }
+          if (failing.includes(Number(params.id))) {
+            return HttpResponse.json({ error: "Server error" }, { status: 500 });
+          }
           const body = method === "DELETE" ? undefined : await request.json();
           const name = (body as { component?: { name?: string } } | undefined)?.component?.name;
+          const updateContent = new URL(request.url).searchParams.get("update_content") === "true";
           writes.push({
             method,
             id: params.id === undefined ? undefined : String(params.id),
             name,
+            ...(updateContent && { updateContent }),
           });
+          const from = remote.find((c) => String(c.id) === params.id)?.name;
+          if (updateContent && from && name && from !== name) {
+            pendingRename = { from, to: name };
+            pollsLeft = pollsUntilRenamed;
+          }
           return HttpResponse.json({ component: { id: getID(), name } });
         };
       const url = `https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/components`;
@@ -1253,6 +1309,23 @@ describe("schema push command", () => {
         http.post(url, record("POST")),
         http.put(`${url}/:id`, record("PUT")),
         http.delete(`${url}/:id`, record("DELETE")),
+      );
+      if (!usage) return writes;
+      server.use(
+        http.get(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/stories`, ({ request }) => {
+          if (pendingRename) {
+            const { from, to } = pendingRename;
+            const moved = pollsLeft-- <= 0 ? (usage[from] ?? 0) : renamedPerPoll;
+            usage[to] = (usage[to] ?? 0) + moved;
+            usage[from] = (usage[from] ?? 0) - moved;
+            if (usage[from] === 0) pendingRename = undefined;
+          }
+          const block = new URL(request.url).searchParams.get("contain_component") ?? "";
+          return HttpResponse.json(
+            { stories: [] },
+            { headers: { Total: String(usage[block] ?? 0) } },
+          );
+        }),
       );
       return writes;
     };
@@ -1273,12 +1346,11 @@ describe("schema push command", () => {
       preconditions.hasRemoteTags([]);
     });
 
-    it("should rename the block in place and migrate its stories when the rename is confirmed", async () => {
+    it("should rename the block in place and in its stories when the rename is confirmed", async () => {
       const remoteBanner = banner();
       preconditions.hasLocalSchema({ components: [hero()] as any, datasources: [] });
       preconditions.hasRemoteComponents([remoteBanner]);
-      preconditions.hasStories({ banner: 3 });
-      const writes = componentWrites();
+      const writes = componentWrites([remoteBanner], { banner: 3 });
       vi.mocked(confirm).mockResolvedValue(true);
 
       await push("--typed", "--delete");
@@ -1289,88 +1361,220 @@ describe("schema push command", () => {
         }),
         expect.anything(),
       );
-      expect(writes).toEqual([{ method: "PUT", id: String(remoteBanner.id), name: "hero" }]);
-      const migration = writtenFile("20261016090503-update-hero.ts");
-      expect(migration).toContain(
-        "renameField({ block: 'banner', field: 'headline', to: 'title' })",
-      );
-      expect(migration).toContain("renameBlock({ block: 'banner', to: 'hero' })");
-      expect(migration!.indexOf("renameField")).toBeLessThan(migration!.indexOf("renameBlock({"));
-      expect(writtenFile("20261016090503-update-hero.before.ts")).toContain("name: 'banner'");
-    });
-
-    it("should point folders that restrict content types to the block at its new name", async () => {
-      preconditions.hasLocalSchema({ components: [hero()] as any, datasources: [] });
-      preconditions.hasRemoteComponents([banner()]);
-      const folderUpdates = preconditions.hasStories({ banner: 3 }, [
-        { id: 7, full_slug: "banners", default_root: "banner", content_types: ["banner", "page"] },
-        { id: 8, full_slug: "pages", default_root: "page", content_types: ["page"] },
-      ]);
-      componentWrites();
-      vi.mocked(confirm).mockResolvedValue(true);
-
-      await push("--no-migrations");
-
-      expect(folderUpdates).toEqual([
-        {
-          id: 7,
-          story: expect.objectContaining({
-            default_root: "hero",
-            content: expect.objectContaining({ content_types: ["hero", "page"] }),
-          }),
-        },
+      expect(writes).toEqual([
+        { method: "PUT", id: String(remoteBanner.id), name: "hero", updateContent: true },
       ]);
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining(
-          "Updated the content types of 1 folder to the renamed blocks: banners.",
+          "Renamed banner → hero in the space, along with the stories and folders that use it.",
         ),
       );
     });
 
-    it("should point folders at a renamed block that landed even when the rest of the push fails", async () => {
-      const remoteBanner = banner();
-      const remoteTeaser = makeMockComponent({ name: "teaser", schema: { a: { type: "text" } } });
-      const localHero = { ...hero(), id: remoteBanner.id };
-      const localTeaser = { ...remoteTeaser, schema: { b: { type: "text" } } };
-      preconditions.hasLocalSchema({
-        components: [localHero, localTeaser] as any,
-        datasources: [],
-      });
-      const folderUpdates = preconditions.hasStories({ banner: 3 }, [
-        { id: 7, full_slug: "banners", default_root: "banner", content_types: ["banner"] },
-      ]);
-      preconditions.updatesOnlyComponent(localHero, [remoteBanner, remoteTeaser]);
-      vi.mocked(confirm).mockResolvedValue(true);
-
-      await push("--no-migrations");
-
-      expect(folderUpdates).toEqual([
-        {
-          id: 7,
-          story: expect.objectContaining({
-            default_root: "hero",
-            content: expect.objectContaining({ content_types: ["hero"] }),
-          }),
-        },
-      ]);
-      expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining("Failed to update component teaser"),
-      );
-    });
-
-    it("should leave folders alone when a failed push did not rename the block", async () => {
+    it("should address the renamed block by its new name in the typed migration", async () => {
       const remoteBanner = banner();
       preconditions.hasLocalSchema({ components: [hero()] as any, datasources: [] });
       preconditions.hasRemoteComponents([remoteBanner]);
-      const folderUpdates = preconditions.hasStories({ banner: 3 }, [
-        { id: 7, full_slug: "banners", default_root: "banner", content_types: ["banner"] },
+      componentWrites([remoteBanner], { banner: 3 });
+      vi.mocked(confirm).mockResolvedValue(true);
+
+      await push("--typed");
+
+      const migration = writtenFile("20261016090503-update-hero.ts");
+      expect(migration).toContain("title: 'Update hero: rename headline to title',");
+      expect(migration).toContain("renameField({ block: 'hero', field: 'headline', to: 'title' })");
+      expect(migration).not.toContain("renameBlock");
+      const before = writtenFile("20261016090503-update-hero.before.ts");
+      expect(before).toContain("name: 'hero'");
+      expect(before).toContain("defineField('headline'");
+    });
+
+    it("should write the .js migration of a renamed block under its new name", async () => {
+      const remoteBanner = banner();
+      preconditions.hasLocalSchema({ components: [hero()] as any, datasources: [] });
+      preconditions.hasRemoteComponents([remoteBanner]);
+      componentWrites([remoteBanner], { banner: 3 });
+      vi.mocked(confirm).mockResolvedValue(true);
+
+      await push("--migrations");
+
+      const files = migrationFiles();
+      expect(files).toEqual([expect.stringMatching(/\/hero\.[^/]+\.js$/)]);
+      expect(writtenFile(files[0])).not.toContain("block.component");
+    });
+
+    it("should rename a block whose fields didn't change", async () => {
+      const remoteBanner = banner();
+      preconditions.hasLocalSchema({
+        components: [{ ...banner(), name: "hero" }] as any,
+        datasources: [],
+      });
+      preconditions.hasRemoteComponents([remoteBanner]);
+      const writes = componentWrites([remoteBanner], { banner: 3 });
+      vi.mocked(confirm).mockResolvedValue(true);
+
+      await push("--typed");
+
+      expect(writes).toEqual([
+        { method: "PUT", id: String(remoteBanner.id), name: "hero", updateContent: true },
       ]);
-      preconditions.failsToUpdateComponents();
+      expect(migrationFiles()).toEqual([]);
+    });
+
+    it("should wait until the space renamed the block in its stories in the background", async () => {
+      const remoteBanner = banner();
+      preconditions.hasLocalSchema({ components: [hero()] as any, datasources: [] });
+      preconditions.hasRemoteComponents([remoteBanner]);
+      const usage = { banner: 300 };
+      componentWrites([remoteBanner], usage, { pollsUntilRenamed: 3 });
       vi.mocked(confirm).mockResolvedValue(true);
 
       await push("--no-migrations");
 
-      expect(folderUpdates).toEqual([]);
+      expect(usage).toEqual({ banner: 0, hero: 300 });
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining("Waiting for the space to rename banner → hero in 300 stories..."),
+      );
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Schema pushed to space"));
+    });
+
+    it("should update the other blocks before it renames one, and rename one block at a time", async () => {
+      const remoteBanner = banner();
+      const remoteCard = makeMockComponent({
+        name: "card",
+        schema: { label: { type: "text", pos: 0 }, image: { type: "asset", pos: 1 } },
+      });
+      const remoteTeaser = makeMockComponent({ name: "teaser", schema: { a: { type: "text" } } });
+      preconditions.hasLocalSchema({
+        components: [
+          hero(),
+          { ...remoteCard, name: "tile" },
+          { ...remoteTeaser, schema: { b: { type: "text" } } },
+        ] as any,
+        datasources: [],
+      });
+      const remote = [remoteBanner, remoteCard, remoteTeaser];
+      preconditions.hasRemoteComponents(remote);
+      const writes = componentWrites(remote, { banner: 300, card: 300 }, { pollsUntilRenamed: 2 });
+      vi.mocked(confirm).mockResolvedValue(true);
+
+      await push("--no-migrations");
+
+      expect(writes).toEqual([
+        { method: "PUT", id: String(remoteTeaser.id), name: "teaser" },
+        { method: "PUT", id: String(remoteBanner.id), name: "hero", updateContent: true },
+        { method: "PUT", id: String(remoteCard.id), name: "tile", updateContent: true },
+      ]);
+    });
+
+    it("should retry a rename while the space renames another block in the background", async () => {
+      const remoteBanner = banner();
+      preconditions.hasLocalSchema({ components: [hero()] as any, datasources: [] });
+      preconditions.hasRemoteComponents([remoteBanner]);
+      const writes = componentWrites([remoteBanner], { banner: 3 }, { busyUpdates: 2 });
+      vi.mocked(confirm).mockResolvedValue(true);
+
+      await push("--no-migrations");
+
+      expect(writes).toEqual([
+        { method: "PUT", id: String(remoteBanner.id), name: "hero", updateContent: true },
+      ]);
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Schema pushed to space"));
+    });
+
+    it("should fail when the space doesn't finish renaming the block in its stories in time", async () => {
+      const remoteBanner = banner();
+      const remoteTeaser = makeMockComponent({ name: "teaser", schema: { a: { type: "text" } } });
+      preconditions.hasLocalSchema({ components: [hero()] as any, datasources: [] });
+      preconditions.hasRemoteComponents([remoteBanner, remoteTeaser]);
+      const writes = componentWrites(
+        [remoteBanner, remoteTeaser],
+        { banner: 100_000 },
+        { pollsUntilRenamed: Number.POSITIVE_INFINITY, renamedPerPoll: 1 },
+      );
+      vi.mocked(confirm).mockResolvedValue(true);
+      const startedAt = Date.now();
+
+      await push("--no-migrations", "--delete", "--force");
+
+      expect(Date.now() - startedAt).toBeGreaterThanOrEqual(RENAME_TIMEOUT_MS);
+      expect(writes).toEqual([
+        { method: "PUT", id: String(remoteBanner.id), name: "hero", updateContent: true },
+      ]);
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "The space is still renaming banner to hero in the stories that use it. Wait until it finishes, then run schema push again",
+        ),
+      );
+    });
+
+    it("should go on with the push and point to a renameBlock migration when the space stops renaming the stories", async () => {
+      const remoteBanner = banner();
+      const remoteTeaser = makeMockComponent({ name: "teaser", schema: { a: { type: "text" } } });
+      preconditions.hasLocalSchema({ components: [hero()] as any, datasources: [] });
+      preconditions.hasRemoteComponents([remoteBanner, remoteTeaser]);
+      const writes = componentWrites(
+        [remoteBanner, remoteTeaser],
+        { banner: 300 },
+        { pollsUntilRenamed: Number.POSITIVE_INFINITY, renamedPerPoll: 0 },
+      );
+      vi.mocked(confirm).mockResolvedValue(true);
+      const startedAt = Date.now();
+
+      await push("--no-migrations", "--delete", "--force");
+
+      expect(Date.now() - startedAt).toBeGreaterThanOrEqual(RENAME_STALL_MS);
+      expect(Date.now() - startedAt).toBeLessThan(RENAME_TIMEOUT_MS);
+      expect(writes).toEqual([
+        { method: "PUT", id: String(remoteBanner.id), name: "hero", updateContent: true },
+        { method: "DELETE", id: String(remoteTeaser.id), name: undefined },
+      ]);
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "300 stories still use banner: the space stopped renaming the block to hero in them. Rename it there with a content migration that holds renameBlock({ block: 'banner', to: 'hero' }), written without a .before.ts snapshot (migrations generate hero --schema <entry-file> --no-before), then run it.",
+        ),
+      );
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Schema pushed to space"));
+    });
+
+    it("should retry a block update while the space renames a block in the background", async () => {
+      const remoteTeaser = makeMockComponent({ name: "teaser", schema: { a: { type: "text" } } });
+      preconditions.hasLocalSchema({
+        components: [{ ...remoteTeaser, schema: { b: { type: "text" } } }] as any,
+        datasources: [],
+      });
+      preconditions.hasRemoteComponents([remoteTeaser]);
+      const writes = componentWrites([remoteTeaser], undefined, { busyUpdates: 2 });
+
+      await push("--no-migrations");
+
+      expect(writes).toEqual([{ method: "PUT", id: String(remoteTeaser.id), name: "teaser" }]);
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Schema pushed to space"));
+    });
+
+    it("should not rename the block when the rest of the push fails", async () => {
+      const remoteBanner = banner();
+      const remoteTeaser = makeMockComponent({ name: "teaser", schema: { a: { type: "text" } } });
+      preconditions.hasLocalSchema({
+        components: [hero(), { ...remoteTeaser, schema: { b: { type: "text" } } }] as any,
+        datasources: [],
+      });
+      preconditions.hasRemoteComponents([remoteBanner, remoteTeaser]);
+      const writes = componentWrites(
+        [remoteBanner, remoteTeaser],
+        { banner: 3 },
+        {
+          failing: [remoteTeaser.id],
+        },
+      );
+      vi.mocked(confirm).mockResolvedValue(true);
+
+      await push("--no-migrations");
+
+      expect(writes).toEqual([]);
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining("Failed to update component teaser"),
+      );
     });
 
     it("should refuse to delete a block stories still use when the rename is declined", async () => {
@@ -1385,7 +1589,25 @@ describe("schema push command", () => {
       expect(writes).toEqual([]);
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining(
-          "Stories still use this block, which --delete would delete: banner (3 stories).",
+          "Stories still use this block, which --delete would delete: banner (3 stories). Confirm the rename, migrate the block's stories first, or pass --force to delete it anyway.",
+        ),
+      );
+    });
+
+    it("should refuse to delete blocks stories still use without offering a rename", async () => {
+      const page = makeMockComponent({ name: "page" });
+      preconditions.hasLocalSchema({ components: [page] as any, datasources: [] });
+      preconditions.hasRemoteComponents([page, banner(), { ...banner(), name: "promo" }]);
+      preconditions.hasStories({ banner: 3, promo: 1 });
+      const writes = componentWrites();
+
+      await push("--no-migrations", "--delete");
+
+      expect(confirm).not.toHaveBeenCalled();
+      expect(writes).toEqual([]);
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "Stories still use these blocks, which --delete would delete: banner (3 stories), promo (1 story). Migrate the blocks' stories first, or pass --force to delete them anyway.",
         ),
       );
     });
@@ -1408,8 +1630,46 @@ describe("schema push command", () => {
       ]);
       expect(folderUpdates).toEqual([]);
       expect(console.warn).toHaveBeenCalledWith(
-        expect.stringContaining("Folder banners still names the deleted banner as a content type."),
+        expect.stringContaining(
+          "Deleting banner removes it from the content types of 1 folder: banners. A folder left without content types accepts every content type.",
+        ),
       );
+    });
+
+    it.each([403, 500])(
+      "should refuse to delete a block when its stories can't be counted (%i)",
+      async (status) => {
+        const page = makeMockComponent({ name: "page" });
+        preconditions.hasLocalSchema({ components: [page] as any, datasources: [] });
+        preconditions.hasRemoteComponents([page, banner()]);
+        preconditions.failsToCountStories(status);
+        const writes = componentWrites();
+
+        await push("--no-migrations", "--delete");
+
+        expect(writes).toEqual([]);
+        expect(console.error).toHaveBeenCalledWith(
+          expect.stringContaining(
+            `Could not check whether stories use banner, which --delete would delete (HTTP ${status}: `,
+          ),
+        );
+        expect(console.error).toHaveBeenCalledWith(
+          expect.stringContaining("Pass --force to delete it without checking."),
+        );
+      },
+    );
+
+    it("should delete a block without counting its stories with --force", async () => {
+      const remoteBanner = banner();
+      const page = makeMockComponent({ name: "page" });
+      preconditions.hasLocalSchema({ components: [page] as any, datasources: [] });
+      preconditions.hasRemoteComponents([page, remoteBanner]);
+      preconditions.failsToCountStories(500);
+      const writes = componentWrites();
+
+      await push("--no-migrations", "--delete", "--force");
+
+      expect(writes).toEqual([{ method: "DELETE", id: String(remoteBanner.id), name: undefined }]);
     });
 
     it("should name the possible rename on a dry run without asking", async () => {
@@ -1417,12 +1677,17 @@ describe("schema push command", () => {
       preconditions.hasRemoteComponents([banner()]);
       preconditions.hasStories({ banner: 3 });
 
-      await push("--dry-run");
+      await push("--dry-run", "--delete");
 
       expect(confirm).not.toHaveBeenCalled();
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining("Possible block rename: banner → hero (3 stories)."),
       );
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining("hero (update)"));
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining("Detected rename in 'hero': headline → title"),
+      );
+      expect(console.warn).not.toHaveBeenCalledWith(expect.stringContaining("Stories still use"));
     });
 
     it("should not pair blocks that share too few fields", async () => {
@@ -1477,6 +1742,65 @@ describe("schema push command", () => {
     expect(writtenFile(".before.ts")).toBeUndefined();
   });
 
+  describe("with content migrations this machine hasn't run", () => {
+    const MIGRATIONS = `.storyblok/migrations/${DEFAULT_SPACE}`;
+    const pushChangingHero = async (remoteSchema: Record<string, Record<string, unknown>>) => {
+      const remoteComp = makeMockComponent({ name: "hero", schema: remoteSchema });
+      preconditions.hasLocalSchema({
+        components: [{ ...remoteComp, schema: { title: { type: "text", pos: 0 } } }] as any,
+        datasources: [],
+      });
+      preconditions.hasRemoteComponents([remoteComp]);
+      preconditions.hasRemoteFolders([]);
+      preconditions.hasRemoteDatasources([]);
+      preconditions.hasRemoteTags([]);
+      preconditions.canUpdateComponents();
+      await schemaCommand.parseAsync([
+        "node",
+        "test",
+        "push",
+        "schema.ts",
+        "--space",
+        DEFAULT_SPACE,
+        "--no-migrations",
+      ]);
+    };
+
+    beforeEach(() => {
+      vol.fromJSON({
+        [`${MIGRATIONS}/20261001000000-rename-card-title.ts`]: "export default {};",
+        [`${MIGRATIONS}/20261002000000-split-name.ts`]: "export default {};",
+        [`${MIGRATIONS}/rollbacks/run-1.json`]: JSON.stringify({
+          id: "run-1",
+          migration: "20261001000000-rename-card-title",
+          space: DEFAULT_SPACE,
+          appliedAt: "2026-10-01T00:00:00.000Z",
+          stories: 1,
+          blocks: 1,
+        }),
+      });
+    });
+
+    it("should warn about them and say to run one written for an earlier change before the push", async () => {
+      await pushChangingHero({ subtitle: { type: "text", pos: 0 } });
+
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining(
+          `1 content migration is pending on this machine: 20261002000000-split-name. If it was written for an earlier schema change, run it with \`storyblok migrations run --space ${DEFAULT_SPACE}\` before you push: once the push changes the fields it migrates, migrations run skips its ops. If it was written for the change you're pushing, run it after the push.`,
+        ),
+      );
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Schema pushed to space"));
+    });
+
+    it("should not warn when the push changes nothing", async () => {
+      await pushChangingHero({ title: { type: "text", pos: 0 } });
+
+      expect(console.warn).not.toHaveBeenCalledWith(
+        expect.stringContaining("pending on this machine"),
+      );
+    });
+  });
+
   it("should skip migration generation with --no-migrations", async () => {
     const remoteComp = makeMockComponent({
       name: "hero",
@@ -1512,6 +1836,39 @@ describe("schema push command", () => {
 
     expect(migrationFiles()).toHaveLength(0);
     expect(confirm).not.toHaveBeenCalled();
+    expect(console.warn).not.toHaveBeenCalledWith(expect.stringContaining("--typed"));
+  });
+
+  it("should warn that --typed has no effect with --no-migrations", async () => {
+    const remoteComp = makeMockComponent({
+      name: "hero",
+      schema: { author_name: { type: "text" } },
+    });
+    preconditions.hasLocalSchema({
+      components: [{ ...remoteComp, schema: { author: { type: "text" } } }] as any,
+      datasources: [],
+    });
+    preconditions.hasRemoteComponents([remoteComp]);
+    preconditions.hasRemoteFolders([]);
+    preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
+    preconditions.canUpdateComponents();
+
+    await schemaCommand.parseAsync([
+      "node",
+      "test",
+      "push",
+      "schema.ts",
+      "--space",
+      DEFAULT_SPACE,
+      "--typed",
+      "--no-migrations",
+    ]);
+
+    expect(migrationFiles()).toHaveLength(0);
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining("--typed has no effect with --no-migrations."),
+    );
   });
 
   it("should not generate migration files when user declines", async () => {
@@ -1905,7 +2262,108 @@ describe("schema push command", () => {
     );
     expect(migration).not.toContain("teaser");
     expect(console.warn).toHaveBeenCalledWith(
-      expect.stringContaining("The push failed, but it updated article."),
+      expect.stringContaining(
+        "The push failed, but it updated article. The migration for it was kept:",
+      ),
+    );
+  });
+
+  it("should leave the blocks a failed push didn't change out of migrations generate --before-push", async () => {
+    const remoteArticle = makeMockComponent({
+      name: "article",
+      schema: { slug_override: { type: "text", pos: 0 } },
+    });
+    const remoteTeaser = makeMockComponent({
+      name: "teaser",
+      schema: { link: { type: "text", pos: 0 }, title: { type: "text", pos: 1 } },
+    });
+    const localArticle = { ...remoteArticle, schema: { slug_custom: { type: "text", pos: 0 } } };
+    const localTeaser = { ...remoteTeaser, schema: { title: { type: "text", pos: 0 } } };
+    preconditions.hasLocalSchema({
+      components: [localArticle, localTeaser] as any,
+      datasources: [],
+    });
+    preconditions.hasRemoteFolders([]);
+    preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
+    preconditions.updatesOnlyComponent(localArticle, [remoteArticle, remoteTeaser]);
+    vol.fromJSON({ "schema.ts": "export type Schema = {};" });
+    await schemaCommand.parseAsync([
+      "node",
+      "test",
+      "push",
+      "schema.ts",
+      "--space",
+      DEFAULT_SPACE,
+      "--no-migrations",
+    ]);
+    vi.mocked(console.error).mockClear();
+
+    const generate = (block: string) =>
+      migrationsCommand.parseAsync([
+        "node",
+        "test",
+        "generate",
+        block,
+        "--space",
+        DEFAULT_SPACE,
+        "--schema",
+        "schema.ts",
+        "--before-push",
+      ]);
+    await generate("article");
+    await generate("teaser");
+
+    expect(writtenFile("-article.before.ts")).toContain("defineField('slug_override'");
+    expect(writtenFile("-teaser.ts")).toBeUndefined();
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining(
+        `No schema push to space ${DEFAULT_SPACE} recorded a change to teaser`,
+      ),
+    );
+  });
+
+  it("should not count the migration a push wrote as written after it in migrations generate", async () => {
+    const remoteComp = makeMockComponent({
+      name: "hero",
+      schema: { author_name: { type: "text" } },
+    });
+    preconditions.hasLocalSchema({
+      components: [{ ...remoteComp, schema: { author: { type: "text" } } }] as any,
+      datasources: [],
+    });
+    preconditions.hasRemoteComponents([remoteComp]);
+    preconditions.hasRemoteFolders([]);
+    preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
+    preconditions.canUpdateComponents();
+    vol.fromJSON({ "schema.ts": "export type Schema = {};" });
+    await schemaCommand.parseAsync([
+      "node",
+      "test",
+      "push",
+      "schema.ts",
+      "--space",
+      DEFAULT_SPACE,
+      "--typed",
+      "--migrations",
+    ]);
+    expect(writtenFile("-update-hero.ts")).toBeDefined();
+    vi.setSystemTime(Date.now() + 60_000);
+
+    await migrationsCommand.parseAsync([
+      "node",
+      "test",
+      "generate",
+      "hero",
+      "--space",
+      DEFAULT_SPACE,
+      "--schema",
+      "schema.ts",
+    ]);
+
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining("schema push changed hero at"),
     );
   });
 
@@ -1965,6 +2423,41 @@ describe("schema push command", () => {
       ["title", "Hi"],
     ]);
   });
+
+  it.each(["../hero", "hero/v2"])(
+    "should write the .js migration of block %s inside the migrations directory",
+    async (name) => {
+      const remoteComp = makeMockComponent({
+        name,
+        schema: { author_name: { type: "text", pos: 0 }, title: { type: "text", pos: 1 } },
+      });
+      const localComp = {
+        ...remoteComp,
+        schema: { author: { type: "text", pos: 0 }, title: { type: "text", pos: 1 } },
+      };
+      preconditions.hasLocalSchema({ components: [localComp] as any, datasources: [] });
+      preconditions.hasRemoteComponents([remoteComp]);
+      preconditions.hasRemoteFolders([]);
+      preconditions.hasRemoteDatasources([]);
+      preconditions.hasRemoteTags([]);
+      preconditions.canUpdateComponents();
+
+      await schemaCommand.parseAsync([
+        "node",
+        "test",
+        "push",
+        "schema.ts",
+        "--space",
+        DEFAULT_SPACE,
+        "--migrations",
+      ]);
+
+      const files = Object.keys(vol.toJSON()).filter((file) => file.endsWith(".js"));
+      expect(files).toEqual([
+        expect.stringMatching(new RegExp(`/migrations/${DEFAULT_SPACE}/[^/]+\\.js$`)),
+      ]);
+    },
+  );
 
   it("should not write migration files when --dry-run is used with explicit --migrations", async () => {
     const remoteComp = makeMockComponent({

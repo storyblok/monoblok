@@ -91,6 +91,35 @@ describe("components.get()", () => {
   });
 });
 
+describe("components.update()", () => {
+  it("should ask the space to rename the block in its stories with update_content", async () => {
+    let updateContent: string | null = null;
+    server.use(
+      http.put(
+        "https://mapi.storyblok.com/v1/spaces/:space_id/components/:component_id",
+        ({ request }) => {
+          updateContent = new URL(request.url).searchParams.get("update_content");
+          return HttpResponse.json({ component: { id: 456, name: "hero" } });
+        },
+      ),
+    );
+    const client = createManagementApiClient({
+      personalAccessToken: "test-token",
+      spaceId: 123,
+      region: "eu",
+      rateLimit: false,
+    });
+
+    const result = await client.components.update(456, {
+      body: { component: { name: "hero" } },
+      query: { update_content: true },
+    });
+
+    expect(result.error).toBeUndefined();
+    expect(updateContent).toBe("true");
+  });
+});
+
 describe("components.delete()", () => {
   it("should delete a component", async () => {
     server.use(

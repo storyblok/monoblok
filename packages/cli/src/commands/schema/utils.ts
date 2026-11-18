@@ -116,22 +116,16 @@ export function fileTimestamp(iso: string): string {
 
 /**
  * Formats a file path for display: relative to CWD, unless the user explicitly
- * passed an absolute `--path` (then the absolute path is kept as-is).
+ * passed an absolute `--path` or the file lies outside CWD, where the relative
+ * form would be a chain of `..` segments.
  */
 export function displayPath(filePath: string, userPath?: string): string {
-  return userPath && isAbsolute(userPath) ? filePath : relative(process.cwd(), filePath);
-}
-
-/** Strips keys from an object, removing undefined and null values from optional fields. */
-export function stripKeys(
-  obj: Record<string, unknown>,
-  keysToStrip: Set<string>,
-): Record<string, unknown> {
-  const result: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(obj)) {
-    if (!keysToStrip.has(key) && value !== undefined && value !== null) {
-      result[key] = value;
-    }
+  if (userPath && isAbsolute(userPath)) {
+    return filePath;
   }
-  return result;
+  const relativePath = relative(process.cwd(), filePath);
+  if (relativePath === "") {
+    return ".";
+  }
+  return relativePath === ".." || relativePath.startsWith("../") ? filePath : relativePath;
 }

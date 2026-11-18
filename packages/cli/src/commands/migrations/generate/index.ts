@@ -7,8 +7,9 @@ import { CommandError, handleError, requireAuthentication } from "../../../utils
 import { session } from "../../../session";
 import { fetchComponent, fetchComponents } from "../../../commands/components";
 import { migrationsCommand } from "../command";
-import { generateMigration, latestPushChanging } from "./actions";
-import { displayPath, writeContentMigration } from "../content-migrations";
+import { generateMigration, hasMigrationSince, latestPushChanging } from "./actions";
+import { writeContentMigration } from "../content-migrations";
+import { displayPath } from "../../schema/utils";
 import { getUI } from "../../../lib/ui";
 import { getLogger } from "../../../lib/logger/logger";
 import { isFile, sanitizeFilename } from "../../../utils/filesystem";
@@ -23,7 +24,7 @@ const generateCmd = migrationsCommand
   .option("-s, --space <space>", "space ID")
   .option(
     "--schema <entry-file>",
-    "schema entry file that exports `type Schema`; generates a typed defineMigration file instead of a .js migration",
+    "schema entry file that exports type Schema; generates a typed defineMigration file instead of a .js migration",
   )
   .option("--no-before", "with --schema, skip the .before.ts schema snapshot")
   .option(
@@ -134,7 +135,9 @@ generateCmd.action(
         );
         return;
       }
-      if (push && !beforePush) {
+      // A content migration written since the push was written against the
+      // pushed schema, so a new one most likely starts from there too.
+      if (push && !beforePush && !(await hasMigrationSince(path, space, push).catch(() => false))) {
         ui.warn(
           `schema push changed ${componentName} at ${push.timestamp}, so the snapshot describes the block after that push. Pass --before-push to snapshot it as it was before.`,
         );
@@ -144,7 +147,7 @@ generateCmd.action(
         : beforePush && push
           ? push.components
           : await fetchComponents(space);
-      const nameInComponents = beforePush && push ? push.blockBefore : componentName;
+      const nameInComponents = beforePush && push ? push.block : componentName;
       const component = components
         ? components.find((candidate) => candidate.name === nameInComponents)
         : await fetchComponent(space, componentName);
@@ -169,7 +172,7 @@ generateCmd.action(
         : { migrationPath: await generateMigration(space, path, component, suffix) };
       const [migrationPath, ...snapshotPaths] = [written.migrationPath, written.beforePath]
         .filter((file) => file !== undefined)
-        .map(displayPath);
+        .map((file) => displayPath(file, path));
 
       spinner.succeed(
         `Migration generated for component ${chalk.hex(colorPalette.MIGRATIONS)(componentName)} - Completed in ${spinner.elapsedTime.toFixed(2)}ms`,

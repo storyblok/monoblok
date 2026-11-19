@@ -1,0 +1,50 @@
+import { defineBlock, defineField } from "@storyblok/schema";
+
+import { changelogFolder } from "../../folders";
+
+export const changelogRichtextBlock = defineBlock({
+  name: "changelog_richtext",
+  is_root: false,
+  is_nestable: true,
+  folder: changelogFolder,
+  color: "var(--sb-color-accent-background-green-cyan)",
+  description: "Richtext",
+  icon: "mouse-pointer",
+  image: "https://example.com/component-screenshots/changelog_richtext.png",
+  fields: [
+    defineField("richtext", {
+      customize_toolbar: true,
+      toolbar: [
+        "bold",
+        "inlinecode",
+        "code",
+        "copy",
+        "cut",
+        "emoji",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "highlight",
+        "unset",
+        "hrule",
+        "italic",
+        "link",
+        "anchor",
+        "olist",
+        "paste-action",
+        "paste",
+        "quote",
+        "redo",
+        "strike",
+        "superscript",
+        "subscript",
+        "underline",
+        "undo",
+        "list",
+      ],
+      type: "richtext",
+    }),
+  ],
+});

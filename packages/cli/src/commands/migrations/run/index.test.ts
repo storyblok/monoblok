@@ -889,7 +889,7 @@ describe("migrations run command", () => {
       expect.stringContaining("No stories required updates"),
     );
     expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining("The user is not authorized to access the API"),
+      expect.stringContaining("Your personal access token was rejected"),
     );
     const reportFile = Object.entries(vol.toJSON()).find(([filename]) =>
       filename.includes("reports/12345/storyblok-migrations-run-"),
@@ -912,7 +912,7 @@ describe("migrations run command", () => {
       expect.stringContaining("No stories required updates"),
     );
     expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining("The user is not authorized to access the API"),
+      expect.stringContaining("Your personal access token was rejected"),
     );
     const reportFile = Object.entries(vol.toJSON()).find(([filename]) =>
       filename.includes("reports/12345/storyblok-migrations-run-"),
@@ -935,14 +935,17 @@ describe("migrations run command", () => {
       expect.stringContaining("Run stopped after 1 of 1 stories."),
     );
     expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining("error The user is not authorized to access the API"),
+      expect.stringContaining("error Your personal access token was rejected"),
     );
     const reportFile = Object.entries(vol.toJSON()).find(([filename]) =>
       filename.includes("reports/12345/storyblok-migrations-run-"),
     )?.[1];
     expect(JSON.parse(reportFile || "{}")).toMatchObject({
       status: "FAILURE",
-      meta: { error: "The user is not authorized to access the API" },
+      meta: {
+        error:
+          "Your personal access token was rejected. It may have been revoked; create a new one. Run `storyblok logout`, then `storyblok login --token <token>` to use it.",
+      },
     });
     expect(process.exitCode).toBe(1);
   });
@@ -986,7 +989,7 @@ describe("migrations run command", () => {
     );
     // The error block, not the failed-stories list, which repeats the message.
     expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining("error The user is not authorized to access the API"),
+      expect.stringContaining("error Your personal access token was rejected"),
     );
     expect(process.exitCode).toBe(1);
   });

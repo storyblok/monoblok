@@ -1553,7 +1553,7 @@ describe("stories push command", () => {
       );
       const report = getReport();
       expect(report?.status).toBe("FAILURE");
-      expect(process.exitCode).toBe(2);
+      expect(process.exitCode).toBe(1);
       const logFile = getLogFileContents(LOG_PREFIX);
       expect(logFile).toContain("Schema validation failed");
     });

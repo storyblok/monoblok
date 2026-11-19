@@ -467,7 +467,7 @@ describe("assets pull command", () => {
 
     expect(assetFileExists(privateAsset)).toBeFalsy();
     const logFile = getLogFileContents(LOG_PREFIX);
-    expect(logFile).toContain("The user is not authorized to access the API");
+    expect(logFile).toContain("Your personal access token was rejected");
     expect(logFile).toContain('"httpCode":401');
     expect(logFile).toContain('"fetchAssets":{"total":1,"succeeded":0,"failed":1}');
     expect(logFile).toContain('"save":{"total":0,"succeeded":0,"failed":0}');

@@ -494,7 +494,7 @@ describe("stories find --mode semantic", () => {
     {
       status: 401,
       code: "unauthorized",
-      expected: "The user is not authorized to access the API",
+      expected: "Your personal access token was rejected",
     },
     {
       status: 503,

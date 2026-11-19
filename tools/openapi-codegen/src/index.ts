@@ -4,12 +4,13 @@
  * stamps wrapper-type templates (`Block<T>`, `Story<T>`, `BlockContent<T>`)
  * into each consumer's `src/generated/`.
  *
- * Public API: `generate({ outDir, include, sdk, verbose })`. Upstream type
+ * Public API: `generate({ outDir, include, sdk, zod, resourceFields, verbose })`. Upstream type
  * names never appear in committed output; each consumer commits only the
  * aliased `types.gen.ts` plus the wrapper templates it needs.
  */
 
 import { createClient } from "@hey-api/openapi-ts";
+import { parse as parseYaml } from "yaml";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "pathe";
@@ -17,7 +18,12 @@ import { ALIAS_BY_EMIT_NAME, ALIASES, type SpecSource } from "./aliases.ts";
 import type { KnownType } from "./known-types.ts";
 import { hashCache, readLock } from "./lock.ts";
 import { SPEC_PATHS, TEMPLATES_DIR } from "./paths.ts";
-import { SPEC_PARSERS } from "./patches.ts";
+import { applySpecPatches, SPEC_PARSERS } from "./patches.ts";
+import {
+  buildResourceFields,
+  renderResourceFields,
+  type ResourceFieldsSource,
+} from "./resource-fields.ts";
 import { templateFor, TEMPLATES, type WrapperFile } from "./templates.ts";
 import { deduplicateGeneratedUnions, type KeepEntry, transformGeneratedFile } from "./transform.ts";
 
@@ -33,6 +39,12 @@ export interface GenerateConfig {
    * `<outDir>/<spec>/zod.gen.ts`, for use by runtime validators.
    */
   zod?: { spec: SpecSource };
+  /**
+   * Additionally emit field descriptors for these Management API resources into
+   * `<outDir>/mapi/resource-fields.gen.ts`, for commands that write a resource
+   * field by field. See `resource-fields.ts`.
+   */
+  resourceFields?: readonly ResourceFieldsSource[];
   /** Log emitted files and type names. */
   verbose?: boolean;
 }
@@ -143,6 +155,28 @@ export async function generate(config: GenerateConfig): Promise<void> {
   if (config.zod) {
     await emitZodSchemas(config.zod.spec, config.outDir, config.verbose === true);
   }
+
+  if (config.resourceFields?.length) {
+    emitResourceFields(config.resourceFields, config.outDir);
+    logVerbose(config, `[mapi] emitted resource fields to resource-fields.gen.ts`);
+  }
+}
+
+function emitResourceFields(sources: readonly ResourceFieldsSource[], outDir: string): void {
+  const spec: unknown = parseYaml(readFileSync(SPEC_PATHS.mapi, "utf8"));
+  // The same patches the type generator applies, so both agree on every field.
+  applySpecPatches("mapi", spec);
+  const resources = sources.map((source) => ({
+    name: source.name,
+    ...buildResourceFields(spec, source),
+  }));
+  const specDir = resolve(outDir, "mapi");
+  mkdirSync(specDir, { recursive: true });
+  writeFileSync(
+    resolve(specDir, "resource-fields.gen.ts"),
+    renderResourceFields(resources),
+    "utf8",
+  );
 }
 
 /**
@@ -391,3 +425,4 @@ function buildSourcesFile(
 }
 
 export type { KnownType };
+export type { ResourceField, ResourceFieldType, ResourceFieldsSource } from "./resource-fields.ts";

@@ -84,17 +84,18 @@ export const createMemoryCacheProvider = (
   options: MemoryCacheProviderOptions = {},
 ): CacheProvider => {
   const maxEntries = options.maxEntries ?? 1_000;
-  const cache = new Map<string, CacheEntry<unknown>>();
+  // `get` runs before every request, so it checks expiry on the monotonic clock: Next.js
+  // Cache Components rejects a prerender that reads `Date.now()`.
+  const cache = new Map<string, { entry: CacheEntry<unknown>; expiresAt: number }>();
 
   return {
     async get<TValue = unknown>(key: string) {
-      // Map stores heterogeneous CacheEntry<unknown>; caller provides the expected type via the generic.
-      const entry = cache.get(key) as CacheEntry<TValue>;
-      if (!entry) {
+      const record = cache.get(key);
+      if (!record) {
         return undefined;
       }
 
-      if (Date.now() - entry.storedAt > entry.ttlMs) {
+      if (performance.now() > record.expiresAt) {
         cache.delete(key);
         return undefined;
       }
@@ -102,15 +103,18 @@ export const createMemoryCacheProvider = (
       // Refresh recency so the watermark record, read on every request, isn't evicted
       // ahead of the entries it governs.
       cache.delete(key);
-      cache.set(key, entry);
+      cache.set(key, record);
 
-      return entry;
+      // Map stores heterogeneous CacheEntry<unknown>; caller provides the expected type via the generic.
+      return record.entry as CacheEntry<TValue>;
     },
     async set<TValue = unknown>(key: string, entry: CacheEntryInput<TValue>) {
-      const cacheEntry: CacheEntry<TValue> = {
-        ...entry,
-        storedAt: entry.storedAt ?? Date.now(),
-      };
+      // `set` runs once a response has arrived, which Next.js treats as dynamic, so reading
+      // the wall clock here is safe.
+      const now = Date.now();
+      const storedAt = entry.storedAt ?? now;
+      const cacheEntry: CacheEntry<TValue> = { ...entry, storedAt };
+      const expiresAt = performance.now() + entry.ttlMs - (now - storedAt);
 
       // Move existing keys to the end so eviction stays LRU-like.
       // Map#set updates values in place and does not change insertion order.
@@ -118,7 +122,7 @@ export const createMemoryCacheProvider = (
         cache.delete(key);
       }
 
-      cache.set(key, cacheEntry);
+      cache.set(key, { entry: cacheEntry, expiresAt });
 
       if (cache.size > maxEntries) {
         const oldestKey = cache.keys().next().value;

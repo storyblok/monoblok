@@ -27,10 +27,10 @@ function isMeaningfulEmptyList(field: Record<string, unknown>, key: string): boo
  * a space still stores but no longer enforces does not diff against a schema
  * that omits it:
  * - every list while `restrict_components` is explicitly `false`,
- * - a folder whitelist while `restrict_type` selects another dimension,
- * - a tag whitelist while `restrict_type` selects another dimension and the tag
- *   denylist is empty. The editor applies both tag lists once the denylist is
- *   non-empty, and denylists are not gated on `restrict_type`.
+ * - a folder or tag whitelist while `restrict_type` selects another dimension
+ *   and that dimension's denylist is empty. The editor applies both of a
+ *   dimension's lists once its denylist is non-empty, and denylists are not
+ *   gated on `restrict_type`.
  */
 function omitInertRestrictions(field: Record<string, unknown>): void {
   if (field.restrict_components === false) {
@@ -39,14 +39,16 @@ function omitInertRestrictions(field: Record<string, unknown>): void {
     }
     return;
   }
-  if (field.restrict_type !== "groups") {
+  if (field.restrict_type !== "groups" && !isNonEmptyList(field.component_group_denylist)) {
     delete field.component_group_whitelist;
   }
-  const tagDenylistInForce =
-    Array.isArray(field.component_tag_denylist) && field.component_tag_denylist.length > 0;
-  if (field.restrict_type !== "tags" && !tagDenylistInForce) {
+  if (field.restrict_type !== "tags" && !isNonEmptyList(field.component_tag_denylist)) {
     delete field.component_tag_whitelist;
   }
+}
+
+function isNonEmptyList(value: unknown): boolean {
+  return Array.isArray(value) && value.length > 0;
 }
 
 /**

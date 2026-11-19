@@ -1068,6 +1068,22 @@ describe("diffSchema field equivalence", () => {
     ]);
   });
 
+  it("should report a folder whitelist removed beside a folder denylist", () => {
+    const restriction = {
+      type: "bloks",
+      pos: 0,
+      restrict_components: true,
+      restrict_type: "tags",
+      component_tag_whitelist: ["Content"],
+      component_group_denylist: ["legacy"],
+    };
+    const remote = { body: { ...restriction, component_group_whitelist: ["layout"] } };
+
+    expect(diffPage(remote, { body: restriction })?.changes).toEqual([
+      { field: "schema.body.component_group_whitelist", change: "removed", before: ["layout"] },
+    ]);
+  });
+
   it("should report a folder denylist whichever dimension the field restricts by", () => {
     const restriction = {
       type: "bloks",

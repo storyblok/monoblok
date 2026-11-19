@@ -20,6 +20,7 @@ import "./commands/reports";
 import "./commands/assets";
 import "./commands/stories";
 import "./commands/schema";
+import "./commands/webhooks";
 
 export * from "./types/storyblok";
 

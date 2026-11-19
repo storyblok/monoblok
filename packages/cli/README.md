@@ -35,6 +35,8 @@
 - **Content migrations**: Generate, run, and roll back migrations that transform story content
 - **Content search**: Find stories by text, block, tag, workflow stage, or JSONPath expression and
   stream the matches as JSONL
+- **Webhook management**: List, create, update, and delete webhooks, one at a time or in bulk from
+  JSONL
 - **Project scaffolding**: Create a project from a core blueprint, connected to a new space
 - **CI-friendly**: Token login, configuration files, logs, and run reports
 

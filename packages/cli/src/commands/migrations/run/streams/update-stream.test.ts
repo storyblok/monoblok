@@ -21,6 +21,7 @@ const mockContent: BlokContent = {
 };
 const mockUpdatedStory: Story = {
   id: 1,
+  assigned_users_per_language: {},
   name: "Test Story",
   uuid: "uuid-1",
   slug: "test-story",

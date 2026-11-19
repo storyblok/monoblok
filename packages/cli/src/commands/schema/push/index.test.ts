@@ -529,11 +529,25 @@ describe("schema push command", () => {
     });
     const datasourceUrl = `https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/datasources/${remoteDatasource.id}`;
 
-    const pushColors = async (dimensions: { name: string; entry_value: string }[]) => {
+    const createdComponents: unknown[] = [];
+    const pushColors = async (
+      dimensions: { name: string; entry_value: string }[],
+      components: MockComponent[] = [],
+    ) => {
       preconditions.hasLocalSchema({
-        components: [],
+        components: components as any,
         datasources: [defineDatasource({ name: "Colors", slug: "colors", dimensions })],
       });
+      createdComponents.length = 0;
+      server.use(
+        http.post(
+          `https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/components`,
+          async ({ request }) => {
+            createdComponents.push(await request.json());
+            return HttpResponse.json({ component: { ...components[0], id: getID() } });
+          },
+        ),
+      );
       preconditions.hasRemoteComponents([]);
       preconditions.hasRemoteFolders([]);
       preconditions.hasRemoteTags([]);
@@ -598,6 +612,175 @@ describe("schema push command", () => {
         ),
       );
       expect(console.error).toHaveBeenCalledWith(expect.stringContaining("in two steps"));
+    });
+
+    it("should refuse before writing any other entity of the push", async () => {
+      const updateBodies = await pushColors(
+        [{ name: "Light Mode", entry_value: "dark" }],
+        [makeMockComponent({ name: "hero" })],
+      );
+
+      expect(updateBodies).toEqual([]);
+      expect(createdComponents).toEqual([]);
+      expect(process.exitCode).toBe(2);
+    });
+
+    it("should refuse dimensions declared with the same value", async () => {
+      const updateBodies = await pushColors([
+        { name: "Light Mode", entry_value: "light" },
+        { name: "Dark Mode", entry_value: "dark" },
+        { name: "Night", entry_value: "dark" },
+      ]);
+
+      expect(updateBodies).toEqual([]);
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "Datasource 'Colors' declares more than one dimension with the entry_value 'dark'",
+        ),
+      );
+      expect(console.error).not.toHaveBeenCalledWith(expect.stringContaining("in two steps"));
+    });
+  });
+
+  it("should refuse a new datasource that declares dimensions with the same value", async () => {
+    preconditions.hasLocalSchema({
+      components: [],
+      datasources: [
+        defineDatasource({
+          name: "Colors",
+          slug: "colors",
+          dimensions: [
+            { name: "Light", entry_value: "light" },
+            { name: "Light", entry_value: "bright" },
+          ],
+        }),
+      ],
+    });
+    preconditions.hasEmptyRemote();
+    const createBodies: unknown[] = [];
+    server.use(
+      http.post(
+        `https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/datasources`,
+        async ({ request }) => {
+          createBodies.push(await request.json());
+          return HttpResponse.json({ datasource: {} });
+        },
+      ),
+    );
+
+    await schemaCommand.parseAsync(["node", "test", "push", "schema.ts", "--space", DEFAULT_SPACE]);
+
+    expect(createBodies).toEqual([]);
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "Datasource 'Colors' declares more than one dimension with the name 'Light'",
+      ),
+    );
+  });
+
+  // The Management API stores dimensions sharing a value when they are created
+  // in the same request, so a space can already hold such duplicates.
+  describe("with a remote datasource that holds duplicate dimensions", () => {
+    const remoteDatasource = makeMockDatasource({
+      name: "Themes",
+      slug: "themes",
+      dimensions: [
+        { id: 20, name: "Day", entry_value: "light" },
+        { id: 21, name: "Bright", entry_value: "light" },
+      ],
+    });
+    const datasourceUrl = `https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/datasources/${remoteDatasource.id}`;
+
+    const pushThemes = async (dimensions: { name: string; entry_value: string }[]) => {
+      preconditions.hasLocalSchema({
+        components: [],
+        datasources: [defineDatasource({ name: "Themes", slug: "themes", dimensions })],
+      });
+      preconditions.hasRemoteComponents([]);
+      preconditions.hasRemoteFolders([]);
+      preconditions.hasRemoteTags([]);
+      preconditions.hasRemoteDatasources([remoteDatasource]);
+
+      const updateBodies: unknown[] = [];
+      server.use(
+        http.patch(datasourceUrl, async ({ request }) => {
+          updateBodies.push(await request.json());
+          return HttpResponse.json({ datasource: remoteDatasource });
+        }),
+      );
+
+      await schemaCommand.parseAsync([
+        "node",
+        "test",
+        "push",
+        "schema.ts",
+        "--space",
+        DEFAULT_SPACE,
+      ]);
+      return updateBodies;
+    };
+
+    it("should leave the datasource alone when the schema declares the same duplicates", async () => {
+      const updateBodies = await pushThemes([
+        { name: "Day", entry_value: "light" },
+        { name: "Bright", entry_value: "light" },
+      ]);
+
+      expect(updateBodies).toEqual([]);
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining("nothing to push"));
+    });
+
+    it.each([
+      ["in the order the space returns them", ["Day", "Bright"]],
+      ["in another order", ["Bright", "Day"]],
+    ])("should add a dimension next to the duplicates declared %s", async (_, order) => {
+      const updateBodies = await pushThemes([
+        ...order.map((name) => ({ name, entry_value: "light" })),
+        { name: "Night", entry_value: "dark" },
+      ]);
+
+      expect(updateBodies).toEqual([
+        {
+          datasource: expect.objectContaining({
+            dimensions_attributes: expect.arrayContaining([
+              { id: 20, name: "Day", entry_value: "light" },
+              { id: 21, name: "Bright", entry_value: "light" },
+              { name: "Night", entry_value: "dark" },
+            ]),
+          }),
+        },
+      ]);
+    });
+
+    it("should keep the duplicate the schema declares and remove the other", async () => {
+      const updateBodies = await pushThemes([{ name: "Bright", entry_value: "light" }]);
+
+      expect(updateBodies).toEqual([
+        {
+          datasource: expect.objectContaining({
+            dimensions_attributes: [
+              { id: 21, name: "Bright", entry_value: "light" },
+              { id: 20, _destroy: true },
+            ],
+          }),
+        },
+      ]);
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining("Dimension 'Day' of datasource 'Themes' will be deleted"),
+      );
+    });
+
+    // The Management API re-checks both values of a changed dimension, so the
+    // entry_value the renamed dimension keeps is still taken by the other one.
+    it("should refuse renaming one duplicate while removing the other", async () => {
+      const updateBodies = await pushThemes([{ name: "Morning", entry_value: "light" }]);
+
+      expect(updateBodies).toEqual([]);
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "dimension 'Morning' (entry_value 'light') uses the entry_value 'light' still held by the existing dimension 'Day' (entry_value 'light')",
+        ),
+      );
     });
   });
 

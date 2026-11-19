@@ -14,6 +14,7 @@ import { saveChangeset } from "../changeset";
 import { displayPath } from "../utils";
 import type { SchemaRollbackOptions } from "./constants";
 import {
+  assertRollbackApplicable,
   buildRollbackOps,
   executeRollback,
   formatRollbackOutput,
@@ -105,29 +106,7 @@ schemaCommand
       ui.br();
       ui.log(formatRollbackOutput(changeset.changes));
 
-      // 5. Dry run stops here
-      if (options.dryRun) {
-        ui.info("Dry run — no changes applied.");
-        logger.info("Dry run completed", { ops: ops.length });
-        return;
-      }
-
-      // 6. Confirm (unless --yes)
-      if (!options.yes) {
-        const confirmed = await confirm(
-          {
-            message: `Apply rollback of ${ops.length} change(s) from ${basename(resolvedFile)}?`,
-            default: false,
-          },
-          stderrPromptContext,
-        );
-        if (!confirmed) {
-          ui.info("Rollback cancelled.");
-          return;
-        }
-      }
-
-      // 7. Fetch current remote state (needed for entity IDs)
+      // 5. Fetch current remote state (needed for entity IDs and the dimension pre-check)
       const remoteSpinner = ui.createSpinner(
         `Fetching current remote state from space ${space}...`,
       );
@@ -143,6 +122,35 @@ schemaCommand
       remoteSpinner.succeed(
         `Remote: ${remote.components.size} components, ${remote.componentFolders.size} component folders, ${remote.datasources.size} datasources`,
       );
+
+      try {
+        assertRollbackApplicable(ops, remote);
+      } catch (maybeError) {
+        handleError(toError(maybeError), verbose);
+        return;
+      }
+
+      // 6. Dry run stops here
+      if (options.dryRun) {
+        ui.info("Dry run — no changes applied.");
+        logger.info("Dry run completed", { ops: ops.length });
+        return;
+      }
+
+      // 7. Confirm (unless --yes)
+      if (!options.yes) {
+        const confirmed = await confirm(
+          {
+            message: `Apply rollback of ${ops.length} change(s) from ${basename(resolvedFile)}?`,
+            default: false,
+          },
+          stderrPromptContext,
+        );
+        if (!confirmed) {
+          ui.info("Rollback cancelled.");
+          return;
+        }
+      }
 
       // 8. Execute rollback
       const rollbackSpinner = ui.createSpinner("Applying rollback...");

@@ -172,6 +172,77 @@ describe("validateSchema", () => {
     });
   });
 
+  it("flags a dimension whose name or entry_value is missing or blank", () => {
+    // Bypass defineDatasource, whose input type requires both keys.
+    const themes: SchemaDatasourceLike = {
+      name: "Themes",
+      slug: "themes",
+      dimensions: [{ name: "Dark" }, { name: "  ", entry_value: "" }],
+    };
+    const result = validateSchema({ blocks: {}, datasources: [themes] });
+    expect(result.ok).toBe(false);
+    expect(result.issues).toEqual([
+      expect.objectContaining({
+        code: "invalid_dimension_entry_value",
+        path: ["datasources", "themes", "dimensions", 0, "entry_value"],
+        entity: "datasource:themes",
+      }),
+      expect.objectContaining({
+        code: "invalid_dimension_name",
+        path: ["datasources", "themes", "dimensions", 1, "name"],
+      }),
+      expect.objectContaining({
+        code: "invalid_dimension_entry_value",
+        path: ["datasources", "themes", "dimensions", 1, "entry_value"],
+      }),
+    ]);
+  });
+
+  it("flags dimensions that are not an array or hold a non-object", () => {
+    const notAnArray = { name: "Themes", slug: "themes", dimensions: "dark" } as unknown;
+    const withNull = { name: "Sizes", slug: "sizes", dimensions: [null] } as unknown;
+    const result = validateSchema({
+      blocks: {},
+      datasources: [notAnArray as SchemaDatasourceLike, withNull as SchemaDatasourceLike],
+    });
+    expect(result.issues).toEqual([
+      expect.objectContaining({
+        code: "invalid_datasource_dimensions",
+        path: ["datasources", "themes", "dimensions"],
+      }),
+      expect.objectContaining({
+        code: "invalid_dimension",
+        path: ["datasources", "sizes", "dimensions", 0],
+      }),
+    ]);
+  });
+
+  it("reports a value shared by several dimensions once", () => {
+    const themes = defineDatasource({
+      name: "Themes",
+      slug: "themes",
+      dimensions: [
+        { name: "Light", entry_value: "a" },
+        { name: "Light", entry_value: "b" },
+        { name: "Light", entry_value: "c" },
+      ],
+    });
+    expect(codesFor(validateSchema({ blocks: {}, datasources: [themes] }))).toEqual([
+      "duplicate_dimension_name",
+    ]);
+  });
+
+  it("checks the dimensions of a datasource without a name", () => {
+    const nameless = {
+      slug: "themes",
+      dimensions: [{ name: "", entry_value: "light" }],
+    } as SchemaDatasourceLike;
+    expect(codesFor(validateSchema({ blocks: {}, datasources: [nameless] }))).toEqual([
+      "invalid_dimension_name",
+      "invalid_datasource_name",
+    ]);
+  });
+
   it("accepts dimensions with distinct names and entry values", () => {
     const themes = defineDatasource({
       name: "Themes",

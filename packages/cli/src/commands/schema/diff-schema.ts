@@ -210,7 +210,8 @@ function componentChanges(
 /**
  * Dimension changes as `schema push` applies them: a dimension paired with a
  * remote one is updated in place and reads as the property that changed, keyed
- * by its current name (`dimensions.Light Mode.name`). Only an unpaired
+ * by the name it has in the space (`dimensions.Light.name` for a rename of
+ * `Light`). Only an unpaired
  * dimension is `added` or `removed`, and removing one deletes the values
  * entered for it.
  */

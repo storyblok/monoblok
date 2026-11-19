@@ -9,6 +9,7 @@ vi.mock("../../creds", () => ({
   addCredentials: vi.fn(),
   removeCredentials: vi.fn(),
   removeAllCredentials: vi.fn(),
+  removePatCredentials: vi.fn(),
 }));
 
 const preconditions = {

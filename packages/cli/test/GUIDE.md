@@ -39,6 +39,49 @@ bash .agents/skills/qa-engineer-manual/scripts/seed-scenario.sh \
   --scenario-dir packages/cli/test/scenarios
 ```
 
+## OAuth login
+
+`login --oauth` works out of the box: the CLI carries the first-party "Storyblok CLI" client, so no
+environment setup is needed.
+
+```bash
+node ./packages/cli/dist/index.mjs login --oauth            # add -r us|ca|ap|cn for other regions
+```
+
+To test against a different app instead, for example one with a restricted space list, set
+`STORYBLOK_OAUTH_CLIENT_ID` and `STORYBLOK_OAUTH_CLIENT_SECRET`. `.env.qa-engineer-manual` holds
+them for the "QA Manual" app (redirect URI `http://localhost:4900/oauth/callback`, all scopes, no
+space restriction):
+
+```bash
+set -a && source ./.env.qa-engineer-manual && set +a
+```
+
+Consent runs in the browser, the callback lands on port 4900, and tokens go to
+`~/.storyblok/credentials.json` under `oauth.<region>`. Back that file up: login and logout rewrite
+it, and `logout` revokes the grant server-side.
+
+- **Consent as the app's org.** The "QA Manual" app is a private client, so `authorizable_by?`
+  accepts only users of the owning org (see the app's `creator` in `GET /v1/oauth_clients/<id>`).
+  Signing in to app.storyblok.com as any other account fails consent with
+  `unauthorized_client: this application is not available to your organization`. Use an incognito
+  window to keep your main session.
+- **Log out first.** A PAT entry in `credentials.json` shadows the OAuth session
+  (`initializeSession` prefers PAT), so `login --oauth` reports "already logged in" and OAuth
+  commands never run. Run `storyblok logout` before testing.
+- **Stub the browser** to test the flow without a real tab: the `open` package spawns the bare
+  command `open` (macOS) / `xdg-open` (Linux) through `PATH`, so a shim of that name earlier on
+  `PATH` swallows the launch. The authorize URL is also printed to stderr, so you can paste it into
+  a browser yourself to finish consent.
+- **Occupy port 4900 with `nc -l 127.0.0.1 4900`, not `nc -l 4900`.** The wildcard bind does not
+  conflict with the CLI's loopback bind under `SO_REUSEADDR`, so the CLI starts normally and hangs
+  for the full 5 minute callback timeout instead of reporting the conflict.
+
+Worth checking manually: port 4900 occupied, denied consent, out-of-grant space (restrict
+`permitted_space_ids` via `PUT /v1/oauth_clients/<id>`), and refresh (set `expires_at` to the past,
+then run any command). Manage apps through `/v1/oauth_clients` with a Personal Access Token, where
+`client_id` is `oauth_identifier` and `client_secret` is `oauth_secret`.
+
 ## Shared asset libraries
 
 A shared asset library is a top-level shared asset folder owned by the organization, with per-space

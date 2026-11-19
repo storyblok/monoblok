@@ -1,7 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { loadMigrations, selectMigrationFiles } from "./load-migrations";
+import { loadMigrations, misnamedMigrationFiles, selectMigrationFiles } from "./load-migrations";
 
 const fixtures = path.join(path.dirname(fileURLToPath(import.meta.url)), "__fixtures__", "load");
 const spaceMigrations = path.join(fixtures, "space-migrations");
@@ -49,10 +49,58 @@ describe("loadMigrations", () => {
     ]);
   });
 
+  it("should name the script files the loader skips because of their name", () => {
+    const misnamed = misnamedMigrationFiles([
+      "hello.ts",
+      "0001-Rename-Card.ts",
+      "0002-rename-card.mts",
+      "0003-rename-card.ts",
+    ]);
+
+    expect(misnamed).toEqual(["0001-Rename-Card.ts", "0002-rename-card.mts", "hello.ts"]);
+  });
+
+  it("should not name the files that legitimately sit beside migrations", () => {
+    const misnamed = misnamedMigrationFiles([
+      "0001-rename-card.ts",
+      "0001-rename-card.before.ts",
+      "types.d.ts",
+      ".gitignore",
+      ".eslintrc.cjs",
+      "rollbacks",
+      "README.md",
+    ]);
+
+    expect(misnamed).toEqual([]);
+  });
+
   it("should report the file whose default export is not a migration", async () => {
     await expect(
       loadMigrations(path.join(fixtures, "broken-migrations"), importDefault),
     ).rejects.toThrow(/0001-broken/);
+  });
+
+  it("should load only the migrations the filter accepts and import no other file", async () => {
+    const imported: string[] = [];
+    const loaded = await loadMigrations(
+      spaceMigrations,
+      async (file) => {
+        imported.push(path.basename(file));
+        return importDefault(file);
+      },
+      { filter: ({ id }) => id === "0002-drop-card-subtitle" },
+    );
+
+    expect(loaded.map((entry) => entry.id)).toEqual(["0002-drop-card-subtitle"]);
+    expect(imported).toEqual(["0002-drop-card-subtitle.ts"]);
+  });
+
+  it("should name the file that failed to load", async () => {
+    await expect(
+      loadMigrations(spaceMigrations, async () => {
+        throw new Error("boom at import");
+      }),
+    ).rejects.toThrow(/0001-rename-card-title\.ts could not be loaded: boom at import/);
   });
 
   it("should return an empty list for a directory that does not exist", async () => {

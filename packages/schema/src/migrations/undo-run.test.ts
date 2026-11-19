@@ -17,6 +17,7 @@ import { planUndo, undoStories } from "./undo-run";
 function journalHolding(runs: MigrationRun[], inverse: Record<string, StoryInverse[]>): Journal {
   return {
     record: vi.fn(),
+    remove: vi.fn(),
     list: async () => runs,
     read: async (id) => runs.find((entry) => entry.id === id),
     readInverse: async (id) => inverse[id] ?? [],
@@ -87,6 +88,64 @@ describe("planUndo", () => {
       /recorded for space 12345, not space 99999/,
     );
   });
+
+  describe("with later runs", () => {
+    const later = (id: string, overrides: Partial<MigrationRun> = {}): MigrationRun => ({
+      ...run,
+      id,
+      migration: `0002-${id}`,
+      ...overrides,
+    });
+
+    it("should refuse while a later run that changed the same block is applied, naming the newest first", async () => {
+      const journal = journalHolding([run, later("run-2"), later("run-3")], {
+        "run-1": [entry(1, [renameBack])],
+        "run-2": [entry(1, [restoreTitle("a")])],
+        "run-3": [entry(1, [restoreTitle("a")])],
+      });
+
+      await expect(planUndo({ journal, space: "12345", id: "run-1" })).rejects.toThrow(
+        "Roll them back first, newest first:\n  - run-3\n  - run-2",
+      );
+    });
+
+    it("should refuse when a later run moved the block inside another one", async () => {
+      const wrapped: BlockPatch = {
+        uid: "r",
+        component: "page",
+        ops: [
+          {
+            kind: "listRemove",
+            key: "body",
+            uid: "w",
+            expect: { _uid: "w", component: "wrapper", items: [{ _uid: "a", component: "card" }] },
+          },
+        ],
+      };
+      const journal = journalHolding([run, later("run-2")], {
+        "run-1": [entry(1, [renameBack])],
+        "run-2": [entry(1, [wrapped])],
+      });
+
+      await expect(planUndo({ journal, space: "12345", id: "run-1" })).rejects.toThrow(/run-2/);
+    });
+
+    it("should allow it when later runs changed other blocks, other stories, or were undone", async () => {
+      const journal = journalHolding(
+        [run, later("run-2"), later("run-3"), later("run-4", { undoneAt: "2026-09-24" })],
+        {
+          "run-1": [entry(1, [renameBack])],
+          "run-2": [entry(1, [restoreTitle("b")])],
+          "run-3": [entry(2, [restoreTitle("a")])],
+          "run-4": [entry(1, [restoreTitle("a")])],
+        },
+      );
+
+      const plan = await planUndo({ journal, space: "12345", id: "run-1" });
+
+      expect(plan.stories).toEqual([1]);
+    });
+  });
 });
 
 describe("undoStories", () => {
@@ -104,6 +163,18 @@ describe("undoStories", () => {
     ]);
   });
 
+  it("should keep an edit to a field the run did not change without reporting a conflict", () => {
+    const outcome = undoStories({
+      inverse: [entry(1, [renameBack])],
+      stories: [home([{ _uid: "a", component: "card", headline: "Hi", subtitle: "Edited" }])],
+    });
+
+    expect(outcome.conflicts).toEqual([]);
+    expect(outcome.writes[0]?.content).toMatchObject({
+      body: [{ _uid: "a", component: "card", title: "Hi", subtitle: "Edited" }],
+    });
+  });
+
   it("should leave the story it was handed untouched, so a failed write cannot half-apply", () => {
     const story = home([{ _uid: "a", component: "card", headline: "Hi" }]);
 
@@ -116,7 +187,7 @@ describe("undoStories", () => {
     });
   });
 
-  it("should count one conflicting block once however many of its fields the run changed", () => {
+  it("should report a conflicting block once with every field edited since the run", () => {
     const outcome = undoStories({
       inverse: [
         entry(1, [
@@ -133,7 +204,9 @@ describe("undoStories", () => {
       stories: [home([{ _uid: "a", component: "card", title: "edited since" }])],
     });
 
-    expect(outcome.conflicts).toEqual([{ slug: "home", count: 1 }]);
+    expect(outcome.conflicts).toEqual([
+      { slug: "home", blocks: [{ uid: "a", component: "card", fields: ["title", "headline"] }] },
+    ]);
     expect(outcome.writes).toEqual([]);
   });
 
@@ -144,7 +217,9 @@ describe("undoStories", () => {
       force: true,
     });
 
-    expect(outcome.conflicts).toEqual([{ slug: "home", count: 1 }]);
+    expect(outcome.conflicts).toEqual([
+      { slug: "home", blocks: [{ uid: "a", component: "card", fields: ["title"] }] },
+    ]);
     expect(outcome.writes[0]?.content).toMatchObject({
       body: [{ _uid: "a", component: "card", title: "Hi" }],
     });
@@ -181,7 +256,9 @@ describe("undoStories", () => {
       ],
     });
 
-    expect(outcome.conflicts).toEqual([{ slug: "home", count: 1 }]);
+    expect(outcome.conflicts).toEqual([
+      { slug: "home", blocks: [{ uid: "b", component: "card", fields: ["title"] }] },
+    ]);
     expect(outcome.writes[0]?.content).toMatchObject({
       body: [
         { _uid: "a", component: "card", title: "Hi" },
@@ -530,7 +607,9 @@ describe("undoStories after a recorded run", () => {
 
       const outcome = undo(run.inverse, run.content);
 
-      expect(outcome.conflicts).toEqual([{ slug: "home", count: 1 }]);
+      expect(outcome.conflicts).toEqual([
+        { slug: "home", blocks: [{ uid: "r", component: "page", fields: ["body"] }] },
+      ]);
       expect(outcome.writes).toEqual([]);
     });
 
@@ -538,7 +617,9 @@ describe("undoStories after a recorded run", () => {
       const run = wrapped();
       (run.grid.items as Content[]).push({ _uid: "new", component: "card" });
 
-      expect(undo(run.inverse, run.content).conflicts).toEqual([{ slug: "home", count: 1 }]);
+      expect(undo(run.inverse, run.content).conflicts).toEqual([
+        { slug: "home", blocks: [{ uid: "r", component: "page", fields: ["body"] }] },
+      ]);
     });
 
     it("should never repeat a uid, even under force, when a child moved elsewhere", () => {
@@ -548,7 +629,9 @@ describe("undoStories after a recorded run", () => {
 
       const outcome = undo(run.inverse, run.content, true);
 
-      expect(outcome.conflicts).toEqual([{ slug: "home", count: 1 }]);
+      expect(outcome.conflicts).toEqual([
+        { slug: "home", blocks: [{ uid: "r", component: "page", fields: ["body"] }] },
+      ]);
       expect(outcome.writes).toEqual([]);
     });
   });
@@ -563,7 +646,9 @@ describe("undoStories after a recorded run", () => {
 
     const outcome = undo(run.inverse, run.content);
 
-    expect(outcome.conflicts).toEqual([{ slug: "home", count: 1 }]);
+    expect(outcome.conflicts).toEqual([
+      { slug: "home", blocks: [{ uid: "r", component: "page", fields: ["content"] }] },
+    ]);
     expect(outcome.writes).toEqual([]);
   });
 

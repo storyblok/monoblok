@@ -5,6 +5,8 @@
  * one-schema shorthand deliberately widens reads to any string.
  */
 import type { SchemaLike } from "../index";
+import { didYouMean } from "../utils/similar-names";
+import { toValues } from "../validators/shapes";
 import type { CompiledMigration } from "./define-migration";
 import { isKeyOp, type MigrationOp } from "./ops";
 
@@ -25,9 +27,8 @@ export type ValidateMigrationOptions = {
 };
 
 function fieldsByBlock(schema: SchemaLike): Map<string, Set<string>> {
-  const blocks = Array.isArray(schema.blocks) ? schema.blocks : Object.values(schema.blocks ?? {});
   const map = new Map<string, Set<string>>();
-  for (const block of blocks as { name: string; fields?: { name: string }[] }[]) {
+  for (const block of toValues(schema.blocks)) {
     map.set(block.name, new Set((block.fields ?? []).map((field) => field.name)));
   }
   return map;
@@ -101,7 +102,8 @@ export function validateMigration(
   for (const name of nameOnly) known.delete(name);
   const fields = new Map([...known].map(([name, set]) => [name, new Set(set)]));
   const exists = (name: string) => known.has(name) || nameOnly.has(name);
-  const knownNames = () => listOf(new Set([...known.keys(), ...nameOnly]));
+  // A space can define hundreds of blocks, too many to list in a message.
+  const suggest = (name: string) => didYouMean(name, [...known.keys(), ...nameOnly]);
   const issues: MigrationIssue[] = [];
 
   migration.ops.forEach((op, index) => {
@@ -119,8 +121,17 @@ export function validateMigration(
           `"${op.kind}" cannot be scoped with \`under\`: a block's schema is global, so a key op has to apply to every instance.`,
         );
       }
-      for (const name of typeof under === "string" ? [under] : under) {
-        if (!exists(name)) issue(`Unknown ancestor block "${name}" in \`under\`.`);
+      // The op type promises names, but a migration that skipped the type
+      // system can carry anything here.
+      const ancestors: readonly unknown[] | undefined =
+        typeof under === "string" ? [under] : Array.isArray(under) ? under : undefined;
+      if (ancestors === undefined || !ancestors.every((name) => typeof name === "string")) {
+        issue("`under` has to be a block name or a list of block names.");
+      } else {
+        for (const name of ancestors) {
+          if (!exists(name))
+            issue(`Unknown ancestor block "${name}" in \`under\`.${suggest(name)}`);
+        }
       }
     }
 
@@ -132,7 +143,7 @@ export function validateMigration(
         );
       }
     } else if (!blockFields) {
-      issue(`Unknown block "${op.block}". Known blocks: ${knownNames()}.`);
+      issue(`Unknown block "${op.block}".${suggest(op.block)}`);
       return;
     } else {
       for (const field of sourceFieldsOf(op)) {
@@ -190,7 +201,7 @@ export function validateMigration(
           `Block "${op.from.block}" is listed by name only, so whether it defines the field "${op.from.field}" can't be checked.`,
         );
       } else if (!container) {
-        issue(`Unknown block "${op.from.block}" to unwrap. Known blocks: ${knownNames()}.`);
+        issue(`Unknown block "${op.from.block}" to unwrap.${suggest(op.from.block)}`);
       } else if (!container.has(op.from.field)) {
         issue(`Block "${op.from.block}" has no field "${op.from.field}" to unwrap children from.`);
       }

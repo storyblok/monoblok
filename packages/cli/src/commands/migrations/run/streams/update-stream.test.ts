@@ -389,9 +389,7 @@ describe("updateStream", () => {
 
       await writeStories(updateStream);
 
-      expect(updateStream.getSummary()).toBe(
-        "Update Results: 2 stories updated, 1 stories failed.",
-      );
+      expect(updateStream.getSummary()).toBe("Update Results: 2 stories updated, 1 story failed.");
       expect(onError).toHaveBeenCalledExactlyOnceWith({
         storyId: 2,
         name: "About",

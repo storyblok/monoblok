@@ -1,6 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { http, HttpResponse } from "msw";
+import { setupServer } from "msw/node";
 
 import { resolve } from "pathe";
+import { defineMigration, renameField } from "@storyblok/schema";
 import { vol } from "memfs";
 // Import the main module first to ensure proper initialization
 import "../index";
@@ -8,6 +11,7 @@ import { migrationsCommand } from "../command";
 import { fetchStories, fetchStory, updateStory } from "../../stories/actions";
 import type { Story } from "../../stories/constants";
 import * as filesystem from "../../../utils/filesystem";
+import { getUI } from "../../../lib/ui";
 import { resetLogger } from "../../../lib/logger/logger";
 import { resetReporter } from "../../../lib/reporter/reporter";
 import { getLogFileContents } from "../../__tests__/helpers";
@@ -332,7 +336,18 @@ const preconditions = {
   },
 };
 
+/** A space without pending releases, so the release check lets every run proceed. */
+const server = setupServer(
+  http.get("https://mapi.storyblok.com/v1/spaces/:space/releases", () =>
+    HttpResponse.json({ releases: [] }),
+  ),
+);
+
 describe("migrations run command", () => {
+  beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
+  afterEach(() => server.resetHandlers());
+  afterAll(() => server.close());
+
   beforeEach(() => {
     vi.resetAllMocks();
     vi.clearAllMocks();
@@ -436,6 +451,28 @@ describe("migrations run command", () => {
     );
   });
 
+  it("should not run a content migration whose file name lacks the numeric prefix, and name the fix", async () => {
+    const error = vi.spyOn(getUI(), "error");
+    preconditions.canFetchStories();
+    preconditions.canFetchStory();
+    preconditions.canUpdateStory();
+    vol.fromJSON({
+      "./.storyblok/migrations/12345/rename-migration-component.js": "only the filename matters!",
+    });
+    vi.spyOn(filesystem, "importModule").mockResolvedValue({
+      default: defineMigration([
+        renameField({ block: "migration-component", field: "unchanged", to: "renamed" }),
+      ]),
+    });
+
+    await migrationsCommand.parseAsync(["node", "test", "run", "--space", "12345"]);
+
+    expect(updateStory).not.toHaveBeenCalled();
+    expect(error).toHaveBeenCalledWith(
+      'Migration file "rename-migration-component.js" is a content migration, but content migrations are named "<number>-<name>", for example "0001-rename-migration-component.js". Rename it so "storyblok migrations run" applies it.',
+    );
+  });
+
   it("should run migrations successfully", async () => {
     preconditions.canMigrate();
 
@@ -499,9 +536,27 @@ describe("migrations run command", () => {
     // UI
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Migration Results:"));
     expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining("Update Results: 1 stories updated."),
+      expect.stringContaining("Update Results: 1 story updated."),
     );
     expect(process.exitCode).toBe(0);
+  });
+
+  it("should keep the key order a migration function returns", async () => {
+    preconditions.canFetchStories();
+    preconditions.canFetchStory();
+    preconditions.canUpdateStory();
+    preconditions.canLoadMigrationFunction((block: Record<string, unknown>) =>
+      Object.fromEntries(
+        Object.entries(block).map(([key, value]) => [key === "unchanged" ? "renamed" : key, value]),
+      ),
+    );
+    resetLogger();
+
+    await migrationsCommand.parseAsync(["node", "test", "run", "--space", "12345"]);
+
+    const [, , payload] = vi.mocked(updateStory).mock.calls[0]!;
+    const [block] = (payload.story.content as { body: Record<string, unknown>[] }).body;
+    expect(Object.keys(block!)).toEqual(["_uid", "component", "renamed", "amount"]);
   });
 
   it("should report a run with only skipped migrations as success", async () => {
@@ -615,7 +670,18 @@ describe("migrations run command", () => {
     expect(console.warn).toHaveBeenCalledWith(
       expect.stringContaining("DRY RUN MODE ENABLED: No changes will be made."),
     );
-    expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Migration Results:"));
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining("Migration Results: 1 story would be migrated"),
+    );
+  });
+
+  it("should write no rollback file in dry run mode", async () => {
+    preconditions.canMigrate();
+    resetLogger();
+
+    await migrationsCommand.parseAsync(["node", "test", "run", "--space", "12345", "--dry-run"]);
+
+    expect(Object.keys(vol.toJSON()).filter((file) => file.includes("/rollbacks/"))).toEqual([]);
   });
 
   it("should handle component filtering correctly", async () => {
@@ -774,7 +840,7 @@ describe("migrations run command", () => {
       ),
     );
     expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining("Migration Results: 1 stories migrated, 0 stories skipped."),
+      expect.stringContaining("Migration Results: 1 story migrated, 0 stories skipped."),
     );
     expect(console.error).toHaveBeenCalledWith(
       expect.stringMatching(
@@ -928,7 +994,7 @@ describe("migrations run command", () => {
     await migrationsCommand.parseAsync(["node", "test", "run", "--space", "12345"]);
 
     expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining("Update Results: 0 stories updated, 1 stories failed."),
+      expect.stringContaining("Update Results: 0 stories updated, 1 story failed."),
     );
     // Only a stopped run prints these; the failed-stories list repeats the message too.
     expect(console.warn).toHaveBeenCalledWith(

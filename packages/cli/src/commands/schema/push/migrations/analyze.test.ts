@@ -214,6 +214,37 @@ describe("detectRenames", () => {
     expect(result.unmatchedAdded).toEqual([]);
   });
 
+  it("should propose a split when several new fields are named about as closely", () => {
+    const removed = [{ field: "full_name", type: "text" }];
+    const added = [
+      { field: "given_name", type: "text", required: false },
+      { field: "family_name", type: "text", required: false },
+      { field: "role", type: "text", required: false },
+    ];
+
+    const result = detectRenames(removed, added);
+
+    expect(result.renames).toEqual([]);
+    expect(result.splits).toEqual([{ field: "full_name", into: ["given_name", "family_name"] }]);
+    expect(result.unmatchedRemoved).toEqual([]);
+    expect(result.unmatchedAdded).toEqual([{ field: "role", type: "text", required: false }]);
+  });
+
+  it("should keep a rename when one new field is named much more closely than the others", () => {
+    const removed = [{ field: "title", type: "text" }];
+    const added = [
+      { field: "subtitle", type: "text", required: false },
+      { field: "headline", type: "text", required: false },
+    ];
+
+    const result = detectRenames(removed, added);
+
+    expect(result.renames).toEqual([
+      { oldField: "title", newField: "subtitle", fieldType: "text" },
+    ]);
+    expect(result.splits).toEqual([]);
+  });
+
   // Note: detectRenames is agnostic to `required` — it matches on type + name
   // similarity. The production path (analyzeBreakingChanges) deliberately excludes
   // required fields from the rename candidate pool. This tests the helper only.

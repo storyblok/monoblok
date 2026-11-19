@@ -1,7 +1,7 @@
 import type { SchemaFieldLike, SchemaLike } from "./shapes";
 import type { ValidationIssue, ValidationResult } from "./types";
 import { FIELD_TYPES, isLayoutFieldType } from "../field-types";
-import { DERIVED_RESTRICTION_KEYS, EDITOR_RESTRICT_TYPES } from "../restrictions";
+import { DERIVED_RESTRICTION_KEYS, EDITOR_RESTRICT_TYPES, TAG_LIST_KEYS } from "../restrictions";
 import { isRecord, toValues } from "./shapes";
 
 const FIELD_TYPE_LIST = FIELD_TYPES.map((value) => `"${value}"`).join(", ");
@@ -275,10 +275,17 @@ export function validateSchema(schema: SchemaLike): ValidationResult {
       // `schema push` derives the wire restriction keys from `allow`/`deny` and
       // overwrites anything set by hand, so setting both silently drops one of
       // the two. `defineField` rejects this at compile time; repeat it here for
-      // consumers authoring schemas in plain JavaScript.
+      // consumers authoring schemas in plain JavaScript. A name or folder
+      // restriction derives no tag lists, so raw ones beside it are kept as is.
       if (field.allow !== undefined || field.deny !== undefined) {
+        const restrictsByTag = [...(field.allow ?? []), ...(field.deny ?? [])].some(
+          (entry) => typeof entry !== "string" && "tag" in entry,
+        );
         for (const key of DERIVED_RESTRICTION_KEYS) {
           if (field[key] === undefined) {
+            continue;
+          }
+          if (!restrictsByTag && TAG_LIST_KEYS.some((tagKey) => tagKey === key)) {
             continue;
           }
           issues.push({

@@ -341,6 +341,9 @@ export function resolveFieldRestriction(
  * None of these flags are emitted for a field type that does not own them; see
  * {@link RESTRICTABLE_FIELD_TYPES}.
  *
+ * Raw tag lists beside a name or folder `allow`/`deny` are returned in
+ * `unchecked`, since `defineField` can't type them.
+ *
  * See {@link resolveFieldRestriction} for how the block-name and folder
  * dimensions are told apart.
  */
@@ -371,16 +374,19 @@ function toDslField(
   // emitted as `allow`/`deny` refs below instead, so it must not be written twice.
   //
   // Beside a name or folder `allow`/`deny`, `defineField` rejects the raw tag
-  // lists. The editor reads a tag allow list only under `restrict_type: 'tags'`,
-  // which those dimensions rule out, so it is dropped. Its tag arm reads the
-  // denylist under any `restrict_type`, so that one is kept, untyped.
+  // lists, so they are kept untyped. The editor's block picker applies the tag
+  // lists under any `restrict_type` once the denylist is non-empty, and ignores a
+  // tag allowlist otherwise, so that one is dropped without a denylist.
   const emitsDslRestriction = restriction.kind === "names" || restriction.kind === "folders";
   if (restrictable && restriction.kind !== "tagRefs") {
-    if (component_tag_whitelist !== undefined && !emitsDslRestriction) {
-      out.component_tag_whitelist = component_tag_whitelist;
+    const target = emitsDslRestriction ? unchecked : out;
+    const tagDenylistInForce =
+      Array.isArray(component_tag_denylist) && component_tag_denylist.length > 0;
+    if (component_tag_whitelist !== undefined && (!emitsDslRestriction || tagDenylistInForce)) {
+      target.component_tag_whitelist = component_tag_whitelist;
     }
     if (component_tag_denylist !== undefined) {
-      (emitsDslRestriction ? unchecked : out).component_tag_denylist = component_tag_denylist;
+      target.component_tag_denylist = component_tag_denylist;
     }
   }
 
@@ -439,8 +445,8 @@ function toDslField(
       // either way, so keeping the flag costs nothing and buys a byte-identical
       // round trip, which is what makes a second push report `unchanged`. A field
       // whose only list is a tag denylist is genuinely restricted, because the
-      // editor's tag arm does not gate the denylist on `restrict_type`, and
-      // dropping the flag there would unrestrict it.
+      // editor applies a tag denylist under any `restrict_type`, and dropping the
+      // flag there would unrestrict it.
       if (restrictable && restrict_components === true) {
         out.restrict_components = restrict_components;
         if (restrict_type !== undefined) {
@@ -455,10 +461,7 @@ function toDslField(
   return { out, unchecked };
 }
 
-/**
- * Formats a field config, appending `unchecked` options as an untyped spread:
- * `defineField` rejects them, but they still reach the space on push.
- */
+/** Appends `unchecked` as an untyped spread. */
 function formatFieldConfig(
   config: Record<string, unknown>,
   unchecked: Record<string, unknown>,
@@ -473,7 +476,7 @@ function formatFieldConfig(
   const body = formatted === "{}" ? "{\n" : formatted.slice(0, -`${indent}}`.length);
   return [
     body,
-    `${innerIndent}// Not typed for this field type; kept so \`schema push\` writes it back.\n`,
+    `${innerIndent}// Untyped: \`schema push\` writes these back. Delete them to remove them from the space.\n`,
     `${innerIndent}...(${formatValue(unchecked, depth + 1)} as object),\n`,
     `${indent}}`,
   ].join("");

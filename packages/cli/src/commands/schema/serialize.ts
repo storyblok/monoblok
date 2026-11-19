@@ -27,8 +27,10 @@ function isMeaningfulEmptyList(field: Record<string, unknown>, key: string): boo
  * a space still stores but no longer enforces does not diff against a schema
  * that omits it:
  * - every list while `restrict_components` is explicitly `false`,
- * - a folder or tag whitelist while `restrict_type` selects another dimension.
- *   Denylists are not gated on `restrict_type` and are kept.
+ * - a folder whitelist while `restrict_type` selects another dimension,
+ * - a tag whitelist while `restrict_type` selects another dimension and the tag
+ *   denylist is empty. The editor applies both tag lists once the denylist is
+ *   non-empty, and denylists are not gated on `restrict_type`.
  */
 function omitInertRestrictions(field: Record<string, unknown>): void {
   if (field.restrict_components === false) {
@@ -40,7 +42,9 @@ function omitInertRestrictions(field: Record<string, unknown>): void {
   if (field.restrict_type !== "groups") {
     delete field.component_group_whitelist;
   }
-  if (field.restrict_type !== "tags") {
+  const tagDenylistInForce =
+    Array.isArray(field.component_tag_denylist) && field.component_tag_denylist.length > 0;
+  if (field.restrict_type !== "tags" && !tagDenylistInForce) {
     delete field.component_tag_whitelist;
   }
 }
@@ -50,9 +54,8 @@ function omitInertRestrictions(field: Record<string, unknown>): void {
  * behave the same compare equal: API-assigned `id` stripped, `null` treated as
  * absent, and a `name` that repeats the field's schema key (the editor writes
  * one onto tabs it reorders) dropped. Options are read the way `schema init`
- * reads them (see `partitionFieldOptions`): an option another field type owns,
- * the inert `key`, and `""` where a number or boolean belongs are dropped, and a
- * numeric or boolean string is coerced to the type the option wants.
+ * reads them (see `partitionFieldOptions`), so a string option compares as the
+ * value the editor reads and options it never reads are ignored.
  */
 function normalizeField(key: string, field: Record<string, unknown>): Record<string, unknown> {
   const { id, ...options } = field;

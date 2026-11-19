@@ -1120,14 +1120,46 @@ describe("diffSchema field equivalence", () => {
     expect(diffPage(remote, local)?.action).toBe("unchanged");
   });
 
-  it("should ignore options the field type does not read", () => {
+  it("should ignore options the editor does not read", () => {
     const remote = {
-      title: { type: "text", pos: 0, key: "title", toolbar: [], customize_toolbar: true },
-      body: { type: "bloks", pos: 1, filetypes: ["images"], maximum: "" },
+      title: { type: "text", pos: 0, key: "title", component_whitelist: ["card"] },
+      body: { type: "bloks", pos: 1, maximum: "" },
     };
     const local = { title: { type: "text", pos: 0 }, body: { type: "bloks", pos: 1 } };
 
     expect(diffPage(remote, local)?.action).toBe("unchanged");
+  });
+
+  it("should report an option another field type declares removed", () => {
+    const remote = { link: { type: "multilink", pos: 0, asset_folder_id: 123 } };
+    const local = { link: { type: "multilink", pos: 0 } };
+
+    expect(diffPage(remote, local)?.changes).toEqual([
+      { field: "schema.link.asset_folder_id", change: "removed", before: 123 },
+    ]);
+  });
+
+  it("should report a tag allowlist removed beside a tag denylist", () => {
+    const restriction = {
+      type: "bloks",
+      pos: 0,
+      restrict_components: true,
+      component_whitelist: ["card"],
+      component_tag_denylist: [2],
+    };
+    const remote = { body: { ...restriction, component_tag_whitelist: [1] } };
+
+    expect(diffPage(remote, { body: restriction })?.changes).toEqual([
+      { field: "schema.body.component_tag_whitelist", change: "removed", before: [1] },
+    ]);
+  });
+
+  it("should compare a boolean string as the value the editor reads", () => {
+    const remote = { title: { type: "text", pos: 0, required: "false" } };
+
+    expect(diffPage(remote, { title: { type: "text", pos: 0, required: true } })?.action).toBe(
+      "unchanged",
+    );
   });
 
   it("should compare a legacy numeric string as the number it holds", () => {

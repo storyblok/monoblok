@@ -339,15 +339,11 @@ export type OptionField = BaseField & ValueField & {
      */
     allow_advanced_search?: boolean;
     /**
-     * Maximum number of selectable options. The schema form writes a number;
-     * older spaces hold the same value as a numeric string.
-     *
+     * Maximum number of selectable options. Older spaces store it as a numeric string.
      */
     max_options?: number | string;
     /**
-     * Minimum number of selectable options. The schema form writes a number;
-     * older spaces hold the same value as a numeric string.
-     *
+     * Minimum number of selectable options. Older spaces store it as a numeric string.
      */
     min_options?: number | string;
     /**
@@ -416,15 +412,11 @@ export type OptionsField = BaseField & ValueField & {
      */
     allow_advanced_search?: boolean;
     /**
-     * Maximum number of selectable options. The schema form writes a number;
-     * older spaces hold the same value as a numeric string.
-     *
+     * Maximum number of selectable options. Older spaces store it as a numeric string.
      */
     max_options?: number | string;
     /**
-     * Minimum number of selectable options. The schema form writes a number;
-     * older spaces hold the same value as a numeric string.
-     *
+     * Minimum number of selectable options. Older spaces store it as a numeric string.
      */
     min_options?: number | string;
     /**

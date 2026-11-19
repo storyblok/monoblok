@@ -1075,4 +1075,29 @@ describe("formatDiffOutput", () => {
     expect(output).toContain("1 to delete");
     expect(output).not.toContain("stale");
   });
+
+  it("should quote a string that would read as a boolean or number", () => {
+    const diffResult = makeDiffResult([
+      {
+        type: "component",
+        name: "article",
+        action: "update",
+        changes: [
+          { field: "schema.body.rich_markdown", change: "modified", before: "true", after: true },
+          { field: "schema.items.maximum", change: "modified", before: "2", after: 2 },
+          { field: "schema.title.description", change: "modified", before: "Old", after: "New" },
+        ],
+        before: null,
+        after: null,
+      },
+    ]);
+
+    const output = formatDiffOutput(diffResult);
+
+    expect(output).toContain('- "true"');
+    expect(output).toContain("+ true");
+    expect(output).toContain('- "2"');
+    expect(output).toContain("+ 2");
+    expect(output).toContain("- Old");
+  });
 });

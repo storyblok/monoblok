@@ -3,6 +3,8 @@ import { dirname, join } from "pathe";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 
+import { validateSchema } from "../../../lib/validation";
+import type { SchemaLike } from "../../../lib/validation";
 import type { Component, ComponentFolder } from "../../../types";
 import { mapFieldToWire } from "../map-to-wire";
 import {
@@ -88,28 +90,29 @@ function generateProject(
   return files;
 }
 
-/** Runs a generated block file with a pass-through `defineField`, returning its fields. */
-function evaluateFields(code: string): Record<string, unknown>[] {
+/** Runs a generated block file with pass-through `defineBlock` and `defineField`. */
+function evaluateBlock(code: string): { name: string; fields: Record<string, unknown>[] } {
   const { outputText } = ts.transpileModule(code, {
     compilerOptions: { module: ts.ModuleKind.CommonJS },
   });
-  const exports: Record<string, { fields: Record<string, unknown>[] }> = {};
+  const exports: Record<string, { name: string; fields: Record<string, unknown>[] }> = {};
   const schemaModule = {
     defineBlock: (block: unknown) => block,
     defineField: (name: string, field: object) => ({ name, ...field }),
   };
   new Function("require", "exports", outputText)(() => schemaModule, exports);
-  return Object.values(exports)[0].fields;
+  return Object.values(exports)[0];
 }
+
+const evaluateFields = (code: string): Record<string, unknown>[] => evaluateBlock(code).fields;
 
 const component = (name: string, schema: Record<string, Record<string, unknown>>): Component =>
   ({ id: 1, name, created_at: "", updated_at: "", schema }) as unknown as Component;
 
 /**
- * A space's fields as the Management API returns them after years of editing:
- * options left behind by a field type change, numbers and booleans stored as
- * strings, a tag list beside a name restriction, and toolbar items a richtext
- * field can hold.
+ * A space's fields as the Management API returns them: options left behind by a
+ * field type change, numbers and booleans stored as strings, tag lists beside a
+ * name restriction, and rich text toolbar items.
  */
 const LEGACY_SPACE: Component[] = [
   component("article", {
@@ -117,6 +120,7 @@ const LEGACY_SPACE: Component[] = [
       type: "text",
       pos: 0,
       key: "title",
+      required: "false",
       customize_toolbar: true,
       toolbar: ["bold"],
     },
@@ -127,6 +131,9 @@ const LEGACY_SPACE: Component[] = [
     cover: { type: "asset", pos: 5, key: "cover", filetypes: ["images"] },
     settings: { type: "tab", pos: 6, name: "settings", key: "settings", keys: ["noindex"] },
     legacy: { type: "text", pos: 7, legacy_flag: 1 },
+    body: { type: "markdown", pos: 8, rich_markdown: "true" },
+    link: { type: "multilink", pos: 9, asset_folder_id: 123 },
+    widget: { type: "custom", pos: 10, field_type: "color-picker", required: "true", color: "red" },
   }),
   component("listing", {
     decoration: {
@@ -143,6 +150,7 @@ const LEGACY_SPACE: Component[] = [
       source: "internal_stories",
       max_options: 4,
       min_options: "1",
+      max_length: 3,
       minimum: 0,
       maximum: 1,
       component_whitelist: ["pricing_section"],
@@ -204,7 +212,7 @@ describe("schema init generated code", () => {
     expect(typeErrors(files)).toEqual([]);
   });
 
-  it("should still reject an unknown option written by hand", () => {
+  it("should reject an unknown option written by hand", () => {
     // Guards the check above: it must be able to fail.
     const files = generateProject([component("page", { title: { type: "text", pos: 0 } })]);
     files["blocks/page.ts"] = files["blocks/page.ts"].replace(
@@ -226,33 +234,55 @@ describe("schema init generated code", () => {
     expect(mapFieldToWire(legacy ?? {}).value).toEqual({ type: "text", legacy_flag: 1 });
   });
 
-  it("should push a tag denylist beside a block name restriction back unchanged", () => {
+  it("should pass schema validation", async () => {
+    const files = generateProject(LEGACY_SPACE);
+    const blocks = Object.entries(files)
+      .filter(([path]) => path.startsWith("blocks/"))
+      .map(([, code]) => evaluateBlock(code));
+
+    // Typed as runtime values, which the type check above already covers.
+    const result = await validateSchema({ blocks } as unknown as SchemaLike);
+
+    // The fixture registers no datasources or field plugins.
+    const fixtureGaps = new Set(["unresolved_datasource", "unresolved_field_plugin"]);
+    expect(
+      result.issues.filter((issue) => issue.severity === "error" && !fixtureGaps.has(issue.code)),
+    ).toEqual([]);
+  });
+
+  it("should push tag lists beside a block name restriction back unchanged", () => {
     const files = generateProject(LEGACY_SPACE);
     const fields = evaluateFields(files["blocks/listing.ts"]);
     const text = fields.find((field) => field.name === "text");
 
     expect(mapFieldToWire(text ?? {}).value).toMatchObject({
       component_whitelist: ["card"],
+      component_tag_whitelist: [1],
       component_tag_denylist: [2],
       restrict_components: true,
       restrict_type: "",
     });
   });
 
-  it("should push numbers and booleans stored as strings in the type the field wants", () => {
+  it("should push numbers and booleans stored as strings as the editor reads them", () => {
     const files = generateProject(LEGACY_SPACE);
     const listing = evaluateFields(files["blocks/listing.ts"]);
     const article = evaluateFields(files["blocks/article.ts"]);
+    const field = (fields: Record<string, unknown>[], name: string) =>
+      fields.find((candidate) => candidate.name === name);
 
-    expect(listing.find((field) => field.name === "items")).toMatchObject({ maximum: 2 });
-    expect(listing.find((field) => field.name === "items")).not.toHaveProperty("minimum");
-    expect(article.find((field) => field.name === "featured")).toMatchObject({
-      default_value: true,
-    });
-    expect(article.find((field) => field.name === "noindex")).not.toHaveProperty("default_value");
+    expect(field(listing, "items")).toMatchObject({ maximum: 2 });
+    expect(field(listing, "items")).not.toHaveProperty("minimum");
+    // The editor reads `required` by truthiness, so "false" means required.
+    expect(field(article, "title")).toMatchObject({ required: true });
+    // It enables these two only on a literal `true`, so a string means off.
+    expect(field(article, "featured")).not.toHaveProperty("default_value");
+    expect(field(article, "body")).not.toHaveProperty("rich_markdown");
+    expect(field(article, "noindex")).not.toHaveProperty("default_value");
+    expect(field(article, "widget")).toMatchObject({ required: true, color: "red" });
   });
 
-  it("should drop options left behind by a field type change", () => {
+  it("should push options left behind by a field type change back unchanged", () => {
     const files = generateProject(LEGACY_SPACE);
     const fields = [
       ...evaluateFields(files["blocks/article.ts"]),
@@ -262,22 +292,23 @@ describe("schema init generated code", () => {
       fields.map((field) => [field.name, mapFieldToWire(field).value]),
     );
 
-    expect(wire.title).toEqual({ type: "text" });
-    expect(wire.noindex).toEqual({ type: "boolean" });
-    expect(wire.cover).toEqual({ type: "asset", filetypes: ["images"] });
-    expect(wire.decoration).not.toHaveProperty("filetypes");
-    expect(wire.authors).toEqual({
-      type: "options",
-      source: "internal_stories",
-      max_options: 4,
-      min_options: "1",
+    expect(wire.title).toEqual({
+      type: "text",
+      required: true,
+      customize_toolbar: true,
+      toolbar: ["bold"],
     });
-    expect(wire.items).toEqual({
-      type: "bloks",
-      component_whitelist: ["card"],
-      restrict_components: true,
-      restrict_type: "",
-      maximum: 2,
-    });
+    expect(wire.link).toEqual({ type: "multilink", asset_folder_id: 123 });
+    expect(wire.authors).toMatchObject({ max_length: 3 });
+    expect(wire.items).toMatchObject({ filetypes: ["images"], use_uuid: true });
+  });
+
+  it("should drop the inert key option", () => {
+    const files = generateProject(LEGACY_SPACE);
+    const fields = evaluateFields(files["blocks/article.ts"]);
+
+    for (const field of fields) {
+      expect(mapFieldToWire(field).value).not.toHaveProperty("key");
+    }
   });
 });

@@ -124,15 +124,34 @@ describe("renderMigrationCode", () => {
       { kind: "options_removed", field: payload, values: payloads, multiple: true },
       { kind: "options_removed", field: payload, values: payloads, multiple: false },
     ]);
-    const code = renderMigrationCode(changes);
+    // Last, since a split throws until its author writes it.
+    const splits = payloads.map(
+      (payload): BreakingChange => ({ kind: "split", field: payload, into: [payload, payload] }),
+    );
+    const code = renderMigrationCode([...changes, ...splits]);
 
     const migration = await import(
       /* @vite-ignore */ `data:text/javascript,${encodeURIComponent(code)}`
     );
     const block = Object.fromEntries(payloads.map((payload) => [payload, "value"]));
-    migration.default(block);
 
+    expect(() => migration.default(block)).toThrow(`Write the split of ${payloads[0]}`);
     expect(globalThis).not.toHaveProperty("PWNED");
+  });
+
+  it("should keep the content of a split field until the split is written", async () => {
+    const code = renderMigrationCode([
+      { kind: "split", field: "full_name", into: ["given_name", "family_name"] },
+    ]);
+    const migration = await import(
+      /* @vite-ignore */ `data:text/javascript,${encodeURIComponent(code)}`
+    );
+    const block = { full_name: "Ada Lovelace" };
+
+    expect(() => migration.default(block)).toThrow(
+      "Write the split of full_name into given_name and family_name, then remove this line.",
+    );
+    expect(block).toEqual({ full_name: "Ada Lovelace" });
   });
 
   it("should generate removal code", () => {

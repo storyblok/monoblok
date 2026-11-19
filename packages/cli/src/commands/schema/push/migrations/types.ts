@@ -2,6 +2,8 @@
 export type BreakingChange =
   | { kind: "rename"; field: string; oldField: string }
   | { kind: "removed"; field: string; renameHint?: { newFields: string[] } }
+  /** A removed field whose content most likely moved into several new fields. */
+  | { kind: "split"; field: string; into: string[] }
   | { kind: "type_changed"; field: string; oldType: string; newType: string }
   | { kind: "required_added"; field: string; fieldType: string }
   | { kind: "required_changed"; field: string; fieldType: string }

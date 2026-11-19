@@ -42,6 +42,8 @@ export type MigrationOpSource = { todo?: readonly string[] } & (
    * `fillEmptyString`. Leaves translations alone.
    */
   | (OpTarget & { kind: "fillField"; value?: unknown; fillEmptyString?: boolean })
+  /** Splits a field into new ones; the callback throws until the author writes the split. */
+  | (OpTarget & { kind: "splitField"; into: readonly string[] })
 );
 
 export type GenerateMigrationSourceOptions = {
@@ -118,6 +120,14 @@ function opDocs(op: MigrationOpSource): Doc[] {
       return [callDoc("renameField", [targetDoc(op, ["to", quoteString(op.to)])], true)];
     case "removeField":
       return [callDoc("removeField", [targetDoc(op)], true)];
+    case "splitField":
+      return [
+        callDoc(
+          "splitField",
+          [targetDoc(op, ["into", valueDoc(op.into)]), arrowDoc("()", throwPlaceholder(op))],
+          true,
+        ),
+      ];
     case "coerceField": {
       const from: [string, Doc][] = op.from ? [["from", quoteString(op.from)]] : [];
       return [callDoc("coerceField", [targetDoc(op, ...from, ["to", quoteString(op.to)])], true)];

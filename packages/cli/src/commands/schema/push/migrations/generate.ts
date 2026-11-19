@@ -138,6 +138,21 @@ export function renderMigrationCode(changes: BreakingChange[]): string {
         break;
       }
 
+      case "split": {
+        const into = change.into.map((field) => `'${field}'`).join(" and ");
+        comment(`TODO: '${change.field}' was likely split into ${into}; fill them from it.`);
+        for (const field of change.into) {
+          comment(`${accessor(field)} = <part of ${accessor(change.field)}>;`);
+        }
+        comment(`delete ${accessor(change.field)};`);
+        // Throws until the author writes the split, so an unedited migration
+        // can't delete the field's content.
+        code(
+          `throw new Error(${quoteString(`Write the split of ${change.field} into ${change.into.join(" and ")}, then remove this line.`)});`,
+        );
+        break;
+      }
+
       case "options_removed": {
         const target = accessor(change.field);
         const values = change.values.map(quoteString);
@@ -237,6 +252,18 @@ export function toMigrationOps(block: string, changes: BreakingChange[]): Migrat
           },
         ];
       }
+      case "split":
+        return [
+          {
+            kind: "splitField",
+            block,
+            field: change.field,
+            into: change.into,
+            todo: [
+              `TODO: '${change.field}' was likely split into ${change.into.map((f) => `'${f}'`).join(" and ")}. Write the split, or replace it with renameField or removeField. Every run reruns this op, so the callback also receives values it already split.`,
+            ],
+          },
+        ];
       case "options_removed":
         return [
           {
@@ -285,6 +312,8 @@ function describeChange(change: BreakingChange): string {
       return `rename ${change.oldField} to ${change.field}`;
     case "removed":
       return `remove ${change.field}`;
+    case "split":
+      return `split ${change.field} into ${listFormat.format(change.into)}`;
     case "type_changed":
       return `convert ${change.field} to ${change.newType}`;
     case "required_added":

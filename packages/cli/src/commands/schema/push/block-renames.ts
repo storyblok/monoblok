@@ -4,9 +4,37 @@ import type { Component, ComponentUpdate } from "../../../types";
 import { CommandError, isRecord } from "../../../utils";
 import { delay } from "../../../utils/fetch";
 import type { DiffResult, RemoteSchemaData, SchemaData } from "../types";
+import { pairOf } from "./migrations/declared-renames";
 import { countStoriesUsing } from "./story-folders";
 
 export type BlockRename = { from: string; to: string };
+
+/** Parses `--rename-block` values, refusing two that rename one block or onto one block. */
+export function parseDeclaredBlockRenames(values: readonly string[]): BlockRename[] {
+  const renames: BlockRename[] = [];
+  const describe = ({ from, to }: BlockRename) => `--rename-block ${from}:${to}`;
+  for (const value of values) {
+    const pair = pairOf(value);
+    if (!pair) {
+      throw new CommandError(`Invalid --rename-block "${value}". Use --rename-block old:new.`);
+    }
+    const rename = { from: pair[0], to: pair[1] };
+    for (const other of renames) {
+      if (other.from === rename.from) {
+        throw new CommandError(
+          `${describe(other)} and ${describe(rename)} both rename ${rename.from}.`,
+        );
+      }
+      if (other.to === rename.to) {
+        throw new CommandError(
+          `${describe(other)} and ${describe(rename)} both rename a block to ${rename.to}.`,
+        );
+      }
+    }
+    renames.push(rename);
+  }
+  return renames;
+}
 
 /** Share of fields two blocks must have in common to count as one renamed block. */
 const MIN_FIELD_OVERLAP = 0.5;
@@ -20,18 +48,20 @@ function fieldSignatures(component: Pick<Component, "schema">): Set<string> {
 }
 
 /**
- * Fields both blocks have with the same type, relative to the block with fewer
- * fields, so a rename that also adds or renames a field still pairs.
+ * Fields both blocks have with the same type, relative to the block with more
+ * fields, so a small block doesn't pair with a large, unrelated one that
+ * happens to hold its few fields.
  */
 function fieldOverlap(a: Set<string>, b: Set<string>): number {
-  const smaller = Math.min(a.size, b.size);
-  if (smaller === 0) return 0;
-  return [...a].filter((signature) => b.has(signature)).length / smaller;
+  const larger = Math.max(a.size, b.size);
+  if (larger === 0) return 0;
+  return [...a].filter((signature) => b.has(signature)).length / larger;
 }
 
 /**
  * Pairs blocks only the space has with blocks only the local schema has, when
- * they share most of their fields and both or neither can be a story.
+ * they share at least half the fields of each and both or neither can be a
+ * story.
  * A rename otherwise reaches the space as a new block plus a stale one, and
  * the stories using the old name keep content no block describes.
  */

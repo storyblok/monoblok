@@ -106,6 +106,12 @@ export function pruneSiblingRunFiles(currentFilePath: string, keep: number): num
 export const DEFAULT_STORAGE_DIR = ".storyblok";
 
 export interface FileOptions {
+  /**
+   * Permissions to create the file with. Like `fs.writeFile`, this applies only when the
+   * file is created; an existing file keeps the permissions it already has. Anything
+   * secret belongs in `writeFileAtomic`, which creates every write's file fresh with
+   * this mode and replaces the target atomically.
+   */
   mode?: number;
 }
 

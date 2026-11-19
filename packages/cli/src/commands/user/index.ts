@@ -43,7 +43,7 @@ export const userCommand = program
       }
     } catch (error) {
       spinner.failed();
-      handleError(error as Error, true);
+      handleError(error as Error, verbose);
     }
     ui.br();
   });

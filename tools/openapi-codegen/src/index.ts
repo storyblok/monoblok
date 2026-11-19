@@ -10,7 +10,7 @@
  *
  * Also writes `<outDir>.sha256`, a hash of the output. Consumers commit it, so
  * a commit that changes their generated code touches the package and releases
- * it (ADR-0026).
+ * it (ADR-0032).
  */
 
 import { createClient } from "@hey-api/openapi-ts";

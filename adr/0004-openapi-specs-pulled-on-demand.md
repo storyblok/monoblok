@@ -1,6 +1,6 @@
 # ADR-0004: OpenAPI Specs Pulled on Demand
 
-**Status:** Superseded by [ADR-0026](0026-public-openapi-specs-generated-on-build.md) **Date:**
+**Status:** Superseded by [ADR-0032](adr-0032.md) **Date:**
 2026-05-27
 
 ## Context

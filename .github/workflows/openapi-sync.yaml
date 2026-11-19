@@ -1,6 +1,6 @@
 name: OpenAPI Spec Sync
 
-# CI on the sync pull request regenerates and checks every consumer. See ADR-0026.
+# CI on the sync pull request regenerates and checks every consumer. See ADR-0032.
 on:
   schedule:
     - cron: "0 5 * * *"

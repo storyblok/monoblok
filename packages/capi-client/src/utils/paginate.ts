@@ -91,7 +91,7 @@ const fingerprintPage = (items: unknown[]): string | undefined => {
   }
 };
 
-// Duplicated in the other API client; change both (ADR-0020).
+// Duplicated in the other API client; change both (ADR-0033).
 async function* walkPages<TData, TItem>(
   config: PaginateConfig<TData, TItem>,
   { prefetch, throwOnFailure }: { prefetch: boolean; throwOnFailure: boolean },

@@ -2326,7 +2326,7 @@ export type WebhookCreate = {
     /**
      * Optional description
      */
-    description?: string;
+    description?: string | null;
     /**
      * URL to receive webhook payloads (http or https)
      */
@@ -2334,7 +2334,7 @@ export type WebhookCreate = {
     /**
      * Optional secret for request signing
      */
-    secret?: string;
+    secret?: string | null;
     /**
      * Whether the webhook is active
      */
@@ -2353,7 +2353,7 @@ export type WebhookUpdate = {
     /**
      * Optional description
      */
-    description?: string;
+    description?: string | null;
     /**
      * URL to receive webhook payloads (http or https)
      */
@@ -2361,7 +2361,7 @@ export type WebhookUpdate = {
     /**
      * Optional secret for request signing
      */
-    secret?: string;
+    secret?: string | null;
     /**
      * Whether the webhook is active
      */

@@ -20,7 +20,7 @@ function errorTypeFromStatus(status: number): string {
   return ERROR_TYPE_BY_STATUS[status] ?? (status >= 500 ? "SERVER_ERROR" : `HTTP_${status}`);
 }
 
-/** E.g. `TypeError` → `TYPE_ERROR`. A class name is an identifier, not content (ADR-0027). */
+/** E.g. `TypeError` → `TYPE_ERROR`. A class name is an identifier, not content (ADR-0031). */
 function getErrorClassType({ name }: Error): string | undefined {
   if (name === "Error" || !ERROR_CLASS_NAME_PATTERN.test(name)) {
     return undefined;

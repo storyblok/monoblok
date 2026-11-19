@@ -1,6 +1,6 @@
 export const TELEMETRY_ENDPOINT = "https://ingress.eu-west-1.aws.dash0.com";
 
-/** Ingest-only, so it is safe to publish (ADR-0027). */
+/** Ingest-only, so it is safe to publish (ADR-0031). */
 export const TELEMETRY_AUTH_TOKEN = "auth_8KsM3eynDxyKYfIjl4z5zeUSKhQOVOJV";
 
 /**

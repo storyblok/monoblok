@@ -1,10 +1,12 @@
 /** A single breaking change detected in a component schema. */
 export type BreakingChange =
   | { kind: "rename"; field: string; oldField: string }
-  | { kind: "removed"; field: string; renameHint?: { newField: string } }
+  | { kind: "removed"; field: string; renameHint?: { newFields: string[] } }
   | { kind: "type_changed"; field: string; oldType: string; newType: string }
   | { kind: "required_added"; field: string; fieldType: string }
-  | { kind: "required_changed"; field: string; fieldType: string };
+  | { kind: "required_changed"; field: string; fieldType: string }
+  /** Values an option or options field no longer offers, which stories may still hold. */
+  | { kind: "options_removed"; field: string; values: string[]; multiple: boolean };
 
 /** All breaking changes for a single component. */
 export interface ComponentBreakingChanges {

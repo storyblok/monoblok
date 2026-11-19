@@ -41,6 +41,11 @@ export interface MigrationRun {
    * what it planned rather than what landed.
    */
   interrupted?: boolean;
+  /**
+   * Set when the run left stories it matched unmigrated, such as when it ran on
+   * a subset of the stories, so the migration still needs a run on every story.
+   */
+  partial?: boolean;
 }
 
 /** A story's publish state as the run found it, before writing. */

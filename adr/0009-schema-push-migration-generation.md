@@ -1,6 +1,7 @@
 # ADR-0009: Migration Generation Integrated into Schema Push
 
-**Status:** Accepted **Date:** 2026-04-10
+**Status:** Accepted. Partly superseded by [ADR-0030](adr-0030.md) for `schema push --typed`.
+**Date:** 2026-04-10
 
 ## Context
 

@@ -24,6 +24,9 @@
     "*": {
       "field-plugins": [
         "./dist/field-plugins/index.d.cts"
+      ],
+      "internal/codegen": [
+        "./dist/internal/codegen.d.cts"
       ]
     }
   },
@@ -35,6 +38,10 @@
     "./field-plugins": {
       "import": "./dist/field-plugins/index.mjs",
       "require": "./dist/field-plugins/index.cjs"
+    },
+    "./internal/codegen": {
+      "import": "./dist/internal/codegen.mjs",
+      "require": "./dist/internal/codegen.cjs"
     },
     "./package.json": "./package.json"
   },

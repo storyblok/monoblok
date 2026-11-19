@@ -38,6 +38,7 @@ import {
 import {
   applyContentMigrations,
   assertContentMigrationsMatchSchema,
+  fetchSpaceBlocks,
 } from "./apply-content-migrations";
 
 const PUBLISH_MODES: readonly PublishMode[] = ["all", "published", "published-with-changes"];
@@ -419,6 +420,9 @@ runCmd.action(async (name: string | undefined, options: MigrationsRunOptions, co
         validate,
       });
     }
+    const components = selected.content.some((entry) => entry.migration.ops.length > 0)
+      ? await fetchSpaceBlocks(space)
+      : [];
 
     await guardPendingReleases(space, {
       command: "run",
@@ -453,6 +457,7 @@ runCmd.action(async (name: string | undefined, options: MigrationsRunOptions, co
         dryRun,
         publish,
         scope,
+        components,
       });
     }
   } catch (error) {

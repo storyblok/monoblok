@@ -1,14 +1,7 @@
 import { join } from "pathe";
 import { describe, expect, it } from "vitest";
 
-import {
-  applyDefaults,
-  displayPath,
-  fileTimestamp,
-  formatValue,
-  quoteString,
-  stripKeys,
-} from "./utils";
+import { applyDefaults, displayPath, fileTimestamp } from "./utils";
 
 describe("fileTimestamp", () => {
   it("should convert an ISO timestamp to compact YYYYMMDDHHmmss form", () => {
@@ -40,128 +33,21 @@ describe("displayPath", () => {
     const filePath = join(process.cwd(), "storage/migrations/12345/hero.js");
     expect(displayPath(filePath, process.cwd())).toBe(filePath);
   });
-});
 
-describe("formatValue", () => {
-  it("should format null and undefined as strings", () => {
-    expect(formatValue(null, 0)).toBe("null");
-    expect(formatValue(undefined, 0)).toBe("undefined");
+  it("should keep the absolute path when the file lies outside CWD", () => {
+    const filePath = join(process.cwd(), "../elsewhere/migrations/12345/hero.js");
+    expect(displayPath(filePath)).toBe(filePath);
+    expect(displayPath(filePath, "../elsewhere")).toBe(filePath);
   });
 
-  it("should format strings with single quotes", () => {
-    expect(formatValue("hello", 0)).toBe("'hello'");
+  it("should show the working directory itself as a dot", () => {
+    expect(displayPath(process.cwd())).toBe(".");
+    expect(displayPath(process.cwd(), ".")).toBe(".");
   });
 
-  it("should escape single quotes inside strings", () => {
-    expect(formatValue("it's", 0)).toBe("'it\\'s'");
-  });
-
-  it("should escape backslashes so regex values are not silently dropped", () => {
-    // Emitted as '\\d+' — a single-quoted literal that parses back to the exact
-    // input `\d+`. The old serializer emitted '\d+', which parses to `d+`.
-    expect(formatValue(String.raw`\d+`, 0)).toBe(String.raw`'\\d+'`);
-    expect(formatValue(String.raw`^\s*\b\w+(?:\s+\w+){0,3}\s*$`, 0)).toBe(
-      String.raw`'^\\s*\\b\\w+(?:\\s+\\w+){0,3}\\s*$'`,
-    );
-  });
-
-  it("should escape newlines instead of emitting raw line breaks", () => {
-    expect(formatValue("a\nb", 0)).toBe(String.raw`'a\nb'`);
-    expect(formatValue("a\nb", 0)).not.toContain("\n");
-  });
-
-  it("should escape a trailing backslash so it does not consume the closing quote", () => {
-    expect(formatValue("path\\", 0)).toBe(String.raw`'path\\'`);
-  });
-
-  it("should leave double quotes untouched inside single-quoted literals", () => {
-    expect(formatValue('he said "hi"', 0)).toBe(String.raw`'he said "hi"'`);
-  });
-
-  it("should format numbers and booleans", () => {
-    expect(formatValue(42, 0)).toBe("42");
-    expect(formatValue(true, 0)).toBe("true");
-    expect(formatValue(false, 0)).toBe("false");
-  });
-
-  it("should format empty arrays", () => {
-    expect(formatValue([], 0)).toBe("[]");
-  });
-
-  it("should format arrays with items", () => {
-    const result = formatValue(["a", "b"], 0);
-    expect(result).toBe("[\n  'a',\n  'b',\n]");
-  });
-
-  it("should format empty objects", () => {
-    expect(formatValue({}, 0)).toBe("{}");
-  });
-
-  it("should format objects with sorted keys", () => {
-    const result = formatValue({ z: 1, a: 2 }, 0);
-    expect(result).toBe("{\n  a: 2,\n  z: 1,\n}");
-  });
-
-  it("should filter out null and undefined object values", () => {
-    const result = formatValue({ a: 1, b: null, c: undefined, d: 2 }, 0);
-    expect(result).toBe("{\n  a: 1,\n  d: 2,\n}");
-  });
-
-  it("should handle nested objects with correct indentation", () => {
-    const result = formatValue({ outer: { inner: "value" } }, 0);
-    expect(result).toContain("outer: {\n    inner:");
-  });
-});
-
-describe("quoteString", () => {
-  it("should wrap plain strings in single quotes", () => {
-    expect(quoteString("hello")).toBe(String.raw`'hello'`);
-  });
-
-  it("should escape single quotes", () => {
-    expect(quoteString("it's")).toBe("'it\\'s'");
-  });
-
-  it("should escape backslashes", () => {
-    expect(quoteString(String.raw`\d+`)).toBe(String.raw`'\\d+'`);
-  });
-
-  it("should escape newlines", () => {
-    expect(quoteString("a\nb")).toBe(String.raw`'a\nb'`);
-  });
-
-  it("should escape a trailing backslash", () => {
-    expect(quoteString("path\\")).toBe(String.raw`'path\\'`);
-  });
-
-  it("should escape a backslash followed by a quote", () => {
-    expect(quoteString(String.raw`a\"b`)).toBe(String.raw`'a\\"b'`);
-  });
-});
-
-describe("stripKeys", () => {
-  it("should strip specified keys", () => {
-    const obj = { a: 1, b: 2, c: 3 };
-    const result = stripKeys(obj, new Set(["b"]));
-    expect(result).toEqual({ a: 1, c: 3 });
-  });
-
-  it("should remove undefined and null values", () => {
-    const obj = { a: 1, b: undefined, c: null, d: "ok" };
-    const result = stripKeys(obj, new Set());
-    expect(result).toEqual({ a: 1, d: "ok" });
-  });
-
-  it("should preserve non-stripped keys with valid values", () => {
-    const obj = { keep: "yes", strip: "no", also_keep: 0, falsy: false };
-    const result = stripKeys(obj, new Set(["strip"]));
-    expect(result).toEqual({ keep: "yes", also_keep: 0, falsy: false });
-  });
-
-  it("should return empty object when all keys are stripped", () => {
-    const obj = { a: 1, b: 2 };
-    const result = stripKeys(obj, new Set(["a", "b"]));
-    expect(result).toEqual({});
+  it("should keep a path relative when only its name starts with dots", () => {
+    const filePath = join(process.cwd(), "..storyblok/hero.js");
+    expect(displayPath(filePath)).toBe("..storyblok/hero.js");
   });
 });
 

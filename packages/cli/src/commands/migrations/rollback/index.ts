@@ -15,7 +15,7 @@ import chalk from "chalk";
 const rollbackCmd = migrationsCommand
   .command("rollback [run]")
   .description(
-    "Roll back a migration run: a recorded run id or a rollback file name, defaulting to the most recent run not yet rolled back",
+    "Roll back a migration run: a recorded run id or a rollback file name, defaulting to the most recent run with changes not yet rolled back",
   )
   .option("-s, --space <space>", "space ID")
   .option("--force", "overwrite blocks with fields changed since a recorded run")

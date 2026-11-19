@@ -66,7 +66,7 @@ export function createRemoteSpace(server: SetupServerApi) {
     default: jsExports.get(file.split("/").pop() ?? ""),
   }));
 
-  // No components by default; declare them with `hasBlocks`.
+  // No components by default, so no op is checked against the space's schema.
   server.use(http.get(`${MAPI}/components`, () => HttpResponse.json({ components: [] })));
 
   vi.mocked(importUserModuleDefault).mockImplementation(async (file) => {
@@ -100,8 +100,8 @@ export function createRemoteSpace(server: SetupServerApi) {
       }
     },
     /**
-     * The space's blocks. A field given by name only is a text field, and one
-     * given by type only isn't translatable.
+     * The space's blocks, which ops are checked against. A field given by name
+     * only is a text field, and one given by type only isn't translatable.
      */
     hasBlocks(
       blocks: Record<
@@ -125,10 +125,6 @@ export function createRemoteSpace(server: SetupServerApi) {
         };
       });
       server.use(http.get(`${MAPI}/components`, () => HttpResponse.json({ components })));
-    },
-    /** Listing the space's blocks fails. */
-    failsToListBlocks() {
-      server.use(http.get(`${MAPI}/components`, () => new HttpResponse(null, { status: 500 })));
     },
     /** A content migration in a `.js` file, which a migration function could also be. */
     hasJsContentMigration(id: string, migration: CompiledMigration) {

@@ -7,7 +7,9 @@
  * joining it reuses this instead of growing its own copy.
  */
 export { isSidecarKey, REQUIRED_STORY_LINE_FIELDS, SIDECAR_PREFIX } from "./contract";
-export type { StoryLine } from "./contract";
+export type { ResourceLine, ResultLine, StoryLine } from "./contract";
+export { MalformedInputError, readRecords } from "./input";
+export type { InputRecord } from "./input";
 export {
   createCollectingSink,
   createJsonlOutput,

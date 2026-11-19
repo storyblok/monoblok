@@ -167,6 +167,7 @@ describe("diffBlock", () => {
       key: "headline",
       value: "Hello",
       expect: undefined,
+      afterKey: "component",
     });
   });
 

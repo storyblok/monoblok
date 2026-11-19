@@ -25,9 +25,9 @@ For the release notes. These changes affect existing `schema push` and `migratio
 - `schema push --delete` refuses to delete a block that stories use, and refuses when it can’t count
   those stories. Pass `--force` to delete the block anyway.
 - When the local schema drops a block and adds one that shares at least half the fields of the
-  smaller one by name and type, `schema push` asks whether the block was renamed. On confirmation,
-  the space renames the block in place, along with the stories, folders, and other blocks that use
-  it.
+  larger one by name and type, `schema push` asks whether the block was renamed. The answer defaults
+  to no. On confirmation, the space renames the block in place, along with the stories, folders, and
+  other blocks that use it.
 - Removing values an option or options field offers is a breaking change, so `schema push` offers a
   migration for it.
 - Switching a field among text, textarea, and markdown is no longer a breaking change.
@@ -540,7 +540,43 @@ that isn’t required:
 
 By default, the command writes one `.js` migration per changed block for
 [`migrations run`](/docs/tooling/cli/migrations/run). With `--dry-run`, it prints the breaking
-changes and detected renames without writing migration files.
+changes, possible splits, and every question it would ask with the flags that answer each one,
+without writing migration files.
+
+### Renames and splits
+
+The command asks about each detected field rename by block and field. A removed field with several
+new fields of the same type named about as closely, such as `full_name` with `given_name` and
+`family_name`, counts as a possible split instead. The typed migration holds a `splitField` op that
+throws until you write the split, and the `.js` migration throws until you write the split and
+remove the line that throws.
+
+### Running without a terminal
+
+When stdin isn’t a terminal, for example in CI, the command doesn’t prompt. Before it changes
+anything, it fails with every question it would ask and the flags that answer each one:
+
+```text
+▲ error schema push needs answers to 2 questions, but stdin is not a terminal:
+  - Rename block new_quote → quote (714 stories)? Otherwise quote is created as a new block. Pass --yes or --rename-block new_quote:quote to rename it, or --no-renames to create quote as a new block.
+  - Generate migration files for breaking changes? Pass --migrations to generate them, which also takes detected field renames as given, --yes to generate them and accept every detected rename, or --no-migrations to skip them.
+```
+
+These flags answer the questions:
+
+- `--migrations` or `--no-migrations` answers whether to generate migrations.
+- `--yes` accepts every detected block and field rename, and generates migrations.
+- `--rename <block>.<field>:<new-field>` declares a field rename, which replaces what rename
+  detection made of that field, and generates migrations. The push has to remove the field from the
+  block and add the new field. Name a block the push renames by its new name.
+- `--rename-block <block>:<new-block>` declares a block rename, which the space applies like a
+  confirmed one. When the renamed block has breaking changes, the command generates migrations.
+- `--no-renames` treats every detected rename as a removal plus a new block or field, even with
+  `--yes`.
+
+```bash
+storyblok schema push src/schema/schema.ts --typed --migrations --rename-block new_quote:quote
+```
 
 Before a push that changes the space, the command warns about content migrations pending on this
 machine. Run the ones written for an earlier schema change before the push, since `migrations run`
@@ -590,7 +626,8 @@ characters.
 
 The migration handles these changes:
 
-- Renames and removes fields.
+- Renames and removes fields, and marks a possible split of a field with a `splitField` op to
+  complete.
 - Converts values between text, textarea, markdown, and number fields, and between those string
   fields and boolean fields.
 - Fills required boolean fields with `false` where the value is missing. For a required field of
@@ -641,12 +678,14 @@ content migration.
 ### Renamed blocks
 
 When the local schema drops a block and adds a new one, the command asks whether the block was
-renamed if the two share at least half the fields of the smaller one by name and type, and both or
-neither can be a story. The prompt shows how many stories use the old block. On confirmation, the
-space renames the block in place, so it keeps its ID. The space also renames the block wherever the
-space names it, such as in the drafts and published versions of the stories that use it, experiment
-variants, the content types of folders, other blocks’ block restrictions, workflows, and presets.
-Otherwise, the command creates the new block next to the old one.
+renamed if the two share at least half the fields of the larger one by name and type, and both or
+neither can be a story. The prompt shows how many stories use the old block, and the answer defaults
+to no. `--yes` confirms the rename without asking, and `--rename-block` declares one the command
+didn’t detect. On confirmation, the space renames the block in place, so it keeps its ID. The space
+also renames the block wherever the space names it, such as in the drafts and published versions of
+the stories that use it, experiment variants, the content types of folders, other blocks’ block
+restrictions, workflows, and presets. Otherwise, the command creates the new block next to the old
+one.
 
 The command renames blocks after it updates the other blocks. In a space with many stories, the
 space renames a block in its stories in the background, and the command waits until no story uses
@@ -669,15 +708,19 @@ command retries those updates for up to 10 minutes.
 A story whose published version uses the block but whose draft doesn’t keeps the old name in its
 published version until the story is published again.
 
-A dry run shows a possible rename as confirmed. It shows the block as updated, lists the field
-renames it detects, and doesn’t refuse `--delete` for the old block.
+The command shows the diff with every possible rename as confirmed before it asks. When you decline
+a rename, it shows the diff again without it.
+
+A dry run shows a possible rename as confirmed. It shows the block as updated, lists the questions
+about field renames it would ask, and doesn’t refuse `--delete` for the old block.
 
 ### Deleted blocks
 
 With `--delete`, the command refuses to delete a block that stories use and names the number of
-stories. Confirm the rename if the command asked about one, migrate the block’s stories first, or
-pass `--force` to delete the block anyway. The command also refuses when it can’t count the stories,
-and names the error. `--force` skips the count. A dry run warns instead of refusing.
+stories. When the command detected a rename of the block, rename it with the `--rename-block` the
+refusal names. Otherwise, migrate the block’s stories first, or pass `--force` to delete the block
+anyway. The command also refuses when it can’t count the stories, and names the error. `--force`
+skips the count. A dry run warns instead of refusing.
 
 Before it deletes blocks, the command names the folders whose content types include them. The space
 removes a deleted block from a folder’s content types, and a folder left without content types
@@ -693,9 +736,13 @@ If the command can’t read the space, it names the migration files and leaves t
 
 <!-- target: src/content/docs/docs/tooling/cli/schema/push.mdx#flags (replace the `--migrations` row, then add the rows after it) -->
 
-| Flag           | Type    | Description                                                                                                                                            |
-| -------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `--migrations` | boolean | _Optional._ Generate migration files for breaking changes without asking, taking detected field renames as given. Pass `--no-migrations` to skip them. |
-| `--typed`      | boolean | _Optional._ Generate one typed content migration instead of one `.js` migration per block. Has no effect with `--no-migrations`.                       |
-| `--no-before`  | boolean | _Optional._ With `--typed`, skip the schema snapshot.                                                                                                  |
-| `--force`      | boolean | _Optional._ With `--delete`, delete blocks that stories still use.                                                                                     |
+| Flag             | Type    | Description                                                                                                                                            |
+| ---------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `--migrations`   | boolean | _Optional._ Generate migration files for breaking changes without asking, taking detected field renames as given. Pass `--no-migrations` to skip them. |
+| `--typed`        | boolean | _Optional._ Generate one typed content migration instead of one `.js` migration per block. Has no effect with `--no-migrations`.                       |
+| `--no-before`    | boolean | _Optional._ With `--typed`, skip the schema snapshot.                                                                                                  |
+| `--force`        | boolean | _Optional._ With `--delete`, delete blocks that stories still use.                                                                                     |
+| `--yes`, `-y`    | boolean | _Optional._ Accept every block and field rename the command detects, and generate migration files, without asking.                                     |
+| `--rename`       | string  | _Optional._ Declare a field rename as `<block>.<field>:<new-field>`, and generate migration files. Name a renamed block by its new name. Repeatable.   |
+| `--rename-block` | string  | _Optional._ Declare a block rename as `<block>:<new-block>`. Repeatable.                                                                               |
+| `--no-renames`   | boolean | _Optional._ Treat detected renames as removals plus new blocks or fields. Overrides `--yes` for renames.                                               |

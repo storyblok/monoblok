@@ -308,6 +308,16 @@ function commentsIn(source: string | undefined): string[] {
   });
 }
 
+/** The questions a dry run says schema push would ask. */
+function dryRunQuestions(): string {
+  const [message] =
+    vi
+      .mocked(console.error)
+      .mock.calls.find(([text]) => String(text).includes("Without --dry-run, schema push asks")) ??
+    [];
+  return String(message ?? "");
+}
+
 function migrationFiles(): string[] {
   return Object.keys(vol.toJSON())
     .filter((file) => file.includes(`migrations/${DEFAULT_SPACE}/`))
@@ -324,6 +334,7 @@ describe("schema push command", () => {
       vi.setSystemTime(Date.now() + ms);
     });
     preconditions.hasStories({});
+    Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
   });
 
   afterEach(() => {
@@ -336,6 +347,15 @@ describe("schema push command", () => {
     pushCmd?.setOptionValueWithSource("before", true, "default");
     pushCmd?.setOptionValueWithSource("path", undefined, "default");
     pushCmd?.setOptionValueWithSource("force", false, "default");
+    pushCmd?.setOptionValueWithSource("yes", false, "default");
+    pushCmd?.setOptionValueWithSource("rename", [], "default");
+    pushCmd?.setOptionValueWithSource("renameBlock", [], "default");
+    pushCmd?.setOptionValueWithSource("renames", true, "default");
+    pushCmd?.setOptionValueWithSource("migrations", undefined, "default");
+    pushCmd?.setOptionValueWithSource("typed", undefined, "default");
+    pushCmd?.setOptionValueWithSource("dryRun", false, "default");
+    pushCmd?.setOptionValueWithSource("delete", false, "default");
+    Object.defineProperty(process.stdin, "isTTY", { value: undefined, configurable: true });
     vi.useRealTimers();
   });
 
@@ -1649,8 +1669,42 @@ describe("schema push command", () => {
       expect(writes).toEqual([]);
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining(
-          "Stories still use this block, which --delete would delete: banner (3 stories). Confirm the rename, migrate the block's stories first, or pass --force to delete it anyway.",
+          "Stories still use this block, which --delete would delete: banner (3 stories). Rename it with --rename-block banner:hero, migrate the block's stories first, or pass --force to delete it anyway.",
         ),
+      );
+    });
+
+    it("should point to --rename-block when --delete refuses a block --no-renames kept from a rename", async () => {
+      preconditions.hasLocalSchema({ components: [hero()] as any, datasources: [] });
+      preconditions.hasRemoteComponents([banner()]);
+      preconditions.hasStories({ banner: 3 });
+      const writes = componentWrites();
+
+      await push("--no-migrations", "--delete", "--no-renames");
+
+      expect(confirm).not.toHaveBeenCalled();
+      expect(writes).toEqual([]);
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining("Rename it with --rename-block banner:hero,"),
+      );
+    });
+
+    it("should name the stories a dry run with --delete would refuse to delete", async () => {
+      const page = makeMockComponent({ name: "page" });
+      preconditions.hasLocalSchema({ components: [page] as any, datasources: [] });
+      preconditions.hasRemoteComponents([page, banner()]);
+      preconditions.hasStories({ banner: 3 });
+      componentWrites();
+
+      await push("--no-migrations", "--delete", "--dry-run");
+
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "Stories still use this block, which --delete would delete: banner (3 stories). Migrate the block's stories first, or pass --force to delete it anyway. Without --dry-run, schema push stops here unless you pass --force.",
+        ),
+      );
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining("Component 'banner' (3 stories) will be deleted."),
       );
     });
 
@@ -1740,13 +1794,10 @@ describe("schema push command", () => {
       await push("--dry-run", "--delete");
 
       expect(confirm).not.toHaveBeenCalled();
-      expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining("Possible block rename: banner → hero (3 stories)."),
-      );
       expect(console.error).toHaveBeenCalledWith(expect.stringContaining("hero (update)"));
-      expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining("Detected rename in 'hero': headline → title"),
-      );
+      const questions = dryRunQuestions();
+      expect(questions).toContain("Rename block banner → hero (3 stories)?");
+      expect(questions).toContain("Rename field hero.headline → title?");
       expect(console.warn).not.toHaveBeenCalledWith(expect.stringContaining("Stories still use"));
     });
 
@@ -1768,6 +1819,604 @@ describe("schema push command", () => {
 
       expect(confirm).not.toHaveBeenCalled();
     });
+
+    it("should not pair a block with a larger one that holds its few fields among many others", async () => {
+      const extraFields = Object.fromEntries(
+        Array.from({ length: 10 }, (_, index) => [
+          `field_${index}`,
+          { type: "text", pos: index + 1 },
+        ]),
+      );
+      preconditions.hasLocalSchema({
+        components: [
+          makeMockComponent({
+            name: "hero",
+            schema: { headline: { type: "text", pos: 0 }, ...extraFields },
+          }),
+        ] as any,
+        datasources: [],
+      });
+      preconditions.hasRemoteComponents([
+        makeMockComponent({ name: "teaser", schema: { headline: { type: "text", pos: 0 } } }),
+      ]);
+      componentWrites();
+
+      await push("--no-migrations");
+
+      expect(confirm).not.toHaveBeenCalled();
+    });
+
+    it("should rename a detected block in the space without asking with --yes", async () => {
+      const remoteBanner = banner();
+      preconditions.hasLocalSchema({ components: [hero()] as any, datasources: [] });
+      preconditions.hasRemoteComponents([remoteBanner]);
+      const writes = componentWrites([remoteBanner], { banner: 3 });
+
+      await push("--no-migrations", "--yes");
+
+      expect(confirm).not.toHaveBeenCalled();
+      expect(writes).toEqual([
+        { method: "PUT", id: String(remoteBanner.id), name: "hero", updateContent: true },
+      ]);
+    });
+
+    it("should show the diff before it asks about a block rename", async () => {
+      preconditions.hasLocalSchema({ components: [hero()] as any, datasources: [] });
+      preconditions.hasRemoteComponents([banner()]);
+      componentWrites([banner()], { banner: 3 });
+      vi.mocked(confirm).mockResolvedValue(true);
+
+      await push("--no-migrations");
+
+      const diffIndex = vi
+        .mocked(console.error)
+        .mock.calls.findIndex(([text]) => String(text).includes("hero (update)"));
+      const diffOrder = vi.mocked(console.error).mock.invocationCallOrder[diffIndex];
+      expect(diffIndex).toBeGreaterThanOrEqual(0);
+      expect(diffOrder).toBeLessThan(vi.mocked(confirm).mock.invocationCallOrder[0]);
+    });
+
+    it("should show the diff again without a block rename that was declined", async () => {
+      preconditions.hasLocalSchema({ components: [hero()] as any, datasources: [] });
+      preconditions.hasRemoteComponents([banner()]);
+      const writes = componentWrites([banner()], { banner: 3 });
+      vi.mocked(confirm).mockResolvedValue(false);
+
+      await push("--no-migrations");
+
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining("Without the block renames you declined:"),
+      );
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining("+ hero (create)"));
+      expect(writes).toEqual([{ method: "POST", id: undefined, name: "hero" }]);
+    });
+
+    it("should generate the migration of a block declared with --rename-block without asking", async () => {
+      preconditions.hasLocalSchema({ components: [hero()] as any, datasources: [] });
+      preconditions.hasRemoteComponents([banner()]);
+      componentWrites([banner()], { banner: 3 });
+      vi.mocked(confirm).mockResolvedValue(true);
+
+      await push("--typed", "--rename-block", "banner:hero");
+
+      expect(confirm).not.toHaveBeenCalledWith(
+        expect.objectContaining({ message: "Generate migration files for breaking changes?" }),
+        expect.anything(),
+      );
+      expect(writtenFile("20261016090503-update-hero.ts")).toContain(
+        "renameField({ block: 'hero', field: 'headline', to: 'title' })",
+      );
+    });
+
+    it("should default the block rename prompt to creating a new block", async () => {
+      const remoteBanner = banner();
+      preconditions.hasLocalSchema({ components: [hero()] as any, datasources: [] });
+      preconditions.hasRemoteComponents([remoteBanner]);
+      componentWrites([remoteBanner], { banner: 3 });
+      vi.mocked(confirm).mockResolvedValue(false);
+
+      await push("--no-migrations");
+
+      expect(confirm).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining("Rename block banner → hero (3 stories)?"),
+          default: false,
+        }),
+        expect.anything(),
+      );
+    });
+  });
+
+  describe("without a terminal", () => {
+    const quote = (schema: Record<string, Record<string, unknown>>) =>
+      makeMockComponent({ name: "quote", schema });
+    const fullName = { full_name: { type: "text", pos: 0 }, role: { type: "text", pos: 1 } };
+    const split = {
+      given_name: { type: "text", pos: 0 },
+      family_name: { type: "text", pos: 1 },
+      role: { type: "text", pos: 2 },
+    };
+    const push = (...args: string[]) =>
+      schemaCommand.parseAsync([
+        "node",
+        "test",
+        "push",
+        "schema.ts",
+        "--space",
+        DEFAULT_SPACE,
+        ...args,
+      ]);
+
+    beforeEach(() => {
+      Object.defineProperty(process.stdin, "isTTY", { value: undefined, configurable: true });
+      preconditions.hasRemoteFolders([]);
+      preconditions.hasRemoteDatasources([]);
+      preconditions.hasRemoteTags([]);
+      preconditions.canUpdateComponents();
+    });
+
+    it("should fail instead of prompting and name the flags that answer the question", async () => {
+      preconditions.hasLocalSchema({
+        components: [quote({ name: { type: "text", pos: 0 } })] as any,
+        datasources: [],
+      });
+      preconditions.hasRemoteComponents([quote({ author: { type: "text", pos: 0 } })]);
+
+      await push("--typed");
+
+      expect(confirm).not.toHaveBeenCalled();
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "Generate migration files for breaking changes? Pass --migrations to generate them, which also takes detected field renames as given, --yes to generate them and accept every detected rename, or --no-migrations to skip them.",
+        ),
+      );
+      expect(migrationFiles()).toEqual([]);
+    });
+
+    it("should remove a renamed field with --no-renames", async () => {
+      preconditions.hasLocalSchema({
+        components: [quote({ name: { type: "text", pos: 0 } })] as any,
+        datasources: [],
+      });
+      preconditions.hasRemoteComponents([quote({ author: { type: "text", pos: 0 } })]);
+      await push("--typed", "--yes", "--no-renames");
+
+      expect(writtenFile("20261016090503-update-quote.ts")).toContain(
+        "removeField({ block: 'quote', field: 'author' })",
+      );
+    });
+
+    it("should accept every detected rename with --yes", async () => {
+      preconditions.hasLocalSchema({
+        components: [quote({ name: { type: "text", pos: 0 } })] as any,
+        datasources: [],
+      });
+      preconditions.hasRemoteComponents([quote({ author: { type: "text", pos: 0 } })]);
+
+      await push("--typed", "--yes");
+
+      expect(confirm).not.toHaveBeenCalled();
+      expect(writtenFile("20261016090503-update-quote.ts")).toContain(
+        "renameField({ block: 'quote', field: 'author', to: 'name' })",
+      );
+    });
+
+    it("should propose a split when a field is replaced by several similarly named ones", async () => {
+      preconditions.hasLocalSchema({ components: [quote(split)] as any, datasources: [] });
+      preconditions.hasRemoteComponents([quote(fullName)]);
+
+      await push("--typed", "--migrations");
+
+      const migration = writtenFile("20261016090503-update-quote.ts");
+      expect(migration).toContain(
+        "splitField({ block: 'quote', field: 'full_name', into: ['given_name', 'family_name'] }",
+      );
+      expect(migration).toContain(
+        "title: 'Update quote: split full_name into given_name and family_name'",
+      );
+      expect(migration).not.toContain("renameField({");
+    });
+
+    it("should use a rename declared with --rename instead of the detected split", async () => {
+      preconditions.hasLocalSchema({ components: [quote(split)] as any, datasources: [] });
+      preconditions.hasRemoteComponents([quote(fullName)]);
+
+      await push("--typed", "--migrations", "--rename", "quote.full_name:family_name");
+
+      const migration = writtenFile("20261016090503-update-quote.ts");
+      expect(migration).toContain(
+        "renameField({ block: 'quote', field: 'full_name', to: 'family_name' })",
+      );
+      expect(migration).not.toContain("splitField");
+    });
+
+    it("should refuse a declared rename that matches no removed field", async () => {
+      preconditions.hasLocalSchema({ components: [quote(split)] as any, datasources: [] });
+      preconditions.hasRemoteComponents([quote(fullName)]);
+
+      await push("--typed", "--migrations", "--rename", "quote.role:title");
+
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "--rename quote.role:title doesn't match a field this push removes from quote.",
+        ),
+      );
+      expect(migrationFiles()).toEqual([]);
+    });
+
+    it("should name every question it cannot ask in one error and change nothing", async () => {
+      preconditions.hasLocalSchema({
+        components: [
+          makeMockComponent({
+            name: "hero",
+            is_root: true,
+            schema: { title: { type: "text", pos: 0 }, body: { type: "textarea", pos: 1 } },
+          }),
+        ] as any,
+        datasources: [],
+      });
+      preconditions.hasRemoteComponents([
+        makeMockComponent({
+          name: "banner",
+          is_root: true,
+          schema: { headline: { type: "text", pos: 0 }, body: { type: "textarea", pos: 1 } },
+        }),
+      ]);
+      preconditions.hasStories({ banner: 3 });
+      const writes: string[] = [];
+      server.use(
+        http.all(
+          `https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/components/*`,
+          ({ request }) => {
+            writes.push(request.method);
+            return HttpResponse.json({});
+          },
+        ),
+      );
+
+      await push("--typed");
+
+      expect(confirm).not.toHaveBeenCalled();
+      const [message] = vi
+        .mocked(console.error)
+        .mock.calls.find(([text]) => String(text).includes("stdin is not a terminal"))!;
+      expect(message).toContain("schema push needs answers to 3 questions");
+      expect(message).toContain("Rename block banner → hero (3 stories)?");
+      expect(message).toContain("Generate migration files for breaking changes?");
+      expect(message).toContain("Rename field hero.headline → title?");
+      expect(writes).toEqual([]);
+      expect(migrationFiles()).toEqual([]);
+    });
+
+    it("should name the flags that answer a possible rename on a dry run", async () => {
+      preconditions.hasLocalSchema({
+        components: [
+          makeMockComponent({
+            name: "hero",
+            is_root: true,
+            schema: { title: { type: "text", pos: 0 } },
+          }),
+        ] as any,
+        datasources: [],
+      });
+      preconditions.hasRemoteComponents([
+        makeMockComponent({
+          name: "banner",
+          is_root: true,
+          schema: { title: { type: "text", pos: 0 } },
+        }),
+      ]);
+      preconditions.hasStories({ banner: 3 });
+
+      await push("--dry-run");
+
+      expect(dryRunQuestions()).toContain(
+        "Rename block banner → hero (3 stories)? Otherwise hero is created as a new block. Pass --yes or --rename-block banner:hero to rename it, or --no-renames to create hero as a new block.",
+      );
+    });
+
+    it("should rename a block declared with --rename-block in the space without asking", async () => {
+      const remote = makeMockComponent({
+        name: "banner",
+        schema: { title: { type: "text", pos: 0 } },
+      });
+      preconditions.hasLocalSchema({
+        components: [
+          makeMockComponent({ name: "hero", schema: { title: { type: "text", pos: 0 } } }),
+        ] as any,
+        datasources: [],
+      });
+      preconditions.hasRemoteComponents([remote]);
+      const updates: string[] = [];
+      server.use(
+        http.put(
+          `https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/components/:id`,
+          async ({ request, params }) => {
+            const body = (await request.json()) as { component: { name: string } };
+            const updateContent = new URL(request.url).searchParams.get("update_content");
+            updates.push(`${params.id}:${body.component.name}:${updateContent}`);
+            return HttpResponse.json({ component: body.component });
+          },
+        ),
+      );
+
+      await push("--no-migrations", "--rename-block", "banner:hero");
+
+      expect(confirm).not.toHaveBeenCalled();
+      expect(updates).toEqual([`${remote.id}:hero:true`]);
+    });
+
+    describe("with --rename-block", () => {
+      const block = (name: string, extra: Record<string, unknown> = {}) =>
+        makeMockComponent({ name, schema: { title: { type: "text", pos: 0 } }, ...extra });
+      const writes = () => {
+        const methods: string[] = [];
+        const record = ({ request }: { request: Request }) => {
+          methods.push(request.method);
+          return HttpResponse.json({ component: {} });
+        };
+        const url = `https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/components`;
+        server.use(
+          http.post(url, record),
+          http.put(`${url}/:id`, record),
+          http.delete(`${url}/:id`, record),
+        );
+        return methods;
+      };
+
+      it.each([
+        {
+          case: "a block the space doesn't have",
+          remote: ["page"],
+          local: ["page", "hero"],
+          flags: ["banner:hero"],
+          error: "--rename-block banner:hero: the space has no block banner.",
+        },
+        {
+          case: "a block the schema still has",
+          remote: ["banner"],
+          local: ["banner", "hero"],
+          flags: ["banner:hero"],
+          error:
+            "--rename-block banner:hero: the schema still has a block banner, so the push doesn't remove it.",
+        },
+        {
+          case: "a new name the space already has",
+          remote: ["banner", "hero"],
+          local: ["hero"],
+          flags: ["banner:hero"],
+          error: "--rename-block banner:hero: the space already has a block hero.",
+        },
+        {
+          case: "a new name the schema doesn't have",
+          remote: ["banner"],
+          local: ["page"],
+          flags: ["banner:hero"],
+          error: "--rename-block banner:hero: the schema has no block hero.",
+        },
+        {
+          case: "one block renamed twice",
+          remote: ["banner"],
+          local: ["hero", "promo"],
+          flags: ["banner:hero", "banner:promo"],
+          error: "--rename-block banner:hero and --rename-block banner:promo both rename banner.",
+        },
+        {
+          case: "two blocks renamed to one",
+          remote: ["banner", "teaser"],
+          local: ["hero"],
+          flags: ["banner:hero", "teaser:hero"],
+          error:
+            "--rename-block banner:hero and --rename-block teaser:hero both rename a block to hero.",
+        },
+      ])("should refuse $case and change nothing", async ({ remote, local, flags, error }) => {
+        preconditions.hasLocalSchema({
+          components: local.map((name) => block(name)) as any,
+          datasources: [],
+        });
+        preconditions.hasRemoteComponents(remote.map((name) => block(name)));
+        const methods = writes();
+
+        await push("--no-migrations", ...flags.flatMap((flag) => ["--rename-block", flag]));
+
+        expect(console.error).toHaveBeenCalledWith(expect.stringContaining(error));
+        expect(methods).toEqual([]);
+      });
+
+      it("should warn when the rename turns a content type into a nestable block", async () => {
+        preconditions.hasLocalSchema({
+          components: [block("hero", { is_root: false })] as any,
+          datasources: [],
+        });
+        preconditions.hasRemoteComponents([block("banner", { is_root: true })]);
+        writes();
+
+        await push("--no-migrations", "--rename-block", "banner:hero");
+
+        expect(console.warn).toHaveBeenCalledWith(
+          expect.stringContaining(
+            "--rename-block banner:hero turns the content type banner into the nestable block hero.",
+          ),
+        );
+      });
+    });
+
+    describe("with --rename", () => {
+      const person = (schema: Record<string, Record<string, unknown>>) =>
+        makeMockComponent({ name: "person", schema });
+
+      it.each([
+        {
+          case: "a new field the schema doesn't have",
+          flag: "person.full_name:nope",
+          error: "--rename person.full_name:nope: the schema has no field nope in person.",
+        },
+        {
+          case: "a new field the block already has",
+          flag: "person.full_name:age",
+          error:
+            "--rename person.full_name:age: person already has a field age, so the push doesn't add it.",
+        },
+        {
+          case: "a field the push doesn't remove",
+          flag: "person.age:given_name",
+          error:
+            "--rename person.age:given_name doesn't match a field this push removes from person.",
+        },
+      ])("should refuse $case and write no migration", async ({ flag, error }) => {
+        preconditions.hasLocalSchema({
+          components: [
+            person({ given_name: { type: "text", pos: 0 }, age: { type: "number", pos: 1 } }),
+          ] as any,
+          datasources: [],
+        });
+        preconditions.hasRemoteComponents([
+          person({ full_name: { type: "text", pos: 0 }, age: { type: "number", pos: 1 } }),
+        ]);
+
+        await push("--typed", "--rename", flag);
+
+        expect(console.error).toHaveBeenCalledWith(expect.stringContaining(error));
+        expect(migrationFiles()).toEqual([]);
+      });
+
+      it("should refuse two renames onto one field", async () => {
+        preconditions.hasLocalSchema({ components: [quote(split)] as any, datasources: [] });
+        preconditions.hasRemoteComponents([quote(fullName)]);
+
+        await push(
+          "--typed",
+          "--rename",
+          "quote.full_name:given_name",
+          "--rename",
+          "quote.role:given_name",
+        );
+
+        expect(console.error).toHaveBeenCalledWith(
+          expect.stringContaining(
+            "--rename quote.full_name:given_name and --rename quote.role:given_name both rename a field to quote.given_name.",
+          ),
+        );
+      });
+
+      it("should name a renamed block by its new name", async () => {
+        preconditions.hasLocalSchema({
+          components: [
+            makeMockComponent({ name: "hero", schema: { title: { type: "text", pos: 0 } } }),
+          ] as any,
+          datasources: [],
+        });
+        preconditions.hasRemoteComponents([
+          makeMockComponent({ name: "banner", schema: { headline: { type: "text", pos: 0 } } }),
+        ]);
+
+        await push("--typed", "--rename-block", "banner:hero", "--rename", "banner.headline:title");
+
+        expect(console.error).toHaveBeenCalledWith(
+          expect.stringContaining(
+            "--rename banner.headline:title: this push renames banner to hero, so name the block by its new name: --rename hero.headline:title.",
+          ),
+        );
+      });
+
+      it("should generate the migration without asking and remove a field whose detected rename it replaces", async () => {
+        preconditions.hasLocalSchema({
+          components: [
+            person({ title: { type: "text", pos: 0 }, subtitle: { type: "text", pos: 1 } }),
+          ] as any,
+          datasources: [],
+        });
+        preconditions.hasRemoteComponents([
+          person({ headline: { type: "text", pos: 0 }, sub: { type: "text", pos: 1 } }),
+        ]);
+
+        await push("--typed", "--yes", "--rename", "person.headline:subtitle");
+
+        const migration = writtenFile("20261016090503-update-person.ts");
+        expect(migration).toContain(
+          "renameField({ block: 'person', field: 'headline', to: 'subtitle' })",
+        );
+        expect(migration).toContain("removeField({ block: 'person', field: 'sub' })");
+      });
+    });
+
+    it("should warn that --no-renames overrides --yes", async () => {
+      preconditions.hasLocalSchema({
+        components: [quote({ name: { type: "text", pos: 0 } })] as any,
+        datasources: [],
+      });
+      preconditions.hasRemoteComponents([quote({ author: { type: "text", pos: 0 } })]);
+
+      await push("--typed", "--yes", "--no-renames");
+
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining("--no-renames overrides --yes"),
+      );
+    });
+
+    it("should list the questions, the possible split, and no renames under --no-renames on a dry run", async () => {
+      preconditions.hasLocalSchema({ components: [quote(split)] as any, datasources: [] });
+      preconditions.hasRemoteComponents([quote(fullName)]);
+
+      await push("--typed", "--dry-run");
+
+      expect(dryRunQuestions()).toContain(
+        "Generate migration files for breaking changes? Pass --migrations to generate them",
+      );
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "Possible split: quote.full_name into given_name and family_name. The migration throws until you write the split. Pass --rename quote.full_name:<new-field> to rename the field instead.",
+        ),
+      );
+      expect(migrationFiles()).toEqual([]);
+    });
+
+    it("should ask nothing about field renames on a dry run with --no-renames", async () => {
+      preconditions.hasLocalSchema({
+        components: [quote({ name: { type: "text", pos: 0 } })] as any,
+        datasources: [],
+      });
+      preconditions.hasRemoteComponents([quote({ author: { type: "text", pos: 0 } })]);
+
+      await push("--typed", "--dry-run", "--no-renames");
+
+      expect(dryRunQuestions()).not.toContain("Rename field");
+      expect(console.error).not.toHaveBeenCalledWith(expect.stringContaining("Detected rename"));
+    });
+  });
+
+  it("should ask about each field rename by block and field", async () => {
+    preconditions.hasLocalSchema({
+      components: [
+        makeMockComponent({ name: "quote", schema: { name: { type: "text", pos: 0 } } }),
+      ] as any,
+      datasources: [],
+    });
+    preconditions.hasRemoteComponents([
+      makeMockComponent({ name: "quote", schema: { author: { type: "text", pos: 0 } } }),
+    ]);
+    preconditions.hasRemoteFolders([]);
+    preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
+    preconditions.canUpdateComponents();
+    vi.mocked(confirm).mockResolvedValue(true);
+
+    await schemaCommand.parseAsync([
+      "node",
+      "test",
+      "push",
+      "schema.ts",
+      "--space",
+      DEFAULT_SPACE,
+      "--typed",
+    ]);
+
+    expect(confirm).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: "Rename field quote.author → name? Otherwise author is removed and name added.",
+      }),
+      expect.anything(),
+    );
   });
 
   it("should skip the snapshot with --no-before", async () => {

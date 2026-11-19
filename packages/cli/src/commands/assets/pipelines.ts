@@ -220,7 +220,7 @@ export const upsertAssetsPipeline = async ({
 
   // Emit grouped failure warnings after the pipeline completes so they appear
   // below (not interleaved with) the active progress bars.
-  for (const line of failures.toListLines()) {
+  for (const line of failures.toListLines("push", ["asset", "assets"])) {
     ui.warn(line);
   }
 

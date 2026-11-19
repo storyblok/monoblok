@@ -51,13 +51,17 @@ describe("failureReasonGroup", () => {
     it('should format a single failure with an example as "Failed to push \\"file\\": reason"', () => {
       const g = new FailureReasonGroup();
       g.record("Not found", "logo.png");
-      expect(g.toListLines()).toEqual(['Failed to push "logo.png": Not found']);
+      expect(g.toListLines("push", ["asset", "assets"])).toEqual([
+        'Failed to push "logo.png": Not found',
+      ]);
     });
 
     it('should format a single failure without an example using singular "asset"', () => {
       const g = new FailureReasonGroup();
       g.record("Forbidden");
-      expect(g.toListLines("transfer")).toEqual(["Failed to transfer 1 asset — Forbidden"]);
+      expect(g.toListLines("transfer", ["asset", "assets"])).toEqual([
+        "Failed to transfer 1 asset — Forbidden",
+      ]);
     });
 
     it("should format multiple failures with count and examples", () => {
@@ -65,7 +69,7 @@ describe("failureReasonGroup", () => {
       g.record("Forbidden", "a.png");
       g.record("Forbidden", "b.png");
       g.record("Forbidden", "c.png");
-      const [line] = g.toListLines();
+      const [line] = g.toListLines("push", ["asset", "assets"]);
       expect(line).toContain("3 assets");
       expect(line).toContain('"a.png"');
     });
@@ -74,7 +78,7 @@ describe("failureReasonGroup", () => {
       const g = new FailureReasonGroup();
       g.record("Timeout", "img.png");
       g.record("Timeout", "img2.png");
-      expect(g.toListLines("transfer")[0]).toMatch(/^Failed to transfer/);
+      expect(g.toListLines("transfer", ["asset", "assets"])[0]).toMatch(/^Failed to transfer/);
     });
 
     it("should truncate at 10 reasons and append overflow line", () => {
@@ -82,13 +86,13 @@ describe("failureReasonGroup", () => {
       for (let i = 0; i < 12; i++) {
         g.record(`Error ${i}`, `file-${i}.png`);
       }
-      const lines = g.toListLines();
+      const lines = g.toListLines("push", ["asset", "assets"]);
       expect(lines).toHaveLength(11); // 10 reasons + 1 overflow
       expect(lines[10]).toContain("2 more failure reason(s)");
     });
 
     it("should return an empty array when there are no failures", () => {
-      expect(new FailureReasonGroup().toListLines()).toEqual([]);
+      expect(new FailureReasonGroup().toListLines("push", ["asset", "assets"])).toEqual([]);
     });
   });
 });

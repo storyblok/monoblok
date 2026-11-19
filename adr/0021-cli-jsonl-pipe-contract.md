@@ -1,6 +1,7 @@
 # ADR-0021: CLI JSONL Pipe Contract
 
-**Status:** Accepted; consumer side (decision 4, `input.ts`) not yet implemented. **Date:**
+**Status:** Accepted; the streaming consumer side (decisions 4 and 5) is not yet implemented. CRUD
+commands read `-` through a buffered reader instead, see [ADR-0029](adr-0029.md). **Date:**
 2026-08-27
 
 ## Context
@@ -102,12 +103,12 @@ claim true, not just the latency one.
 
 The pipe is a module, not a feature of `find`:
 
-| File          | Owns                                                                                   |
-| ------------- | -------------------------------------------------------------------------------------- |
-| `output.ts`   | JSONL or table out, the backpressured sink they share, and the closed-pipe signal      |
-| `input.ts`    | _planned:_ `-`, the `fstat` probe, and the JSONL reader with its malformed-line policy |
-| `contract.ts` | the line contract above: required fields and sidecar keys                              |
-| `phases.ts`   | progress bars, counters, busy-time timings, and derived totals for a staged run        |
+| File          | Owns                                                                                    |
+| ------------- | --------------------------------------------------------------------------------------- |
+| `output.ts`   | JSONL or table out, the backpressured sink they share, and the closed-pipe signal       |
+| `input.ts`    | the reader for `-` with its malformed-record policy; buffered so far, streaming planned |
+| `contract.ts` | the line contract above: required fields and sidecar keys                               |
+| `phases.ts`   | progress bars, counters, busy-time timings, and derived totals for a staged run         |
 
 `phases.ts` is there because a streaming command's instrumentation is the other thing every consumer
 would otherwise reimplement. `find` alone had 300 lines of it, `assets` has a smaller copy, and the

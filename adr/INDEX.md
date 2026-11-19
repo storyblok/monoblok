@@ -56,3 +56,5 @@ without a conflict, which is why ADR-0017 and ADR-0022 each exist twice.
 - `0027-cli-live-ui-follows-both-streams.md`: CLI progress bars and spinners draw only when stderr
   is a terminal and stdout is not a pipe.
 - `adr-0028.md`: New ADRs are named by number only, so a reused number causes a merge conflict.
+- `adr-0029.md`: CLI CRUD commands share verbs and targets, strict payload flags, buffered stdin, a
+  stale-record check, and JSON errors on a non-terminal stderr.

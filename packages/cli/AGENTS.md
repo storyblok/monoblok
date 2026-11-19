@@ -51,6 +51,10 @@ Throw the typed errors from `src/utils/error/`: `APIError` (ID from `API_ERRORS`
 `process.exitCode`: 2 for `CommandError`, 1 for runtime errors. With `--exit-code` (`schema diff`),
 1 means a result, so runtime errors exit 2.
 
+Exception: the CRUD commands built on `src/lib/crud/` (`webhooks`) report errors through
+`reportError()` in `src/lib/crud/errors.ts`, which prints JSON when stderr is not a terminal. Keep
+that path for those commands; every other command uses `handleError()`.
+
 ## Tests
 
 Follow `docs/testing-patterns.md`. CLI specifics:

@@ -1,11 +1,15 @@
 import type { LogContext } from "../../lib/logger/logger";
 import { getLogger } from "../../lib/logger/logger";
 import { getUI } from "../../lib/ui";
+import { recordTelemetryError } from "../../lib/telemetry/run";
 import type { FetchError } from "../fetch";
 import { APIError } from "./api-error";
 import { CommandError } from "./command-error";
 import { EXIT_CODE_USAGE_ERROR, getRuntimeErrorExitCode } from "./exit-code";
 import { FileSystemError } from "./filesystem-error";
+import { isPromptCancellation } from "./inspect";
+
+export { getResponseStatus } from "./inspect";
 
 interface ErrorWithMessage {
   message: string;
@@ -40,18 +44,6 @@ export function toError(maybeError: unknown) {
   }
 }
 
-export function getResponseStatus(maybeError: unknown): number | undefined {
-  const error = toError(maybeError);
-  if (!("response" in error)) {
-    return undefined;
-  }
-  const { response } = error;
-  if (!response || typeof response !== "object" || !("status" in response)) {
-    return undefined;
-  }
-  return typeof response.status === "number" ? response.status : undefined;
-}
-
 function handleVerboseError(error: unknown): void {
   const ui = getUI();
   if (
@@ -74,25 +66,15 @@ function handleVerboseError(error: unknown): void {
   }
 }
 
-/**
- * Detect user-initiated prompt cancellation (Ctrl+C or Escape in @inquirer/prompts).
- * These are not application errors — exit cleanly with code 0.
- */
-function isPromptCancellation(error: Error): boolean {
-  return (
-    error.name === "ExitPromptError" ||
-    error.name === "AbortPromptError" ||
-    error.name === "CancelPromptError"
-  );
-}
-
 export function handleError(
   error: Error | FetchError,
   verbose = false,
   context?: LogContext,
 ): void {
+  recordTelemetryError(error);
+
   // Prompt cancellations (Ctrl+C, Escape) are not errors — exit silently with code 0
-  if (isPromptCancellation(error as Error)) {
+  if (isPromptCancellation(error)) {
     process.exitCode = 0;
     return;
   }
@@ -133,6 +115,7 @@ export function handleError(
 }
 
 export function logOnlyError(error: Error | FetchError, context?: LogContext): void {
+  recordTelemetryError(error);
   getLogger().error(error.message, {
     error,
     errorCode: "code" in error ? String(error.code) : "UNKNOWN_ERROR",

@@ -2,10 +2,12 @@
 import "dotenv/config";
 
 import { CommanderError } from "commander";
-import { handleError } from "./utils";
+import { CommandError, handleError } from "./utils";
 import { getProgram } from "./program";
 import { getUI } from "./lib/ui";
 import { colorPalette } from "./constants";
+import { recordTelemetryCommanderExit, recordTelemetryError } from "./lib/telemetry/run";
+import { sendTelemetryOnExit } from "./lib/telemetry/telemetry";
 import "./commands/login";
 import "./commands/logout";
 import "./commands/signup";
@@ -21,10 +23,12 @@ import "./commands/reports";
 import "./commands/assets";
 import "./commands/stories";
 import "./commands/schema";
+import "./commands/telemetry";
 
 export * from "./types/storyblok";
 
 const program = getProgram();
+sendTelemetryOnExit(program);
 const ui = getUI();
 
 ui.br();
@@ -37,6 +41,7 @@ program.on("command:*", () => {
   // Write help text directly to stderr — do not use outputHelp({ error: true })
   // which routes through configureOutput.writeErr → handleError, turning help text into an error.
   console.error(program.helpInformation());
+  recordTelemetryError(new CommandError("Invalid command"));
   process.exitCode = 2;
 });
 
@@ -46,6 +51,7 @@ try {
   // Commander throws CommanderError after exitOverride — exit code is already set
   // via writeErr → handleError, so we only need to handle the --help / --version cases.
   if (error instanceof CommanderError) {
+    recordTelemetryCommanderExit(error);
     // --help and --version throw with exitCode 0; let them pass silently
     if (error.exitCode !== 0) {
       // For parse errors, exitCode was already set by writeErr → handleError;

@@ -5,6 +5,7 @@ import {
 } from "@storyblok/management-api-client";
 
 import { getActiveConfig } from "./lib/config";
+import { getTelemetryTraceHeaders } from "./lib/telemetry/run";
 
 let instance: ManagementApiClient | null = null;
 let storedConfig: ManagementApiClientConfig | null = null;
@@ -20,6 +21,7 @@ export function createMapiClient(options: ManagementApiClientConfig) {
   const { api } = getActiveConfig();
   return createManagementApiClient({
     ...options,
+    headers: { ...getTelemetryTraceHeaders(), ...options.headers },
     rateLimit: options.rateLimit ?? (api.rateLimit > 0 ? api.rateLimit : false),
   });
 }

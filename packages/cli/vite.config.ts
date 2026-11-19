@@ -1,6 +1,11 @@
 import { defineConfig } from "vite-plus";
 import { cjsInterop } from "../../tools/cjs/cjs-interop-plugin.ts";
 
+/** Inlined, so the build decides where the CLI reports, not the environment it runs in. */
+const telemetryEnv = {
+  STORYBLOK_TELEMETRY_DATASET: process.env.STORYBLOK_TELEMETRY_DATASET ?? "",
+};
+
 export default defineConfig({
   pack: [
     {
@@ -10,6 +15,7 @@ export default defineConfig({
       sourcemap: true,
       clean: true,
       dts: true,
+      env: telemetryEnv,
     },
     // The `storyblok/config` entrypoint also ships CJS: config loaders (jiti,
     // ts-node, jest) resolve a user's `storyblok.config.ts` imports with
@@ -22,6 +28,15 @@ export default defineConfig({
       sourcemap: true,
       clean: false,
       dts: true,
+    },
+    // Spawned detached by the CLI to send telemetry, so it must sit next to `index.mjs`.
+    {
+      entry: { "telemetry-sender": "./src/entrypoints/telemetry-sender.ts" },
+      format: ["esm"],
+      outDir: "./dist",
+      clean: false,
+      dts: false,
+      env: telemetryEnv,
     },
     // `types generate` copies these declarations into the user's `types/storyblok.d.ts`,
     // so they ship as product output and must not reference anything outside themselves.

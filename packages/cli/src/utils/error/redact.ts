@@ -1,5 +1,6 @@
 import { ClientError } from "@storyblok/api-client";
 import { toError } from "./error";
+import { getSystemErrorCode } from "./inspect";
 
 const URL_TOKEN_PARAM = /([?&](?:token|access_token)=)[^&#\s"']+/gi;
 
@@ -17,7 +18,9 @@ export function redactClientError(maybeError: unknown): Error {
     return maybeError;
   }
   const error = toError(maybeError);
-  const redacted = new Error(redactUrlTokens(error.message));
+  // Keep only the code: the rest of the cause chain may carry the URL too.
+  const code = getSystemErrorCode(error);
+  const redacted = new Error(redactUrlTokens(error.message), code ? { cause: { code } } : {});
   redacted.name = error.name;
   return redacted;
 }

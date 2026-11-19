@@ -51,6 +51,10 @@ Throw the typed errors from `src/utils/error/`: `APIError` (ID from `API_ERRORS`
 `process.exitCode`: 2 for `CommandError`, 1 for runtime errors. With `--exit-code` (`schema diff`),
 1 means a result, so runtime errors exit 2.
 
+Telemetry reports an error by its class name (`TimeoutError` → `TIMEOUT_ERROR`), so give new error
+classes a name that reads as a code. A command that exits non-zero to report a result, not a
+failure, calls `recordTelemetryFindings()`; any other non-zero exit counts as an error.
+
 ## Tests
 
 Follow `docs/testing-patterns.md`. CLI specifics:

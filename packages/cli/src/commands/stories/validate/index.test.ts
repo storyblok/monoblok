@@ -6,6 +6,7 @@ import { vol } from "memfs";
 import "../index";
 import { storiesCommand } from "../command";
 import { resetReporter } from "../../../lib/reporter/reporter";
+import { getRunState } from "../../../lib/telemetry/run";
 import { getUI } from "../../../lib/ui";
 import { session } from "../../../session";
 import { loggedOutSessionState } from "../../../../test/setup";
@@ -142,6 +143,7 @@ describe("stories validate command", () => {
     await runValidate();
 
     expect(process.exitCode).toBe(1);
+    expect(getRunState().hasFindings).toBe(true);
     const output = loggedOutput();
     expect(output).toContain("app/home (story #123456)");
     expect(output).toContain("missing_required_field");
@@ -178,6 +180,9 @@ describe("stories validate command", () => {
     await runValidate();
 
     expect(process.exitCode).toBe(1);
+    // Reported as an error, not as findings.
+    expect(getRunState().hasFindings).toBeFalsy();
+    expect(getRunState().error).toBeDefined();
   });
 
   // A listing failure is an API failure, not a bad invocation, so it exits 1 like

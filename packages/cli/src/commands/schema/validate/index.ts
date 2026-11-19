@@ -2,6 +2,7 @@ import { colorPalette, commands } from "../../../constants";
 import { handleError, toError } from "../../../utils";
 import { getLogger } from "../../../lib/logger/logger";
 import { getReporter } from "../../../lib/reporter/reporter";
+import { recordTelemetryFindings } from "../../../lib/telemetry/run";
 import { getUI } from "../../../lib/ui";
 import type { FormatOption, LevelOption, ValidationRunResult } from "../../../lib/validation";
 import {
@@ -94,6 +95,9 @@ schemaCommand
       const { errors, warnings } = countIssues(result);
       logger.info("Schema validate finished", { errors, warnings, entities: result.unitsTotal });
       process.exitCode = errors > 0 ? 1 : 0;
+      if (errors > 0) {
+        recordTelemetryFindings();
+      }
     } finally {
       // Always write the report artifact, including on the fatal early return.
       reporter.finalize();

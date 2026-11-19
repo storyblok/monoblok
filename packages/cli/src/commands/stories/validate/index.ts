@@ -10,6 +10,7 @@ import { getUI } from "../../../lib/ui";
 import { getLogger } from "../../../lib/logger/logger";
 import { getReporter } from "../../../lib/reporter/reporter";
 import { fetchStoriesStream, fetchStoryStream } from "../streams";
+import { recordTelemetryFindings } from "../../../lib/telemetry/run";
 import { requireAuthentication } from "../../../utils/auth";
 import { handleError, toError } from "../../../utils/error/error";
 import { CommandError } from "../../../utils/error/command-error";
@@ -334,6 +335,9 @@ storiesCommand
       }
 
       process.exitCode = errors > 0 || fetchFailures > 0 ? 1 : 0;
+      if (errors > 0) {
+        recordTelemetryFindings();
+      }
     } finally {
       // Always write the report artifact, including on every fatal early return.
       reporter.finalize();

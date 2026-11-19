@@ -634,6 +634,20 @@ describe("validateStory — constraints", () => {
     ).toBe(true);
   });
 
+  it("should enforce min_options/max_options stored as numbers", () => {
+    const numeric = defineBlock({
+      name: "numeric",
+      is_root: true,
+      fields: [defineField("tags", { type: "options", min_options: 1, max_options: 2 })],
+    });
+    const run = (tags: string[]) =>
+      validateStory({ content: { component: "numeric", tags } }, { blocks: { numeric } });
+
+    expect(run(["a"]).ok).toBe(true);
+    expect(run([]).issues.some((i) => i.code === "constraint_violation")).toBe(true);
+    expect(run(["a", "b", "c"]).issues.some((i) => i.code === "constraint_violation")).toBe(true);
+  });
+
   it("errors when multiasset count is outside minimum_entries/maximum_entries", () => {
     expect(validate({ gallery: [] }).issues.some((i) => i.code === "constraint_violation")).toBe(
       true,

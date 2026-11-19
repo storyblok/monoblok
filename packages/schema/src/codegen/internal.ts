@@ -21,6 +21,7 @@ export {
   toLayoutDslField,
 } from "./field";
 export type { TagRef } from "./field";
+export { partitionFieldOptions } from "./field-options";
 export { generateMigrationSource } from "./migration-source";
 export type { GenerateMigrationSourceOptions, MigrationOpSource } from "./migration-source";
 export { componentVarName, resolveVarNames, toCamelCaseIdentifier } from "./names";

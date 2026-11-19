@@ -275,8 +275,14 @@ export const zOptionField = zBaseField.and(zValueField).and(z.object({
     use_uuid: z.boolean().optional(),
     entry_appearance: z.string().optional(),
     allow_advanced_search: z.boolean().optional(),
-    max_options: z.string().optional(),
-    min_options: z.string().optional(),
+    max_options: z.union([
+        z.int(),
+        z.string()
+    ]).optional(),
+    min_options: z.union([
+        z.int(),
+        z.string()
+    ]).optional(),
     multiple: z.boolean().optional()
 }));
 
@@ -301,8 +307,14 @@ export const zOptionsField = zBaseField.and(zValueField).and(z.object({
     is_reference_type: z.boolean().optional(),
     entry_appearance: z.string().optional(),
     allow_advanced_search: z.boolean().optional(),
-    max_options: z.string().optional(),
-    min_options: z.string().optional(),
+    max_options: z.union([
+        z.int(),
+        z.string()
+    ]).optional(),
+    min_options: z.union([
+        z.int(),
+        z.string()
+    ]).optional(),
     multiple: z.boolean().optional()
 }));
 
@@ -362,7 +374,22 @@ export const zRichtextField = zBaseField.and(zValueField).and(z.object({
         'align-left',
         'align-center',
         'align-right',
-        'align-justify'
+        'align-justify',
+        'background-color',
+        'add-table',
+        'insert-column-before',
+        'insert-column-after',
+        'insert-row-above',
+        'insert-row-below',
+        'toggle-header-column',
+        'toggle-header-row',
+        'toggle-header-cell',
+        'delete-row',
+        'delete-column',
+        'merge-cells',
+        'split-cells',
+        'cell-color',
+        'delete-table'
     ])).optional(),
     style_options: z.array(z.object({
         _uid: z.string().optional(),

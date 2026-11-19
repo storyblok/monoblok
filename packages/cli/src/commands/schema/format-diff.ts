@@ -9,14 +9,27 @@ import type { DiffAction, DiffResult, EntityDiff, FieldChange } from "./types";
  */
 const MAX_INLINE_LENGTH = 200;
 
+/**
+ * Whether a string would print like a different value unquoted: `""` like a
+ * missing one, `"true"` or `"2"` like a boolean or number.
+ */
+function needsQuotes(value: string): boolean {
+  if (value === "") {
+    return true;
+  }
+  try {
+    return typeof JSON.parse(value) !== "string";
+  } catch {
+    return false;
+  }
+}
+
 /** Formats a field value on a single line for terminal display, elided when overlong. */
 function inlineValue(value: unknown): string {
-  // An empty string would otherwise render as nothing at all, leaving a bare
-  // `-` that reads as a missing value rather than a present, empty one.
-  if (value === "") {
-    return '""';
-  }
-  const text = typeof value === "string" ? value : (JSON.stringify(value) ?? String(value));
+  const text =
+    typeof value === "string" && !needsQuotes(value)
+      ? value
+      : (JSON.stringify(value) ?? String(value));
   if (text.length <= MAX_INLINE_LENGTH) {
     return text;
   }

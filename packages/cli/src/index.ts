@@ -5,7 +5,6 @@ import { CommanderError } from "commander";
 import { handleError } from "./utils";
 import { getProgram } from "./program";
 import { getUI } from "./lib/ui";
-import { colorPalette } from "./constants";
 import "./commands/login";
 import "./commands/logout";
 import "./commands/signup";
@@ -27,8 +26,7 @@ export * from "./types/storyblok";
 const program = getProgram();
 const ui = getUI();
 
-ui.br();
-ui.title("Storyblok CLI", colorPalette.PRIMARY);
+ui.banner();
 
 // Handle invalid commands
 program.on("command:*", () => {

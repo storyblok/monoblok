@@ -148,6 +148,18 @@ export class UI {
       : null;
   }
 
+  /**
+   * The `Storyblok CLI` heading every run starts with. Only on a terminal: a
+   * program reading stderr gets the command's own output and nothing else.
+   */
+  banner() {
+    if (getStderrTarget() !== "terminal") {
+      return;
+    }
+    this.br();
+    this.title("Storyblok CLI", colorPalette.PRIMARY);
+  }
+
   title(message: string, color: string, subtitle?: string) {
     if (subtitle) {
       this.console?.log(`${chalk.bgHex(color).bold(` ${capitalize(message)} `)} ${subtitle}`);

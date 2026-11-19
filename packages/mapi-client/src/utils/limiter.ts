@@ -380,7 +380,7 @@ export function createDefaultRateLimiter(options: DefaultRateLimiterOptions = {}
 
   /** Resolves at the bucket's next evenly spaced start, `1000 / rate` ms after the previous one. */
   const awaitSpacedStart = (bucket: Bucket): Promise<void> => {
-    const now = Date.now();
+    const now = performance.now();
     const start = Math.max(now, bucket.nextSpacedStartAt);
     bucket.nextSpacedStartAt = start + 1000 / bucket.throttle.getLimit();
     return start > now
@@ -602,7 +602,7 @@ export function createDefaultRateLimiter(options: DefaultRateLimiterOptions = {}
       if (cacheAware) {
         // A bucket admits before it can be told anything, so staleness has to
         // be checked on the way in rather than on the next response.
-        forgetIdleCacheWindow(bucket, Date.now());
+        forgetIdleCacheWindow(bucket, performance.now());
         clampToCeiling(bucket);
         if (isOriginBound()) {
           await awaitSpacedStart(bucket);
@@ -619,7 +619,7 @@ export function createDefaultRateLimiter(options: DefaultRateLimiterOptions = {}
         return;
       }
 
-      const now = Date.now();
+      const now = performance.now();
       forgetIdleCacheWindow(bucket, now);
       observeCacheStatus(bucket, response, now);
       // A ceiling that just fell — traffic turning cold — takes effect at once,

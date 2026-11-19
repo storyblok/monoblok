@@ -22,7 +22,7 @@ export interface Throttle {
  * the number of simultaneous requests.
  *
  * The limiter holds only a list of recent start timestamps, pruned against
- * `Date.now()` on every attempt, and every wait resolves the promise the caller
+ * `performance.now()` on every attempt, and every wait resolves the promise the caller
  * already awaits. It therefore keeps no counter that a scheduled callback must
  * decrement, and schedules no timer that outlives the awaited call. That is a
  * hard requirement on runtimes which suspend between requests and drop pending
@@ -54,7 +54,7 @@ export function createThrottle(initialLimit: number): Throttle {
           return;
         }
 
-        const now = Date.now();
+        const now = performance.now();
         while (starts.length > 0 && starts[0] <= now - intervalMs) {
           starts.shift();
         }

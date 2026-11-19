@@ -67,16 +67,12 @@ allOf:
         oneOf:
           - type: integer
           - type: string
-        description: |
-          Maximum number of selectable options. The schema form writes a number;
-          older spaces hold the same value as a numeric string.
+        description: Maximum number of selectable options. Older spaces store it as a numeric string.
       min_options:
         oneOf:
           - type: integer
           - type: string
-        description: |
-          Minimum number of selectable options. The schema form writes a number;
-          older spaces hold the same value as a numeric string.
+        description: Minimum number of selectable options. Older spaces store it as a numeric string.
       multiple:
         type: boolean
         description: Whether multiple values are allowed

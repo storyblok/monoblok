@@ -12,14 +12,18 @@ export const registerAuthSetup = (config: QaConfig): void => {
       `No saved session at ${config.storageStatePath}. Create one with: ${REGENERATE}`,
     ).toBe(true);
 
-    // A saved-but-expired session redirects to the login screen. Assert we
-    // reached the app, not that no error was thrown.
-    await page.goto(`${config.appBaseUrl}/#/me/spaces/${config.spaceId}/stories`, {
+    // The app only redirects an expired session to the login screen after it
+    // boots, so wait for it to settle on either screen before asserting.
+    const spaceSidebar = page.getByTestId("app-sidebar-space-content");
+    const loginForm = page.getByTestId("login-email");
+    await page.goto(`${config.appBaseUrl}/#/me/spaces/${config.spaceId}/dashboard`, {
       waitUntil: "domcontentloaded",
     });
-    await expect(page, `Session expired. Refresh it with: ${REGENERATE}`).not.toHaveURL(
-      /#!?\/login/,
-    );
+    await expect(spaceSidebar.or(loginForm)).toBeVisible({ timeout: 60_000 });
+    await expect(
+      spaceSidebar,
+      `Session expired, or it can't open space ${config.spaceId}. Refresh it with: ${REGENERATE}`,
+    ).toBeVisible();
   });
 };
 

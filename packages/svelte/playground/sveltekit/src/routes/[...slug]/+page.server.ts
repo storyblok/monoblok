@@ -1,7 +1,7 @@
-import type { PageLoad } from "./$types";
-import { client } from "../../storyblok";
+import type { PageServerLoad } from "./$types";
+import { client } from "../../storyblok.server";
 
-export const load: PageLoad = async ({ params }) => {
+export const load: PageServerLoad = async ({ params }) => {
   const slug = params.slug && params.slug !== "" ? params.slug : "home";
 
   const { data, error } = await client.stories.get(slug, {

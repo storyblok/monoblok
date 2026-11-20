@@ -1,7 +1,7 @@
 import { error } from '@sveltejs/kit';
-import { apiClient } from '$lib/storyblok';
+import { apiClient } from '$lib/server/storyblok';
 
-/** @type {import('./$types').PageLoad} */
+/** @type {import('./$types').PageServerLoad} */
 export async function load({ params }) {
 	const { data, error: apiError } = await apiClient.stories.get(params.slug || 'home', {
 		query: { version: 'draft' },

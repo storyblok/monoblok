@@ -377,6 +377,35 @@ describe("validateSchema", () => {
     expect(result.issues[1].path).toEqual(["blocks", "page", "aside", "restrict_components"]);
   });
 
+  it("accepts raw tag lists beside a block name or folder restriction", () => {
+    // Bypass defineField, whose signature rejects the raw tag lists.
+    const block = {
+      name: "page",
+      fields: [
+        {
+          name: "body",
+          type: "bloks",
+          allow: ["teaser"],
+          component_tag_whitelist: [5],
+          component_tag_denylist: [7],
+        },
+      ],
+    } as SchemaBlockLike;
+    const result = validateSchema({ blocks: [block, teaser] });
+    expect(codesFor(result)).not.toContain("conflicting_restriction");
+  });
+
+  it("flags raw tag lists beside a tag restriction, which derives them", () => {
+    const block = {
+      name: "page",
+      fields: [
+        { name: "body", type: "bloks", allow: [{ tag: "Marketing" }], component_tag_denylist: [7] },
+      ],
+    } as SchemaBlockLike;
+    const result = validateSchema({ blocks: [block] });
+    expect(codesFor(result)).toContain("conflicting_restriction");
+  });
+
   it("flags a field whose allow mixes reference dimensions", () => {
     // Bypass defineField, which throws on the same combination.
     const block = {

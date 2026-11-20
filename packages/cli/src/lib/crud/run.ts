@@ -1,7 +1,8 @@
 // The write loop shared by `create`, `update` and `delete`: one record at a
 // time, a result line per record that went through, an error per record that
 // did not, and a summary at the end. A failing record does not stop the run; it
-// makes the run exit 1. A rejected access token stops it.
+// makes the run exit 1. A rejected access token, or an API out of reach, stops
+// it, and the records after it count as unprocessed.
 
 import { getLogger } from "../logger/logger";
 import { getReporter } from "../reporter/reporter";
@@ -10,6 +11,7 @@ import type { MachineOutput } from "../pipe";
 import { getStderrTarget, getUI } from "../ui";
 import type { TableColumn } from "../ui";
 import { reportError, stopsBatch, toCrudError } from "./errors";
+import type { AllowedValues } from "./errors";
 import type { SecretScrubber } from "./redact";
 import type { ResultLine } from "../pipe";
 import type { CrudOperations, Noun } from "./types";
@@ -87,22 +89,18 @@ async function withAllowedValues(maybeError: unknown, operations: CrudOperations
   if (error.status !== 422 || !error.details || !lookups) {
     return error;
   }
-  const allowed: Record<string, string[]> = {};
+  const allowed: AllowedValues = {};
   for (const field of Object.keys(error.details)) {
-    const lookup = lookups[field];
-    if (!lookup) {
+    if (!Object.hasOwn(lookups, field)) {
       continue;
     }
     try {
-      allowed[field] = await lookup();
+      allowed[field] = await lookups[field]();
     } catch {
       // The values only help; the API's own error is what the caller needs.
     }
   }
-  if (Object.keys(allowed).length > 0) {
-    error.details.allowed_values = allowed;
-  }
-  return error;
+  return Object.keys(allowed).length > 0 ? error.withAllowedValues(allowed) : error;
 }
 
 /**
@@ -137,8 +135,9 @@ export async function runBatch<T>({
   let done = 0;
   let skipped = 0;
   let failed = 0;
+  let unprocessed = 0;
 
-  for (const item of items) {
+  for (const [index, item] of items.entries()) {
     const context: BatchContext = {};
     try {
       const result = await handle(item, context);
@@ -160,6 +159,7 @@ export async function runBatch<T>({
       const error = await withAllowedValues(maybeError, operations);
       reportError(error, { scrubber, line: item.line, id: context.id });
       if (stopsBatch(error)) {
+        unprocessed = items.length - index - 1;
         break;
       }
     }
@@ -171,10 +171,17 @@ export async function runBatch<T>({
     dryRun ? `Would ${verb} ${count(done)} (dry run)` : `${PAST_TENSE[verb]} ${count(done)}`,
     skipped > 0 && `skipped ${skipped}`,
     failed > 0 && `failed ${failed}`,
+    unprocessed > 0 && `not processed ${unprocessed}`,
   ].filter(Boolean);
   announce(`${parts.join(", ")}.`);
 
   getReporter()
-    .addSummary(`${verb}Results`, { total: items.length, succeeded: done, skipped, failed })
+    .addSummary(`${verb}Results`, {
+      total: items.length,
+      succeeded: done,
+      skipped,
+      failed,
+      unprocessed,
+    })
     .finalize();
 }

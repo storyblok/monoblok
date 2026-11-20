@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { composePayload, parseFlagPatch } from "./fields";
+import { composePayload, missingRequired, parseFlagPatch } from "./fields";
 import type { ResourceFields } from "./fields";
 
 const fields: ResourceFields = {
-  envelope: "thing",
   writable: {
     name: { type: "string", required: true, nullable: false },
     note: { type: "string", required: false, nullable: true },
@@ -46,6 +45,18 @@ describe("parseFlagPatch", () => {
         exitCode: 2,
         message: expect.stringContaining("name, note, tags, enabled, weight, config"),
       }),
+    );
+  });
+
+  it("should not echo an --unset value that is not a field name", () => {
+    expect(() => parseFlagPatch(fields, flags({ unset: ["note=s3cret-value"] }))).toThrow(
+      expect.objectContaining({ message: expect.not.stringContaining("s3cret-value") }),
+    );
+  });
+
+  it("should name a field given twice without mentioning a flag the command lacks", () => {
+    expect(() => parseFlagPatch(fields, flags({ set: ["name=a", "name=b"] }))).toThrow(
+      '"name" is given more than once.',
     );
   });
 
@@ -149,6 +160,14 @@ describe("composePayload", () => {
     expect(composePayload(fields, undefined, patch)).toEqual({ tags: ["a", "b"] });
   });
 
+  it("should keep a list the write leaves as the server has it, repeats included", () => {
+    const server = { tags: ["a", "a"] };
+
+    expect(
+      composePayload(fields, { tags: ["a", "a"] }, parseFlagPatch(fields, flags()), server),
+    ).toEqual({ tags: ["a", "a"] });
+  });
+
   it("should take only writable fields from an input line", () => {
     const line = { id: 1, updated_at: "t", _skipped: true, added_later: "x", name: "a" };
 
@@ -167,5 +186,11 @@ describe("composePayload", () => {
       note: null,
       config: [1],
     });
+  });
+});
+
+describe("missingRequired", () => {
+  it("should count a required field holding only whitespace as missing", () => {
+    expect(missingRequired(fields, { name: " ", tags: ["a"] })).toEqual(["name"]);
   });
 });

@@ -2,6 +2,7 @@
 // against a resource's generated field descriptor and composed into the body of
 // one request.
 
+import { isDeepStrictEqual } from "node:util";
 import { isRecord } from "../../utils/object";
 import { isSidecarKey } from "../pipe/contract";
 import { CrudError, usageError } from "./errors";
@@ -16,7 +17,6 @@ export type FieldDescriptor = {
 
 /** The shape `generate:openapi` emits per resource into `src/generated/mapi/resource-fields.gen.ts`. */
 export type ResourceFields = {
-  readonly envelope: string;
   readonly writable: Readonly<Record<string, FieldDescriptor>>;
   readonly readOnly: readonly string[];
 };
@@ -33,6 +33,9 @@ export type FlagPatch = {
 
 const SET_SYNTAX = "<field>=<value>";
 
+/** What a field name can look like. Anything else is not repeated: it may hold a value. */
+const FIELD_NAME = /^[A-Za-z_][\w.-]*$/;
+
 /** Own keys only: `toString` or `__proto__` must not pass as fields. */
 function writableField(fields: ResourceFields, field: string): FieldDescriptor | undefined {
   return Object.hasOwn(fields.writable, field) ? fields.writable[field] : undefined;
@@ -47,7 +50,8 @@ function assertWritable(fields: ResourceFields, field: string, flag: string): Fi
   if (fields.readOnly.includes(field)) {
     throw usageError(`${flag}: "${field}" is read-only. Writable fields: ${valid}.`);
   }
-  throw usageError(`${flag}: unknown field "${field}". Writable fields: ${valid}.`);
+  const unknown = FIELD_NAME.test(field) ? `unknown field "${field}"` : "unknown field";
+  throw usageError(`${flag}: ${unknown}. Writable fields: ${valid}.`);
 }
 
 function assertNullable(fields: ResourceFields, field: string, flag: string): void {
@@ -62,7 +66,7 @@ function assertNullable(fields: ResourceFields, field: string, flag: string): vo
   );
 }
 
-/** Coerces a `--set` value. The message never repeats the value: it may be a secret. */
+/** Coerces a `--set` value. Errors never repeat the value. */
 function coerce(field: string, descriptor: FieldDescriptor, value: string): unknown {
   switch (descriptor.type) {
     case "string":
@@ -123,7 +127,7 @@ export function parseFlagPatch(
   // A second value would silently replace the first, even for a list field.
   const assertOnce = (field: string): void => {
     if (Object.hasOwn(assignments, field)) {
-      throw usageError(`"${field}" is given more than once in --set and --unset.`);
+      throw usageError(`"${field}" is given more than once.`);
     }
   };
   for (const assignment of flags.set) {
@@ -200,32 +204,53 @@ function holdsType(type: FieldType, value: unknown): boolean {
   }
 }
 
+type TypeOf<T extends FieldType> = T extends "string"
+  ? string
+  : T extends "boolean"
+    ? boolean
+    : T extends "number"
+      ? number
+      : T extends "string[]"
+        ? string[]
+        : unknown;
+
+/** The values a field described by `D` holds. */
+export type FieldValue<D extends FieldDescriptor> =
+  | TypeOf<D["type"]>
+  | (D["nullable"] extends true ? null : never);
+
+/** Whether `value` is something the field can hold. */
+export function fitsField<D extends FieldDescriptor>(
+  descriptor: D,
+  value: unknown,
+): value is FieldValue<D> {
+  return value === null ? descriptor.nullable : holdsType(descriptor.type, value);
+}
+
 /**
  * Fails a record whose field cannot be what the API expects. Flags are
  * coerced on parsing, so this catches input lines.
  */
 function assertFieldTypes(fields: ResourceFields, payload: Payload, given: Set<string>): void {
-  for (const [field, value] of Object.entries(payload)) {
+  for (const field of given) {
     const descriptor = writableField(fields, field);
-    if (!given.has(field)) {
-      continue;
+    if (descriptor && !fitsField(descriptor, payload[field])) {
+      throw new CrudError(`"${field}" takes ${TYPE_NAMES[descriptor.type]}.`);
     }
-    if (!descriptor) {
-      continue;
-    }
-    if (value === null ? descriptor.nullable : holdsType(descriptor.type, value)) {
-      continue;
-    }
-    throw new CrudError(`"${field}" takes ${TYPE_NAMES[descriptor.type]}.`);
   }
 }
 
-/** A list field holding a value twice: the API would store it twice. */
-function withUniqueLists(fields: ResourceFields, payload: Payload): Payload {
+/**
+ * Each value of a list field once: the API stores a repeated value twice. A
+ * list kept as the server has it stays as it is, so it is not a change.
+ */
+function withUniqueLists(fields: ResourceFields, payload: Payload, base: Payload = {}): Payload {
   return Object.fromEntries(
     Object.entries(payload).map(([field, value]) => [
       field,
-      writableField(fields, field)?.type === "string[]" && Array.isArray(value)
+      writableField(fields, field)?.type === "string[]" &&
+      Array.isArray(value) &&
+      !isDeepStrictEqual(value, base[field])
         ? [...new Set(value)]
         : value,
     ]),
@@ -257,7 +282,7 @@ export function composePayload(
     ...Object.keys(patch.assignments),
   ]);
   assertFieldTypes(fields, composed, given);
-  return withUniqueLists(fields, composed);
+  return withUniqueLists(fields, composed, base);
 }
 
 /** The API rejects these as blank, so a required field holding one is missing. */
@@ -265,12 +290,12 @@ function isBlank(value: unknown): boolean {
   return (
     value === null ||
     value === undefined ||
-    value === "" ||
+    (typeof value === "string" && value.trim() === "") ||
     (Array.isArray(value) && value.length === 0)
   );
 }
 
-/** Required fields the payload lacks or holds blank, for validating a write before it is sent. */
+/** Required fields the payload lacks or holds blank. */
 export function missingRequired(fields: ResourceFields, payload: Payload): string[] {
   return Object.entries(fields.writable)
     .filter(([field, descriptor]) => descriptor.required && isBlank(payload[field]))

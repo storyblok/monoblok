@@ -1,36 +1,47 @@
 // Turns a payload the shared code checked against the generated field
 // descriptor into a resource's typed request body. The descriptor and the
-// request types are generated from the same spec, so they agree; these
-// helpers make the compiler hold a resource to that.
+// request types are generated from the same spec in the same run, so the body
+// type derived from the descriptor is assignable to the request type; a
+// resource that converts between them fails to compile when they drift.
 
 import { CrudError } from "./errors";
-import type { Payload, ResourceFields } from "./fields";
+import { fitsField } from "./fields";
+import type { FieldValue, Payload, ResourceFields } from "./fields";
 import type { Noun } from "./types";
 
-/**
- * Per request field, a check that a payload value fits it. A field the
- * request type gains without a guard here is a compile error.
- */
-export type FieldGuards<T> = {
-  [K in keyof Required<T>]: (value: unknown) => value is Required<T>[K];
-};
+type Writable<F extends ResourceFields> = F["writable"];
 
 /** The fields the descriptor marks required on create. */
-export type RequiredFields<F extends ResourceFields> = {
-  [K in keyof F["writable"]]: F["writable"][K]["required"] extends true ? K : never;
-}[keyof F["writable"]];
+type RequiredFields<F extends ResourceFields> = {
+  [K in keyof Writable<F>]: Writable<F>[K]["required"] extends true ? K : never;
+}[keyof Writable<F>];
 
-function isGuarded<T>(guards: FieldGuards<T>, field: string): field is keyof T & string {
-  return Object.hasOwn(guards, field);
+/** A request body with any of the descriptor's fields. */
+export type RequestBody<F extends ResourceFields> = {
+  -readonly [K in keyof Writable<F>]?: FieldValue<Writable<F>[K]>;
+};
+
+/** A request body with every field the descriptor requires on create. */
+export type CreateBody<F extends ResourceFields> = RequestBody<F> & {
+  -readonly [K in RequiredFields<F>]-?: FieldValue<Writable<F>[K]>;
+};
+
+function isBodyField<F extends ResourceFields>(
+  fields: F,
+  field: string,
+): field is keyof Writable<F> & string {
+  return Object.hasOwn(fields.writable, field);
 }
 
-function copyField<T, K extends keyof T>(
-  body: Partial<T>,
+function copyField<F extends ResourceFields, K extends keyof Writable<F>>(
+  fields: F,
+  body: RequestBody<F>,
   field: K,
-  guard: (value: unknown) => value is Required<T>[K],
   value: unknown,
 ): boolean {
-  if (!guard(value)) {
+  const writable: Writable<F> = fields.writable;
+  const descriptor = writable[field];
+  if (!fitsField(descriptor, value)) {
     return false;
   }
   body[field] = value;
@@ -42,12 +53,15 @@ function copyField<T, K extends keyof T>(
  * take fails the record instead of being dropped while the run reports
  * success.
  */
-export function toRequestBody<T>(guards: FieldGuards<T>, payload: Payload, noun: Noun): Partial<T> {
-  const body: Partial<T> = {};
+export function toRequestBody<F extends ResourceFields>(
+  fields: F,
+  payload: Payload,
+  noun: Noun,
+): RequestBody<F> {
+  const body: RequestBody<F> = {};
   const rejected = Object.entries(payload)
     .filter(
-      ([field, value]) =>
-        !(isGuarded(guards, field) && copyField(body, field, guards[field], value)),
+      ([field, value]) => !(isBodyField(fields, field) && copyField(fields, body, field, value)),
     )
     .map(([field]) => field);
   if (rejected.length > 0) {
@@ -62,10 +76,10 @@ export function toRequestBody<T>(guards: FieldGuards<T>, payload: Payload, noun:
  * Whether the body holds every field the descriptor requires on create. The
  * shared code checks this before any request; this tells the compiler.
  */
-export function hasRequiredFields<T, F extends ResourceFields>(
+export function hasRequiredFields<F extends ResourceFields>(
   fields: F,
-  body: Partial<T>,
-): body is Partial<T> & Required<Pick<T, RequiredFields<F> & keyof T>> {
+  body: RequestBody<F>,
+): body is CreateBody<F> {
   return Object.entries(fields.writable).every(
     ([field, descriptor]) => !descriptor.required || Object.hasOwn(body, field),
   );

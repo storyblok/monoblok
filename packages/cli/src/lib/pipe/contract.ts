@@ -51,8 +51,9 @@ export const isSidecarKey = (key: string): boolean => key.startsWith(SIDECAR_PRE
 
 /**
  * A line a CRUD command (`webhooks list`, …) emits: the resource as the
- * Management API returned it, minus its secret fields. `id` addresses it for
- * a write; `name`, where the resource has a unique one, across spaces.
+ * Management API returned it, with each secret field replaced by a
+ * `has_<field>` flag. A write finds the record by `id` in the same space, or by
+ * its unique name, such as a webhook's `name`, in any space.
  */
 export type ResourceLine = { id: number } & Record<string, unknown>;
 

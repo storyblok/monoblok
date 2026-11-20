@@ -24,31 +24,47 @@ export function ambiguousName(
 }
 
 /**
- * Finds the record a `<target>` argument names: an all-digit target is an ID
- * first, anything else (or an ID that matches nothing) a name. Errors never
- * repeat the target: a value misplaced on the command line can be a secret.
+ * The record a `<target>` argument names: an all-digit target is an ID first,
+ * anything else (or an ID that matches nothing) a name. `undefined` when the
+ * space has none; several records sharing the name is an error.
  */
-export function resolveTarget<T extends ResourceRecord>(
+export function findByTarget<T extends ResourceRecord>(
   target: string,
   records: readonly T[],
   { nameField, noun }: { nameField?: string; noun: Noun },
-): T {
+): T | undefined {
   const id = targetId(target);
-  if (id !== undefined) {
-    const byId = records.find((record) => record.id === id);
-    if (byId) {
-      return byId;
-    }
-  }
-  if (!nameField) {
-    throw new CrudError(`No ${noun.singular} matches the given ID.`);
+  const byId = id === undefined ? undefined : records.find((record) => record.id === id);
+  if (byId || !nameField) {
+    return byId;
   }
   const byName = records.filter((record) => record[nameField] === target);
-  if (byName.length === 0) {
-    throw new CrudError(`No ${noun.singular} matches the given ID or ${nameField}.`);
-  }
   if (byName.length > 1) {
     throw ambiguousName(byName, { nameField, noun });
   }
   return byName[0];
+}
+
+/**
+ * Like {@link findByTarget}, failing when the space has no such record.
+ * Errors never repeat the target: it may be a misplaced secret.
+ */
+export function resolveTarget<T extends ResourceRecord>(
+  target: string,
+  records: readonly T[],
+  resource: { nameField?: string; noun: Noun },
+): T {
+  const record = findByTarget(target, records, resource);
+  if (record) {
+    return record;
+  }
+  throw targetNotFound(resource);
+}
+
+export function targetNotFound({ nameField, noun }: { nameField?: string; noun: Noun }): CrudError {
+  return new CrudError(
+    nameField
+      ? `No ${noun.singular} matches the given ID or ${nameField}.`
+      : `No ${noun.singular} matches the given ID.`,
+  );
 }

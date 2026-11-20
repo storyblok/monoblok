@@ -25,14 +25,19 @@ const MIN_SCRUBBED_LENGTH = 8;
 export class RedactedOption {
   constructor(
     readonly raw: string,
-    readonly kind: "set" | "data",
+    readonly kind: "set" | "data" | "field",
     readonly visibleFields: readonly string[],
   ) {}
 
   toJSON(): unknown {
-    return this.kind === "set"
-      ? redactAssignment(this.raw, this.visibleFields)
-      : redactJson(this.raw, this.visibleFields);
+    switch (this.kind) {
+      case "set":
+        return redactAssignment(this.raw, this.visibleFields);
+      case "data":
+        return redactJson(this.raw, this.visibleFields);
+      case "field":
+        return this.visibleFields.includes(this.raw) ? this.raw : REDACTED;
+    }
   }
 
   toString(): string {
@@ -76,21 +81,30 @@ export function redactedData(raw: string, visibleFields: readonly string[]): Red
   return new RedactedOption(raw, "data", visibleFields);
 }
 
+/** A `--unset` value, logged only when it is one of `fields`: anything else may be a value. */
+export function redactedField(raw: string, fields: readonly string[]): RedactedOption {
+  return new RedactedOption(raw, "field", fields);
+}
+
 /**
- * A record without its secret fields: how a resource leaves the CLI. The key
- * is dropped rather than marked: `list` output is valid input, and a marker
- * such as `null` would clear the secret of every webhook piped back to
- * `update`.
+ * A record as it leaves the CLI: each secret field replaced by a read-only
+ * `has_<field>` flag. The secret key is dropped rather than marked: `list`
+ * output is valid input, and a marker such as `null` would clear the secret of
+ * every record piped back to `update`. The flag is dropped on the way back
+ * in, as any field the API does not accept.
  */
 export function stripSecrets<T extends Record<string, unknown>>(
   record: T,
-  secretFields: readonly (keyof T)[],
-): T {
+  secretFields: readonly (keyof T & string)[],
+): T & Record<`has_${string}`, boolean> {
   const stripped = { ...record };
+  const flags: Record<`has_${string}`, boolean> = {};
   for (const field of secretFields) {
+    const value = record[field];
+    flags[`has_${field}`] = typeof value === "string" && value !== "";
     delete stripped[field];
   }
-  return stripped;
+  return Object.assign(stripped, flags);
 }
 
 /**

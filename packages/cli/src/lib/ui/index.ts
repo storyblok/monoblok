@@ -1,6 +1,8 @@
 export { getUI, onStdoutClosed, stderrPromptContext, UI } from "./ui";
 export type { CLISpinner, ProgressBar } from "./ui";
 export { page } from "./pager";
+export { promptOnStderr } from "./prompt";
+export type { PromptContext } from "./prompt";
 export { getStderrTarget, getStdoutTarget } from "./stream-target";
 export type { StreamTarget } from "./stream-target";
 export { renderRunSummary } from "./stage-summary";

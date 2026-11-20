@@ -9,7 +9,6 @@ export type Noun = {
   plural: string;
 };
 
-/** The verbs a CRUD command can have. */
 export type CrudVerb = "list" | "get" | "create" | "update" | "delete";
 
 /**

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { redactedData, redactedSet, SecretScrubber, stripSecrets } from "./redact";
+import { redactedData, redactedField, redactedSet, SecretScrubber, stripSecrets } from "./redact";
 
 const secretFields = ["secret"];
 const visibleFields = ["name", "description"];
@@ -57,8 +57,17 @@ describe("SecretScrubber with a short secret", () => {
   });
 });
 
+describe("redactedField", () => {
+  it("should serialize a field name, and anything else as redacted", () => {
+    expect(JSON.stringify(redactedField("secret", ["secret", "name"]))).toBe('"secret"');
+    expect(JSON.stringify(redactedField("secret=s3cret-value", ["secret"]))).toBe('"[redacted]"');
+  });
+});
+
 describe("stripSecrets", () => {
-  it("should drop secret fields from a record", () => {
-    expect(stripSecrets({ id: 1, secret: "s3" }, ["secret"])).toEqual({ id: 1 });
+  it("should replace each secret field with whether the record has one", () => {
+    expect(stripSecrets({ id: 1, secret: "s3" }, ["secret"])).toEqual({ id: 1, has_secret: true });
+    expect(stripSecrets({ id: 1, secret: null }, ["secret"])).toEqual({ id: 1, has_secret: false });
+    expect(stripSecrets({ id: 1, secret: "" }, ["secret"])).toEqual({ id: 1, has_secret: false });
   });
 });

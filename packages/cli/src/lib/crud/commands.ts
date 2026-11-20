@@ -20,14 +20,21 @@ import type { InputRecord } from "../pipe/input";
 import type { ResultLine } from "../pipe";
 import { getStdoutTarget, getUI, page, renderFields, sanitize } from "../ui";
 import { getStdinTarget } from "../ui/stream-target";
-import { confirmWrite } from "./confirm";
+import { assertCanConfirm, confirmWrite } from "./confirm";
 import { CrudError, reportError, toCrudError, usageError } from "./errors";
 import { composePayload, missingRequired, parseFlagPatch } from "./fields";
 import type { FlagPatch, Payload } from "./fields";
-import { RedactedOption, redactedData, redactedSet, SecretScrubber, stripSecrets } from "./redact";
+import {
+  RedactedOption,
+  redactedData,
+  redactedField,
+  redactedSet,
+  SecretScrubber,
+  stripSecrets,
+} from "./redact";
 import { announce, createResultWriter, runBatch } from "./run";
 import type { BatchContext, BatchItem } from "./run";
-import { ambiguousName, resolveTarget, targetId } from "./target";
+import { ambiguousName, findByTarget, resolveTarget, targetId, targetNotFound } from "./target";
 import type { CrudOperations, CrudResource, CrudVerb, ResourceRecord } from "./types";
 
 const STDIN_ARGUMENT = "-";
@@ -49,7 +56,8 @@ type CommonOptions = {
 
 type PayloadOptions = {
   set?: FlagValue | FlagValue[];
-  unset?: string | string[];
+  unset?: FlagValue | FlagValue[];
+  /** A list on the command line, so a repeat is caught instead of replacing the first. */
   data?: unknown;
   dryRun?: boolean;
 };
@@ -58,7 +66,12 @@ type CreateOptions = CommonOptions & PayloadOptions & { ifNotExists?: boolean };
 
 type UpdateOptions = CommonOptions & PayloadOptions & { ignoreStale?: boolean };
 
-type DeleteOptions = CommonOptions & { yes?: boolean; ignoreStale?: boolean; dryRun?: boolean };
+type DeleteOptions = CommonOptions & {
+  yes?: boolean;
+  ignoreStale?: boolean;
+  dryRun?: boolean;
+  ifExists?: boolean;
+};
 
 /** What the helpers below read of a resource, whatever its record type. */
 type ResourceInfo = Pick<CrudResource, "noun" | "fields" | "secretFields" | "nameField">;
@@ -139,12 +152,16 @@ function toList<T>(value: T | T[] | undefined): T[] {
 }
 
 function readFlagPatch(resource: ResourceInfo, options: PayloadOptions): FlagPatch {
-  const { data } = options;
+  // A config file gives `--data` as one object or JSON string, the command line as a list.
+  const data = Array.isArray(options.data) ? options.data : toList(options.data);
+  if (data.length > 1) {
+    throw usageError("--data is given more than once. Pass one JSON object.");
+  }
   return parseFlagPatch(resource.fields, {
     // `String()` rather than `.raw`: a value from a config file is a plain string.
     set: toList(options.set).map(String),
-    unset: toList(options.unset),
-    data: data === undefined ? undefined : stringifyData(data),
+    unset: toList(options.unset).map(String),
+    data: data.length === 0 ? undefined : stringifyData(data[0]),
   });
 }
 
@@ -181,7 +198,7 @@ async function readItems(scrubber: SecretScrubber): Promise<BatchItem<InputRecor
   }
 }
 
-/** The argument is never repeated: a value misplaced on the command line can be a secret. */
+/** Never repeats the argument: it may be a misplaced secret. */
 function assertDashArgument(argument: string | undefined): void {
   if (argument !== undefined && argument !== STDIN_ARGUMENT) {
     throw usageError("Unexpected argument. Pass `-` to read records from stdin.");
@@ -286,10 +303,11 @@ function assertRequired(
 
 /**
  * Client-side checks for a dry run: what the API would reject that the CLI can
- * know without writing. Plan limits and address rules are only caught by a
- * real run. Only values the write adds are checked: the API keeps values a
- * record already has, even ones the allowed list leaves out, such as an action
- * the space's plan no longer includes.
+ * know without writing. Limits on how many records a space holds and rules on
+ * values beyond their type, such as a valid endpoint address, are only caught
+ * by a real run. Only values the write adds are checked: the API keeps values
+ * a record already has, even ones the allowed list leaves out, such as an
+ * action the space's plan no longer includes.
  */
 async function validateForDryRun<T extends ResourceRecord>(
   context: RunContext<T>,
@@ -313,7 +331,8 @@ async function validateForDryRun<T extends ResourceRecord>(
     const invalid = added.filter((item) => !allowed.includes(String(item)));
     if (invalid.length > 0) {
       throw new CrudError(`${field} has values the API does not accept: ${invalid.join(", ")}.`, {
-        details: { [field]: ["not allowed"], allowed_values: { [field]: allowed } },
+        details: { [field]: ["not allowed"] },
+        allowedValues: { [field]: allowed },
       });
     }
   }
@@ -321,7 +340,7 @@ async function validateForDryRun<T extends ResourceRecord>(
 
 function announceDryRun(dryRun: boolean | undefined): void {
   if (dryRun) {
-    announce("Dry run: nothing will be written.");
+    announce("Dry run: nothing is written.");
   }
 }
 
@@ -331,17 +350,17 @@ function isGone(maybeError: unknown): boolean {
 }
 
 /**
- * A delete of a record that is not there: what the delete was for, so a rerun
- * passes. An update of one fails instead.
+ * With `--if-exists`, a delete of a record that is not there: what the delete
+ * was for, so a rerun passes. The target named on the command line is not
+ * repeated: it may be a misplaced secret.
  */
 function alreadyDeleted(
   resource: ResourceInfo,
-  line: InputRecord | undefined,
-  id?: number,
+  record: Record<string, unknown> | undefined,
 ): ResultLine {
   return {
-    id: id ?? (typeof line?.id === "number" ? line.id : null),
-    name: nameOf(resource, line),
+    id: typeof record?.id === "number" ? record.id : null,
+    name: nameOf(resource, record) ?? null,
     action: "skip",
     _skipped: true,
     _reason: "not_found",
@@ -351,6 +370,11 @@ function alreadyDeleted(
 function notFoundForLine(resource: ResourceInfo, line: InputRecord): CrudError {
   const key = line.id !== undefined ? "ID" : (resource.nameField ?? "ID");
   return new CrudError(`No ${resource.noun.singular} matches the record's ${key}.`);
+}
+
+/** The ID of the record a line names, for the error when the space does not have it. */
+function lineId(line: InputRecord | undefined): number | undefined {
+  return typeof line?.id === "number" ? line.id : undefined;
 }
 
 /** Keeps the run's copy of the space current, so a later line sees an earlier write. */
@@ -390,14 +414,19 @@ async function findTarget<T extends ResourceRecord>(
 /**
  * `unknown option '--secret=value'`: commander repeats the value, which can be
  * a secret. Greedy up to the last quote, so a quote inside the value does not
- * end the match early.
+ * end the match early, and across lines, for a value such as pretty-printed
+ * JSON.
  */
-const INLINE_OPTION_VALUE = /'(--?[^=' ]+)=.*'/g;
+const INLINE_OPTION_VALUE = /'(--?[^=' ]+)=.*'/gs;
+
+/** `unknown option '-Zvalue'`: a short option with its value glued on. */
+const GLUED_OPTION_VALUE = /^(unknown option )'(-[^-\s'])[^']+'/;
 
 function toUsageMessage(text: string): string {
   return text
     .replace(/^error:\s*/i, "")
     .replace(INLINE_OPTION_VALUE, "'$1=…'")
+    .replace(GLUED_OPTION_VALUE, "$1'$2…'")
     .trim();
 }
 
@@ -414,6 +443,14 @@ function withCrudErrors(command: Command): Command {
         process.exitCode = EXIT_CODE_USAGE_ERROR;
       },
     });
+}
+
+/**
+ * A target argument that is optional to commander but required in help: a
+ * missing one gets the hint about `-` instead of commander's error.
+ */
+function addTargetArgument(command: Command, noun: string, description: string): Command {
+  return command.argument(`[${noun}]`, description).usage(`[options] <${noun}>`);
 }
 
 function addVerbCommand(parent: Command, name: CrudVerb): Command {
@@ -437,6 +474,7 @@ function addPayloadOptions(
 ): Command {
   const fields = Object.keys(resource.fields.writable);
   const visibleFields = fields.filter((field) => !isSecret(resource, field));
+  const nullableFields = fields.filter((field) => resource.fields.writable[field].nullable);
   command
     .option(
       "--set <field=value>",
@@ -446,12 +484,18 @@ function addPayloadOptions(
         redactedSet(value, visibleFields),
       ],
     )
-    .option("--data <json>", dataHelp, (value: string) => redactedData(value, visibleFields));
-  if (unset) {
+    .option("--data <json>", dataHelp, (value: string, previous: RedactedOption[] = []) => [
+      ...previous,
+      redactedData(value, visibleFields),
+    ]);
+  if (unset && nullableFields.length > 0) {
     command.option(
       "--unset <field>",
-      "clear a field, repeatable",
-      (value: string, previous: string[] = []) => [...previous, value],
+      `clear a field, repeatable. Fields: ${nullableFields.join(", ")}`,
+      (value: string, previous: RedactedOption[] = []) => [
+        ...previous,
+        redactedField(value, fields),
+      ],
     );
   }
   return addDryRunOption(command, "validate and print what would change, without writing");
@@ -467,7 +511,10 @@ export function createCrudCommand(
   program: Command,
   { name, description }: { name: string; description: string },
 ): Command {
-  const command = withCrudErrors(new Command(name)).description(description);
+  const command = withCrudErrors(new Command(name))
+    .description(description)
+    // List each verb with its usage line, so a required target shows as `<target>`.
+    .configureHelp({ subcommandTerm: (verb) => `${verb.name()} ${verb.usage()}` });
   program.addCommand(command);
   return command;
 }
@@ -541,7 +588,7 @@ export function addCrudVerbs<T extends ResourceRecord>(
           {
             unset: false,
             dataHelp:
-              "fields as a JSON object, applied to each record from stdin; --set wins over it",
+              "fields as a JSON object, applied to every record with -; --set takes precedence",
           },
         ).option(
           "--if-not-exists",
@@ -616,16 +663,18 @@ export function addCrudVerbs<T extends ResourceRecord>(
     update: () => {
       const command = addSpaceOption(
         addPayloadOptions(
-          addVerbCommand(parent, "update")
-            .description(`Update a ${noun.singular}, or one per record on stdin with -`)
-            .argument(`[${noun.singular}]`, `${targetHelp}, or - to read ${STDIN_HELP} from stdin`)
-            // The argument is optional only so a missing one gets the hint about `-`.
-            .usage(`[options] <${noun.singular}>`),
+          addTargetArgument(
+            addVerbCommand(parent, "update").description(
+              `Update a ${noun.singular}, or one per record on stdin with -`,
+            ),
+            noun.singular,
+            `${targetHelp}, or - to read ${STDIN_HELP} from stdin`,
+          ),
           resource,
           {
             unset: true,
             dataHelp:
-              "fields as a JSON object, merged into the record as a JSON Merge Patch; --set wins over it",
+              "fields as a JSON object, merged into the record as a JSON Merge Patch; --set and --unset take precedence",
           },
         ).option(
           "--ignore-stale",
@@ -645,7 +694,7 @@ export function addCrudVerbs<T extends ResourceRecord>(
             const patch = readFlagPatch(resource, options);
             const readsStdin = target === STDIN_ARGUMENT;
             if (!readsStdin && !hasFlagPatch(options)) {
-              throw usageError("Nothing to update: pass --set, --unset or --data.");
+              throw usageError("Nothing to update: pass --set, --unset, or --data.");
             }
             assertIgnoreStaleFitsTarget(options.ignoreStale, readsStdin);
             const context = connect(resource, options);
@@ -666,6 +715,7 @@ export function addCrudVerbs<T extends ResourceRecord>(
                   ? findForLine(resource, line, records)
                   : resolveTarget(target, records, resource);
                 if (!server) {
+                  batch.id = lineId(line);
                   throw notFoundForLine(resource, line ?? {});
                 }
                 batch.id = server.id;
@@ -717,12 +767,18 @@ export function addCrudVerbs<T extends ResourceRecord>(
     delete: () => {
       const command = addSpaceOption(
         addDryRunOption(
-          addVerbCommand(parent, "delete")
-            .description(`Delete a ${noun.singular}, or one per record on stdin with -`)
-            .argument(`[${noun.singular}]`, `${targetHelp}, or - to read ${STDIN_HELP} from stdin`)
-            // The argument is optional only so a missing one gets the hint about `-`.
-            .usage(`[options] <${noun.singular}>`)
+          addTargetArgument(
+            addVerbCommand(parent, "delete").description(
+              `Delete a ${noun.singular}, or one per record on stdin with -`,
+            ),
+            noun.singular,
+            `${targetHelp}, or - to read ${STDIN_HELP} from stdin`,
+          )
             .option("--yes", "skip the confirmation prompt; required with -")
+            .option(
+              "--if-exists",
+              `skip a ${noun.singular} the space does not have, so reruns pass`,
+            )
             .option(
               "--ignore-stale",
               `delete records whose ${noun.singular} changed since they were read`,
@@ -742,26 +798,31 @@ export function addCrudVerbs<T extends ResourceRecord>(
             }
             const readsStdin = target === STDIN_ARGUMENT;
             assertIgnoreStaleFitsTarget(options.ignoreStale, readsStdin);
-            if (readsStdin && !options.yes && !options.dryRun) {
-              // Before reading stdin: the run cannot go ahead whatever it holds.
-              await confirmWrite({ message: () => "", yes: false, dryRun: false, readsStdin });
-            }
+            const confirmOptions = {
+              yes: Boolean(options.yes),
+              dryRun: Boolean(options.dryRun),
+              readsStdin,
+            };
+            // Before any request: the run cannot go ahead whatever the space holds.
+            assertCanConfirm(confirmOptions);
             const context = connect(resource, options);
             const items = readsStdin ? await readItems(scrubber) : [{ value: undefined }];
             const records = await context.operations.listAll();
+            const findRecord = (line: InputRecord | undefined): T | undefined =>
+              line ? findForLine(resource, line, records) : findByTarget(target, records, resource);
 
             if (!readsStdin) {
-              const record = resolveTarget(target, records, resource);
-              const label = sanitize(String(nameOf(resource, record) ?? record.id));
-              const confirmed = await confirmWrite({
-                message: () => `Delete ${noun.singular} "${label}" (ID ${record.id})?`,
-                yes: Boolean(options.yes),
-                dryRun: Boolean(options.dryRun),
-                readsStdin,
-              });
-              if (!confirmed) {
-                getUI().info("Nothing deleted.");
-                return;
+              const record = findRecord(undefined);
+              if (record) {
+                const label = sanitize(String(nameOf(resource, record) ?? record.id));
+                const confirmed = await confirmWrite(
+                  () => `Delete ${noun.singular} "${label}" (ID ${record.id})?`,
+                  confirmOptions,
+                );
+                if (!confirmed) {
+                  getUI().info("Nothing deleted.");
+                  return;
+                }
               }
             }
             announceDryRun(options.dryRun);
@@ -774,29 +835,31 @@ export function addCrudVerbs<T extends ResourceRecord>(
               operations: context.operations,
               scrubber,
               handle: async ({ value: line }, batch: BatchContext): Promise<ResultLine> => {
-                const server = line
-                  ? findForLine(resource, line, records)
-                  : resolveTarget(target, records, resource);
+                const server = findRecord(line);
                 if (!server) {
-                  return alreadyDeleted(resource, line);
+                  if (options.ifExists) {
+                    return alreadyDeleted(resource, line);
+                  }
+                  batch.id = lineId(line);
+                  throw line ? notFoundForLine(resource, line) : targetNotFound(resource);
                 }
                 batch.id = server.id;
                 scrubber.collect(server);
                 assertFresh(resource, line, server, Boolean(options.ignoreStale));
                 const name = nameOf(resource, server);
-                // Removed in a dry run too, so a repeated line is reported as a real run would.
-                removeRecord(records, server.id);
-                if (options.dryRun) {
-                  return { id: server.id, name, action: "delete" };
-                }
-                try {
-                  await context.operations.delete(server.id);
-                } catch (maybeError) {
-                  if (isGone(maybeError)) {
-                    return alreadyDeleted(resource, line ?? server, server.id);
+                if (!options.dryRun) {
+                  try {
+                    await context.operations.delete(server.id);
+                  } catch (maybeError) {
+                    if (options.ifExists && isGone(maybeError)) {
+                      removeRecord(records, server.id);
+                      return alreadyDeleted(resource, server);
+                    }
+                    throw maybeError;
                   }
-                  throw maybeError;
                 }
+                // A later line for the same record finds it gone, in a dry run too.
+                removeRecord(records, server.id);
                 return { id: server.id, name, action: "delete" };
               },
             });

@@ -73,13 +73,18 @@ const spec = {
   },
 };
 
-const source = { name: "thing", create: "createThing", update: "updateThing", read: "getThing" };
+const source = {
+  name: "thing",
+  envelope: "thing",
+  create: "createThing",
+  update: "updateThing",
+  read: "getThing",
+};
 
 describe("buildResourceFields", () => {
   it("should describe the writable fields of the request envelope with their types", () => {
     const fields = buildResourceFields(spec, source);
 
-    expect(fields.envelope).toBe("thing");
     expect(fields.writable).toEqual({
       name: { type: "string", required: true, nullable: false },
       note: { type: "string", required: false, nullable: true },
@@ -117,6 +122,17 @@ describe("buildResourceFields", () => {
     expect(() => buildResourceFields(union, source)).toThrow(/"note" uses `anyOf`/);
   });
 
+  it("should read a body that holds more than the envelope", () => {
+    const withOptions = JSON.parse(JSON.stringify(spec));
+    withOptions.components.schemas.ThingRequest.properties.force_update = { type: "boolean" };
+
+    expect(buildResourceFields(withOptions, source).writable).not.toHaveProperty("force_update");
+  });
+
+  it("should fail on a body without the envelope key", () => {
+    expect(() => buildResourceFields(spec, { ...source, envelope: "other" })).toThrow(/"other"/);
+  });
+
   it("should fail on an operation the spec does not declare", () => {
     expect(() => buildResourceFields(spec, { ...source, update: "patchThing" })).toThrow(
       /patchThing/,
@@ -129,7 +145,6 @@ describe("renderResourceFields", () => {
     const output = renderResourceFields([{ name: "thing", ...buildResourceFields(spec, source) }]);
     const module = await import(`data:text/javascript,${encodeURIComponent(stripTypes(output))}`);
 
-    expect(module.thingFields.envelope).toBe("thing");
     expect(module.thingFields.writable.tags.type).toBe("string[]");
   });
 });

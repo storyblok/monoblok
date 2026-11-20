@@ -22,8 +22,6 @@ export interface ResourceField {
 }
 
 export interface ResourceFields {
-  /** The key the request and response bodies wrap the resource in. */
-  envelope: string;
   writable: Record<string, ResourceField>;
   /** Response fields no request accepts, sorted. */
   readOnly: string[];
@@ -32,6 +30,8 @@ export interface ResourceFields {
 export interface ResourceFieldsSource {
   /** Prefix of the emitted constant: `webhook` → `webhookFields`. */
   name: string;
+  /** The key the request and response bodies wrap the resource in. Other keys of a request body are options, not fields. */
+  envelope: string;
   /** Operation IDs. */
   create: string;
   update: string;
@@ -94,35 +94,37 @@ function assertPlain(schema: SchemaObject, where: string): SchemaObject {
   return schema;
 }
 
-/** A body that wraps the resource in a single key, e.g. `{ webhook_endpoint: {…} }`. */
+/** The resource in a body that wraps it in `envelope`, e.g. `{ webhook_endpoint: {…} }`. */
 function unwrapEnvelope(
   spec: SchemaObject,
   body: SchemaObject,
-  operationId: string,
-): { envelope: string; schema: SchemaObject } {
+  { operationId, envelope }: { operationId: string; envelope: string },
+): SchemaObject {
   assertPlain(body, `The body of "${operationId}"`);
   const properties = isRecord(body.properties) ? body.properties : {};
-  const keys = Object.keys(properties);
-  if (keys.length !== 1) {
-    throw new Error(`Operation "${operationId}" does not wrap its body in a single envelope key.`);
+  if (!Object.hasOwn(properties, envelope)) {
+    throw new Error(`Operation "${operationId}" does not wrap its body in "${envelope}".`);
   }
-  const schema = resolveRef(spec, properties[keys[0]]);
-  return { envelope: keys[0], schema: assertPlain(schema, `"${keys[0]}" in "${operationId}"`) };
+  const schema = resolveRef(spec, properties[envelope]);
+  return assertPlain(schema, `"${envelope}" in "${operationId}"`);
 }
 
-function requestBody(spec: SchemaObject, operationId: string) {
+function requestBody(spec: SchemaObject, operationId: string, envelope: string) {
   const operation = findOperation(spec, operationId);
-  return unwrapEnvelope(spec, jsonSchemaOf(spec, operation.requestBody), operationId);
+  return unwrapEnvelope(spec, jsonSchemaOf(spec, operation.requestBody), {
+    operationId,
+    envelope,
+  });
 }
 
-function responseBody(spec: SchemaObject, operationId: string) {
+function responseBody(spec: SchemaObject, operationId: string, envelope: string) {
   const operation = findOperation(spec, operationId);
   const responses = isRecord(operation.responses) ? operation.responses : {};
   const success = Object.keys(responses).find((status) => status.startsWith("2"));
   if (!success) {
     throw new Error(`Operation "${operationId}" declares no success response.`);
   }
-  return unwrapEnvelope(spec, jsonSchemaOf(spec, responses[success]), operationId);
+  return unwrapEnvelope(spec, jsonSchemaOf(spec, responses[success]), { operationId, envelope });
 }
 
 function propertiesOf(schema: SchemaObject): SchemaObject {
@@ -170,13 +172,13 @@ export function buildResourceFields(spec: unknown, source: ResourceFieldsSource)
   if (!isRecord(spec)) {
     throw new Error("The spec is not an object.");
   }
-  const create = requestBody(spec, source.create);
-  const update = requestBody(spec, source.update);
-  const read = responseBody(spec, source.read);
+  const create = requestBody(spec, source.create, source.envelope);
+  const update = requestBody(spec, source.update, source.envelope);
+  const read = responseBody(spec, source.read, source.envelope);
 
-  const createProperties = propertiesOf(create.schema);
-  const updateProperties = propertiesOf(update.schema);
-  const required = new Set(Array.isArray(create.schema.required) ? create.schema.required : []);
+  const createProperties = propertiesOf(create);
+  const updateProperties = propertiesOf(update);
+  const required = new Set(Array.isArray(create.required) ? create.required : []);
 
   const writable: Record<string, ResourceField> = {};
   for (const name of new Set([
@@ -193,11 +195,11 @@ export function buildResourceFields(spec: unknown, source: ResourceFieldsSource)
     };
   }
 
-  const readOnly = Object.keys(propertiesOf(read.schema))
+  const readOnly = Object.keys(propertiesOf(read))
     .filter((name) => !(name in writable))
     .sort();
 
-  return { envelope: update.envelope, writable, readOnly };
+  return { writable, readOnly };
 }
 
 /** Renders descriptors as a module of `<name>Fields` constants. */

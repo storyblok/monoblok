@@ -16,6 +16,7 @@ await generate({
   resourceFields: [
     {
       name: "webhook",
+      envelope: "webhook_endpoint",
       create: "createWebhookEndpoint",
       update: "updateWebhookEndpoint",
       read: "getWebhookEndpoint",

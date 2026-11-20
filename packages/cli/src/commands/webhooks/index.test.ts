@@ -12,8 +12,15 @@ import { resetReporter } from "../../lib/reporter/reporter";
 import { getLogFileContents, getReport } from "../__tests__/helpers";
 import { getProgram } from "../../program";
 import "../languages";
+import { loadConfigLayers } from "../../lib/config/helpers";
 import { webhookFields } from "../../generated/mapi/resource-fields.gen";
 import { webhooksCommand } from ".";
+
+// The config files on disk, as layers: everything else of config resolution is real.
+vi.mock("../../lib/config/helpers", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../lib/config/helpers")>()),
+  loadConfigLayers: vi.fn(async () => []),
+}));
 
 vi.mock("@inquirer/prompts", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@inquirer/prompts")>()),
@@ -31,6 +38,9 @@ const SPACE = "12345";
 const BASE = `https://mapi.storyblok.com/v1/spaces/${SPACE}/webhook_endpoints`;
 const SECRET = "whsec-top-secret-value";
 const ALLOWED_ACTIONS = ["story.published", "story.unpublished", "asset.created"];
+/** Left out of the allowed actions on the space's plan, but kept on a webhook that already has it. */
+const PLAN_GATED_ACTION = "story.saved";
+const PLAN_GATED_ERROR = { base: ["Story saved webhooks are not available on your plan"] };
 
 interface FakeWebhook {
   id: number;
@@ -92,7 +102,14 @@ const nameTaken = (name: unknown, exceptId?: number) =>
   api.webhooks.some((webhook) => webhook.name === name && webhook.id !== exceptId);
 
 const invalidActions = (actions: unknown) =>
-  Array.isArray(actions) && actions.some((action) => !ALLOWED_ACTIONS.includes(action));
+  Array.isArray(actions) &&
+  actions.some((action) => !ALLOWED_ACTIONS.includes(action) && action !== PLAN_GATED_ACTION);
+
+/** The API checks the plan only for actions a write adds. */
+const addsPlanGatedAction = (actions: unknown, current: string[] = []) =>
+  Array.isArray(actions) &&
+  actions.includes(PLAN_GATED_ACTION) &&
+  !current.includes(PLAN_GATED_ACTION);
 
 const server = setupServer(
   http.get(BASE, () => HttpResponse.json({ webhook_endpoints: api.webhooks })),
@@ -115,6 +132,9 @@ const server = setupServer(
       // What the API answers for an action it does not know.
       return HttpResponse.json({ actions: ["not allowed"] }, { status: 422 });
     }
+    if (addsPlanGatedAction(body.actions)) {
+      return HttpResponse.json(PLAN_GATED_ERROR, { status: 422 });
+    }
     const webhook = makeWebhook({ ...body, activated: body.activated !== false });
     api.webhooks.push(webhook);
     return HttpResponse.json({ webhook_endpoint: webhook }, { status: 201 });
@@ -132,6 +152,17 @@ const server = setupServer(
     }
     if (body.endpoint === "https://fails.example.com") {
       return HttpResponse.json({ endpoint: ["is invalid"] }, { status: 422 });
+    }
+    if (invalidActions(body.actions)) {
+      return HttpResponse.json({ actions: ["not allowed"] }, { status: 422 });
+    }
+    if (addsPlanGatedAction(body.actions, webhook.actions)) {
+      return HttpResponse.json(PLAN_GATED_ERROR, { status: 422 });
+    }
+    for (const field of ["name", "endpoint"] as const) {
+      if (body[field] === "") {
+        return HttpResponse.json({ [field]: ["can't be blank"] }, { status: 422 });
+      }
     }
     Object.assign(webhook, body, { updated_at: timestamp() });
     if (webhook.activated === null) {
@@ -196,6 +227,32 @@ const preconditions = {
       }
     });
     return read;
+  },
+  /** A `storyblok.config` file that sets these options for a `webhooks` verb. */
+  configFileSets(verb: string, options: Record<string, unknown>) {
+    vi.mocked(loadConfigLayers).mockResolvedValue([{ modules: { webhooks: { [verb]: options } } }]);
+  },
+  /** Counts the requests for the actions a webhook accepts. */
+  countsAllowedActionsRequests() {
+    const counter = { requests: 0 };
+    const count = ({ request }: { request: Request }): void => {
+      if (request.url.endsWith("/allowed_actions")) {
+        counter.requests += 1;
+      }
+    };
+    server.events.on("request:start", count);
+    cleanups.push(() => server.events.removeListener("request:start", count));
+    return counter;
+  },
+  /** Counts every request to the Management API, by method. */
+  countsRequests() {
+    const counter: string[] = [];
+    const count = ({ request }: { request: Request }): void => {
+      counter.push(`${request.method} ${new URL(request.url).pathname}`);
+    };
+    server.events.on("request:start", count);
+    cleanups.push(() => server.events.removeListener("request:start", count));
+    return counter;
   },
   loggedOut() {
     vi.mocked(session().initializeSession).mockImplementation(async () => {
@@ -264,6 +321,7 @@ describe("webhooks command", () => {
     vi.restoreAllMocks();
     vi.mocked(getStdinTarget).mockReturnValue("terminal");
     vi.mocked(confirm).mockReset();
+    vi.mocked(loadConfigLayers).mockResolvedValue([]);
     // Back to the logged-in session the test setup provides.
     vi.mocked(session().initializeSession).mockReset();
     vi.unstubAllEnvs();
@@ -296,7 +354,35 @@ describe("webhooks command", () => {
     });
   });
 
+  describe("list (empty)", () => {
+    it("should say so on a terminal when the space has no webhooks", async () => {
+      preconditions.stdoutIsATerminal();
+
+      await run("list", "--space", SPACE);
+
+      expect(stderrText()).toContain("No webhooks");
+    });
+  });
+
   describe("get", () => {
+    it("should read a webhook by ID with one request", async () => {
+      const [webhook] = preconditions.hasWebhooks({ name: "deploy" });
+      const requests = preconditions.countsRequests();
+
+      await run("get", String(webhook.id), "--space", SPACE);
+
+      expect(stdoutLines().map((line) => line.id)).toEqual([webhook.id]);
+      expect(requests).toEqual([`GET /v1/spaces/${SPACE}/webhook_endpoints/${webhook.id}`]);
+    });
+
+    it("should find a webhook whose name is all digits", async () => {
+      const [webhook] = preconditions.hasWebhooks({ name: "2026" });
+
+      await run("get", "2026", "--space", SPACE);
+
+      expect(stdoutLines().map((line) => line.id)).toEqual([webhook.id]);
+    });
+
     it("should print the webhook a name or an id targets", async () => {
       const [, target] = preconditions.hasWebhooks({}, { name: "deploy" });
 
@@ -470,7 +556,7 @@ describe("webhooks command", () => {
       await run("create", "--space", SPACE, "--set", "name=x");
 
       expect(api.writes).toEqual([]);
-      expect(process.exitCode).toBe(1);
+      expect(process.exitCode).toBe(2);
       expect(stderrErrors()[0].error).toBe("Missing required fields: endpoint, actions.");
     });
 
@@ -512,6 +598,59 @@ describe("webhooks command", () => {
         expect.objectContaining({ line: 1, status: 422, details: { actions: ["not allowed"] } }),
       ]);
       expect(stdoutLines().map((line) => line.name)).toEqual(["b"]);
+    });
+
+    it("should look up the allowed actions once per run", async () => {
+      const requests = preconditions.countsAllowedActionsRequests();
+      const line = (name: string) =>
+        JSON.stringify({ name, endpoint: "https://example.com", actions: ["story.typo"] });
+      const input = [line("a"), line("b"), line("c")].join("\n");
+
+      preconditions.stdinCarries(input);
+      await run("create", "--space", SPACE, "--dry-run", "-");
+      preconditions.stdinCarries(input);
+      await run("create", "--space", SPACE, "-");
+
+      expect(stderrErrors()).toHaveLength(6);
+      expect(requests.requests).toBe(2);
+    });
+
+    it("should store a repeated list value once", async () => {
+      await run(
+        "create",
+        "--space",
+        SPACE,
+        "--set",
+        "name=x",
+        "--set",
+        "endpoint=https://example.com/x",
+        "--set",
+        "actions=story.published,story.published",
+      );
+
+      expect(api.writes[0].body?.actions).toEqual(["story.published"]);
+    });
+
+    it("should create a webhook from --data", async () => {
+      await run(
+        "create",
+        "--space",
+        SPACE,
+        "--data",
+        JSON.stringify({
+          name: "x",
+          endpoint: "https://example.com/x",
+          actions: ["story.published"],
+        }),
+      );
+
+      expect(api.writes).toEqual([
+        {
+          method: "POST",
+          body: { name: "x", endpoint: "https://example.com/x", actions: ["story.published"] },
+        },
+      ]);
+      expect(process.exitCode).toBeFalsy();
     });
 
     it("should skip a repeated name with the id of the webhook just created", async () => {
@@ -669,15 +808,106 @@ describe("webhooks command", () => {
       expect(process.exitCode).toBe(1);
     });
 
-    it("should skip a piped webhook the space no longer has", async () => {
-      preconditions.stdinCarries(asListOutput([makeWebhook({ name: "gone" })]));
+    it("should fail a piped webhook the space does not have", async () => {
+      const [webhook] = preconditions.hasWebhooks({ name: "kept" });
+      preconditions.stdinCarries(asListOutput([makeWebhook({ name: "gone" }), webhook]));
 
       await run("update", "--space", SPACE, "--set", "activated=false", "-");
 
       expect(stdoutLines()).toEqual([
-        expect.objectContaining({ action: "skip", _skipped: true, _reason: "not_found" }),
+        expect.objectContaining({ id: webhook.id, action: "update" }),
       ]);
-      expect(process.exitCode).toBeFalsy();
+      expect(stderrErrors()).toEqual([
+        expect.objectContaining({ line: 1, error: "No webhook matches the record's ID." }),
+      ]);
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("should fail on a field that clears a required one", async () => {
+      const [webhook] = preconditions.hasWebhooks({ name: "deploy" });
+
+      await run("update", "deploy", "--space", SPACE, "--dry-run", "--set", "actions=");
+      await run("update", "deploy", "--space", SPACE, "--set", "name=");
+
+      expect(stderrErrors().map((error) => error.error)).toEqual([
+        "Missing required fields: actions.",
+        "Missing required fields: name.",
+      ]);
+      expect(process.exitCode).toBe(2);
+      expect(api.webhooks[0]).toEqual(webhook);
+    });
+
+    it("should accept a plan-gated action the webhook already has, in a dry run as in a real run", async () => {
+      preconditions.hasWebhooks({ name: "deploy", actions: [PLAN_GATED_ACTION] });
+      const actions = `actions=${PLAN_GATED_ACTION},story.published`;
+
+      await run("update", "deploy", "--space", SPACE, "--dry-run", "--set", actions);
+      await run("update", "deploy", "--space", SPACE, "--set", actions);
+
+      expect(stderrErrors()).toEqual([]);
+      expect(stdoutLines().map((line) => line.action)).toEqual(["update", "update"]);
+    });
+
+    it("should agree with the real run on two lines for one webhook in a dry run", async () => {
+      const [webhook] = preconditions.hasWebhooks({ name: "deploy", activated: true });
+      const input = asListOutput([
+        { ...webhook, activated: false },
+        { ...webhook, description: "edited" },
+      ]);
+      const outcome = () => ({
+        actions: stdoutLines().map((line) => line.action),
+        errorLines: stderrErrors().map(({ line }) => line),
+        exitCode: process.exitCode,
+      });
+
+      preconditions.stdinCarries(input);
+      await run("update", "--space", SPACE, "--dry-run", "-");
+      const dryRun = outcome();
+
+      stdoutWrites.length = 0;
+      vi.mocked(console.error).mockClear();
+      process.exitCode = undefined;
+      preconditions.stdinCarries(input);
+      await run("update", "--space", SPACE, "-");
+
+      expect(dryRun.actions).toEqual(["update"]);
+      expect(dryRun.errorLines).toEqual([2]);
+      expect(outcome()).toEqual(dryRun);
+    });
+
+    it("should refuse --ignore-stale with a named webhook, which has no record to be stale", async () => {
+      preconditions.hasWebhooks({ name: "deploy" });
+
+      await run("update", "deploy", "--space", SPACE, "--ignore-stale", "--set", "activated=false");
+
+      expect(process.exitCode).toBe(2);
+      expect(api.writes).toEqual([]);
+    });
+
+    it("should report the line a failing record starts on, counting blank lines", async () => {
+      const [webhook] = preconditions.hasWebhooks({ name: "deploy" });
+      preconditions.stdinCarries(
+        `{"id":${webhook.id},"activated":false}\n\n{"id":${webhook.id},"endpoint":"https://fails.example.com"}`,
+      );
+
+      await run("update", "--space", SPACE, "-");
+
+      expect(stderrErrors()).toEqual([expect.objectContaining({ line: 3 })]);
+    });
+
+    it("should apply --set from a config file", async () => {
+      const [webhook] = preconditions.hasWebhooks({ name: "deploy", activated: true });
+      preconditions.configFileSets("update", { set: "activated=false" });
+
+      await run("update", "deploy", "--space", SPACE);
+
+      expect(api.writes).toEqual([{ method: "PATCH", id: webhook.id, body: { activated: false } }]);
+    });
+
+    it("should show the webhook as the target in the usage line", async () => {
+      await run("update", "--help").catch(() => {});
+
+      expect(stdoutText()).toContain("update [options] <webhook>");
     });
 
     it("should show a dry run's changes without the secret's value", async () => {
@@ -731,6 +961,64 @@ describe("webhooks command", () => {
       expect(confirm).toHaveBeenCalled();
       expect(api.writes).toEqual([{ method: "DELETE", id: webhook.id }]);
       expect(api.webhooks).toEqual([]);
+    });
+
+    it("should delete a named webhook with --yes", async () => {
+      const [webhook, kept] = preconditions.hasWebhooks({ name: "deploy" }, { name: "keep" });
+
+      await run("delete", "deploy", "--space", SPACE, "--yes");
+
+      expect(api.webhooks).toEqual([kept]);
+      expect(stdoutLines()).toEqual([{ id: webhook.id, name: "deploy", action: "delete" }]);
+    });
+
+    it("should skip a piped webhook the space does not have, so reruns pass", async () => {
+      preconditions.stdinCarries(asListOutput([makeWebhook({ name: "gone" })]));
+
+      await run("delete", "--space", SPACE, "--yes", "-");
+
+      expect(stdoutLines()).toEqual([
+        expect.objectContaining({ action: "skip", _skipped: true, _reason: "not_found" }),
+      ]);
+      expect(process.exitCode).toBeFalsy();
+    });
+
+    it("should refuse to delete a line read before the webhook last changed, until --ignore-stale", async () => {
+      const [webhook] = preconditions.hasWebhooks({ name: "deploy" });
+      const stale = { ...webhook, updated_at: "2020-01-01T00:00:00.000Z" };
+
+      preconditions.stdinCarries(asListOutput([stale]));
+      await run("delete", "--space", SPACE, "--yes", "-");
+
+      expect(api.writes).toEqual([]);
+      expect(process.exitCode).toBe(1);
+
+      process.exitCode = undefined;
+      preconditions.stdinCarries(asListOutput([stale]));
+      await run("delete", "--space", SPACE, "--yes", "--ignore-stale", "-");
+
+      expect(api.webhooks).toEqual([]);
+    });
+
+    it("should end quietly when the person presses Ctrl-D at the prompt", async () => {
+      preconditions.hasWebhooks({ name: "deploy" });
+      preconditions.stdinIsATerminal();
+      preconditions.stderrIsATerminal();
+      // Inquirer rejects with an AbortPromptError once its signal aborts.
+      vi.mocked(confirm).mockImplementation(
+        (_config, context) =>
+          new Promise((_resolve, reject) => {
+            context?.signal?.addEventListener("abort", () =>
+              reject(Object.assign(new Error("Prompt was aborted"), { name: "AbortPromptError" })),
+            );
+            process.stdin.emit("keypress", "\u0004", { name: "d", ctrl: true });
+          }) as ReturnType<typeof confirm>,
+      );
+
+      await run("delete", "deploy", "--space", SPACE);
+
+      expect(process.exitCode).toBeFalsy();
+      expect(api.writes).toEqual([]);
     });
 
     it("should end quietly when the person cancels the prompt", async () => {
@@ -835,6 +1123,22 @@ describe("webhooks command", () => {
 
       expect(stderrErrors()).toEqual([]);
       expect(stderrText()).toContain("No webhook matches the given ID or name.");
+    });
+
+    it("should fail fast when - is given but stdin is a terminal", async () => {
+      await run("create", "--space", SPACE, "-");
+
+      expect(process.exitCode).toBe(2);
+      expect(stderrErrors()[0].error).toContain("stdin is a terminal");
+    });
+
+    it("should suggest splitting a JSON array, as a usage error", async () => {
+      preconditions.stdinCarries(JSON.stringify([{ name: "a" }]));
+
+      await run("create", "--space", SPACE, "-");
+
+      expect(process.exitCode).toBe(2);
+      expect(stderrErrors()[0].error).toContain("jq -c '.[]'");
     });
 
     it("should fail a malformed record before writing anything", async () => {
@@ -1006,7 +1310,9 @@ describe("webhooks command", () => {
       const [webhook] = preconditions.hasWebhooks({ activated: true });
       const line = ({ activated }: { activated: boolean }) =>
         JSON.stringify({ id: webhook.id, activated });
-      preconditions.stdinCarries([line({ activated: false }), line({ activated: true })].join("\n"));
+      preconditions.stdinCarries(
+        [line({ activated: false }), line({ activated: true })].join("\n"),
+      );
 
       await run("update", "--space", SPACE, "-");
 
@@ -1099,13 +1405,28 @@ describe("webhooks command", () => {
       expect(stderrErrors()[0].error).toBe('"id" takes a number.');
     });
 
-    it("should skip a webhook deleted while the run is going", async () => {
+    it("should fail an update of a webhook deleted while the run is going", async () => {
       const [webhook] = preconditions.hasWebhooks({});
       server.use(
         http.patch(`${BASE}/:id`, () => HttpResponse.json({ error: "Not found" }, { status: 404 })),
       );
 
       await run("update", String(webhook.id), "--space", SPACE, "--set", "activated=false");
+
+      expect(stdoutLines()).toEqual([]);
+      expect(stderrErrors()).toEqual([expect.objectContaining({ status: 404, id: webhook.id })]);
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("should skip a delete of a webhook deleted while the run is going", async () => {
+      const [webhook] = preconditions.hasWebhooks({});
+      server.use(
+        http.delete(`${BASE}/:id`, () =>
+          HttpResponse.json({ error: "Not found" }, { status: 404 }),
+        ),
+      );
+
+      await run("delete", String(webhook.id), "--space", SPACE, "--yes");
 
       expect(stdoutLines()).toEqual([
         expect.objectContaining({ action: "skip", _reason: "not_found", id: webhook.id }),

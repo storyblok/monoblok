@@ -1,71 +1,54 @@
-import type { WebhookCreate, WebhookUpdate } from "@storyblok/management-api-client";
+import type { Webhook, WebhookCreate, WebhookUpdate } from "@storyblok/management-api-client";
 import { getMapiClient } from "../../api";
 import { webhookFields } from "../../generated/mapi/resource-fields.gen";
 import { CrudError } from "../../lib/crud/errors";
 import type { Payload } from "../../lib/crud/fields";
-import type { CrudResource } from "../../lib/crud/types";
+import { hasRequiredFields, toRequestBody } from "../../lib/crud/request";
+import type { FieldGuards } from "../../lib/crud/request";
+import type { CrudResource, Noun } from "../../lib/crud/types";
+
+const NOUN: Noun = { singular: "webhook", plural: "webhooks" };
 
 const isString = (value: unknown): value is string => typeof value === "string";
+const isNullableString = (value: unknown): value is string | null =>
+  value === null || isString(value);
+const isBoolean = (value: unknown): value is boolean => typeof value === "boolean";
+const isStringList = (value: unknown): value is string[] =>
+  Array.isArray(value) && value.every(isString);
 
-/**
- * Narrows a payload the shared code has already checked against the field
- * descriptor to the request type. Only fields present in the payload are set:
- * an absent field is left as the API has it.
- */
-function toWebhookUpdate(payload: Payload): WebhookUpdate {
-  const body: WebhookUpdate = {};
-  if (isString(payload.name)) {
-    body.name = payload.name;
-  }
-  if (isString(payload.endpoint)) {
-    body.endpoint = payload.endpoint;
-  }
-  if (isString(payload.description) || payload.description === null) {
-    body.description = payload.description;
-  }
-  if (isString(payload.secret) || payload.secret === null) {
-    body.secret = payload.secret;
-  }
-  if (typeof payload.activated === "boolean") {
-    body.activated = payload.activated;
-  }
-  if (Array.isArray(payload.actions)) {
-    body.actions = payload.actions.filter(isString);
-  }
-  // A field the generated list gained, but this function does not copy yet,
-  // would otherwise be dropped while the run reports success.
-  const dropped = Object.keys(payload).filter((field) => !Object.hasOwn(body, field));
-  if (dropped.length > 0) {
-    throw new CrudError(`The CLI cannot write these webhook fields yet: ${dropped.join(", ")}.`);
+const WEBHOOK_FIELDS: FieldGuards<WebhookUpdate> = {
+  name: isString,
+  description: isNullableString,
+  endpoint: isString,
+  secret: isNullableString,
+  activated: isBoolean,
+  actions: isStringList,
+};
+
+const toWebhookUpdate = (payload: Payload): WebhookUpdate =>
+  toRequestBody(WEBHOOK_FIELDS, payload, NOUN);
+
+function toWebhookCreate(payload: Payload): WebhookCreate {
+  const body = toWebhookUpdate(payload);
+  if (!hasRequiredFields(webhookFields, body)) {
+    throw new CrudError("The webhook lacks a required field.");
   }
   return body;
 }
 
-function toWebhookCreate(payload: Payload): WebhookCreate {
-  const body = toWebhookUpdate(payload);
-  const { name, endpoint, actions } = body;
-  if (name === undefined || endpoint === undefined || actions === undefined) {
-    throw new CrudError("Missing required fields: name, endpoint, actions.");
-  }
-  return { ...body, name, endpoint, actions };
-}
-
-export const webhooksResource: CrudResource = {
-  noun: { singular: "webhook", plural: "webhooks" },
+export const webhooksResource: CrudResource<Webhook> = {
+  noun: NOUN,
   fields: webhookFields,
   secretFields: ["secret"],
   nameField: "name",
   columns: [
     { header: "ID", value: (webhook) => String(webhook.id) },
-    { header: "Name", value: (webhook) => String(webhook.name) },
-    { header: "Endpoint", value: (webhook) => String(webhook.endpoint), flexible: true },
-    {
-      header: "Actions",
-      value: (webhook) => (Array.isArray(webhook.actions) ? webhook.actions.join(", ") : ""),
-    },
+    { header: "Name", value: (webhook) => webhook.name },
+    { header: "Endpoint", value: (webhook) => webhook.endpoint, flexible: true },
+    { header: "Actions", value: (webhook) => webhook.actions.join(", ") },
     { header: "Activated", value: (webhook) => (webhook.activated ? "yes" : "no") },
   ],
-  connect: (spaceId) => {
+  connect: ({ spaceId }) => {
     const client = getMapiClient();
     const path = { space_id: spaceId };
     return {

@@ -1,4 +1,4 @@
-import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiPlugin } from "@storyblok/js";
 import type { SbReactSDKOptions } from "../types";
 
@@ -64,6 +64,34 @@ describe("storyblokInit", () => {
     expect(init.getComponent("testComponent")).toBe(updatedComponent);
     expect(init.getEnableFallbackComponent()).toBe(false);
     expect(init.getCustomFallbackComponent()).toBe(updatedFallback);
+  });
+});
+
+describe("storyblokInit preview access token", () => {
+  let state: typeof import("../core/state");
+
+  beforeEach(async () => {
+    state = await import("../core/state");
+    state.setPreviewAccessToken(null);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    state.setPreviewAccessToken(null);
+  });
+
+  it.each([
+    ["accessToken", { accessToken: "server-token" }],
+    ["apiOptions.accessToken", { apiOptions: { accessToken: "server-token" } }],
+  ])("stores %s on the server for the live edit action", (_label, options) => {
+    vi.stubGlobal("window", undefined);
+    init.storyblokInit(options);
+    expect(state.getPreviewAccessTokenCandidates()).toEqual(["server-token"]);
+  });
+
+  it("does not store the token in the browser", () => {
+    init.storyblokInit({ accessToken: "browser-token" });
+    expect(state.getPreviewAccessToken()).toBeNull();
   });
 });
 

@@ -7,8 +7,28 @@ import {
   type StoryblokBridgeConfigV2,
 } from "@storyblok/js";
 import { startTransition, useEffect } from "react";
-import { getStoryCacheKey } from "../core/story-cache";
+import { readEditorTokenFromLocation } from "../core/editor-token";
 import { isBridgeLoaded, isVisualEditor } from "../utils";
+import type { LiveEditRejectionReason } from "./live-edit-update-action";
+
+type LiveEditWarning = LiveEditRejectionReason | "missing" | "restricted-release";
+
+const CLIENT_MESSAGES: Record<LiveEditWarning, string> = {
+  missing:
+    "missing Visual Editor token (_storyblok_tk) in the URL, live updates are disabled. Open the story from the Storyblok Visual Editor.",
+  "restricted-release":
+    "live updates aren't supported when previewing a release with restricted access. Save the story to see your changes.",
+  "invalid-request": "the server rejected the live update as invalid.",
+  "no-server-token":
+    "the server has no preview access token configured, live updates are disabled. See the server log for details.",
+  malformed: "the server rejected the Visual Editor token, live updates are disabled.",
+  expired:
+    "the Visual Editor token has expired, live updates are disabled. Reload the story in the Visual Editor.",
+  mismatch:
+    "the server rejected the Visual Editor token. Make sure the server uses your space's first preview access token.",
+  "crypto-unavailable":
+    "the server can't verify the Visual Editor token (Web Crypto unavailable), live updates are disabled.",
+};
 
 const StoryblokLiveEditing = ({
   story = null,
@@ -29,6 +49,16 @@ const StoryblokLiveEditing = ({
       return;
     }
 
+    // Warn once per reason and mount, instead of on every keystroke.
+    const warned = new Set<LiveEditWarning>();
+    const warnOnce = (reason: LiveEditWarning) => {
+      if (warned.has(reason)) {
+        return;
+      }
+      warned.add(reason);
+      console.warn(`StoryblokLiveEditing: ${CLIENT_MESSAGES[reason]}`);
+    };
+
     (async () => {
       // In RSC environments, Storyblok components are server-side rendered,
       // so the bridge script is never automatically loaded on the client.
@@ -42,22 +72,34 @@ const StoryblokLiveEditing = ({
           return;
         }
 
+        const tokenResult = readEditorTokenFromLocation();
+        if (tokenResult.status !== "ok") {
+          warnOnce(tokenResult.status);
+          return;
+        }
+
         try {
           const { liveEditUpdateAction } = await import("./live-edit-update-action");
 
           startTransition(() => {
-            liveEditUpdateAction({
-              story: incoming,
-              pathToRevalidate: window.location.pathname,
-            });
+            void Promise.resolve(
+              liveEditUpdateAction({
+                story: incoming,
+                pathToRevalidate: window.location.pathname,
+                editorToken: tokenResult.editorToken,
+              }),
+            )
+              .then((result) => {
+                if (result && "reason" in result) {
+                  warnOnce(result.reason);
+                }
+              })
+              .catch((error: unknown) => {
+                console.warn("StoryblokLiveEditing: live update request failed:", error);
+              });
           });
         } catch (error) {
-          // Fallback: just cache the story if server action is not available
-          console.warn("Server action not available, caching story locally:", error);
-          const fallbackKey = getStoryCacheKey(incoming);
-          if (fallbackKey) {
-            globalThis.storyCache?.set(fallbackKey, incoming);
-          }
+          console.warn("StoryblokLiveEditing: server action not available:", error);
         }
       };
 

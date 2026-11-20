@@ -381,6 +381,26 @@ performance benefits of Server Components.
 
 > For live editing with RSC, always import `@storyblok/react/rsc`.
 
+> [!IMPORTANT] `StoryblokStory` sends live editing updates to a server action. The server action
+> only accepts requests signed by the Visual Editor (the `_storyblok_tk[...]` query parameters on
+> the preview URL), and verifies the signature with your space's preview access token. Provide that
+> token on the server:
+>
+> - Set the `STORYBLOK_PREVIEW_TOKEN` environment variable. This works for every rendering mode,
+>   including statically rendered pages and freshly started server instances.
+> - Or pass it to a server-side `storyblokInit({ accessToken })` call. The server action only sees
+>   this token after that module has run in the same server process, so statically rendered pages in
+>   production need the environment variable.
+>
+> The Visual Editor signs requests with the space's **first** preview access token, so use that
+> token. Keep it server-only: don't prefix it with `NEXT_PUBLIC_`, add it to the `env` option of
+> `next.config`, or import it into a `"use client"` module. Anyone who can read the token can sign
+> live editing requests.
+>
+> When the server rejects an update, the preview keeps showing the saved content and the browser
+> console logs the reason. Live editing isn't available when previewing a release with restricted
+> access.
+
 ### Live Editing Bridge Loading
 
 **When is bridge loading automatic?**

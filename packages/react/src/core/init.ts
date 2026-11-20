@@ -10,6 +10,7 @@ import {
   setComponents,
   setCustomFallbackComponent,
   setEnableFallbackComponent,
+  setPreviewAccessToken,
   setStoryblokApiInstance,
 } from "./state";
 import { useStoryblokApi } from "./use-storyblok-api";
@@ -25,6 +26,12 @@ export const storyblokInit = (pluginOptions: SbReactSDKOptions = {}): (() => Sto
   }
   if (pluginOptions.customFallbackComponent) {
     setCustomFallbackComponent(pluginOptions.customFallbackComponent);
+  }
+
+  // Only remember the token on the server, where the live edit action verifies requests.
+  const accessToken = pluginOptions.accessToken || pluginOptions.apiOptions?.accessToken;
+  if (accessToken && typeof window === "undefined") {
+    setPreviewAccessToken(accessToken);
   }
 
   const existingInstance = getStoryblokApiInstance();

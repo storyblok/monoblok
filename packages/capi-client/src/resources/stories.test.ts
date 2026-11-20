@@ -1647,7 +1647,7 @@ describe("cv pinning while the cv is unknown", () => {
   });
 });
 
-describe("circularReferences", () => {
+describe("circularRelations", () => {
   const relatedPage = (uuid: string, related?: string) =>
     makeStory(uuid, { _uid: `${uuid}-content`, component: "page", related });
 
@@ -1694,7 +1694,7 @@ describe("circularReferences", () => {
     expect(warn).toHaveBeenCalledOnce();
     expect(warn.mock.calls[0]?.[0]).toMatch(/^\[storyblok\/api-client\] .*circular/);
     expect(warn.mock.calls[0]?.[0]).toContain("JSON.stringify");
-    expect(warn.mock.calls[0]?.[0]).toContain("circularReferences");
+    expect(warn.mock.calls[0]?.[0]).toContain("circularRelations");
     expect(warn.mock.calls[0]?.[0]).toContain("1.0");
   });
 
@@ -1717,7 +1717,7 @@ describe("circularReferences", () => {
     const client = freshCreateApiClient({
       accessToken: "test-token",
       inlineRelations: true,
-      circularReferences: true,
+      circularRelations: true,
     });
 
     const result = await client.stories.get("a", { query: resolveRelatedQuery });
@@ -1732,7 +1732,7 @@ describe("circularReferences", () => {
     const client = createApiClient({
       accessToken: "test-token",
       inlineRelations: true,
-      circularReferences: false,
+      circularRelations: false,
     });
 
     const result = await client.stories.get("a", { query: resolveRelatedQuery });
@@ -1769,7 +1769,7 @@ describe("circularReferences", () => {
       const client = freshCreateApiClient({
         accessToken: "test-token",
         inlineRelations: true,
-        circularReferences: false,
+        circularRelations: false,
       });
 
       const result = await client.stories.get("a", { query: resolveRelatedQuery });
@@ -1794,7 +1794,7 @@ describe("circularReferences", () => {
     const client = createApiClient({
       accessToken: "test-token",
       inlineRelations: true,
-      circularReferences: false,
+      circularRelations: false,
     });
 
     const result = await client.stories.list({ query: resolveRelatedQuery });
@@ -1835,7 +1835,7 @@ describe("circularReferences", () => {
     const acyclicClient = createApiClient({
       accessToken: "shared-cache-token",
       inlineRelations: true,
-      circularReferences: false,
+      circularRelations: false,
       cache: { provider: sharedProvider },
     });
 

@@ -36,14 +36,14 @@ const decodeIfEncoded = (value: string): string => {
 };
 
 /**
- * Levels of related stories below a requested story that `circularReferences: false`
+ * Levels of related stories below a requested story that `circularRelations: false`
  * inlines, matching `storyblok-js-client`: relations of the deepest level stay UUIDs.
  */
 const MAX_ACYCLIC_RELATION_DEPTH = 2;
 
 export interface InlineRelationsOptions {
-  /** The client's `circularReferences` option; `undefined` is the deprecated default. */
-  circularReferences: boolean | undefined;
+  /** The client's `circularRelations` option; `undefined` is the deprecated default. */
+  circularRelations: boolean | undefined;
 }
 
 interface InlineContext<TStory> {
@@ -66,20 +66,21 @@ const warnAboutCircularDefault = () => {
   hasWarnedAboutCircularDefault = true;
   console.warn(
     "[storyblok/api-client] Inlined relations produced a circular result, so `JSON.stringify` throws on it. " +
-      "Set the `circularReferences` client option to silence this warning: `false` returns a non-circular " +
-      "result with relations inlined two levels deep, `true` keeps the circular result. " +
-      "`circularReferences: false` becomes the default in 1.0.",
+      "In 1.0, the `circularRelations` client option is removed and relations always behave like " +
+      "`circularRelations: false`: inlined two levels deep and never circular. " +
+      "Set `circularRelations: false` to switch now, or `true` to keep circular results until 1.0. " +
+      "Setting either value silences this warning.",
   );
 };
 
 const createInlineContext = <TStory>(
   relationPaths: RelationPath[],
   relationMap: ReadonlyMap<string, TStory>,
-  { circularReferences }: InlineRelationsOptions,
+  { circularRelations }: InlineRelationsOptions,
 ): InlineContext<TStory> => ({
   relationPaths: new Set(relationPaths),
   relationMap,
-  allowCircular: circularReferences !== false,
+  allowCircular: circularRelations !== false,
   copies: new Map(),
   copiesInProgress: new Set(),
   isCircular: false,
@@ -87,9 +88,9 @@ const createInlineContext = <TStory>(
 
 const reportCircularDefault = (
   context: InlineContext<unknown>,
-  { circularReferences }: InlineRelationsOptions,
+  { circularRelations }: InlineRelationsOptions,
 ) => {
-  if (context.isCircular && circularReferences === undefined) {
+  if (context.isCircular && circularRelations === undefined) {
     warnAboutCircularDefault();
   }
 };

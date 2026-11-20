@@ -239,9 +239,10 @@ export interface ContentApiClientConfig<
    *   never circular.
    *
    * Leaving it unset behaves like `true` and logs a warning the first time a result is
-   * circular. That default is deprecated: in 1.0, it changes to `false`.
+   * circular. That default is deprecated. The option is removed in 1.0; relations then
+   * always behave like `false`.
    */
-  circularReferences?: boolean;
+  circularRelations?: boolean;
   retry?: RetryOptions;
   /**
    * Request timeout in milliseconds.
@@ -359,7 +360,7 @@ export const createApiClientBase = <
     throwOnError = false,
     cache = {},
     inlineRelations = false,
-    circularReferences,
+    circularRelations,
     retry,
     timeout = 30_000,
     rateLimit,
@@ -823,7 +824,7 @@ export const createApiClientBase = <
   > = createStoriesResource<Component, Record<never, never>, InlineRelations, ThrowOnError>({
     ...resourceDeps,
     inlineRelations,
-    circularReferences,
+    circularRelations,
   });
 
   return {

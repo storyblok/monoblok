@@ -280,7 +280,7 @@ type InlinedBlockContent<
  * runtime can match them (`_table_col.value`), but they keep their string type.
  * `TFieldPlugins` types `custom` fields, as in {@link Story}.
  *
- * With `circularReferences: false`, related stories are inlined two levels deep and
+ * With `circularRelations: false`, related stories are inlined two levels deep and
  * relations below that stay UUID strings, so the result is never circular. Otherwise,
  * related stories that reference each other resolve to the same object, so the result
  * can be circular and `JSON.stringify` throws on it.
@@ -368,12 +368,12 @@ export interface StoriesResourceDeps<
   DefaultThrowOnError extends boolean = false,
 > extends ResourceDeps<DefaultThrowOnError> {
   inlineRelations: boolean;
-  circularReferences: boolean | undefined;
+  circularRelations: boolean | undefined;
 }
 
 /** Acyclic results must not be served to clients that expect circular ones, or vice versa. */
-const getInlineCacheKeyPrefix = (circularReferences: boolean | undefined) =>
-  circularReferences === false ? "inline-acyclic" : "inline";
+const getInlineCacheKeyPrefix = (circularRelations: boolean | undefined) =>
+  circularRelations === false ? "inline-acyclic" : "inline";
 
 export function createStoriesResource<
   TComponents extends Component = Component,
@@ -386,11 +386,11 @@ export function createStoriesResource<
     requestWithCache,
     asApiResponse,
     inlineRelations,
-    circularReferences,
+    circularRelations,
     throttleManager,
   } = deps;
   const requestOptions = inlineRelations
-    ? { cacheKeyPrefix: getInlineCacheKeyPrefix(circularReferences) }
+    ? { cacheKeyPrefix: getInlineCacheKeyPrefix(circularRelations) }
     : undefined;
 
   return {
@@ -475,7 +475,7 @@ export function createStoriesResource<
                 storyData.story,
                 resolved.relationPaths,
                 resolved.relationMap,
-                { circularReferences },
+                { circularRelations },
               ),
             },
           };
@@ -559,7 +559,7 @@ export function createStoriesResource<
                 storiesData.stories,
                 resolved.relationPaths,
                 resolved.relationMap,
-                { circularReferences },
+                { circularRelations },
               ),
             },
           };

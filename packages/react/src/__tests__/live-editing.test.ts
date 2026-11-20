@@ -24,6 +24,13 @@ vi.mock("../utils", () => ({
   isBridgeLoaded: vi.fn(() => false),
 }));
 
+const EDITOR_TOKEN = {
+  spaceId: "12345",
+  timestamp: "1700000000",
+  token: "0123456789abcdef0123456789abcdef01234567",
+};
+const EDITOR_SEARCH = `?_storyblok=10&_storyblok_tk[space_id]=${EDITOR_TOKEN.spaceId}&_storyblok_tk[timestamp]=${EDITOR_TOKEN.timestamp}&_storyblok_tk[token]=${EDITOR_TOKEN.token}`;
+
 describe("storyblokLiveEditing", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -34,7 +41,7 @@ describe("storyblokLiveEditing", () => {
     vi.stubGlobal("window", {
       storyblokRegisterEvent: undefined,
       location: {
-        search: "",
+        search: EDITOR_SEARCH,
         pathname: "/",
       },
       self: {},
@@ -136,8 +143,35 @@ describe("storyblokLiveEditing", () => {
       expect.objectContaining({
         story: expect.objectContaining({ uuid: "uuid-10" }),
         pathToRevalidate: "/",
+        editorToken: EDITOR_TOKEN,
       }),
     );
+  });
+
+  it("should not call liveEditUpdateAction without a Visual Editor token", async () => {
+    vi.mocked(isVisualEditor).mockReturnValue(true);
+    vi.mocked(isBridgeLoaded).mockReturnValue(true);
+    window.location.search = "?_storyblok=10";
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    let captured: ((story: ISbStoryData) => void) | null = null;
+    vi.mocked(registerStoryblokBridge).mockImplementation((_id, cb) => {
+      captured = cb as (story: ISbStoryData) => void;
+    });
+
+    render(
+      React.createElement(StoryblokLiveEditing, {
+        story: { id: 10, uuid: "uuid-10" } as ISbStoryData,
+        bridgeOptions: {},
+      }),
+    );
+
+    await vi.waitFor(() => expect(captured).not.toBeNull());
+    await captured!({ id: 10, content: { _uid: "x" } } as ISbStoryData);
+
+    expect(warnSpy).toHaveBeenCalled();
+    expect(liveEditUpdateAction).not.toHaveBeenCalled();
+    warnSpy.mockRestore();
   });
 
   it("should call liveEditUpdateAction with the same payload shape for Visual History events", async () => {
@@ -166,6 +200,7 @@ describe("storyblokLiveEditing", () => {
       expect.objectContaining({
         story: expect.objectContaining({ id: 42 }),
         pathToRevalidate: "/",
+        editorToken: EDITOR_TOKEN,
       }),
     );
   });

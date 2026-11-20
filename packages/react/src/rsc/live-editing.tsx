@@ -7,7 +7,7 @@ import {
   type StoryblokBridgeConfigV2,
 } from "@storyblok/js";
 import { startTransition, useEffect } from "react";
-import { getStoryCacheKey } from "../core/story-cache";
+import { readEditorTokenFromLocation } from "../core/editor-token";
 import { isBridgeLoaded, isVisualEditor } from "../utils";
 
 const StoryblokLiveEditing = ({
@@ -42,6 +42,14 @@ const StoryblokLiveEditing = ({
           return;
         }
 
+        const editorToken = readEditorTokenFromLocation();
+        if (!editorToken) {
+          console.warn(
+            "StoryblokLiveEditing: missing Visual Editor token (_storyblok_tk) in the URL, live updates are disabled.",
+          );
+          return;
+        }
+
         try {
           const { liveEditUpdateAction } = await import("./live-edit-update-action");
 
@@ -49,15 +57,11 @@ const StoryblokLiveEditing = ({
             liveEditUpdateAction({
               story: incoming,
               pathToRevalidate: window.location.pathname,
+              editorToken,
             });
           });
         } catch (error) {
-          // Fallback: just cache the story if server action is not available
-          console.warn("Server action not available, caching story locally:", error);
-          const fallbackKey = getStoryCacheKey(incoming);
-          if (fallbackKey) {
-            globalThis.storyCache?.set(fallbackKey, incoming);
-          }
+          console.warn("StoryblokLiveEditing: server action not available:", error);
         }
       };
 

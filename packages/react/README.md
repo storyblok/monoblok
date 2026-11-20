@@ -381,6 +381,12 @@ performance benefits of Server Components.
 
 > For live editing with RSC, always import `@storyblok/react/rsc`.
 
+> [!IMPORTANT] Live editing updates are sent to a server action, which only accepts requests signed
+> by the Storyblok Visual Editor (the `_storyblok_tk[...]` query parameters on the preview URL). The
+> server verifies that signature with the access token passed to `storyblokInit`, so the server-side
+> `storyblokInit` call must use your space's **preview** access token. Without it, live updates are
+> rejected and only the saved content is shown.
+
 ### Live Editing Bridge Loading
 
 **When is bridge loading automatic?**

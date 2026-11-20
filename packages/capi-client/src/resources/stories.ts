@@ -323,8 +323,7 @@ type InlinedBlockContent<
  * field at any depth becomes `string | story`. Table cells are the exception: the
  * runtime can match them (`_table_col.value`), but they keep their string type.
  * `TFieldPlugins` types `custom` fields, as in {@link Story}. With `inlineLinks: true`
- * too, pass the fetch's `resolve_links` value as `TResolveLinks` to type the inlined
- * links (see {@link WithInlinedLinks}).
+ * too, use {@link WithInlinedContent}.
  *
  * Related stories that reference each other resolve to the same object, so the
  * result can be circular and `JSON.stringify` throws on it.
@@ -340,13 +339,50 @@ export type WithInlinedRelations<
   TResolveRelations extends string,
   TBlocks extends Component,
   TFieldPlugins = Record<never, never>,
-  TResolveLinks extends ResolveLinks = never,
+> = InlinedBlockContent<TBlock, TBlocks, ParseRelationPaths<TResolveRelations>, TFieldPlugins>;
+
+/** What {@link WithInlinedContent} inlines: the fetch's query values and field plugins. */
+export interface InlinedContentOptions {
+  /** The `resolve_relations` value, with `inlineRelations: true`. */
+  relations?: string;
+  /** The `resolve_links` value, with `inlineLinks: true`. */
+  links?: ResolveLinks;
+  /** Types `custom` fields, as in {@link Story}. */
+  fieldPlugins?: unknown;
+}
+
+type FieldPluginsOf<TOptions extends InlinedContentOptions> = TOptions extends {
+  fieldPlugins: infer TFieldPlugins;
+}
+  ? TFieldPlugins
+  : Record<never, never>;
+
+/**
+ * Types a block's content as returned by a client created with `inlineRelations: true`,
+ * `inlineLinks: true`, or both, combining {@link WithInlinedRelations} and
+ * {@link WithInlinedLinks}. Pass the fetch's values in `TOptions`.
+ *
+ * @example
+ * type Props = {
+ *   block: WithInlinedContent<typeof page, Blocks, { relations: "page.author"; links: "story" }>;
+ * };
+ */
+export type WithInlinedContent<
+  TBlock extends Component,
+  TBlocks extends Component,
+  TOptions extends InlinedContentOptions,
 > = InlinedBlockContent<
   TBlock,
   TBlocks,
-  ParseRelationPaths<TResolveRelations>,
-  TFieldPlugins,
-  ResolvedLink<TResolveLinks, TBlocks, TFieldPlugins>
+  TOptions extends { relations: infer TRelations extends string }
+    ? ParseRelationPaths<TRelations>
+    : never,
+  FieldPluginsOf<TOptions>,
+  ResolvedLink<
+    TOptions extends { links: infer TLinks extends ResolveLinks } ? TLinks : never,
+    TBlocks,
+    FieldPluginsOf<TOptions>
+  >
 >;
 
 /**
@@ -357,7 +393,7 @@ export type WithInlinedRelations<
  *
  * `TBlock` is the block definition and `TBlocks` the union of all blocks in the space;
  * linked stories are typed from its root blocks. `TResolveLinks` is the `resolve_links`
- * value of the fetch. With `inlineRelations` too, use {@link WithInlinedRelations}.
+ * value of the fetch. With `inlineRelations` too, use {@link WithInlinedContent}.
  *
  * @example
  * type Props = {

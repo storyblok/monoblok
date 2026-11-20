@@ -55,8 +55,10 @@ export type { Story } from "./generated/types/story";
 // Resource types
 export type {
   ExcludableStoryField,
+  InlinedContentOptions,
   StoryWithInlinedLinks,
   StoryWithInlinedRelations,
+  WithInlinedContent,
   WithInlinedLinks,
   WithInlinedRelations,
 } from "./resources/stories";

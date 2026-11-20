@@ -14,6 +14,7 @@ import {
   type ContentApiClientConfig,
   createApiClient,
   type Story,
+  type WithInlinedContent,
   type WithInlinedLinks,
   type WithInlinedRelations,
 } from "@storyblok/api-client";
@@ -1035,6 +1036,36 @@ describe("resolve_links typing with inlineLinks", () => {
       const story = result.data.story;
       expectTypeOf<Story>().toExtend<typeof story>();
     }
+  });
+
+  it("should match WithInlinedContent with block content fetched with both options", async () => {
+    const result = await createApiClient({
+      accessToken: "test-token",
+      inlineRelations: true,
+      inlineLinks: true,
+    })
+      .withTypes<LinkTypes>()
+      .stories.get("page", {
+        query: { resolve_relations: "page.featured", resolve_links: "story" },
+      });
+    if (result.data?.story.content.component === "page") {
+      const block = result.data.story.content.teasers[0];
+      if (block) {
+        expectTypeOf(block).toEqualTypeOf<
+          WithInlinedContent<
+            typeof _teaserBlock,
+            Blocks,
+            { relations: "page.featured"; links: "story" }
+          >
+        >();
+      }
+    }
+  });
+
+  it("should match WithInlinedContent with WithInlinedRelations for relations only", () => {
+    expectTypeOf<
+      WithInlinedContent<typeof _pageBlock, Blocks, { relations: "page.featured" }>
+    >().toEqualTypeOf<WithInlinedRelations<typeof _pageBlock, "page.featured", Blocks>>();
   });
 
   it("should match WithInlinedLinks with the fetched block content", async () => {

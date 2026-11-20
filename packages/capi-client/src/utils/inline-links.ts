@@ -2,32 +2,34 @@ import type { Client } from "../generated/capi/client";
 import type {
   LinkWithFullSlug,
   ListStoriesData,
+  ListStoriesResponses,
   ResolvedLinkUrl,
 } from "../generated/capi/types.gen";
 import type { MultilinkFieldValue, RichTextFieldValue } from "../generated/types/field";
 import type { Prettify } from "../generated/types/_utils";
 import type { Story } from "../generated/types/story";
-import { fetchMissingRelations } from "./fetch-rel-uuids";
+import { fetchStoriesByUuids } from "./fetch-stories-by-uuids";
+import { isRecord } from "./is-record";
 import type { ThrottleManager } from "./rate-limit";
 
-/** The values of the `resolve_links` query parameter. */
 export type ResolveLinks = NonNullable<NonNullable<ListStoriesData["query"]>["resolve_links"]>;
 
 /**
  * A resolved link, as set on `story` of the links pointing to it. `resolve_links: "story"`
- * resolves to the full story, `"url"` and `"link"` to a reduced object. Links beyond the
- * API's resolve limit are fetched as full stories in every mode, so `"url"` and `"link"`
- * can also hold a story.
+ * resolves to the full story, `"url"` and `"link"` to a reduced object. In `"link"` mode, links
+ * beyond the API's resolve limit are fetched as full stories.
  *
  * `TStory` is the story type, e.g. `Story<Blocks>` for schema-typed content.
  */
-export type InlinedLink<TResolveLinks extends string = ResolveLinks, TStory = Story> =
-  | TStory
-  | (string extends TResolveLinks
-      ? ResolvedLinkUrl | LinkWithFullSlug
-      :
-          | (TResolveLinks extends "url" ? ResolvedLinkUrl : never)
-          | (TResolveLinks extends "link" ? LinkWithFullSlug : never));
+export type InlinedLink<
+  TResolveLinks extends string = ResolveLinks,
+  TStory = Story,
+> = string extends TResolveLinks
+  ? TStory | ResolvedLinkUrl | LinkWithFullSlug
+  :
+      | (TResolveLinks extends "story" ? TStory : never)
+      | (TResolveLinks extends "url" ? ResolvedLinkUrl : never)
+      | (TResolveLinks extends "link" ? LinkWithFullSlug | TStory : never);
 
 type WithoutIndexSignature<T> = {
   [K in keyof T as string extends K ? never : number extends K ? never : K]: T[K];
@@ -71,8 +73,8 @@ type InlinedNodeMarks<TNode, TLink> = TNode extends { marks?: infer TMarks }
   : TNode;
 
 /**
- * A richtext document whose story link marks carry the resolved link as `attrs.story`.
- * Embedded blok bodies are left as they are, so they can be typed separately.
+ * A rich text document whose story link marks carry the resolved link as `attrs.story`.
+ * Embedded block bodies are left as they are, so they can be typed separately.
  */
 export type InlinedLinkRichText<TDoc = RichTextFieldValue, TLink = InlinedLink> = [TLink] extends [
   never,
@@ -82,68 +84,72 @@ export type InlinedLinkRichText<TDoc = RichTextFieldValue, TLink = InlinedLink> 
     ? Omit<TDoc, "content"> & { content: InlinedLinkNode<TNode, TLink>[] }
     : TDoc;
 
+/** An entry of a response's `links`. */
+type ResponseLink = NonNullable<ListStoriesResponses[200]["links"]>[number];
+
 export interface StoryLinkData {
-  links?: InlinedLink[];
+  links?: ResponseLink[];
   link_uuids?: string[];
 }
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
+/** Whether `node` is a multilink value or rich text link mark `attrs` that links a story. */
+export const isStoryLink = (node: Record<string, unknown>): boolean => node.linktype === "story";
 
 /**
  * Returns the UUID of the story a link points to: a multilink field stores it in `id`,
- * a richtext link mark's `attrs` in `uuid`.
+ * a rich text link mark's `attrs` in `uuid`.
  */
 const getLinkedStoryUuid = (node: Record<string, unknown>): unknown =>
   node.fieldtype === "multilink" ? node.id : node.uuid;
 
-export interface InlineLinksOptions {
-  /**
-   * Whether a link back to a linked story that is still being inlined gets that story
-   * as `story`, making the result circular. Otherwise it gets no `story`.
-   * @default false
-   */
-  circularReferences?: boolean;
-}
+const MAX_RESOLVE_LINKS_LEVEL = 2;
 
 /**
- * Creates a function that returns a copy of a story whose story links (multilink fields
- * and richtext link marks) carry their entry of `linkMap` as `story`, at any depth and
- * inside linked stories. Each linked story is copied once and shared by every link to
- * it.
+ * How many levels of links to inline: the requested stories' links, and with
+ * `resolve_links_level: 2` also the links of the linked stories, like the API resolves them.
  */
-export const createLinkInliner = (
-  linkMap: ReadonlyMap<string, InlinedLink>,
-  { circularReferences = false }: InlineLinksOptions = {},
-) => {
-  const inlinedLinks = new Map<string, InlinedLink>();
-  const linksInProgress = new Set<string>();
+const getLinkDepth = (requestQuery: Record<string, unknown>): number =>
+  Number(requestQuery.resolve_links_level) === MAX_RESOLVE_LINKS_LEVEL
+    ? MAX_RESOLVE_LINKS_LEVEL
+    : 1;
 
-  const inlineLink = (uuid: string): InlinedLink | undefined => {
-    const inlinedLink = inlinedLinks.get(uuid);
-    if (inlinedLink && (circularReferences || !linksInProgress.has(uuid))) {
-      return inlinedLink;
+/**
+ * Creates a function that sets `story` on each story link (multilink fields and rich text link
+ * marks) in a story's content to its entry of `linkMap`, `depth` levels deep. Each linked story
+ * is copied once per level and shared by the links to it. A level only links to the next one,
+ * so the result is never circular.
+ */
+export const createLinkInliner = (linkMap: ReadonlyMap<string, ResponseLink>, depth: number) => {
+  const copiesByLevel = Array.from({ length: depth }, () => new Map<string, ResponseLink>());
+
+  const inlineLink = (uuid: string, level: number): ResponseLink | undefined => {
+    const copies = copiesByLevel[level];
+    const existingCopy = copies?.get(uuid);
+    if (!copies || existingCopy) {
+      return existingCopy;
     }
 
     const link = linkMap.get(uuid);
-    if (!link || linksInProgress.has(uuid)) {
+    if (!link) {
       return undefined;
     }
 
-    const clonedLink = structuredClone(link);
-    inlinedLinks.set(uuid, clonedLink);
-    linksInProgress.add(uuid);
-    if ("content" in clonedLink) {
-      inlineValue(clonedLink.content);
+    const copy = structuredClone(link);
+    copies.set(uuid, copy);
+    if ("content" in copy) {
+      inlineValue(copy.content, level + 1);
     }
-    linksInProgress.delete(uuid);
-    return clonedLink;
+    return copy;
   };
 
-  const inlineValue = (value: unknown): void => {
+  const inlineValue = (value: unknown, level: number): void => {
+    if (level >= depth) {
+      return;
+    }
+
     if (Array.isArray(value)) {
       for (const item of value) {
-        inlineValue(item);
+        inlineValue(item, level);
       }
       return;
     }
@@ -153,29 +159,54 @@ export const createLinkInliner = (
     }
 
     for (const child of Object.values(value)) {
-      inlineValue(child);
+      inlineValue(child, level);
     }
 
-    if (value.linktype === "story") {
+    if (isStoryLink(value)) {
       const uuid = getLinkedStoryUuid(value);
-      const link = typeof uuid === "string" ? inlineLink(uuid) : undefined;
+      const link = typeof uuid === "string" ? inlineLink(uuid, level) : undefined;
       if (link) {
         value.story = link;
       }
     }
   };
 
+  /** Mutates `story`. */
   return <TStory extends { content: unknown }>(story: TStory): TStory => {
-    const clonedStory = structuredClone(story);
-    inlineValue(clonedStory.content);
-    return clonedStory;
+    inlineValue(story.content, 0);
+    return story;
   };
 };
+
+/** Reduces a story to the entry `resolve_links: "url"` returns for it. */
+const toResolvedLinkUrl = (story: Story): ResolvedLinkUrl => ({
+  id: story.id,
+  uuid: story.uuid,
+  name: story.name,
+  slug: story.slug,
+  full_slug: story.full_slug,
+  url: story.path || story.full_slug,
+});
 
 interface ResolveLinkMapOptions {
   client: Client;
   throttleManager: ThrottleManager;
+  signal?: AbortSignal;
 }
+
+export interface ResolvedLinks {
+  linkMap: Map<string, ResponseLink>;
+  depth: number;
+}
+
+/** Adds `links` that aren't in `linkMap` yet. */
+export const addLinks = (linkMap: Map<string, ResponseLink>, links: readonly ResponseLink[]) => {
+  for (const link of links) {
+    if (!linkMap.has(link.uuid)) {
+      linkMap.set(link.uuid, link);
+    }
+  }
+};
 
 /**
  * Builds a map of resolved links from the response's `links`, fetching the stories
@@ -187,29 +218,33 @@ interface ResolveLinkMapOptions {
 export const resolveLinkMap = async (
   responseData: StoryLinkData,
   requestQuery: Record<string, unknown>,
-  { client, throttleManager }: ResolveLinkMapOptions,
-): Promise<Map<string, InlinedLink> | null> => {
+  { client, throttleManager, signal }: ResolveLinkMapOptions,
+): Promise<ResolvedLinks | null> => {
   if (typeof requestQuery.resolve_links !== "string") {
     return null;
   }
 
-  const linkMap = new Map<string, InlinedLink>();
-  for (const link of responseData.links ?? []) {
-    linkMap.set(link.uuid, link);
-  }
+  const linkMap = new Map<string, ResponseLink>();
+  addLinks(linkMap, responseData.links ?? []);
 
   const missingUuids = (responseData.link_uuids ?? []).filter((uuid) => !linkMap.has(uuid));
   if (missingUuids.length > 0) {
-    const fetchedLinks = await fetchMissingRelations({
+    const fetched = await fetchStoriesByUuids({
       client,
       uuids: missingUuids,
       baseQuery: requestQuery,
       throttleManager,
+      signal,
     });
-    for (const story of fetchedLinks) {
-      linkMap.set(story.uuid, story);
-    }
+    addLinks(
+      linkMap,
+      requestQuery.resolve_links === "url"
+        ? fetched.stories.map(toResolvedLinkUrl)
+        : fetched.stories,
+    );
+    // The links of the fetched stories, for `resolve_links_level: 2`.
+    addLinks(linkMap, fetched.links);
   }
 
-  return linkMap.size > 0 ? linkMap : null;
+  return { linkMap, depth: getLinkDepth(requestQuery) };
 };

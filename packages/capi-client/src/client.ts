@@ -229,26 +229,14 @@ export interface ContentApiClientConfig<
   cache?: CacheConfig;
   inlineRelations?: InlineRelations;
   /**
-   * Sets `story` on each story link (a multilink field or a richtext link mark) to its
-   * entry in the response's `links`, when a request passes `resolve_links`, including
-   * the links inside linked and related stories. Links beyond the API's resolve limit
-   * are fetched. The entry's shape depends on the `resolve_links` value (see
-   * `InlinedLink`).
+   * Sets `story` on each story link (a multilink field or a rich text link mark) to its entry
+   * in the response's `links`, when a request passes `resolve_links`. Also inlines the links
+   * of related stories (with `resolve_links_in_relations: 1`) and of linked stories (with
+   * `resolve_links_level: 2`). Links beyond the API's resolve limit are fetched. The entry's
+   * shape depends on the `resolve_links` value (see `InlinedLink`).
    * @default false
    */
   inlineLinks?: InlineLinks;
-  /**
-   * Whether inlined relations and links can be circular: a relation or link back to a
-   * story that is still being inlined resolves to that same object. `JSON.stringify`
-   * throws on a circular result, and so does every framework feature that serializes it
-   * as JSON (e.g. Astro island props or Next.js Pages Router props). When `false`, such a
-   * relation stays a UUID and such a link gets no `story`.
-   *
-   * Defaults to `false` for links and `true` for relations. The `true` default for
-   * relations is deprecated and changes to `false` in 1.0. Until this option is set, a
-   * circular relation logs a warning.
-   */
-  circularReferences?: boolean;
   retry?: RetryOptions;
   /**
    * Request timeout in milliseconds.
@@ -318,9 +306,8 @@ type ApiClientBaseResult<
 };
 
 /**
- * The return type of `createApiClient`, parameterised by `TComponents`, `InlineRelations`, and `InlineLinks`
- * so that `.withTypes<T>()` can change the story response types without touching the
- * runtime object.
+ * The return type of `createApiClient`. Its type parameters let `.withTypes<T>()` change the
+ * story response types without touching the runtime object.
  */
 export type ContentApiClient<
   TComponents extends Component = Component,
@@ -386,7 +373,6 @@ export const createApiClientBase = <
     cache = {},
     inlineRelations = false,
     inlineLinks = false,
-    circularReferences,
     retry,
     timeout = 30_000,
     rateLimit,
@@ -863,7 +849,6 @@ export const createApiClientBase = <
     ...resourceDeps,
     inlineRelations,
     inlineLinks,
-    circularReferences,
   });
 
   return {

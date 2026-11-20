@@ -2,7 +2,7 @@ import { Injectable, InjectionToken } from "@angular/core";
 import type { ContentApiClientConfig } from "@storyblok/api-client";
 import { createApiClient } from "@storyblok/api-client";
 
-export type StoryblokClientConfig = ContentApiClientConfig<boolean, boolean>;
+export type StoryblokClientConfig = ContentApiClientConfig<boolean, boolean, boolean>;
 export const STORYBLOK_CONFIG = new InjectionToken<StoryblokClientConfig>("STORYBLOK_CONFIG");
 type StoryblokClient = ReturnType<typeof createApiClient>;
 @Injectable({

@@ -1,7 +1,10 @@
 import type { Client } from "../generated/capi/client";
 import type { Story } from "../generated/types/story";
 import type { StoryWithInlinedRelations } from "../resources/stories";
-import { fetchMissingRelations } from "./fetch-rel-uuids";
+import { fetchStoriesByUuids } from "./fetch-stories-by-uuids";
+import type { StoriesByUuids } from "./fetch-stories-by-uuids";
+import { isStoryLink } from "./inline-links";
+import { isRecord } from "./is-record";
 import type { ThrottleManager } from "./rate-limit";
 
 type RelationPath = `${string}.${string}`;
@@ -11,9 +14,6 @@ interface ComponentNode {
   component: string;
   [key: string]: unknown;
 }
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
 
 const isComponentNode = (value: Record<string, unknown>): value is ComponentNode =>
   typeof value.component === "string" && typeof value._uid === "string";
@@ -35,63 +35,37 @@ const decodeIfEncoded = (value: string): string => {
   return value;
 };
 
-export interface InlineRelationsOptions {
-  /**
-   * Whether a relation back to a story that is still being inlined resolves to that
-   * story, making the result circular. Otherwise it stays a UUID.
-   * @default true
-   */
-  circularReferences?: boolean;
-  /** Called for each relation that makes the result circular. */
-  onCircularReference?: () => void;
-}
-
-interface InlineContext<TStory> {
-  relationPaths: ReadonlySet<RelationPath>;
-  relationMap: ReadonlyMap<string, TStory>;
-  resolved: Map<string, TStory>;
-  storiesInProgress: Set<string>;
-  circularReferences: boolean;
-  onCircularReference?: () => void;
-}
-
-const createInlineContext = <TStory>(
-  relationPaths: RelationPath[],
-  relationMap: ReadonlyMap<string, TStory>,
-  { circularReferences = true, onCircularReference }: InlineRelationsOptions,
-): InlineContext<TStory> => ({
-  relationPaths: new Set(relationPaths),
-  relationMap,
-  resolved: new Map(),
-  storiesInProgress: new Set(),
-  circularReferences,
-  onCircularReference,
-});
-
 const inlineStoryContentInternal = <TStory extends Story | StoryWithInlinedRelations>(
   story: TStory,
-  context: InlineContext<TStory>,
+  relationPaths: ReadonlySet<RelationPath>,
+  relationMap: ReadonlyMap<string, TStory>,
+  resolved: Map<string, TStory>,
 ): TStory => {
-  const existingStory = context.resolved.get(story.uuid);
+  const existingStory = resolved.get(story.uuid);
   if (existingStory) {
     return existingStory;
   }
 
   const clonedStory = structuredClone(story);
-  context.resolved.set(story.uuid, clonedStory);
-  context.storiesInProgress.add(story.uuid);
+  resolved.set(story.uuid, clonedStory);
   // resolveNode returns `unknown` to handle arbitrary JSON trees; shape is preserved at runtime.
-  clonedStory.content = resolveNode(clonedStory.content, context) as Story["content"];
-  context.storiesInProgress.delete(story.uuid);
+  clonedStory.content = resolveNode(
+    clonedStory.content,
+    relationMap,
+    relationPaths,
+    resolved,
+  ) as Story["content"];
   return clonedStory;
 };
 
 function resolveNode<TStory extends Story | StoryWithInlinedRelations>(
   value: unknown,
-  context: InlineContext<TStory>,
+  relationMap: ReadonlyMap<string, TStory>,
+  relationPaths: ReadonlySet<RelationPath>,
+  resolved: Map<string, TStory>,
 ): unknown {
   if (Array.isArray(value)) {
-    return value.map((item) => resolveNode(item, context));
+    return value.map((item) => resolveNode(item, relationMap, relationPaths, resolved));
   }
 
   if (!isRecord(value)) {
@@ -105,16 +79,20 @@ function resolveNode<TStory extends Story | StoryWithInlinedRelations>(
       }
 
       const relationPath: RelationPath = `${value.component}.${fieldName}`;
-      value[fieldName] = context.relationPaths.has(relationPath)
-        ? resolveFieldValue(fieldValue, context)
-        : resolveNode(fieldValue, context);
+      value[fieldName] = relationPaths.has(relationPath)
+        ? resolveFieldValue(fieldValue, relationMap, relationPaths, resolved)
+        : resolveNode(fieldValue, relationMap, relationPaths, resolved);
     }
 
     return value;
   }
 
   for (const [fieldName, fieldValue] of Object.entries(value)) {
-    value[fieldName] = resolveNode(fieldValue, context);
+    // The API doesn't resolve the relations of a linked story, so they stay UUIDs.
+    if (fieldName === "story" && isStoryLink(value)) {
+      continue;
+    }
+    value[fieldName] = resolveNode(fieldValue, relationMap, relationPaths, resolved);
   }
 
   return value;
@@ -149,57 +127,59 @@ export const buildRelationMap = (rels: Array<Story> | undefined): Map<string, St
 
 function resolveFieldValue<TStory extends Story | StoryWithInlinedRelations>(
   value: unknown,
-  context: InlineContext<TStory>,
+  relationMap: ReadonlyMap<string, TStory>,
+  relationPaths: ReadonlySet<RelationPath>,
+  resolved: Map<string, TStory>,
 ): unknown {
   if (typeof value === "string") {
-    const relatedStory = context.relationMap.get(value);
+    const relatedStory = relationMap.get(value);
     if (!relatedStory) {
       return value;
     }
 
-    if (context.storiesInProgress.has(value)) {
-      if (!context.circularReferences) {
-        return value;
-      }
-      context.onCircularReference?.();
-    }
-
-    return inlineStoryContentInternal(relatedStory, context);
+    return inlineStoryContentInternal(relatedStory, relationPaths, relationMap, resolved);
   }
 
   if (Array.isArray(value)) {
-    return value.map((item) => resolveFieldValue(item, context));
+    return value.map((item) => resolveFieldValue(item, relationMap, relationPaths, resolved));
   }
 
-  return resolveNode(value, context);
+  return resolveNode(value, relationMap, relationPaths, resolved);
 }
 
 export const inlineStoryContent = <TStory extends Story | StoryWithInlinedRelations>(
   story: TStory,
   relationPaths: RelationPath[],
   relationMap: ReadonlyMap<string, TStory>,
-  options: InlineRelationsOptions = {},
-): TStory =>
-  inlineStoryContentInternal(story, createInlineContext(relationPaths, relationMap, options));
+): TStory => {
+  const normalizedPaths = new Set(relationPaths);
+  const resolved = new Map<string, TStory>();
+  return inlineStoryContentInternal(story, normalizedPaths, relationMap, resolved);
+};
 
 export const inlineStoriesContent = <TStory extends Story | StoryWithInlinedRelations>(
   stories: Array<TStory>,
   relationPaths: RelationPath[],
   relationMap: ReadonlyMap<string, TStory>,
-  options: InlineRelationsOptions = {},
 ): Array<TStory> => {
-  const context = createInlineContext(relationPaths, relationMap, options);
-  return stories.map((story) => inlineStoryContentInternal(story, context));
+  const normalizedPaths = new Set(relationPaths);
+  const resolved = new Map<string, TStory>();
+  return stories.map((story) =>
+    inlineStoryContentInternal(story, normalizedPaths, relationMap, resolved),
+  );
 };
 
 interface ResolveRelationMapOptions {
   client: Client;
   throttleManager: ThrottleManager;
+  signal?: AbortSignal;
 }
 
 export interface ResolvedRelations {
   relationPaths: RelationPath[];
   relationMap: Map<string, Story>;
+  /** The links the API resolved in the relations fetched from `rel_uuids`. */
+  links: StoriesByUuids["links"];
 }
 
 /**
@@ -211,7 +191,7 @@ export interface ResolvedRelations {
 export const resolveRelationMap = async (
   responseData: { rels?: Story[]; rel_uuids?: string[] },
   requestQuery: Record<string, unknown>,
-  { client, throttleManager }: ResolveRelationMapOptions,
+  { client, throttleManager, signal }: ResolveRelationMapOptions,
 ): Promise<ResolvedRelations | null> => {
   const relationPaths = parseResolveRelations(requestQuery);
   if (relationPaths.length === 0) {
@@ -219,20 +199,21 @@ export const resolveRelationMap = async (
   }
 
   const relationMap = buildRelationMap(responseData.rels);
-  if (responseData.rel_uuids?.length) {
-    const missingUuids = responseData.rel_uuids.filter((uuid) => !relationMap.has(uuid));
-    if (missingUuids.length > 0) {
-      const fetchedRelations = await fetchMissingRelations({
-        client,
-        uuids: missingUuids,
-        baseQuery: requestQuery,
-        throttleManager,
-      });
-      for (const relationStory of fetchedRelations) {
-        relationMap.set(relationStory.uuid, relationStory);
-      }
-    }
+  const missingUuids = (responseData.rel_uuids ?? []).filter((uuid) => !relationMap.has(uuid));
+  if (missingUuids.length === 0) {
+    return { relationPaths, relationMap, links: [] };
   }
 
-  return { relationPaths, relationMap };
+  const fetched = await fetchStoriesByUuids({
+    client,
+    uuids: missingUuids,
+    baseQuery: requestQuery,
+    throttleManager,
+    signal,
+  });
+  for (const relationStory of fetched.stories) {
+    relationMap.set(relationStory.uuid, relationStory);
+  }
+
+  return { relationPaths, relationMap, links: fetched.links };
 };

@@ -950,14 +950,30 @@ describe("resolve_links typing with inlineLinks", () => {
     }
   });
 
-  it("should type a url link as the reduced link or a story", async () => {
+  it("should type a url link as the reduced link", async () => {
     const result = await createClient().stories.get("page", { query: { resolve_links: "url" } });
     if (result.data?.story.content.component === "page") {
       const cta = result.data.story.content.cta;
       if (cta.linktype === "story") {
-        type Link = NonNullable<typeof cta.story>;
-        expectTypeOf<ResolvedUrl>().toExtend<Link>();
-        expectTypeOf<Extract<Link, { content: unknown }>>().not.toBeNever();
+        expectTypeOf(cta.story).toEqualTypeOf<ResolvedUrl | undefined>();
+      }
+    }
+  });
+
+  it("should type the relations of a linked story as UUIDs", async () => {
+    const result = await createApiClient({
+      accessToken: "test-token",
+      inlineRelations: true,
+      inlineLinks: true,
+    })
+      .withTypes<LinkTypes>()
+      .stories.get("page", {
+        query: { resolve_relations: "article.author", resolve_links: "story" },
+      });
+    if (result.data?.story.content.component === "page") {
+      const cta = result.data.story.content.cta;
+      if (cta.linktype === "story" && cta.story?.content.component === "article") {
+        expectTypeOf(cta.story.content.author).toEqualTypeOf<string | null | undefined>();
       }
     }
   });

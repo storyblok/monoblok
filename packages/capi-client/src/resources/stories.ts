@@ -18,7 +18,7 @@ import type {
   RichTextFieldValue,
   TableFieldValue,
 } from "../generated/types/field";
-import { createLinkInliner, resolveLinkMap } from "../utils/inline-links";
+import { addLinks, createLinkInliner, resolveLinkMap } from "../utils/inline-links";
 import type {
   InlinedLink,
   InlinedLinkRichText,
@@ -28,6 +28,7 @@ import type {
 } from "../utils/inline-links";
 import { inlineStoriesContent, resolveRelationMap } from "../utils/inline-relations";
 import type { ApiResponse, FetchOptions, ResourceDeps } from "../client";
+import { ClientError } from "../error";
 import type {
   BlockFields,
   Block as Component,
@@ -176,7 +177,7 @@ type RelationValue<TValue, TStory> = TValue extends string
     : TValue;
 
 /**
- * A block whose component is unknown, e.g. one embedded in a richtext field without
+ * A block whose component is unknown, e.g. one embedded in a rich text field without
  * `allow`, so any of its fields can hold an inlined story or link.
  */
 interface InlinedLooseBlockContent<TStory, TLink = never> {
@@ -350,7 +351,7 @@ export type WithInlinedRelations<
 
 /**
  * Types a block's content as returned by a client created with `inlineLinks: true`:
- * each story link, in multilink fields and richtext link marks at any depth, carries
+ * each story link, in multilink fields and rich text link marks at any depth, carries
  * the resolved link as `story` (see {@link InlinedLink}). A link the API resolves no
  * story for (e.g. unpublished or deleted) has no `story`.
  *
@@ -376,7 +377,10 @@ export type WithInlinedLinks<
   ResolvedLink<TResolveLinks, TBlocks, TFieldPlugins>
 >;
 
-/** A linked story. Its own story links are inlined too. */
+/**
+ * A linked story. With `resolve_links_level: 2`, its own story links carry their linked
+ * story too, whose links are not inlined. Its relations stay UUIDs.
+ */
 type LinkedStory<TBlocks extends Component, TResolveLinks extends string, TFieldPlugins> = {
   [K in RootComponents<TBlocks> as K["name"]]: Omit<Story<K, TFieldPlugins, TBlocks>, "content"> & {
     content: InlinedBlockContent<
@@ -384,17 +388,14 @@ type LinkedStory<TBlocks extends Component, TResolveLinks extends string, TField
       TBlocks,
       never,
       TFieldPlugins,
-      InlinedLink<TResolveLinks, LinkedStory<TBlocks, TResolveLinks, TFieldPlugins>>
+      InlinedLink<TResolveLinks, Story<TBlocks, TFieldPlugins>>
     >;
   };
 }[RootComponents<TBlocks>["name"]];
 
-/** A linked story without schema types. Its own story links are inlined too. */
+/** A linked story without schema types, as {@link LinkedStory}. */
 type LooseLinkedStory<TResolveLinks extends string> = Omit<Story, "content"> & {
-  content: InlinedLooseBlockContent<
-    never,
-    InlinedLink<TResolveLinks, LooseLinkedStory<TResolveLinks>>
-  >;
+  content: InlinedLooseBlockContent<never, InlinedLink<TResolveLinks, Story>>;
 };
 
 /**
@@ -576,13 +577,7 @@ export interface StoriesResourceDeps<
 > extends ResourceDeps<DefaultThrowOnError> {
   inlineRelations: boolean;
   inlineLinks?: boolean;
-  circularReferences?: boolean;
 }
-
-const CIRCULAR_RELATIONS_WARNING =
-  "[storyblok/api-client] Inlined relations are circular, so JSON.stringify throws on the " +
-  "response. Set `circularReferences: false` to keep relations back to a story as UUIDs, " +
-  "the default from 1.0, or `circularReferences: true` to keep the circular result.";
 
 export function createStoriesResource<
   TComponents extends Component = Component,
@@ -597,55 +592,64 @@ export function createStoriesResource<
     asApiResponse,
     inlineRelations,
     inlineLinks: shouldInlineLinks = false,
-    circularReferences,
     throttleManager,
   } = deps;
-  let hasWarnedCircularRelations = false;
-  const warnCircularRelations =
-    circularReferences === undefined
-      ? () => {
-          if (!hasWarnedCircularRelations) {
-            hasWarnedCircularRelations = true;
-            console.warn(CIRCULAR_RELATIONS_WARNING);
-          }
-        }
-      : undefined;
-  // Inlined responses are cached apart from raw ones; "inline" alone is the relations-only key.
-  const cacheKeyPrefix =
-    [inlineRelations && "inline", shouldInlineLinks && "links"].filter(Boolean).join("-") ||
-    undefined;
-  const cacheOptions = cacheKeyPrefix ? { cacheKeyPrefix } : undefined;
 
-  /** Inlines resolved links and relations into `stories`, reading them from `data`. */
+  /**
+   * Inlined responses are cached apart from raw ones. Relations keep their `inline` prefix, so
+   * entries cached before link inlining existed stay valid.
+   */
+  const getCacheOptions = (query: { resolve_links?: unknown }) => {
+    const cacheKeyPrefix =
+      [inlineRelations && "inline", shouldInlineLinks && query.resolve_links && "links"]
+        .filter(Boolean)
+        .join("-") || undefined;
+    return cacheKeyPrefix ? { cacheKeyPrefix } : undefined;
+  };
+
   const inlineStories = async (
     stories: Story[],
     data: StoryRelationData & StoryLinkData,
     requestQuery: Record<string, unknown>,
+    signal: AbortSignal | undefined,
   ): Promise<Story[]> => {
-    const resolved = inlineRelations
-      ? await resolveRelationMap(data, requestQuery, { client, throttleManager })
-      : null;
-    const linkMap = shouldInlineLinks
-      ? await resolveLinkMap(data, requestQuery, { client, throttleManager })
-      : null;
+    const [resolvedRelations, resolvedLinks] = await Promise.all([
+      inlineRelations
+        ? resolveRelationMap(data, requestQuery, { client, throttleManager, signal })
+        : null,
+      shouldInlineLinks
+        ? resolveLinkMap(data, requestQuery, { client, throttleManager, signal })
+        : null,
+    ]);
 
-    let linkedStories = stories;
-    let relationMap = resolved?.relationMap;
-    if (linkMap) {
-      const inlineLinks = createLinkInliner(linkMap, { circularReferences });
-      linkedStories = stories.map(inlineLinks);
-      // Related stories get their links before they are copied into the content.
+    let relationMap = resolvedRelations?.relationMap;
+    if (resolvedLinks) {
+      const { linkMap, depth } = resolvedLinks;
+      if (resolvedRelations && Number(requestQuery.resolve_links_in_relations) === 1) {
+        addLinks(linkMap, resolvedRelations.links);
+      }
+      const inlineLinks = createLinkInliner(linkMap, depth);
+      stories.forEach(inlineLinks);
+      // Related stories get their links before they are copied into the content. They are
+      // copied first, so the response's `rels` stay unchanged.
       relationMap =
-        relationMap && new Map([...relationMap].map(([uuid, story]) => [uuid, inlineLinks(story)]));
+        relationMap &&
+        new Map(
+          [...relationMap].map(([uuid, story]) => [uuid, inlineLinks(structuredClone(story))]),
+        );
     }
 
-    return resolved && relationMap
-      ? inlineStoriesContent(linkedStories, resolved.relationPaths, relationMap, {
-          circularReferences,
-          onCircularReference: warnCircularRelations,
-        })
-      : linkedStories;
+    return resolvedRelations && relationMap
+      ? inlineStoriesContent(stories, resolvedRelations.relationPaths, relationMap)
+      : stories;
   };
+
+  /**
+   * A failed follow-up request (e.g. for `rel_uuids`) fails the whole call, as an error result
+   * unless `throwOnError` is set.
+   */
+  const shouldThrow = (throwOnError: boolean | undefined) =>
+    throwOnError ?? client.getConfig().throwOnError ?? false;
 
   return {
     get: async <
@@ -692,6 +696,7 @@ export function createStoriesResource<
           ? { ...typedQuery, find_by: "uuid" }
           : typedQuery;
       const requestPath = `/v2/cdn/stories/${identifier}`;
+      const cacheOptions = getCacheOptions(resolvedQuery);
       return requestWithCache(
         "GET",
         requestPath,
@@ -722,16 +727,23 @@ export function createStoriesResource<
             ThrowOnError
           >;
 
-          if (!cacheKeyPrefix || response.data === undefined) {
+          if (!cacheOptions || response.data === undefined) {
             return response;
           }
 
           // Narrow to the internal shape to read the API's sidecar `rels`/`rel_uuids`
           // and `links`/`link_uuids`; consumers keep seeing the generic `Story`.
           const storyData = response.data as unknown as StoryData;
-          const [story] = await inlineStories([storyData.story], storyData, requestQuery);
-
-          return { ...response, data: { ...response.data, story } };
+          try {
+            const [story] = await inlineStories([storyData.story], storyData, requestQuery, signal);
+            return { ...response, data: { ...response.data, story } };
+          } catch (error) {
+            if (shouldThrow(throwOnError) || !(error instanceof ClientError)) {
+              throw error;
+            }
+            // Only reached without `throwOnError`, where `data` is optional.
+            return { ...response, data: undefined, error } as typeof response;
+          }
         },
         cacheOptions,
       );
@@ -776,6 +788,7 @@ export function createStoriesResource<
       };
       const typedQuery = normalizedQuery as NonNullable<ListStoriesData["query"]>;
       const requestPath = "/v2/cdn/stories";
+      const cacheOptions = getCacheOptions(typedQuery);
       return requestWithCache(
         "GET",
         requestPath,
@@ -805,16 +818,28 @@ export function createStoriesResource<
             ThrowOnError
           >;
 
-          if (!cacheKeyPrefix || response.data === undefined) {
+          if (!cacheOptions || response.data === undefined) {
             return response;
           }
 
           // Narrow to the internal shape to read the API's sidecar `rels`/`rel_uuids`
           // and `links`/`link_uuids`; consumers keep seeing the generic `Story`.
           const storiesData = response.data as unknown as StoriesData;
-          const stories = await inlineStories(storiesData.stories, storiesData, requestQuery);
-
-          return { ...response, data: { ...response.data, stories } };
+          try {
+            const stories = await inlineStories(
+              storiesData.stories,
+              storiesData,
+              requestQuery,
+              signal,
+            );
+            return { ...response, data: { ...response.data, stories } };
+          } catch (error) {
+            if (shouldThrow(throwOnError) || !(error instanceof ClientError)) {
+              throw error;
+            }
+            // Only reached without `throwOnError`, where `data` is optional.
+            return { ...response, data: undefined, error } as typeof response;
+          }
         },
         cacheOptions,
       );

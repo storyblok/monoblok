@@ -4,6 +4,9 @@ import type { Payload, ResourceFields } from "./fields";
 
 export type ResourceRecord = ResourceLine;
 
+/** A record as `list` and `get` print it: each secret field replaced by a `has_<field>` flag. */
+export type ListedRecord<T extends ResourceRecord> = T & Record<`has_${string}`, boolean>;
+
 export type Noun = {
   singular: string;
   plural: string;
@@ -36,7 +39,7 @@ export interface CrudResource<T extends ResourceRecord = ResourceRecord> {
    */
   nameField?: keyof T & string;
   /** `list` table columns. Write results get their own fixed columns. */
-  columns: TableColumn<T>[];
+  columns: TableColumn<ListedRecord<T>>[];
   connect: (scope: CrudScope) => CrudOperations<T>;
 }
 

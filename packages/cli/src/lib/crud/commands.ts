@@ -262,7 +262,7 @@ function assertFresh(
 
 const sameValue = (a: unknown, b: unknown) => isDeepStrictEqual(a ?? null, b ?? null);
 
-function changedFields(desired: Payload, server: ResourceRecord): Payload {
+function changedFields(desired: Payload, server: Payload): Payload {
   return Object.fromEntries(
     Object.entries(desired).filter(([field, value]) => !sameValue(value, server[field])),
   );
@@ -641,7 +641,12 @@ export function addCrudVerbs<T extends ResourceRecord>(
                     takenNames: (candidate) => takenNames.has(candidate),
                   });
                   takenNames.set(name, null);
-                  return { id: null, name, action: "create", _diff: toDiff(resource, payload, {}) };
+                  return {
+                    id: null,
+                    name,
+                    action: "create",
+                    _diff: toDiff(resource, changedFields(payload, {}), {}),
+                  };
                 }
                 const created = await context.operations.create(payload);
                 takenNames.set(name, created.id);

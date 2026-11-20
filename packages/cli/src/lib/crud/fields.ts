@@ -50,15 +50,19 @@ function assertWritable(fields: ResourceFields, field: string, flag: string): Fi
   throw usageError(`${flag}: unknown field. Writable fields: ${valid}.`);
 }
 
+function clearableFields(fields: ResourceFields): string {
+  const nullable = Object.entries(fields.writable)
+    .filter(([, descriptor]) => descriptor.nullable)
+    .map(([name]) => name);
+  return nullable.join(", ") || "none";
+}
+
 function assertNullable(fields: ResourceFields, field: string, flag: string): void {
   if (writableField(fields, field)?.nullable) {
     return;
   }
-  const nullable = Object.entries(fields.writable)
-    .filter(([, descriptor]) => descriptor.nullable)
-    .map(([name]) => name);
   throw usageError(
-    `${flag}: "${field}" cannot be cleared. Fields that can: ${nullable.join(", ") || "none"}.`,
+    `${flag}: "${field}" cannot be cleared. Fields that can be cleared: ${clearableFields(fields)}.`,
   );
 }
 
@@ -137,6 +141,12 @@ export function parseFlagPatch(
     assignments[field] = coerce(field, descriptor, assignment.slice(separator + 1));
   }
   for (const field of flags.unset) {
+    if (!writableField(fields, field) && !fields.readOnly.includes(field)) {
+      // Not repeated: an unknown name may be a misplaced secret.
+      throw usageError(
+        `--unset: unknown field. Fields that can be cleared: ${clearableFields(fields)}.`,
+      );
+    }
     assertWritable(fields, field, "--unset");
     assertNullable(fields, field, "--unset");
     assertOnce(field);

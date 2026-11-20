@@ -112,6 +112,12 @@ describe("parseFlagPatch", () => {
     expect(() => parseFlagPatch(fields, flags({ data: '{"tags":null}' }))).toThrow(/tags/);
   });
 
+  it("should name only the fields --unset can clear when it gets an unknown one", () => {
+    expect(() => parseFlagPatch(fields, flags({ unset: ["foo"] }))).toThrow(
+      "--unset: unknown field. Fields that can be cleared: note, config.",
+    );
+  });
+
   it("should reject --data that is not a JSON object without echoing it", () => {
     expect(() => parseFlagPatch(fields, flags({ data: '{"note":"s3cret"' }))).toThrow(
       expect.objectContaining({ exitCode: 2, message: expect.not.stringContaining("s3cret") }),

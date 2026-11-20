@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   customRendererFixture,
   integrationFixtures,
@@ -7,7 +7,8 @@ import {
   nodeFixtures,
   tableFixtures,
 } from "@storyblok/richtext/test-utils";
-import StoryblokRichText from "../lib/StoryblokRichText.svelte";
+import StoryblokRichText from "../lib/components/StoryblokRichText.svelte";
+import RegistryBlok from "./richtext/RegistryBlok.svelte";
 import { flushSync, mount, unmount } from "svelte";
 import CustomTable from "./richtext/CustomTable.svelte";
 import Bold from "./richtext/Bold.svelte";
@@ -16,6 +17,8 @@ import Heading from "./richtext/Heading.svelte";
 import CustomLink from "./richtext/CustomLink.svelte";
 import CustomText from "./richtext/CustomText.svelte";
 import HeadingWithRichText from "./richtext/HeadingWithRichText.svelte";
+import Blok from "./richtext/Blok.svelte";
+import LocalizedBlok from "./richtext/LocalizedBlok.svelte";
 
 // Helper function to clean up the HTML output for easier comparison
 export function cleanHtml(html: string) {
@@ -136,6 +139,117 @@ describe("storyblok Richtext", () => {
     });
   });
   describe("custom renderers", () => {
+    it("should render embedded bloks with a custom renderer", () => {
+      const target = document.createElement("div");
+      const component = mount(StoryblokRichText, {
+        target,
+        props: {
+          document: {
+            type: "doc",
+            content: [
+              {
+                type: "blok",
+                attrs: {
+                  id: "blok-1",
+                  body: [{ _uid: "1", component: "teaser", title: "Embedded teaser" }],
+                },
+              },
+            ],
+          },
+          components: { blok: Blok },
+        },
+      });
+      flushSync();
+
+      expect(target.querySelector('[data-testid="embedded-block"]')?.textContent).toBe(
+        "Embedded teaser",
+      );
+      unmount(component);
+    });
+
+    it("should render embedded bloks through a registry with a StoryblokBlock renderer", () => {
+      const target = document.createElement("div");
+      const component = mount(StoryblokRichText, {
+        target,
+        props: {
+          document: {
+            type: "doc",
+            content: [
+              {
+                type: "blok",
+                attrs: {
+                  id: "blok-1",
+                  body: [
+                    {
+                      _uid: "1",
+                      component: "teaser",
+                      headline: "Embedded teaser",
+                      _editable:
+                        '<!--#storyblok#{"name": "teaser", "space": "1", "uid": "1", "id": "1"}-->',
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+          components: { blok: RegistryBlok },
+        },
+      });
+      flushSync();
+
+      expect(target.querySelector('[data-testid="teaser"]')?.textContent).toBe("Embedded teaser");
+      expect(target.querySelector("[data-blok-uid]")).not.toBeNull();
+      unmount(component);
+    });
+
+    it("should pass data to the blok renderer as context.data", () => {
+      const target = document.createElement("div");
+      const component = mount(StoryblokRichText<{ locale: string }>, {
+        target,
+        props: {
+          document: {
+            type: "doc",
+            content: [
+              {
+                type: "blok",
+                attrs: {
+                  id: "blok-1",
+                  body: [{ _uid: "1", component: "localized", headline: "Bonjour" }],
+                },
+              },
+            ],
+          },
+          components: { blok: LocalizedBlok },
+          data: { locale: "fr" },
+        },
+      });
+      flushSync();
+
+      const localized = target.querySelector("[data-locale]");
+      expect(localized?.getAttribute("data-locale")).toBe("fr");
+      expect(localized?.textContent).toBe("Bonjour");
+      unmount(component);
+    });
+
+    it("should warn when embedded bloks have no custom renderer", () => {
+      const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const target = document.createElement("div");
+      const component = mount(StoryblokRichText, {
+        target,
+        props: {
+          document: {
+            type: "doc",
+            content: [{ type: "blok", attrs: { id: "blok-1", body: [] } }],
+          },
+        },
+      });
+      flushSync();
+
+      expect(consoleWarn).toHaveBeenCalledWith(expect.stringContaining('"blok" nodes'));
+      unmount(component);
+      consoleWarn.mockRestore();
+    });
+
     const node_and_mark = customRendererFixture.node_and_mark;
     it(node_and_mark.title, () => {
       const target = document.createElement("div");
@@ -190,7 +304,7 @@ describe("storyblok Richtext", () => {
     const text_node = customRendererFixture.text_node;
     it(text_node.title, () => {
       const target = document.createElement("div");
-      const component = mount(StoryblokRichText, {
+      const component = mount(StoryblokRichText<{ prefix: string }>, {
         target,
         props: {
           document: text_node.input,

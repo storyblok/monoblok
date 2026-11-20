@@ -1,5 +1,6 @@
 <script lang="ts">
   import { getStaticChildren, hasContent, type StoryblokRichTextNodeWithKey } from '@storyblok/richtext';
+  import type { Component } from 'svelte';
   import type { StoryblokSvelteRichTextRenderContext } from '../richtext-helpers';
   import RenderTextNodeWithMarks from './RenderTextNodeWithMarks.svelte';
   import RenderChildren from './RenderChildren.svelte';
@@ -7,8 +8,7 @@
   import RenderTable from './RenderTable.svelte';
   import RenderStaticChildren from './RenderStaticChildren.svelte';
   import ElementTag from './ElementTag.svelte';
-  import StoryblokComponent from '../StoryblokComponent.svelte';
-  import type { SbBlokData } from '../types';
+  import WarnMissingBlok from './WarnMissingBlok.svelte';
 
   type Props = {
     node: StoryblokRichTextNodeWithKey;
@@ -16,7 +16,10 @@
   };
 
   const { node, options }: Props = $props();
-  const CustomComponent = $derived(
+  // `any`: the node or mark type is only known at runtime, so the props of
+  // the component looked up for it can't be checked here. The map was checked
+  // where it was passed to `StoryblokRichText`.
+  const CustomComponent: Component<any> | undefined = $derived(
     options.components ? options.components[node.type] : undefined,
   );
 
@@ -28,7 +31,6 @@
       : options,
   );
 </script>
-
 {#if CustomComponent}
   <CustomComponent {...node} context={contextForCustom}>
     {#if hasContent(node)}
@@ -39,16 +41,12 @@
   <RenderTextNodeWithMarks {node} marks={node.marks} {options} />
 {:else if node.type === 'image'}
   <RenderImage {node} {options} />
-{:else if node.type === 'blok'}
-  {#if Array.isArray(node.attrs?.body)}
-    {#each node.attrs.body as blok (blok._uid)}
-      <StoryblokComponent blok={blok as SbBlokData} />
-    {/each}
-  {/if}
 {:else if node.type === 'table'}
   <RenderTable {node} {options} />
 {:else if node.type === 'emoji'}
   <ElementTag {node}>{node.attrs.emoji}</ElementTag>
+{:else if node.type === 'blok'}
+  <WarnMissingBlok warnings={options.warnings ?? true} />
 {:else if getStaticChildren(node)}
   <RenderStaticChildren {node} {options} />
 {:else}

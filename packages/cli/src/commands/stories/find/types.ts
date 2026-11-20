@@ -5,8 +5,12 @@ import type { Reporter } from "../../../lib/reporter/reporter";
 
 export type EntryType = "all" | "story" | "folder";
 
+/** How `[text]` is matched: as a substring, or by meaning through Strata. */
+export type FindMode = "fulltext" | "semantic";
+
 export interface FindOptions {
   space?: string;
+  mode?: FindMode;
   entryType?: EntryType;
   startsWith?: string;
   containerBlock?: string;

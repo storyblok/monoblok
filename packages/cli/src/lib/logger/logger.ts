@@ -35,6 +35,7 @@ export interface LoggerOptions {
 export class Logger {
   public transports: LogTransport[] = [];
   public context: LogContext = {};
+  private hasReportedTransportError = false;
 
   constructor(options?: LoggerOptions) {
     if (options?.transports) {
@@ -43,6 +44,11 @@ export class Logger {
     if (options?.context) {
       this.context = options.context;
     }
+  }
+
+  public setTransports(transports: LogTransport[]): void {
+    this.transports = transports;
+    this.hasReportedTransportError = false;
   }
 
   public log(level: LogLevel, message: string, context?: LogContext): void {
@@ -57,7 +63,26 @@ export class Logger {
     };
 
     for (const transport of this.transports) {
-      transport.log(record);
+      // Logging is best effort: a failing transport (e.g. a full disk) must
+      // never break the command, nor keep the other transports from logging.
+      try {
+        transport.log(record);
+      } catch (error) {
+        this.reportTransportError(error);
+      }
+    }
+  }
+
+  private reportTransportError(error: unknown): void {
+    if (this.hasReportedTransportError) {
+      return;
+    }
+    this.hasReportedTransportError = true;
+    try {
+      const reason = error instanceof Error ? error.message : String(error);
+      process.stderr.write(`Logging failed, some log entries may be missing: ${reason}\n`);
+    } catch {
+      // Nothing left to report to.
     }
   }
 
@@ -90,7 +115,7 @@ export function getLogger(options?: LoggerOptions) {
 
 export function setLoggerTransports(transports: LogTransport[]) {
   if (loggerInstance) {
-    loggerInstance.transports = transports;
+    loggerInstance.setTransports(transports);
   }
 }
 

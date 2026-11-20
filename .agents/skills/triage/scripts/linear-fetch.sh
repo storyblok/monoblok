@@ -72,6 +72,7 @@ fetch_issue() {
           parent { identifier title }
           children { nodes { identifier title state { name } } }
           relations { nodes { type relatedIssue { identifier title state { name } } } }
+          attachments { nodes { title url } }
         }
       }
     }
@@ -116,11 +117,13 @@ fetch_triage() {
           assignee { name }
           creator { name }
           labels { nodes { name } }
+          comments { nodes { body user { name } createdAt } }
           createdAt
           updatedAt
           url
           parent { identifier title }
           relations { nodes { type relatedIssue { identifier title state { name } } } }
+          attachments { nodes { title url } }
         }
       }
     }

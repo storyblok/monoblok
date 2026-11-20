@@ -859,8 +859,8 @@ importers:
         specifier: 'catalog:'
         version: 2.7.0
       json-p3:
-        specifier: 2.2.2
-        version: 2.2.2
+        specifier: 3.0.3
+        version: 3.0.3
       json-schema-to-typescript:
         specifier: ^16.0.0
         version: 16.0.0
@@ -12844,6 +12844,9 @@ packages:
     resolution: {integrity: sha512-9RzTAiZ3wJwCGqqeSl1vCizRAfhT9S2cMWG/mOW4t7e7Hyyu3PoYS8+GRWLb75qo1pVgs5CQapwrXherEWDt3A==}
     hasBin: true
 
+  iregexp-check@0.1.2:
+    resolution: {integrity: sha512-RCcV2SFO5JKh+DdmWiY7yVyiZzzk6XZiHEJvTKbzVs8Z0u404gnoSqDtFqg6C5qJBEG4QseWBQz9zhI68zskEQ==}
+
   iron-webcrypto@1.2.1:
     resolution: {integrity: sha512-feOM6FaSr6rEABp/eDfVseKyTMDt+KGpeB35SkVn9Tyn0CqvVsY3EwI0v5i8nMHyJnzCIQf7nsy3p41TPkJZhg==}
 
@@ -13270,8 +13273,8 @@ packages:
   json-buffer@3.0.1:
     resolution: {integrity: sha512-4bV5BfR2mqfQTJm+V5tPPdf+ZpuhiIvTuAB5g8kcrXOZpTT/QwwVRWBywX1ozr6lEuPdbHxwaJlm9G6mI2sfSQ==}
 
-  json-p3@2.2.2:
-    resolution: {integrity: sha512-TmTgkx+C1ne8Wdm9dFQ4/jCeYYbSoeYJAkRpvTz6O+zWN1Dc3cKW8Mt52sa8mSRXy/+JykA5I6rmM+k8h+JRRg==}
+  json-p3@3.0.3:
+    resolution: {integrity: sha512-MjAFMrS+tMHfpvd2AaMHXwM9ssYlaFoFQW1fu/OCCpqIM0BHIXPzRD9Ey5GRftlohDkrK+Y4X8dDjjCyErGIOQ==}
 
   json-parse-even-better-errors@2.3.1:
     resolution: {integrity: sha512-xyFwyhro/JEof6Ghe2iz2NcXoj2sloNsWr/XsERDK/oiPCfaNhl5ONfp+jQdAZRQQ0IJWNzH9zIZF7li91kh2w==}
@@ -32239,6 +32242,8 @@ snapshots:
       - srvx
       - uploadthing
 
+  iregexp-check@0.1.2: {}
+
   iron-webcrypto@1.2.1: {}
 
   is-array-buffer@3.0.5:
@@ -32693,7 +32698,9 @@ snapshots:
 
   json-buffer@3.0.1: {}
 
-  json-p3@2.2.2: {}
+  json-p3@3.0.3:
+    dependencies:
+      iregexp-check: 0.1.2
 
   json-parse-even-better-errors@2.3.1: {}
 
@@ -37855,7 +37862,7 @@ snapshots:
       dotenv: 17.3.1
       filenamify: 6.0.0
       jiti: 2.7.0
-      json-p3: 2.2.2
+      json-p3: 3.0.3
       json-schema-to-typescript: 16.0.0
       minimatch: 10.2.4
       octokit: 5.0.5
@@ -37887,7 +37894,7 @@ snapshots:
       dotenv: 17.3.1
       filenamify: 6.0.0
       jiti: 2.7.0
-      json-p3: 2.2.2
+      json-p3: 3.0.3
       json-schema-to-typescript: 16.0.0
       minimatch: 10.2.4
       octokit: 5.0.5

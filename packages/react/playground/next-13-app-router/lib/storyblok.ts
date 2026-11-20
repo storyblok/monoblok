@@ -1,5 +1,6 @@
 import { createApiClient } from "@storyblok/api-client";
 import { defineStoryblokBlocks } from "@storyblok/react";
+import EmojiRandomizer from "@/components/EmojiRandomizer";
 import Feature from "@/components/Feature";
 import Grid from "@/components/Grid";
 import Page from "@/components/Page";
@@ -10,5 +11,11 @@ export const apiClient = createApiClient({
 });
 
 export const { StoryblokBlock } = defineStoryblokBlocks(() => ({
-  components: { teaser: Teaser, page: Page, grid: Grid, feature: Feature },
+  components: {
+    teaser: Teaser,
+    page: Page,
+    grid: Grid,
+    feature: Feature,
+    "emoji-randomizer": EmojiRandomizer,
+  },
 }));

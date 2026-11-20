@@ -103,6 +103,7 @@ describe("inlineStoryContent", () => {
       storyA,
       ["page.relation"],
       buildRelationMap([storyB, storyA]),
+      { circularReferences: true },
     );
     const content = inlined.content;
     const inlinedB = content.relation;
@@ -124,7 +125,9 @@ describe("inlineStoryContent editor markup", () => {
       _editable: "story-b",
     });
 
-    const inlined = inlineStoryContent(story, ["page._editable"], buildRelationMap([related]));
+    const inlined = inlineStoryContent(story, ["page._editable"], buildRelationMap([related]), {
+      circularReferences: true,
+    });
 
     expect(inlined.content._editable).toBe("story-b");
   });
@@ -144,6 +147,7 @@ describe("inlineStoriesContent", () => {
       [page],
       ["page.related"],
       buildRelationMap([tag1, tag2]),
+      { circularReferences: true },
     );
     const content = inlinedPage.content;
     const related = content.related;

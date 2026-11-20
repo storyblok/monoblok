@@ -1,7 +1,10 @@
 import type { Client } from "../generated/capi/client";
 import type { Story } from "../generated/types/story";
 import type { StoryWithInlinedRelations } from "../resources/stories";
-import { fetchMissingRelations } from "./fetch-rel-uuids";
+import { fetchStoriesByUuids } from "./fetch-stories-by-uuids";
+import type { StoriesByUuids } from "./fetch-stories-by-uuids";
+import { isStoryLink } from "./inline-links";
+import { isRecord } from "./is-record";
 import type { ThrottleManager } from "./rate-limit";
 
 type RelationPath = `${string}.${string}`;
@@ -11,9 +14,6 @@ interface ComponentNode {
   component: string;
   [key: string]: unknown;
 }
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
 
 const isComponentNode = (value: Record<string, unknown>): value is ComponentNode =>
   typeof value.component === "string" && typeof value._uid === "string";
@@ -151,6 +151,10 @@ function resolveNode<TStory extends Story | StoryWithInlinedRelations>(
   }
 
   for (const [fieldName, fieldValue] of Object.entries(value)) {
+    // The API doesn't resolve the relations of a linked story, so they stay UUIDs.
+    if (fieldName === "story" && isStoryLink(value)) {
+      continue;
+    }
     value[fieldName] = resolveNode(fieldValue, depth, context);
   }
 
@@ -232,11 +236,14 @@ export const inlineStoriesContent = <TStory extends Story | StoryWithInlinedRela
 interface ResolveRelationMapOptions {
   client: Client;
   throttleManager: ThrottleManager;
+  signal?: AbortSignal;
 }
 
 export interface ResolvedRelations {
   relationPaths: RelationPath[];
   relationMap: Map<string, Story>;
+  /** The links the API resolved in the relations fetched from `rel_uuids`. */
+  links: StoriesByUuids["links"];
 }
 
 /**
@@ -248,7 +255,7 @@ export interface ResolvedRelations {
 export const resolveRelationMap = async (
   responseData: { rels?: Story[]; rel_uuids?: string[] },
   requestQuery: Record<string, unknown>,
-  { client, throttleManager }: ResolveRelationMapOptions,
+  { client, throttleManager, signal }: ResolveRelationMapOptions,
 ): Promise<ResolvedRelations | null> => {
   const relationPaths = parseResolveRelations(requestQuery);
   if (relationPaths.length === 0) {
@@ -256,20 +263,21 @@ export const resolveRelationMap = async (
   }
 
   const relationMap = buildRelationMap(responseData.rels);
-  if (responseData.rel_uuids?.length) {
-    const missingUuids = responseData.rel_uuids.filter((uuid) => !relationMap.has(uuid));
-    if (missingUuids.length > 0) {
-      const fetchedRelations = await fetchMissingRelations({
-        client,
-        uuids: missingUuids,
-        baseQuery: requestQuery,
-        throttleManager,
-      });
-      for (const relationStory of fetchedRelations) {
-        relationMap.set(relationStory.uuid, relationStory);
-      }
-    }
+  const missingUuids = (responseData.rel_uuids ?? []).filter((uuid) => !relationMap.has(uuid));
+  if (missingUuids.length === 0) {
+    return { relationPaths, relationMap, links: [] };
   }
 
-  return { relationPaths, relationMap };
+  const fetched = await fetchStoriesByUuids({
+    client,
+    uuids: missingUuids,
+    baseQuery: requestQuery,
+    throttleManager,
+    signal,
+  });
+  for (const relationStory of fetched.stories) {
+    relationMap.set(relationStory.uuid, relationStory);
+  }
+
+  return { relationPaths, relationMap, links: fetched.links };
 };

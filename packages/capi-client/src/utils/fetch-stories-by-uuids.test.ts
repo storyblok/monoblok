@@ -3,7 +3,7 @@ import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { type Client, createClient, createConfig } from "../generated/capi/client";
 import { createThrottleManager } from "./rate-limit";
-import { fetchMissingRelations } from "./fetch-rel-uuids";
+import { fetchStoriesByUuids } from "./fetch-stories-by-uuids";
 
 // Passthrough throttle — no queuing overhead for most unit tests.
 const passthroughThrottleManager = createThrottleManager(false);
@@ -33,7 +33,7 @@ const createTestClient = (
   );
 };
 
-describe("fetchMissingRelations", () => {
+describe("fetchStoriesByUuids", () => {
   it("should fetch chunks with request query context", async () => {
     const requestedByUuids: string[] = [];
     const seenLanguage: string[] = [];
@@ -53,7 +53,7 @@ describe("fetchMissingRelations", () => {
       }),
     );
 
-    const stories = await fetchMissingRelations({
+    const { stories } = await fetchStoriesByUuids({
       baseQuery: {
         language: "de",
         starts_with: "blog/",
@@ -97,7 +97,7 @@ describe("fetchMissingRelations", () => {
       ),
     );
 
-    const promise = fetchMissingRelations({
+    const promise = fetchStoriesByUuids({
       baseQuery: {},
       client: createTestClient(limitedThrottleManager),
       throttleManager: limitedThrottleManager,
@@ -126,7 +126,7 @@ describe("fetchMissingRelations", () => {
       }),
     );
 
-    await fetchMissingRelations({
+    await fetchStoriesByUuids({
       baseQuery: {},
       client: createTestClient(),
       throttleManager: passthroughThrottleManager,
@@ -151,7 +151,7 @@ describe("fetchMissingRelations", () => {
     );
 
     await expect(
-      fetchMissingRelations({
+      fetchStoriesByUuids({
         baseQuery: {},
         client: createTestClient(),
         throttleManager: passthroughThrottleManager,
@@ -174,7 +174,7 @@ describe("fetchMissingRelations", () => {
       }),
     );
 
-    await fetchMissingRelations({
+    await fetchStoriesByUuids({
       baseQuery: {
         version: "draft",
         excluding_story_fields: "translated_slugs,alternates",

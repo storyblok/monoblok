@@ -10,7 +10,14 @@ import {
 import { storyblokColorField } from "@storyblok/schema/field-plugins";
 
 import type { StoryblokRichTextInput } from "@storyblok/richtext";
-import { createApiClient, type Story, type WithInlinedRelations } from "@storyblok/api-client";
+import {
+  type ContentApiClientConfig,
+  createApiClient,
+  type Story,
+  type WithInlinedContent,
+  type WithInlinedLinks,
+  type WithInlinedRelations,
+} from "@storyblok/api-client";
 
 // Nestable block — not a root story type
 const _teaserComponent = defineBlock({
@@ -840,5 +847,236 @@ describe("WithInlinedRelations layout fields", () => {
     expectTypeOf<keyof Form>().toEqualTypeOf<
       "_uid" | "component" | "_editable" | "title" | "author"
     >();
+  });
+});
+
+describe("resolve_links typing with inlineLinks", () => {
+  const _teaserBlock = defineBlock({
+    name: "teaser",
+    is_nestable: true,
+    fields: [defineField("link", { type: "multilink" })],
+  });
+  const _articleBlock = defineBlock({
+    name: "article",
+    is_root: true,
+    is_nestable: false,
+    fields: [defineField("cta", { type: "multilink" }), defineField("author", { type: "option" })],
+  });
+  const _pageBlock = defineBlock({
+    name: "page",
+    is_root: true,
+    is_nestable: false,
+    fields: [
+      defineField("cta", { type: "multilink", required: true }),
+      defineField("body", { type: "richtext" }),
+      defineField("teasers", { type: "bloks", allow: ["teaser"], required: true }),
+      defineField("featured", { type: "option" }),
+    ],
+  });
+
+  type Blocks = typeof _teaserBlock | typeof _articleBlock | typeof _pageBlock;
+  interface LinkTypes {
+    blocks: Blocks;
+  }
+  type ResolvedUrl = {
+    id: number;
+    uuid: string;
+    name: string;
+    slug: string;
+    full_slug: string;
+    url: string;
+  };
+
+  const createClient = () =>
+    createApiClient({ accessToken: "test-token", inlineLinks: true }).withTypes<LinkTypes>();
+
+  it("should type the story of a story link in a multilink field as the linked story", async () => {
+    const result = await createClient().stories.get("page", {
+      query: { resolve_links: "story" },
+    });
+    if (result.data?.story.content.component === "page") {
+      const cta = result.data.story.content.cta;
+      if (cta.linktype === "story") {
+        expectTypeOf(cta.story)
+          .exclude<undefined>()
+          .toHaveProperty("content")
+          .toHaveProperty("component")
+          .toEqualTypeOf<"article" | "page">();
+        expectTypeOf(cta.anchor).toEqualTypeOf<string | null | undefined>();
+      }
+    }
+  });
+
+  it("should type the story of a link in a nested block", async () => {
+    const result = await createClient().stories.list({ query: { resolve_links: "story" } });
+    const story = result.data?.stories[0];
+    if (story?.content.component === "page") {
+      const link = story.content.teasers[0]?.link;
+      if (link?.linktype === "story") {
+        expectTypeOf(link.story).exclude<undefined>().toHaveProperty("content");
+      }
+    }
+  });
+
+  it("should type the story of a richtext link mark as the linked story", async () => {
+    const result = await createClient().stories.get("page", {
+      query: { resolve_links: "story" },
+    });
+    if (result.data?.story.content.component === "page") {
+      const body = result.data.story.content.body;
+      type Body = NonNullable<typeof body>;
+      type Paragraph = Extract<Body["content"][number], { type: "paragraph" }>;
+      type Text = Extract<NonNullable<Paragraph["content"]>[number], { type: "text" }>;
+      type LinkMark = Extract<NonNullable<Text["marks"]>[number], { type: "link" }>;
+      expectTypeOf<LinkMark["attrs"]["story"]>()
+        .exclude<undefined>()
+        .toHaveProperty("content")
+        .toHaveProperty("component")
+        .toEqualTypeOf<"article" | "page">();
+    }
+  });
+
+  it("should type the links of a linked story as inlined", async () => {
+    const result = await createClient().stories.get("page", {
+      query: { resolve_links: "story" },
+    });
+    if (result.data?.story.content.component === "page") {
+      const cta = result.data.story.content.cta;
+      if (cta.linktype === "story" && cta.story?.content.component === "article") {
+        const nestedCta = cta.story.content.cta;
+        if (nestedCta?.linktype === "story") {
+          expectTypeOf(nestedCta.story).exclude<undefined>().toHaveProperty("content");
+        }
+      }
+    }
+  });
+
+  it("should type a url link as the reduced link", async () => {
+    const result = await createClient().stories.get("page", { query: { resolve_links: "url" } });
+    if (result.data?.story.content.component === "page") {
+      const cta = result.data.story.content.cta;
+      if (cta.linktype === "story") {
+        expectTypeOf(cta.story).toEqualTypeOf<ResolvedUrl | undefined>();
+      }
+    }
+  });
+
+  it("should type the relations of a linked story as UUIDs", async () => {
+    const result = await createApiClient({
+      accessToken: "test-token",
+      inlineRelations: true,
+      inlineLinks: true,
+    })
+      .withTypes<LinkTypes>()
+      .stories.get("page", {
+        query: { resolve_relations: "article.author", resolve_links: "story" },
+      });
+    if (result.data?.story.content.component === "page") {
+      const cta = result.data.story.content.cta;
+      if (cta.linktype === "story" && cta.story?.content.component === "article") {
+        expectTypeOf(cta.story.content.author).toEqualTypeOf<string | null | undefined>();
+      }
+    }
+  });
+
+  it("should keep multilink values unchanged without resolve_links", async () => {
+    const result = await createClient().stories.get("page");
+    if (result.data) {
+      expectTypeOf(result.data.story).toEqualTypeOf<Story<Blocks>>();
+    }
+  });
+
+  it("should keep multilink values unchanged without inlineLinks", async () => {
+    const result = await createApiClient({ accessToken: "test-token" })
+      .withTypes<LinkTypes>()
+      .stories.get("page", { query: { resolve_links: "story" } });
+    if (result.data) {
+      expectTypeOf(result.data.story).toEqualTypeOf<Story<Blocks>>();
+    }
+  });
+
+  it("should type links inside inlined relations", async () => {
+    const result = await createApiClient({
+      accessToken: "test-token",
+      inlineRelations: true,
+      inlineLinks: true,
+    })
+      .withTypes<LinkTypes>()
+      .stories.get("page", {
+        query: { resolve_relations: "page.featured", resolve_links: "story" },
+      });
+    if (result.data?.story.content.component === "page") {
+      const featured = result.data.story.content.featured;
+      if (featured && typeof featured !== "string" && featured.content.component === "article") {
+        const cta = featured.content.cta;
+        if (cta?.linktype === "story") {
+          expectTypeOf(cta.story).exclude<undefined>().toHaveProperty("content");
+        }
+      }
+    }
+  });
+
+  it("should type the story of a story link without schema types", async () => {
+    const result = await createApiClient({
+      accessToken: "test-token",
+      inlineLinks: true,
+    }).stories.get("page", { query: { resolve_links: "story" } });
+    if (result.data) {
+      const cta = result.data.story.content.cta;
+      type StoryLink = Extract<typeof cta, { fieldtype: "multilink"; linktype: "story" }>;
+      expectTypeOf<StoryLink["story"]>().exclude<undefined>().toHaveProperty("uuid");
+    }
+  });
+
+  it("should include every variant for a client configured with boolean flags", async () => {
+    const config: ContentApiClientConfig<false, boolean, boolean> = { accessToken: "test-token" };
+    const client: ReturnType<typeof createApiClient> = createApiClient(config);
+    const result = await client.stories.get("page", { query: { resolve_links: "story" } });
+    if (result.data) {
+      const story = result.data.story;
+      expectTypeOf<Story>().toExtend<typeof story>();
+    }
+  });
+
+  it("should match WithInlinedContent with block content fetched with both options", async () => {
+    const result = await createApiClient({
+      accessToken: "test-token",
+      inlineRelations: true,
+      inlineLinks: true,
+    })
+      .withTypes<LinkTypes>()
+      .stories.get("page", {
+        query: { resolve_relations: "page.featured", resolve_links: "story" },
+      });
+    if (result.data?.story.content.component === "page") {
+      const block = result.data.story.content.teasers[0];
+      if (block) {
+        expectTypeOf(block).toEqualTypeOf<
+          WithInlinedContent<
+            typeof _teaserBlock,
+            Blocks,
+            { relations: "page.featured"; links: "story" }
+          >
+        >();
+      }
+    }
+  });
+
+  it("should match WithInlinedContent with WithInlinedRelations for relations only", () => {
+    expectTypeOf<
+      WithInlinedContent<typeof _pageBlock, Blocks, { relations: "page.featured" }>
+    >().toEqualTypeOf<WithInlinedRelations<typeof _pageBlock, "page.featured", Blocks>>();
+  });
+
+  it("should match WithInlinedLinks with the fetched block content", async () => {
+    const result = await createClient().stories.get("page", {
+      query: { resolve_links: "story" },
+    });
+    if (result.data?.story.content.component === "page") {
+      const block = result.data.story.content.teasers[0];
+      if (block) {
+        expectTypeOf(block).toEqualTypeOf<WithInlinedLinks<typeof _teaserBlock, "story", Blocks>>();
+      }
+    }
   });
 });

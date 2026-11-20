@@ -219,6 +219,7 @@ export interface CacheConfig {
 export interface ContentApiClientConfig<
   ThrowOnError extends boolean = false,
   InlineRelations extends boolean = false,
+  InlineLinks extends boolean = false,
 > {
   accessToken: string;
   region?: Region;
@@ -227,6 +228,15 @@ export interface ContentApiClientConfig<
   throwOnError?: ThrowOnError;
   cache?: CacheConfig;
   inlineRelations?: InlineRelations;
+  /**
+   * Sets `story` on each story link (a multilink field or a rich text link mark) to its entry
+   * in the response's `links`, when a request passes `resolve_links`. Also inlines the links
+   * of related stories (with `resolve_links_in_relations: 1`) and of linked stories (with
+   * `resolve_links_level: 2`). Links beyond the API's resolve limit are fetched. The entry's
+   * shape depends on the `resolve_links` value (see `InlinedLink`).
+   * @default false
+   */
+  inlineLinks?: InlineLinks;
   /**
    * Controls whether `inlineRelations` may return a circular result.
    *
@@ -288,6 +298,7 @@ type ResolveFieldPlugins<T> = T extends { fieldPlugins: infer P } ? P : Record<n
 type ApiClientBaseResult<
   ThrowOnError extends boolean = false,
   InlineRelations extends boolean = false,
+  InlineLinks extends boolean = false,
 > = {
   datasourceEntries: ReturnType<typeof createDatasourceEntriesResource<ThrowOnError>>;
   datasources: ReturnType<typeof createDatasourcesResource<ThrowOnError>>;
@@ -298,25 +309,40 @@ type ApiClientBaseResult<
   links: ReturnType<typeof createLinksResource<ThrowOnError>>;
   spaces: ReturnType<typeof createSpacesResource<ThrowOnError>>;
   stories: ReturnType<
-    typeof createStoriesResource<Component, Record<never, never>, InlineRelations, ThrowOnError>
+    typeof createStoriesResource<
+      Component,
+      Record<never, never>,
+      InlineRelations,
+      ThrowOnError,
+      InlineLinks
+    >
   >;
   strata: ReturnType<typeof createStrataResource<ThrowOnError>>;
   tags: ReturnType<typeof createTagsResource<ThrowOnError>>;
 };
 
 /**
- * The return type of `createApiClient`, parameterised by `TComponents` and `InlineRelations`
- * so that `.withTypes<T>()` can change the story response types without touching the
- * runtime object.
+ * The return type of `createApiClient`. Its type parameters let `.withTypes<T>()` change the
+ * story response types without touching the runtime object.
  */
 export type ContentApiClient<
   TComponents extends Component = Component,
   TFieldPlugins = Record<never, never>,
   InlineRelations extends boolean = false,
   ThrowOnError extends boolean = false,
-> = Omit<ApiClientBaseResult<ThrowOnError, InlineRelations>, "stories" | "withTypes"> & {
+  InlineLinks extends boolean = false,
+> = Omit<
+  ApiClientBaseResult<ThrowOnError, InlineRelations, InlineLinks>,
+  "stories" | "withTypes"
+> & {
   stories: ReturnType<
-    typeof createStoriesResource<TComponents, TFieldPlugins, InlineRelations, ThrowOnError>
+    typeof createStoriesResource<
+      TComponents,
+      TFieldPlugins,
+      InlineRelations,
+      ThrowOnError,
+      InlineLinks
+    >
   >;
   /**
    * Returns the same client instance cast to a version that narrows story content
@@ -338,7 +364,8 @@ export type ContentApiClient<
     ResolveComponents<T>,
     ResolveFieldPlugins<T>,
     InlineRelations,
-    ThrowOnError
+    ThrowOnError,
+    InlineLinks
   >;
 };
 
@@ -349,9 +376,10 @@ export type ContentApiClient<
 export const createApiClientBase = <
   ThrowOnError extends boolean = false,
   InlineRelations extends boolean = false,
+  InlineLinks extends boolean = false,
 >(
-  config: ContentApiClientConfig<ThrowOnError, InlineRelations>,
-): ApiClientBaseResult<ThrowOnError, InlineRelations> => {
+  config: ContentApiClientConfig<ThrowOnError, InlineRelations, InlineLinks>,
+): ApiClientBaseResult<ThrowOnError, InlineRelations, InlineLinks> => {
   const {
     accessToken,
     region = "eu",
@@ -360,6 +388,7 @@ export const createApiClientBase = <
     throwOnError = false,
     cache = {},
     inlineRelations = false,
+    inlineLinks = false,
     circularRelations,
     retry,
     timeout = 30_000,
@@ -820,10 +849,23 @@ export const createApiClientBase = <
 
   // Keep the declaration output aligned with ContentApiClient["stories"].
   const stories: ReturnType<
-    typeof createStoriesResource<Component, Record<never, never>, InlineRelations, ThrowOnError>
-  > = createStoriesResource<Component, Record<never, never>, InlineRelations, ThrowOnError>({
+    typeof createStoriesResource<
+      Component,
+      Record<never, never>,
+      InlineRelations,
+      ThrowOnError,
+      InlineLinks
+    >
+  > = createStoriesResource<
+    Component,
+    Record<never, never>,
+    InlineRelations,
+    ThrowOnError,
+    InlineLinks
+  >({
     ...resourceDeps,
     inlineRelations,
+    inlineLinks,
     circularRelations,
   });
 
@@ -859,23 +901,38 @@ export const createApiClientBase = <
 export const createApiClient = <
   ThrowOnError extends boolean = false,
   InlineRelations extends boolean = false,
+  InlineLinks extends boolean = false,
 >(
-  config: ContentApiClientConfig<ThrowOnError, InlineRelations>,
-): ContentApiClient<Component, Record<never, never>, InlineRelations, ThrowOnError> => {
+  config: ContentApiClientConfig<ThrowOnError, InlineRelations, InlineLinks>,
+): ContentApiClient<
+  Component,
+  Record<never, never>,
+  InlineRelations,
+  ThrowOnError,
+  InlineLinks
+> => {
   const base = createApiClientBase(config);
-  const self: ContentApiClient<Component, Record<never, never>, InlineRelations, ThrowOnError> = {
+  const self: ContentApiClient<
+    Component,
+    Record<never, never>,
+    InlineRelations,
+    ThrowOnError,
+    InlineLinks
+  > = {
     ...base,
     withTypes<T extends StoryblokTypesConfig>(): ContentApiClient<
       ResolveComponents<T>,
       ResolveFieldPlugins<T>,
       InlineRelations,
-      ThrowOnError
+      ThrowOnError,
+      InlineLinks
     > {
       return self as unknown as ContentApiClient<
         ResolveComponents<T>,
         ResolveFieldPlugins<T>,
         InlineRelations,
-        ThrowOnError
+        ThrowOnError,
+        InlineLinks
       >;
     },
   };

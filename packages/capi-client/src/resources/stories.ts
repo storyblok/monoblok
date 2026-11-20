@@ -18,12 +18,17 @@ import type {
   RichTextFieldValue,
   TableFieldValue,
 } from "../generated/types/field";
-import {
-  inlineStoriesContent,
-  inlineStoryContent,
-  resolveRelationMap,
-} from "../utils/inline-relations";
+import { addLinks, createLinkInliner, resolveLinkMap } from "../utils/inline-links";
+import type {
+  InlinedLink,
+  InlinedLinkRichText,
+  InlinedMultilinkValue,
+  ResolveLinks,
+  StoryLinkData,
+} from "../utils/inline-links";
+import { inlineStoriesContent, resolveRelationMap } from "../utils/inline-relations";
 import type { ApiResponse, FetchOptions, ResourceDeps } from "../client";
+import { ClientError } from "../error";
 import type {
   BlockFields,
   Block as Component,
@@ -153,9 +158,14 @@ type ParseRelationPaths<
  * iterated as `K` while `TBlocks` stays the full union for nested blok fields, and the
  * final indexed access produces the discriminated union of all story types.
  */
-type InlinedStory<TBlocks extends Component, TPaths extends string, TFieldPlugins> = {
+type InlinedStory<
+  TBlocks extends Component,
+  TPaths extends string,
+  TFieldPlugins,
+  TLink = never,
+> = {
   [K in RootComponents<TBlocks> as K["name"]]: Omit<Story<K, TFieldPlugins, TBlocks>, "content"> & {
-    content: InlinedBlockContent<K, TBlocks, TPaths, TFieldPlugins>;
+    content: InlinedBlockContent<K, TBlocks, TPaths, TFieldPlugins, TLink>;
   };
 }[RootComponents<TBlocks>["name"]];
 
@@ -167,10 +177,10 @@ type RelationValue<TValue, TStory> = TValue extends string
     : TValue;
 
 /**
- * A block embedded in a richtext field without `allow`. Its component is unknown, so
- * any of its fields can hold an inlined story.
+ * A block whose component is unknown, e.g. one embedded in a rich text field without
+ * `allow`, so any of its fields can hold an inlined story or link.
  */
-interface InlinedLooseBlockContent<TStory> {
+interface InlinedLooseBlockContent<TStory, TLink = never> {
   _uid: string;
   component: string;
   _editable?: string;
@@ -180,11 +190,14 @@ interface InlinedLooseBlockContent<TStory> {
     | number
     | boolean
     | TStory
-    | Array<string | TStory | AssetFieldValue | InlinedLooseBlockContent<TStory>>
+    | Array<string | TStory | AssetFieldValue | InlinedLooseBlockContent<TStory, TLink>>
     | AssetFieldValue
-    | MultilinkFieldValue
+    | InlinedMultilinkValue<TLink>
     | TableFieldValue
-    | RestrictRichText<RichTextFieldValue, InlinedLooseBlockContent<TStory>>
+    | InlinedLinkRichText<
+        RestrictRichText<RichTextFieldValue, InlinedLooseBlockContent<TStory, TLink>>,
+        TLink
+      >
     | PluginFieldValue
     | undefined;
 }
@@ -204,50 +217,80 @@ type InlinedFieldValue<
   TBlocks extends Component,
   TPaths extends string,
   TFieldPlugins,
+  TLink,
 > = TField extends { type: "bloks" }
   ? Prettify<
-      InlinedBlockContent<ApplyRestrictions<TField, TBlocks>, TBlocks, TPaths, TFieldPlugins>[]
+      InlinedBlockContent<
+        ApplyRestrictions<TField, TBlocks>,
+        TBlocks,
+        TPaths,
+        TFieldPlugins,
+        TLink
+      >[]
     >
   : TField extends { type: "richtext" }
     ? HasRestriction<TField> extends true
       ? Prettify<
-          RestrictRichText<
-            RichTextFieldValue,
-            InlinedBlockContent<ApplyRestrictions<TField, TBlocks>, TBlocks, TPaths, TFieldPlugins>
-          >
-        >
-      : [LooseBlockPaths<TPaths, TBlocks>] extends [never]
-        ? FieldValue<TField, TBlocks, TFieldPlugins>
-        : Prettify<
+          InlinedLinkRichText<
             RestrictRichText<
               RichTextFieldValue,
-              InlinedLooseBlockContent<InlinedStory<TBlocks, TPaths, TFieldPlugins>>
+              InlinedBlockContent<
+                ApplyRestrictions<TField, TBlocks>,
+                TBlocks,
+                TPaths,
+                TFieldPlugins,
+                TLink
+              >
+            >,
+            TLink
+          >
+        >
+      : [LooseBlockPaths<TPaths, TBlocks> | TLink] extends [never]
+        ? FieldValue<TField, TBlocks, TFieldPlugins>
+        : Prettify<
+            InlinedLinkRichText<
+              RestrictRichText<
+                RichTextFieldValue,
+                InlinedLooseBlockContent<
+                  [LooseBlockPaths<TPaths, TBlocks>] extends [never]
+                    ? never
+                    : InlinedStory<TBlocks, TPaths, TFieldPlugins, TLink>,
+                  TLink
+                >
+              >,
+              TLink
             >
           >
-    : `${TBlockName}.${TField["name"]}` extends TPaths
-      ? RelationValue<
-          FieldValue<TField, TBlocks, TFieldPlugins>,
-          InlinedStory<TBlocks, TPaths, TFieldPlugins>
-        >
-      : FieldValue<TField, TBlocks, TFieldPlugins>;
+    : TField extends { type: "multilink" }
+      ? [TLink] extends [never]
+        ? FieldValue<TField, TBlocks, TFieldPlugins>
+        : InlinedMultilinkValue<TLink>
+      : `${TBlockName}.${TField["name"]}` extends TPaths
+        ? RelationValue<
+            FieldValue<TField, TBlocks, TFieldPlugins>,
+            InlinedStory<TBlocks, TPaths, TFieldPlugins, TLink>
+          >
+        : FieldValue<TField, TBlocks, TFieldPlugins>;
 
 /**
- * Block content with relations inlined, built from the block's field definitions
- * rather than by walking its content type, so fields that hold no relation keep their
- * types and large schemas stay within the compiler's instantiation limits.
+ * Block content with relations and links inlined, built from the block's field
+ * definitions rather than by walking its content type, so fields that hold no relation
+ * or link keep their types and large schemas stay within the compiler's instantiation
+ * limits. `TLink` is the resolved link type, `never` when links are not inlined.
  */
 type InlinedBlockContent<
   TBlock extends Component,
   TBlocks extends Component,
   TPaths extends string,
   TFieldPlugins,
+  TLink = never,
 > = TBlock extends any
   ? Prettify<
       { _uid: string; component: TBlock["name"]; _editable?: string } & Prettify<
         {
           [F in ContentField<TBlock["fields"]> as F extends { required: true }
             ? F["name"]
-            : never]: InlinedFieldValue<F, TBlock["name"], TBlocks, TPaths, TFieldPlugins>;
+            : never]: InlinedFieldValue<F, TBlock["name"], TBlocks, TPaths, TFieldPlugins, TLink>;
         } & {
           [F in ContentField<TBlock["fields"]> as F extends { required: true }
             ? never
@@ -256,7 +299,8 @@ type InlinedBlockContent<
             TBlock["name"],
             TBlocks,
             TPaths,
-            TFieldPlugins
+            TFieldPlugins,
+            TLink
           > | null;
         }
       >
@@ -278,7 +322,8 @@ type InlinedBlockContent<
  * `TResolveRelations` (`string`) can match any field, so every string or string-array
  * field at any depth becomes `string | story`. Table cells are the exception: the
  * runtime can match them (`_table_col.value`), but they keep their string type.
- * `TFieldPlugins` types `custom` fields, as in {@link Story}.
+ * `TFieldPlugins` types `custom` fields, as in {@link Story}. With `inlineLinks: true`
+ * too, use {@link WithInlinedContent}.
  *
  * With `circularRelations: false`, related stories are inlined two levels deep and
  * relations below that stay UUID strings, so the result is never circular. Otherwise,
@@ -298,6 +343,151 @@ export type WithInlinedRelations<
   TFieldPlugins = Record<never, never>,
 > = InlinedBlockContent<TBlock, TBlocks, ParseRelationPaths<TResolveRelations>, TFieldPlugins>;
 
+/** What {@link WithInlinedContent} inlines: the fetch's query values and field plugins. */
+export interface InlinedContentOptions {
+  /** The `resolve_relations` value, with `inlineRelations: true`. */
+  relations?: string;
+  /** The `resolve_links` value, with `inlineLinks: true`. */
+  links?: ResolveLinks;
+  /** Types `custom` fields, as in {@link Story}. */
+  fieldPlugins?: unknown;
+}
+
+type FieldPluginsOf<TOptions extends InlinedContentOptions> = TOptions extends {
+  fieldPlugins: infer TFieldPlugins;
+}
+  ? TFieldPlugins
+  : Record<never, never>;
+
+/**
+ * Types a block's content as returned by a client created with `inlineRelations: true`,
+ * `inlineLinks: true`, or both, combining {@link WithInlinedRelations} and
+ * {@link WithInlinedLinks}. Pass the fetch's values in `TOptions`.
+ *
+ * @example
+ * type Props = {
+ *   block: WithInlinedContent<typeof page, Blocks, { relations: "page.author"; links: "story" }>;
+ * };
+ */
+export type WithInlinedContent<
+  TBlock extends Component,
+  TBlocks extends Component,
+  TOptions extends InlinedContentOptions,
+> = InlinedBlockContent<
+  TBlock,
+  TBlocks,
+  TOptions extends { relations: infer TRelations extends string }
+    ? ParseRelationPaths<TRelations>
+    : never,
+  FieldPluginsOf<TOptions>,
+  ResolvedLink<
+    TOptions extends { links: infer TLinks extends ResolveLinks } ? TLinks : never,
+    TBlocks,
+    FieldPluginsOf<TOptions>
+  >
+>;
+
+/**
+ * Types a block's content as returned by a client created with `inlineLinks: true`:
+ * each story link, in multilink fields and rich text link marks at any depth, carries
+ * the resolved link as `story` (see {@link InlinedLink}). A link the API resolves no
+ * story for (e.g. unpublished or deleted) has no `story`.
+ *
+ * `TBlock` is the block definition and `TBlocks` the union of all blocks in the space;
+ * linked stories are typed from its root blocks. `TResolveLinks` is the `resolve_links`
+ * value of the fetch. With `inlineRelations` too, use {@link WithInlinedContent}.
+ *
+ * @example
+ * type Props = {
+ *   block: WithInlinedLinks<typeof teaser, "story", Blocks>;
+ * };
+ */
+export type WithInlinedLinks<
+  TBlock extends Component,
+  TResolveLinks extends ResolveLinks,
+  TBlocks extends Component,
+  TFieldPlugins = Record<never, never>,
+> = InlinedBlockContent<
+  TBlock,
+  TBlocks,
+  never,
+  TFieldPlugins,
+  ResolvedLink<TResolveLinks, TBlocks, TFieldPlugins>
+>;
+
+/**
+ * A linked story. With `resolve_links_level: 2`, its own story links carry their linked
+ * story too, whose links are not inlined. Its relations stay UUIDs.
+ */
+type LinkedStory<TBlocks extends Component, TResolveLinks extends string, TFieldPlugins> = {
+  [K in RootComponents<TBlocks> as K["name"]]: Omit<Story<K, TFieldPlugins, TBlocks>, "content"> & {
+    content: InlinedBlockContent<
+      K,
+      TBlocks,
+      never,
+      TFieldPlugins,
+      InlinedLink<TResolveLinks, Story<TBlocks, TFieldPlugins>>
+    >;
+  };
+}[RootComponents<TBlocks>["name"]];
+
+/** A linked story without schema types, as {@link LinkedStory}. */
+type LooseLinkedStory<TResolveLinks extends string> = Omit<Story, "content"> & {
+  content: InlinedLooseBlockContent<never, InlinedLink<TResolveLinks, Story>>;
+};
+
+/**
+ * The resolved link type for `TResolveLinks`, `never` without it. Linked stories are
+ * typed from `TBlocks`, or loosely when it is the base `Component`.
+ */
+type ResolvedLink<TResolveLinks extends string, TBlocks extends Component, TFieldPlugins> = [
+  TResolveLinks,
+] extends [never]
+  ? never
+  : Component extends TBlocks
+    ? InlinedLink<TResolveLinks, LooseLinkedStory<TResolveLinks>>
+    : InlinedLink<TResolveLinks, LinkedStory<TBlocks, TResolveLinks, TFieldPlugins>>;
+
+/** The relation paths a request inlines, `never` when it inlines none. */
+type RequestRelationPaths<
+  InlineRelations extends boolean,
+  ResolveRelationsRaw extends string | undefined,
+> = InlineRelations extends true
+  ? ResolveRelationsRaw extends string
+    ? ParseRelationPaths<ResolveRelationsRaw>
+    : never
+  : never;
+
+/** The resolved link type a request inlines, `never` when it inlines none. */
+type RequestLink<
+  InlineLinks extends boolean,
+  ResolveLinksRaw extends string | undefined,
+  TComponents extends Component,
+  TFieldPlugins,
+> = InlineLinks extends true
+  ? ResolveLinksRaw extends string
+    ? ResolvedLink<ResolveLinksRaw, TComponents, TFieldPlugins>
+    : never
+  : never;
+
+/**
+ * A story without schema types, as returned by a client created with
+ * `inlineLinks: true`: each story link carries the resolved link as `story`.
+ */
+export type StoryWithInlinedLinks<TResolveLinks extends ResolveLinks = ResolveLinks> =
+  LooseStoryWithInlinedLinks<ResolvedLink<TResolveLinks, Component, never>, false>;
+
+/**
+ * A story without schema types whose links are inlined, and whose relations are
+ * inlined too when `InlineRelations` is `true`.
+ */
+type LooseStoryWithInlinedLinks<TLink, InlineRelations extends boolean> = Omit<Story, "content"> & {
+  content: InlinedLooseBlockContent<
+    InlineRelations extends true ? LooseStoryWithInlinedLinks<TLink, InlineRelations> : never,
+    TLink
+  >;
+};
+
 /**
  * Resolves to a narrowed component-derived story type when `TComponents` is a specific
  * Component union, or falls back to the generated Story / StoryWithInlinedRelations
@@ -305,38 +495,94 @@ export type WithInlinedRelations<
  *
  * With `inlineRelations: true` and `resolve_relations` (e.g. `"article.author"`), matched
  * fields can hold the related story (see {@link WithInlinedRelations}).
- * Without `inlineRelations`, relations stay UUIDs.
+ * Without `inlineRelations`, relations stay UUIDs. With `inlineLinks: true` and
+ * `resolve_links`, story links carry the resolved link (see {@link WithInlinedLinks}).
  */
 type StoryResult<
   TComponents extends Component,
   InlineRelations extends boolean,
   ResolveRelationsRaw extends string | undefined = undefined,
   TFieldPlugins = Record<never, never>,
+  InlineLinks extends boolean = false,
+  ResolveLinksRaw extends string | undefined = undefined,
+> =
+  // Distributes over the flags, so a client configured with `boolean` gets every variant.
+  InlineRelations extends unknown
+    ? InlineLinks extends unknown
+      ? StoryResultFor<
+          TComponents,
+          InlineRelations,
+          ResolveRelationsRaw,
+          TFieldPlugins,
+          InlineLinks,
+          ResolveLinksRaw
+        >
+      : never
+    : never;
+
+type StoryResultFor<
+  TComponents extends Component,
+  InlineRelations extends boolean,
+  ResolveRelationsRaw extends string | undefined,
+  TFieldPlugins,
+  InlineLinks extends boolean,
+  ResolveLinksRaw extends string | undefined,
 > = Component extends TComponents
-  ? InlineRelations extends true
-    ? StoryWithInlinedRelations
-    : Story // fallback
-  : InlineRelations extends true
-    ? ResolveRelationsRaw extends string
-      ? InlinedStory<TComponents, ParseRelationPaths<ResolveRelationsRaw>, TFieldPlugins>
-      : Story<TComponents, TFieldPlugins>
-    : Story<TComponents, TFieldPlugins>;
+  ? [RequestLink<InlineLinks, ResolveLinksRaw, TComponents, TFieldPlugins>] extends [never]
+    ? InlineRelations extends true
+      ? StoryWithInlinedRelations
+      : Story // fallback
+    : LooseStoryWithInlinedLinks<
+        RequestLink<InlineLinks, ResolveLinksRaw, TComponents, TFieldPlugins>,
+        InlineRelations
+      >
+  : [
+        | RequestRelationPaths<InlineRelations, ResolveRelationsRaw>
+        | RequestLink<InlineLinks, ResolveLinksRaw, TComponents, TFieldPlugins>,
+      ] extends [never]
+    ? Story<TComponents, TFieldPlugins>
+    : InlinedStory<
+        TComponents,
+        RequestRelationPaths<InlineRelations, ResolveRelationsRaw>,
+        TFieldPlugins,
+        RequestLink<InlineLinks, ResolveLinksRaw, TComponents, TFieldPlugins>
+      >;
 
 type GetResponse<
   TComponents extends Component,
   InlineRelations extends boolean,
   ResolveRelationsRaw extends string | undefined = undefined,
   TFieldPlugins = Record<never, never>,
+  InlineLinks extends boolean = false,
+  ResolveLinksRaw extends string | undefined = undefined,
 > = Omit<GetStoryByIdResponses[200], "story"> & {
-  story: StoryResult<TComponents, InlineRelations, ResolveRelationsRaw, TFieldPlugins>;
+  story: StoryResult<
+    TComponents,
+    InlineRelations,
+    ResolveRelationsRaw,
+    TFieldPlugins,
+    InlineLinks,
+    ResolveLinksRaw
+  >;
 };
 type ListResponse<
   TComponents extends Component,
   InlineRelations extends boolean,
   ResolveRelationsRaw extends string | undefined = undefined,
   TFieldPlugins = Record<never, never>,
+  InlineLinks extends boolean = false,
+  ResolveLinksRaw extends string | undefined = undefined,
 > = Omit<ListStoriesResponses[200], "stories"> & {
-  stories: Array<StoryResult<TComponents, InlineRelations, ResolveRelationsRaw, TFieldPlugins>>;
+  stories: Array<
+    StoryResult<
+      TComponents,
+      InlineRelations,
+      ResolveRelationsRaw,
+      TFieldPlugins,
+      InlineLinks,
+      ResolveLinksRaw
+    >
+  >;
 };
 
 /**
@@ -351,11 +597,11 @@ interface StoryRelationData {
   rel_uuids?: string[];
 }
 
-interface StoryData extends StoryRelationData {
+interface StoryData extends StoryRelationData, StoryLinkData {
   story: Story;
 }
 
-interface StoriesData extends StoryRelationData {
+interface StoriesData extends StoryRelationData, StoryLinkData {
   stories: Story[];
 }
 
@@ -368,6 +614,7 @@ export interface StoriesResourceDeps<
   DefaultThrowOnError extends boolean = false,
 > extends ResourceDeps<DefaultThrowOnError> {
   inlineRelations: boolean;
+  inlineLinks?: boolean;
   circularRelations: boolean | undefined;
 }
 
@@ -380,31 +627,93 @@ export function createStoriesResource<
   TFieldPlugins = Record<never, never>,
   InlineRelations extends boolean = false,
   DefaultThrowOnError extends boolean = false,
+  InlineLinks extends boolean = false,
 >(deps: StoriesResourceDeps<DefaultThrowOnError>) {
   const {
     client,
     requestWithCache,
     asApiResponse,
     inlineRelations,
+    inlineLinks: shouldInlineLinks = false,
     circularRelations,
     throttleManager,
   } = deps;
-  const requestOptions = inlineRelations
-    ? { cacheKeyPrefix: getInlineCacheKeyPrefix(circularRelations) }
-    : undefined;
+
+  /**
+   * Inlined responses are cached apart from raw ones. Relations keep their `inline` prefix, so
+   * entries cached before link inlining existed stay valid.
+   */
+  const getCacheOptions = (query: { resolve_links?: unknown }) => {
+    const cacheKeyPrefix =
+      [
+        inlineRelations && getInlineCacheKeyPrefix(circularRelations),
+        shouldInlineLinks && query.resolve_links && "links",
+      ]
+        .filter(Boolean)
+        .join("-") || undefined;
+    return cacheKeyPrefix ? { cacheKeyPrefix } : undefined;
+  };
+
+  const inlineStories = async (
+    stories: Story[],
+    data: StoryRelationData & StoryLinkData,
+    requestQuery: Record<string, unknown>,
+    signal: AbortSignal | undefined,
+  ): Promise<Story[]> => {
+    const [resolvedRelations, resolvedLinks] = await Promise.all([
+      inlineRelations
+        ? resolveRelationMap(data, requestQuery, { client, throttleManager, signal })
+        : null,
+      shouldInlineLinks
+        ? resolveLinkMap(data, requestQuery, { client, throttleManager, signal })
+        : null,
+    ]);
+
+    let relationMap = resolvedRelations?.relationMap;
+    if (resolvedLinks) {
+      const { linkMap, depth } = resolvedLinks;
+      if (resolvedRelations && Number(requestQuery.resolve_links_in_relations) === 1) {
+        addLinks(linkMap, resolvedRelations.links);
+      }
+      const inlineLinks = createLinkInliner(linkMap, depth);
+      stories.forEach(inlineLinks);
+      // Related stories get their links before they are copied into the content. They are
+      // copied first, so the response's `rels` stay unchanged.
+      relationMap =
+        relationMap &&
+        new Map(
+          [...relationMap].map(([uuid, story]) => [uuid, inlineLinks(structuredClone(story))]),
+        );
+    }
+
+    return resolvedRelations && relationMap
+      ? inlineStoriesContent(stories, resolvedRelations.relationPaths, relationMap, {
+          circularRelations,
+        })
+      : stories;
+  };
+
+  /**
+   * A failed follow-up request (e.g. for `rel_uuids`) fails the whole call, as an error result
+   * unless `throwOnError` is set.
+   */
+  const shouldThrow = (throwOnError: boolean | undefined) =>
+    throwOnError ?? client.getConfig().throwOnError ?? false;
 
   return {
     get: async <
       ThrowOnError extends boolean = DefaultThrowOnError,
       const ResolveRelationsStr extends string | undefined = undefined,
+      const ResolveLinksStr extends ResolveLinks | undefined = undefined,
     >(
       identifier: StoryIdentifier,
       options: {
         query?: Omit<
           NonNullable<GetStoryByIdData["query"]>,
-          "resolve_relations" | "excluding_story_fields"
+          "resolve_relations" | "resolve_links" | "excluding_story_fields"
         > & {
           resolve_relations?: ResolveRelationsStr;
+          resolve_links?: ResolveLinksStr;
           excluding_story_fields?: ExcludableStoryField | ExcludableStoryField[];
         };
         signal?: AbortSignal;
@@ -413,7 +722,14 @@ export function createStoriesResource<
       } = {},
     ): Promise<
       ApiResponse<
-        GetResponse<TComponents, InlineRelations, ResolveRelationsStr, TFieldPlugins>,
+        GetResponse<
+          TComponents,
+          InlineRelations,
+          ResolveRelationsStr,
+          TFieldPlugins,
+          InlineLinks,
+          ResolveLinksStr
+        >,
         ThrowOnError
       >
     > => {
@@ -429,6 +745,7 @@ export function createStoriesResource<
           ? { ...typedQuery, find_by: "uuid" }
           : typedQuery;
       const requestPath = `/v2/cdn/stories/${identifier}`;
+      const cacheOptions = getCacheOptions(resolvedQuery);
       return requestWithCache(
         "GET",
         requestPath,
@@ -448,52 +765,51 @@ export function createStoriesResource<
               }),
             ),
           )) satisfies ApiResponse<
-            GetResponse<TComponents, InlineRelations, ResolveRelationsStr, TFieldPlugins>,
+            GetResponse<
+              TComponents,
+              InlineRelations,
+              ResolveRelationsStr,
+              TFieldPlugins,
+              InlineLinks,
+              ResolveLinksStr
+            >,
             ThrowOnError
           >;
 
-          if (!inlineRelations || response.data === undefined) {
+          if (!cacheOptions || response.data === undefined) {
             return response;
           }
 
-          // Narrow to the internal relation shape to read the API's sidecar
-          // `rels`/`rel_uuids`; consumers keep seeing the generic `Story`.
+          // Narrow to the internal shape to read the API's sidecar `rels`/`rel_uuids`
+          // and `links`/`link_uuids`; consumers keep seeing the generic `Story`.
           const storyData = response.data as unknown as StoryData;
-          const resolved = await resolveRelationMap(storyData, requestQuery, {
-            client,
-            throttleManager,
-          });
-          if (!resolved) {
-            return response;
+          try {
+            const [story] = await inlineStories([storyData.story], storyData, requestQuery, signal);
+            return { ...response, data: { ...response.data, story } };
+          } catch (error) {
+            if (shouldThrow(throwOnError) || !(error instanceof ClientError)) {
+              throw error;
+            }
+            // Only reached without `throwOnError`, where `data` is optional.
+            return { ...response, data: undefined, error } as typeof response;
           }
-
-          return {
-            ...response,
-            data: {
-              ...response.data,
-              story: inlineStoryContent(
-                storyData.story,
-                resolved.relationPaths,
-                resolved.relationMap,
-                { circularRelations },
-              ),
-            },
-          };
         },
-        requestOptions,
+        cacheOptions,
       );
     },
 
     list: async <
       ThrowOnError extends boolean = DefaultThrowOnError,
       const ResolveRelationsStr extends string | undefined = undefined,
+      const ResolveLinksStr extends ResolveLinks | undefined = undefined,
     >(
       options: {
         query?: Omit<
           NonNullable<ListStoriesData["query"]>,
-          "resolve_relations" | "excluding_story_fields"
+          "resolve_relations" | "resolve_links" | "excluding_story_fields"
         > & {
           resolve_relations?: ResolveRelationsStr;
+          resolve_links?: ResolveLinksStr;
           excluding_story_fields?: ExcludableStoryField | ExcludableStoryField[];
         };
         signal?: AbortSignal;
@@ -502,7 +818,14 @@ export function createStoriesResource<
       } = {},
     ): Promise<
       ApiResponse<
-        ListResponse<TComponents, InlineRelations, ResolveRelationsStr, TFieldPlugins>,
+        ListResponse<
+          TComponents,
+          InlineRelations,
+          ResolveRelationsStr,
+          TFieldPlugins,
+          InlineLinks,
+          ResolveLinksStr
+        >,
         ThrowOnError
       >
     > => {
@@ -514,6 +837,7 @@ export function createStoriesResource<
       };
       const typedQuery = normalizedQuery as NonNullable<ListStoriesData["query"]>;
       const requestPath = "/v2/cdn/stories";
+      const cacheOptions = getCacheOptions(typedQuery);
       return requestWithCache(
         "GET",
         requestPath,
@@ -532,39 +856,41 @@ export function createStoriesResource<
               }),
             ),
           )) satisfies ApiResponse<
-            ListResponse<TComponents, InlineRelations, ResolveRelationsStr, TFieldPlugins>,
+            ListResponse<
+              TComponents,
+              InlineRelations,
+              ResolveRelationsStr,
+              TFieldPlugins,
+              InlineLinks,
+              ResolveLinksStr
+            >,
             ThrowOnError
           >;
 
-          if (!inlineRelations || response.data === undefined) {
+          if (!cacheOptions || response.data === undefined) {
             return response;
           }
 
-          // Narrow to the internal relation shape to read the API's sidecar
-          // `rels`/`rel_uuids`; consumers keep seeing the generic `Story`.
+          // Narrow to the internal shape to read the API's sidecar `rels`/`rel_uuids`
+          // and `links`/`link_uuids`; consumers keep seeing the generic `Story`.
           const storiesData = response.data as unknown as StoriesData;
-          const resolved = await resolveRelationMap(storiesData, requestQuery, {
-            client,
-            throttleManager,
-          });
-          if (!resolved) {
-            return response;
+          try {
+            const stories = await inlineStories(
+              storiesData.stories,
+              storiesData,
+              requestQuery,
+              signal,
+            );
+            return { ...response, data: { ...response.data, stories } };
+          } catch (error) {
+            if (shouldThrow(throwOnError) || !(error instanceof ClientError)) {
+              throw error;
+            }
+            // Only reached without `throwOnError`, where `data` is optional.
+            return { ...response, data: undefined, error } as typeof response;
           }
-
-          return {
-            ...response,
-            data: {
-              ...response.data,
-              stories: inlineStoriesContent(
-                storiesData.stories,
-                resolved.relationPaths,
-                resolved.relationMap,
-                { circularRelations },
-              ),
-            },
-          };
         },
-        requestOptions,
+        cacheOptions,
       );
     },
   };

@@ -24,34 +24,65 @@ import { createElement, Fragment, type ComponentType, type Key, type ReactNode }
 /**
  * Props for a custom React richtext node or mark component of type `T`.
  * Replaces the core renderer's string `children` with `ReactNode` and adds a React render context.
+ *
+ * `TData` types `context.data`, the `data` passed to `StoryblokRichText`.
+ *
+ * @example
+ * ```tsx
+ * function RichTextBlok({ attrs, context }: StoryblokReactRichTextProps<"blok", { locale: string }>) {
+ *   // `context.data.locale` is a `string`, no cast needed.
+ * }
+ * ```
  */
-export type StoryblokReactRichTextProps<T extends StoryblokRichTextElement> = Omit<
+export type StoryblokReactRichTextProps<T extends StoryblokRichTextElement, TData = unknown> = Omit<
   StoryblokRichTextCoreProps<T>,
   "context" | "children"
 > & {
-  context?: StoryblokReactRichTextRenderContext;
+  context: StoryblokReactRichTextRenderContext<TData>;
   children?: ReactNode;
 };
 
-/** A React component that renders a single richtext node or mark of type `T`. */
-export type StoryblokReactRichTextComponent<T extends StoryblokRichTextElement> = ComponentType<
-  StoryblokReactRichTextProps<T>
->;
+/**
+ * A React component that renders a single richtext node or mark of type `T`.
+ * `TData` types `context.data`.
+ */
+export type StoryblokReactRichTextComponent<
+  T extends StoryblokRichTextElement,
+  TData = unknown,
+> = ComponentType<StoryblokReactRichTextProps<T, TData>>;
 
-/** Map of richtext element types to their custom React renderer components. */
-export type StoryblokReactRichTextComponentMap = {
-  [K in StoryblokRichTextElement]?: StoryblokReactRichTextComponent<K>;
+/**
+ * Map of richtext element types to their custom React renderer components.
+ *
+ * `TData` is the type of the `data` passed to `StoryblokRichText`. Each
+ * component is checked against the props it receives for its key, so a
+ * component declaring `StoryblokReactRichTextProps<"blok", { locale: string }>`
+ * only fits a map whose `data` provides `locale`. Components that don't read
+ * `data` fit any map.
+ */
+export type StoryblokReactRichTextComponentMap<TData = unknown> = {
+  [K in StoryblokRichTextElement]?: StoryblokReactRichTextComponent<K, TData>;
 };
 
 /**
  * Context threaded through the richtext renderer. Passed as the `context` prop
  * to every custom node/mark component.
+ *
+ * `TData` is the type of `data`, matching the `data` passed to
+ * `StoryblokRichText`.
  */
-export interface StoryblokReactRichTextRenderContext {
+export interface StoryblokReactRichTextRenderContext<TData = unknown> {
   /** `true` for the defaults, or any subset of the options (e.g. `{ width: 800 }`). */
   optimizeImage?: boolean | Partial<StoryblokRichTextImageOptions>;
-  components?: StoryblokReactRichTextComponentMap;
-  data?: unknown;
+  /**
+   * The custom components of the surrounding `StoryblokRichText`, to pass on
+   * when a custom component renders `StoryblokRichText` itself.
+   */
+  // `any` rather than `TData`: a map typed with `TData` would make `TData`
+  // invariant, rejecting components that don't read `data` once it's set.
+  components?: StoryblokReactRichTextComponentMap<any>;
+  /** The `data` passed to `StoryblokRichText`. */
+  data: TData;
   /**
    * Logs a warning when a `blok` node has no `components.blok` renderer. Set
    * to `false` to silence it.
@@ -61,20 +92,57 @@ export interface StoryblokReactRichTextRenderContext {
   warnings?: boolean;
 }
 
-/** Props for the `<StoryblokRichText>` React component. */
-export interface StoryblokReactRichTextComponentProps extends StoryblokReactRichTextRenderContext {
-  document?: StoryblokRichTextInput;
-}
+/**
+ * Options of `createRichTextRenderer`, and the props of `StoryblokRichText`
+ * besides `document`.
+ *
+ * `TData` is the type of `data`. It's inferred from `data` and from the
+ * `components` that declare it, and `data` becomes required once a component
+ * declares it.
+ */
+export type StoryblokReactRichTextOptions<TData = unknown> = {
+  /** `true` for the defaults, or any subset of the options (e.g. `{ width: 800 }`). */
+  optimizeImage?: boolean | Partial<StoryblokRichTextImageOptions>;
+  /** Overrides the default renderer for specific node/mark types. */
+  components?: StoryblokReactRichTextComponentMap<TData>;
+  /**
+   * Logs a warning when a `blok` node has no `components.blok` renderer. Set
+   * to `false` to silence it.
+   *
+   * @default true
+   */
+  warnings?: boolean;
+} & (unknown extends TData
+  ? {
+      /** Data forwarded to custom `components` as `context.data`. */
+      data?: TData;
+    }
+  : {
+      /** Data forwarded to custom `components` as `context.data`. */
+      data: TData;
+    });
+
+/**
+ * Props for the `<StoryblokRichText>` React component. `TData` is the type of
+ * `data`; see `StoryblokReactRichTextOptions`.
+ */
+export type StoryblokReactRichTextComponentProps<TData = unknown> =
+  StoryblokReactRichTextOptions<TData> & {
+    document?: StoryblokRichTextInput;
+  };
 
 const extendAttrMap = {
   class: "className",
 };
 
-function resolveComponent<K extends StoryblokRichTextElement>(
-  type: K,
-  components?: StoryblokReactRichTextComponentMap,
-): ComponentType<StoryblokReactRichTextProps<K>> | undefined {
-  return components?.[type] as ComponentType<StoryblokReactRichTextProps<K>> | undefined;
+// `any`: the node or mark type is only known at runtime, so the props of the
+// component looked up for it can't be checked here. The map was checked where
+// it was passed to `StoryblokRichText` or `createRichTextRenderer`.
+function resolveComponent(
+  type: StoryblokRichTextElement,
+  components?: StoryblokReactRichTextComponentMap<any>,
+): ComponentType<any> | undefined {
+  return components?.[type];
 }
 
 // Module-level so the warning prints once per environment, not once per
@@ -108,10 +176,15 @@ function warnMissingBlokOnce(warnings: boolean | undefined): void {
  * return <div>{render(story.content.richtext)}</div>;
  * ```
  */
-export function createRichTextRenderer(options: StoryblokReactRichTextRenderContext) {
+export function createRichTextRenderer<TData = unknown>(
+  options: StoryblokReactRichTextOptions<TData>,
+) {
+  // `data` is optional only when no component reads it, so a missing `data`
+  // is a valid `context.data` of `undefined`.
+  const context = options as StoryblokReactRichTextRenderContext;
   return function render(document: StoryblokRichTextInput): ReactNode | null {
     const nodes = normalizeNodes(document, true);
-    return nodes?.length ? renderChildren(nodes, options) : null;
+    return nodes?.length ? renderChildren(nodes, context) : null;
   };
 }
 

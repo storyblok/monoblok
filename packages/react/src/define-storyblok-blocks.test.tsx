@@ -254,21 +254,25 @@ describe("defineStoryblokBlocks", () => {
       expect(getByTestId("echo")).toHaveAttribute("data-blok-uid", "1-uid-x");
     });
 
-    it("lets the blok renderer forward `context.data` as extra props", () => {
-      function PageWithLocale({ block, locale }: { block: BlockContent; locale?: string }) {
+    it("passes `data` to the blok renderer as typed `context.data`", () => {
+      function PageWithLocale({ block, locale }: { block: BlockContent; locale: string }) {
         return (
           <div data-testid="page" data-locale={locale}>
             {block._uid}
           </div>
         );
       }
-      const { StoryblokBlock } = defineStoryblokBlocks<{ locale?: string }>(() => ({
+      const { StoryblokBlock } = defineStoryblokBlocks<{ locale: string }>(() => ({
         components: { page: PageWithLocale },
       }));
-      function RichTextBlok({ attrs, context }: StoryblokReactRichTextProps<"blok">) {
-        const { locale } = (context?.data ?? {}) as { locale?: string };
-        return attrs.body?.map((block) => (
-          <StoryblokBlock key={block._uid} block={block} locale={locale} />
+      // `locale` comes from `StoryblokRichText`'s `data`, typed without a cast.
+      function RichTextBlok({
+        attrs,
+        context,
+      }: StoryblokReactRichTextProps<"blok", { locale: string }>) {
+        if (!Array.isArray(attrs.body)) return null;
+        return attrs.body.map((block, index) => (
+          <StoryblokBlock key={block._uid ?? index} block={block} locale={context.data.locale} />
         ));
       }
       const { getByTestId } = render(
@@ -279,6 +283,7 @@ describe("defineStoryblokBlocks", () => {
         />,
       );
       expect(getByTestId("page")).toHaveAttribute("data-locale", "de");
+      expect(getByTestId("page")).toHaveTextContent("uid-page");
     });
 
     it("does not render embedded bloks through any registry without components.blok", () => {

@@ -1,6 +1,6 @@
-import type { StoryblokReactRichTextComponentMap } from "./index";
+import type { StoryblokReactRichTextComponentMap, StoryblokReactRichTextProps } from "./index";
 import type { StoryblokRichTextInput } from "@storyblok/richtext";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { render } from "@testing-library/react";
 import {
   customRendererFixture,
@@ -18,6 +18,7 @@ import CustomText from "./fixtures/custom-text";
 import HeadingWithRichText from "./fixtures/heading-with-rich-text";
 import CustomBoldWithRichText from "./fixtures/custom-bold-with-rich-text";
 import { StoryblokRichText } from "./storyblok-richtext";
+import { createRichTextRenderer } from "./renderer";
 
 interface AttributePositionRule {
   key: string;
@@ -203,7 +204,7 @@ describe("react StoryblokRichText component", () => {
     });
     const text_node = customRendererFixture.text_node;
     it(text_node.title, () => {
-      const options: StoryblokReactRichTextComponentMap = {
+      const options: StoryblokReactRichTextComponentMap<{ prefix: string }> = {
         text: CustomText,
       };
       const { container } = render(
@@ -395,7 +396,7 @@ describe("react StoryblokRichText component", () => {
 
   describe("custom node components — node props alongside context.data", () => {
     it("threads data through a recursive custom component (heading) into a nested custom component (text)", () => {
-      const options: StoryblokReactRichTextComponentMap = {
+      const options: StoryblokReactRichTextComponentMap<{ prefix: string }> = {
         heading: HeadingWithRichText,
         text: CustomText,
       };
@@ -469,5 +470,66 @@ describe("react StoryblokRichText component", () => {
         locale: "de",
       });
     });
+  });
+});
+
+// ─── Typed `data` — type-level checks ─────────────────────────────────────────
+//
+// Checked by `tsc` (`test:types`) and Vitest's typecheck: each `@ts-expect-error`
+// fails the run if the line below it compiles.
+
+describe("StoryblokRichText — typed data (types)", () => {
+  const doc: StoryblokRichTextInput = { type: "doc", content: [] };
+  function LocalizedBlok({ context }: StoryblokReactRichTextProps<"blok", { locale: string }>) {
+    return <>{context.data.locale}</>;
+  }
+  function Heading({ children }: StoryblokReactRichTextProps<"heading">) {
+    return <h2>{children}</h2>;
+  }
+
+  it("types `context.data` from the second type argument", () => {
+    type Props = StoryblokReactRichTextProps<"blok", { locale: string }>;
+    expectTypeOf<Props["context"]["data"]>().toEqualTypeOf<{ locale: string }>();
+    expectTypeOf<StoryblokReactRichTextProps<"blok">["context"]["data"]>().toBeUnknown();
+  });
+
+  it("accepts `data` matching the components, next to components that don't read it", () => {
+    void (
+      <StoryblokRichText
+        document={doc}
+        components={{ blok: LocalizedBlok, heading: Heading }}
+        data={{ locale: "fr" }}
+      />
+    );
+    void createRichTextRenderer({ components: { blok: LocalizedBlok }, data: { locale: "fr" } });
+  });
+
+  it("keeps `data` optional and untyped without data-typed components", () => {
+    void (<StoryblokRichText document={doc} components={{ heading: Heading }} />);
+    void (<StoryblokRichText document={doc} components={{ heading: Heading }} data={{ any: 1 }} />);
+    void createRichTextRenderer({ optimizeImage: true });
+  });
+
+  it("rejects missing `data` once a component declares it", () => {
+    // @ts-expect-error `data` is missing.
+    void (<StoryblokRichText document={doc} components={{ blok: LocalizedBlok }} />);
+    // @ts-expect-error `data` is missing.
+    void createRichTextRenderer({ components: { blok: LocalizedBlok } });
+  });
+
+  it("rejects mismatched `data`", () => {
+    const blok = { blok: LocalizedBlok };
+    // @ts-expect-error `locale` must be a string.
+    void (<StoryblokRichText document={doc} components={blok} data={{ locale: 1 }} />);
+    // @ts-expect-error `lang` is not part of the declared data.
+    void (<StoryblokRichText document={doc} components={blok} data={{ lang: "fr" }} />);
+    // @ts-expect-error `locale` must be a string.
+    void createRichTextRenderer({ components: blok, data: { locale: 1 } });
+  });
+
+  it("checks a component against the props of its key", () => {
+    const data = { locale: "fr" };
+    // @ts-expect-error a `blok` renderer isn't a `heading` renderer.
+    void (<StoryblokRichText document={doc} components={{ heading: LocalizedBlok }} data={data} />);
   });
 });

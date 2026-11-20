@@ -445,7 +445,8 @@ The component accepts the following optional props:
   options for image nodes: `true` for the defaults, or any subset of the options, for example,
   `{ width: 800 }`.
 - `data` shares custom data with all custom rich text components. Each component receives the data
-  as `context.data`.
+  as `context.data`. Learn more in
+  [Passing data to custom components](#passing-data-to-custom-components).
 - `warnings` set to `false` silences the warning for embedded blocks without a `blok` renderer.
   Defaults to `true`.
 
@@ -461,7 +462,8 @@ import type { StoryblokReactRichTextProps } from "@storyblok/react";
 import { StoryblokBlock } from "@/lib/storyblok";
 
 export function RichTextBlok({ attrs }: StoryblokReactRichTextProps<"blok">) {
-  return attrs.body?.map((block, index) => (
+  if (!Array.isArray(attrs.body)) return null;
+  return attrs.body.map((block, index) => (
     <StoryblokBlock key={block._uid ?? index} block={block} />
   ));
 }
@@ -472,7 +474,8 @@ export function RichTextBlok({ attrs }: StoryblokReactRichTextProps<"blok">) {
 ```
 
 To pass extra props to embedded blocks, for example, `locale`, pass them as `data` and forward them
-from `context.data` in the `blok` component.
+from `context.data` in the `blok` component. Learn more in
+[Passing data to custom components](#passing-data-to-custom-components).
 
 If a document contains a `blok` node and no `blok` component is passed, `StoryblokRichText` renders
 nothing for it and logs a warning once. Documents without embedded blocks never warn.
@@ -485,6 +488,41 @@ provides the attributes and `children` available for the `link` mark, while
 
 Find the supported rich text nodes and marks, and the customization options, in the
 [@storyblok/richtext reference](https://www.storyblok.com/docs/libraries/js/rich-text).
+
+#### Passing data to custom components
+
+Custom components receive the `data` prop of `StoryblokRichText` as `context.data`. Declare its type
+as the second type argument of `StoryblokReactRichTextProps`. For example, a `blok` component for a
+component map that requires a `locale` prop:
+
+```tsx
+// src/components/RichTextBlok.tsx
+import type { StoryblokReactRichTextProps } from "@storyblok/react";
+import { StoryblokBlock } from "@/lib/storyblok";
+
+export function RichTextBlok({
+  attrs,
+  context,
+}: StoryblokReactRichTextProps<"blok", { locale: string }>) {
+  if (!Array.isArray(attrs.body)) return null;
+  return attrs.body.map((block, index) => (
+    <StoryblokBlock key={block._uid ?? index} block={block} locale={context.data.locale} />
+  ));
+}
+```
+
+```tsx
+<StoryblokRichText
+  document={block.richtext_field}
+  components={{ blok: RichTextBlok }}
+  data={{ locale }}
+/>
+```
+
+`StoryblokRichText` checks `data` against the components you pass: once a component declares a
+`data` type, `data` is required and must match it. Components that don't read `data` work with any
+`data`. To type a component map defined outside JSX, pass the same type argument, for example,
+`StoryblokReactRichTextComponentMap<{ locale: string }>`.
 
 #### Custom components
 

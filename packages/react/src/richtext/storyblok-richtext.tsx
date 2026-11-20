@@ -12,7 +12,11 @@ import type { StoryblokReactRichTextComponentProps } from "./renderer";
  * `editable` attributes and `fallback`. A document with a `blok` node and no
  * `components.blok` warns once, unless `warnings={false}`.
  *
- * `data` is passed to custom node and mark components as `context.data`.
+ * `data` is passed to custom node and mark components as `context.data`. Its
+ * type is checked against the components that declare one with
+ * `StoryblokReactRichTextProps<"blok", TData>`: once a component declares it,
+ * `data` is required and must match. Components that don't read `data` work
+ * with any `data`.
  *
  * **Performance:** the rendered output is memoized and recomputed only when
  * `document`, `optimizeImage`, `components`, `data`, or `warnings` change by
@@ -26,20 +30,37 @@ import type { StoryblokReactRichTextComponentProps } from "./renderer";
  * import { StoryblokBlock } from "./storyblok";
  *
  * export function RichTextBlok({ attrs }: StoryblokReactRichTextProps<"blok">) {
- *   return attrs.body?.map((block) => <StoryblokBlock key={block._uid} block={block} />);
+ *   if (!Array.isArray(attrs.body)) return null;
+ *   return attrs.body.map((block, index) => (
+ *     <StoryblokBlock key={block._uid ?? index} block={block} />
+ *   ));
  * }
  *
  * // usage
  * <StoryblokRichText document={block.text} components={{ blok: RichTextBlok }} />
  * ```
+ *
+ * @example Passing data to the `blok` renderer
+ * ```tsx
+ * export function RichTextBlok({
+ *   attrs,
+ *   context,
+ * }: StoryblokReactRichTextProps<"blok", { locale: string }>) {
+ *   if (!Array.isArray(attrs.body)) return null;
+ *   return attrs.body.map((block, index) => (
+ *     <StoryblokBlock key={block._uid ?? index} block={block} locale={context.data.locale} />
+ *   ));
+ * }
+ *
+ * // usage: `data` is required and must provide `locale`
+ * <StoryblokRichText document={block.text} components={{ blok: RichTextBlok }} data={{ locale }} />
+ * ```
  */
-export function StoryblokRichText({
-  document,
-  optimizeImage,
-  components,
-  data,
-  warnings,
-}: StoryblokReactRichTextComponentProps): ReactNode {
+export function StoryblokRichText<TData = unknown>(
+  props: StoryblokReactRichTextComponentProps<TData>,
+): ReactNode {
+  const { document, optimizeImage, components, data, warnings } =
+    props as StoryblokReactRichTextComponentProps;
   return useMemo(
     () => createRichTextRenderer({ optimizeImage, components, data, warnings })(document),
     [document, optimizeImage, components, data, warnings],

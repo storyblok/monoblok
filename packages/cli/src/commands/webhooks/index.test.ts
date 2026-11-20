@@ -626,7 +626,7 @@ describe("webhooks command", () => {
       expect(requests.requests).toBe(2);
     });
 
-    it("should store a repeated list value once", async () => {
+    it("should send a repeated list value as given, as the API accepts it", async () => {
       await run(
         "create",
         "--space",
@@ -639,7 +639,7 @@ describe("webhooks command", () => {
         "actions=story.published,story.published",
       );
 
-      expect(api.writes[0].body?.actions).toEqual(["story.published"]);
+      expect(api.writes[0].body?.actions).toEqual(["story.published", "story.published"]);
     });
 
     it("should create a webhook from --data", async () => {

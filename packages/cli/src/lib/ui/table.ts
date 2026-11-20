@@ -87,7 +87,7 @@ function truncate(text: string, width: number): string {
  * or set the window title), so it is shown as `�` instead. So is a bidi
  * control, which would reverse the rest of its row, slug and id included.
  */
-const sanitize = (cell: string): string =>
+export const sanitize = (cell: string): string =>
   cell
     .replace(/\s+/g, " ")
     // oxlint-disable-next-line no-control-regex -- matching control characters is the point.

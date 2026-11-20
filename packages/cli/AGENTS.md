@@ -8,6 +8,7 @@
 | Module initialization, global `preAction` behavior   | `src/program.ts`                                                                                                                    |
 | Commander command definition                         | `src/commands/<name>/index.ts` or `command.ts`                                                                                      |
 | API calls, filesystem writes, transformations        | `actions.ts`                                                                                                                        |
+| A resource's `list`/`get`/`create`/`update`/`delete` | `src/commands/<name>/resource.ts` (a `CrudResource`), on the shared layer in `src/lib/crud/`                                        |
 | Utilities shared by sibling subcommands              | parent command directory (e.g. `schema/serialize.ts`, not `schema/push/serialize.ts`) — subcommands must not import from each other |
 | JSONL on stdout/stdin, `-`, staged-run progress      | `src/lib/pipe/`                                                                                                                     |
 | Config resolution, global option behavior            | `src/lib/config/`                                                                                                                   |
@@ -50,6 +51,10 @@ Throw the typed errors from `src/utils/error/`: `APIError` (ID from `API_ERRORS`
 `API_ACTIONS`), `FileSystemError`, and `CommandError` for usage errors. `handleError()` sets
 `process.exitCode`: 2 for `CommandError`, 1 for runtime errors. With `--exit-code` (`schema diff`),
 1 means a result, so runtime errors exit 2.
+
+Exception: the CRUD commands built on `src/lib/crud/` (`webhooks`) report errors through
+`reportError()` in `src/lib/crud/errors.ts`, which prints JSON when stderr is not a terminal. Keep
+that path for those commands; every other command uses `handleError()`.
 
 ## Tests
 

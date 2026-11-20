@@ -30,6 +30,8 @@ export interface Report {
       succeeded: number;
       skipped?: number;
       failed: number;
+      /** Left out after an error that stopped the run. */
+      unprocessed?: number;
     }
   >;
 }

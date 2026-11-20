@@ -9,6 +9,13 @@ type AuthenticatedSessionState = SessionState & {
   region: NonNullable<SessionState["region"]>;
 };
 
+/** What a command says when nobody is logged in; `highlight` styles the commands. */
+export function notLoggedInMessage(
+  highlight: (command: string) => string = (command) => command,
+): string {
+  return `You are currently not logged in. Please run ${highlight("storyblok login")} to authenticate, or ${highlight("storyblok signup")} to sign up.`;
+}
+
 /**
  * Check if user is authenticated and handle error if not
  * @param state - Session state object
@@ -21,9 +28,7 @@ export function requireAuthentication(
 ): state is AuthenticatedSessionState {
   if (!state.isLoggedIn || !state.password || !state.region) {
     handleError(
-      new CommandError(
-        `You are currently not logged in. Please run ${chalk.hex(colorPalette.PRIMARY)("storyblok login")} to authenticate, or ${chalk.hex(colorPalette.PRIMARY)("storyblok signup")} to sign up.`,
-      ),
+      new CommandError(notLoggedInMessage((command) => chalk.hex(colorPalette.PRIMARY)(command))),
       verbose,
     );
     return false;

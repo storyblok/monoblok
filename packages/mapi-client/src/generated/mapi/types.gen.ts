@@ -6908,7 +6908,7 @@ export type WebhookEndpointRequest = {
         /**
          * Optional description
          */
-        description?: string;
+        description?: string | null;
         /**
          * URL to receive webhook payloads (http or https)
          */
@@ -6916,7 +6916,7 @@ export type WebhookEndpointRequest = {
         /**
          * Optional secret for request signing
          */
-        secret?: string;
+        secret?: string | null;
         /**
          * Whether the webhook is active
          */
@@ -14023,7 +14023,7 @@ export type CreateWebhookEndpointRequest = {
         /**
          * Optional description
          */
-        description?: string;
+        description?: string | null;
         /**
          * URL to receive webhook payloads (http or https)
          */
@@ -14031,7 +14031,7 @@ export type CreateWebhookEndpointRequest = {
         /**
          * Optional secret for request signing
          */
-        secret?: string;
+        secret?: string | null;
         /**
          * Whether the webhook is active
          */

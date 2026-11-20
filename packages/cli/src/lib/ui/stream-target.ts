@@ -10,6 +10,7 @@ import { fstatSync } from "node:fs";
  */
 export type StreamTarget = "terminal" | "file" | "pipe" | "device" | "unknown";
 
+const STDIN_FD = 0;
 const STDOUT_FD = 1;
 const STDERR_FD = 2;
 
@@ -44,6 +45,11 @@ function classify(fd: number, isTTY: boolean | undefined): StreamTarget {
 /** Where `> out.json`, `| jq .` and an interactive run can be told apart. */
 export function getStdoutTarget(): StreamTarget {
   return classify(STDOUT_FD, process.stdout.isTTY);
+}
+
+/** Whether stdin is a terminal, or data piped or redirected in. */
+export function getStdinTarget(): StreamTarget {
+  return classify(STDIN_FD, process.stdin.isTTY);
 }
 
 /** Whether stderr can host redrawing UI. See `UI`'s `canRedraw`. */

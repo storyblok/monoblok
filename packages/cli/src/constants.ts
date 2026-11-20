@@ -15,6 +15,7 @@ export const commands = {
   ASSETS: "assets",
   STORIES: "stories",
   SCHEMA: "schema",
+  WEBHOOKS: "webhooks",
 } as const;
 
 export const colorPalette = {

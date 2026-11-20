@@ -11,13 +11,9 @@
 
 import type { UserConfig } from "@hey-api/openapi-ts";
 import type { SpecSource } from "./aliases.ts";
+import { isRecord } from "./object.ts";
 
 type Parser = NonNullable<UserConfig["parser"]>;
-
-/** True for a non-null object we can walk/mutate as a parsed schema node. */
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
 
 /**
  * Component write properties the MAPI clears when sent `null`. Excludes
@@ -163,6 +159,33 @@ function requireWebhookCreateFields(spec: unknown): void {
   jsonBody.schema = { $ref: `${SCHEMA_REF_PREFIX}${WEBHOOK_CREATE_SCHEMA}` };
 }
 
+const NULLABLE_WEBHOOK_WRITE_PROPERTIES = ["description", "secret"];
+
+/**
+ * Let webhook requests clear `description` and `secret` with `null`, matching
+ * the read `WebhookEndpoint` schema, which already declares both nullable.
+ * Runs before {@link requireWebhookCreateFields} copies the schema for create.
+ */
+function widenNullableWebhookProperties(spec: unknown): void {
+  if (!isRecord(spec) || !isRecord(spec.components) || !isRecord(spec.components.schemas)) {
+    return;
+  }
+  const request = spec.components.schemas.WebhookEndpointRequest;
+  const body =
+    isRecord(request) && isRecord(request.properties)
+      ? request.properties.webhook_endpoint
+      : undefined;
+  if (!isRecord(body) || !isRecord(body.properties)) {
+    return;
+  }
+  for (const name of NULLABLE_WEBHOOK_WRITE_PROPERTIES) {
+    const property = body.properties[name];
+    if (isRecord(property) && typeof property.type === "string") {
+      property.type = [property.type, "null"];
+    }
+  }
+}
+
 const STRATA_SEARCH_PATH = "/v1/spaces/{space_id}/strata/search";
 
 const strataErrorResponse = (description: string) => ({
@@ -287,6 +310,7 @@ function addStrataSearchOperation(spec: unknown): void {
 
 function patchMapiInput(spec: unknown): void {
   moveGetOrganizationToMe(spec);
+  widenNullableWebhookProperties(spec);
   requireWebhookCreateFields(spec);
   // @todo(openapi-spec): Remove once upstream publishes the Strata search operation.
   addStrataSearchOperation(spec);
@@ -310,14 +334,37 @@ export function applyInputPatches(source: SpecSource, spec: unknown): void {
   INPUT_PATCHES[source]?.(spec);
 }
 
+/** Per-schema patches per spec, keyed by component schema name. */
+const SCHEMA_PATCHES: Partial<Record<SpecSource, Record<string, (schema: unknown) => void>>> = {
+  mapi: {
+    ComponentCreateRequest: widenNullableComponentProperties,
+    ComponentUpdateRequest: widenNullableComponentProperties,
+    CreateWorkflowStageRequest: requireWorkflowStageCreateFields,
+  },
+};
+
+/**
+ * Applies every patch the generator applies, whole-document patches first,
+ * then per-schema ones. For tooling that reads a spec's schemas outside the
+ * generator, such as the resource field descriptors.
+ */
+export function applySpecPatches(source: SpecSource, spec: unknown): void {
+  applyInputPatches(source, spec);
+  const schemas =
+    isRecord(spec) && isRecord(spec.components) && isRecord(spec.components.schemas)
+      ? spec.components.schemas
+      : undefined;
+  for (const [name, patch] of Object.entries(SCHEMA_PATCHES[source] ?? {})) {
+    if (schemas?.[name] !== undefined) {
+      patch(schemas[name]);
+    }
+  }
+}
+
 const MAPI_PARSER: Parser = {
   patch: {
     input: INPUT_PATCHES.mapi,
-    schemas: {
-      ComponentCreateRequest: widenNullableComponentProperties,
-      ComponentUpdateRequest: widenNullableComponentProperties,
-      CreateWorkflowStageRequest: requireWorkflowStageCreateFields,
-    },
+    schemas: SCHEMA_PATCHES.mapi,
   },
 };
 

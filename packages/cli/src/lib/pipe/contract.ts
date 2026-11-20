@@ -5,8 +5,8 @@ import type { Story } from "../../types";
  *
  * A line is a **complete story as the Management API returned it**, not a
  * reference to one. A consumer takes the fields it needs off the line and
- * re-fetches only what the line does not carry. Only the producing side exists
- * so far; see ADR-0021 for the consuming one.
+ * re-fetches only what the line does not carry. No command consumes story
+ * lines yet.
  *
  * Two consequences a consumer has to hold up:
  *
@@ -48,3 +48,27 @@ export const REQUIRED_STORY_LINE_FIELDS = ["id", "uuid", "full_slug"] as const;
 export const SIDECAR_PREFIX = "_";
 
 export const isSidecarKey = (key: string): boolean => key.startsWith(SIDECAR_PREFIX);
+
+/**
+ * A line a CRUD command (`webhooks list`, …) emits: the resource as the
+ * Management API returned it, with each secret field replaced by a
+ * `has_<field>` flag. A write finds the record by `id` in the same space, or by
+ * its unique name, such as a webhook's `name`, in any space.
+ */
+export type ResourceLine = { id: number } & Record<string, unknown>;
+
+/**
+ * The line a CRUD write (`create`, `update`, `delete`) emits per record it
+ * handled. A record that failed gets a JSON error on stderr instead.
+ */
+export type ResultLine = {
+  /** `null` on a dry-run create, which has no id yet. */
+  id: number | null;
+  name?: unknown;
+  action: "create" | "update" | "delete" | "skip";
+  _skipped?: true;
+  _reason?: "exists" | "unchanged" | "not_found";
+  _dry_run?: true;
+  /** Per changed field, `{ from, to }`; a secret field only as `"[changed]"`. */
+  _diff?: Record<string, unknown>;
+};

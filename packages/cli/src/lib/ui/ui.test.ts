@@ -404,4 +404,18 @@ describe("ui", () => {
       expect(errorSpy).not.toHaveBeenCalled();
     });
   });
+
+  describe("banner", () => {
+    it("should print the CLI title when stderr is a terminal", () => {
+      const ui = new UI({ enabled: true });
+      withStderrTTY(true, () => ui.banner());
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("Storyblok CLI"));
+    });
+
+    it("should print nothing when stderr is not a terminal", () => {
+      const ui = new UI({ enabled: true });
+      withStderrTTY(false, () => ui.banner());
+      expect(errorSpy).not.toHaveBeenCalled();
+    });
+  });
 });

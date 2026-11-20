@@ -38,14 +38,12 @@ export interface ResourceFieldsSource {
   read: string;
 }
 
+import { isRecord } from "./object.ts";
+
 type SchemaObject = Record<string, unknown>;
 
 const SCHEMA_REF_PREFIX = "#/components/schemas/";
 const HTTP_METHODS = ["get", "post", "put", "patch", "delete"] as const;
-
-function isRecord(value: unknown): value is SchemaObject {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 function resolveRef(spec: SchemaObject, schema: unknown): SchemaObject {
   if (!isRecord(schema)) {

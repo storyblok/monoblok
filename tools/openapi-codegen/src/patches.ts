@@ -11,13 +11,9 @@
 
 import type { UserConfig } from "@hey-api/openapi-ts";
 import type { SpecSource } from "./aliases.ts";
+import { isRecord } from "./object.ts";
 
 type Parser = NonNullable<UserConfig["parser"]>;
-
-/** True for a non-null object we can walk/mutate as a parsed schema node. */
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
 
 /**
  * Component write properties the MAPI clears when sent `null`. Excludes
@@ -163,7 +159,6 @@ function requireWebhookCreateFields(spec: unknown): void {
   jsonBody.schema = { $ref: `${SCHEMA_REF_PREFIX}${WEBHOOK_CREATE_SCHEMA}` };
 }
 
-/** Webhook write properties the API clears when sent `null`. */
 const NULLABLE_WEBHOOK_WRITE_PROPERTIES = ["description", "secret"];
 
 /**

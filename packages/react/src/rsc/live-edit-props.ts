@@ -25,3 +25,9 @@ export const toLiveEditRenderProps = (props: unknown): LiveEditRenderProps => {
   }
   return safe;
 };
+
+/** Names of the props `toLiveEditRenderProps` leaves out, apart from `key` and `ref`. */
+export const getOmittedRenderPropNames = (props: Record<string, unknown>): string[] =>
+  Object.entries(props)
+    .filter(([key, value]) => !RESERVED_PROPS.has(key) && !isRenderPropValue(value))
+    .map(([key]) => key);

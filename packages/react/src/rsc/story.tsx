@@ -1,7 +1,7 @@
 import { forwardRef } from "react";
 import type { ISbStoryData, StoryblokBridgeConfigV2 } from "@/types";
 import StoryblokServerComponent from "../server/server-component";
-import { toLiveEditRenderProps } from "./live-edit-props";
+import { getOmittedRenderPropNames, toLiveEditRenderProps } from "./live-edit-props";
 import StoryblokLiveEditing from "./live-editing";
 
 interface StoryblokStoryProps extends Omit<Record<string, unknown>, "story" | "bridgeOptions"> {
@@ -28,11 +28,13 @@ const StoryblokStory = forwardRef<HTMLElement, StoryblokStoryProps>(
     // The live editing Server Action is imported lazily by the client component,
     // never from here: Next.js 13 refuses to compile a `"use server"` module
     // imported into the Server Component graph unless Server Actions are enabled.
+    const omittedRenderProps = getOmittedRenderPropNames(restProps);
     return (
       <StoryblokLiveEditing
         story={story}
         bridgeOptions={bridgeOptions}
         renderProps={toLiveEditRenderProps(restProps)}
+        omittedRenderProps={omittedRenderProps.length ? omittedRenderProps : undefined}
       >
         <StoryblokServerComponent ref={ref} blok={story.content} {...restProps} />
       </StoryblokLiveEditing>

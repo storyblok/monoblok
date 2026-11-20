@@ -165,9 +165,11 @@ describe("storyblokLiveEditing", () => {
     expect(renderAction.mock.calls[1][0]).toMatchObject({ story: { content: { label: "c" } } });
   });
 
-  it("sends the story once more when the server asks for a retry", async () => {
+  it("stops retrying a change after a bounded number of cold instances", async () => {
     const renderAction = vi
       .fn<RenderAction>()
+      .mockResolvedValueOnce({ ok: false, retry: true })
+      .mockResolvedValueOnce({ ok: false, retry: true })
       .mockResolvedValueOnce({ ok: false, retry: true })
       .mockResolvedValueOnce({ ok: false, retry: true })
       .mockImplementation(async () => rendered("live"));
@@ -175,11 +177,14 @@ describe("storyblokLiveEditing", () => {
 
     await emit(incoming("live"));
 
-    // Retried once, not in a loop: the second `retry` isn't followed up.
-    await vi.waitFor(() => expect(renderAction).toHaveBeenCalledTimes(2));
-    expect(renderAction.mock.calls[1][0]).toEqual(renderAction.mock.calls[0][0]);
+    // The first attempt plus three retries, not a loop.
+    await vi.waitFor(() => expect(renderAction).toHaveBeenCalledTimes(4));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(renderAction).toHaveBeenCalledTimes(4);
+    expect(renderAction.mock.calls[3][0]).toEqual(renderAction.mock.calls[0][0]);
     expect(getByTestId("content").textContent).toBe("server");
 
+    // The next change gets its own retries.
     await emit(incoming("next"));
     await vi.waitFor(() => expect(getByTestId("content").textContent).toBe("live"));
   });
@@ -282,6 +287,112 @@ describe("storyblokLiveEditing", () => {
 
     expect(renderLiveEditStory).not.toHaveBeenCalled();
     expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(getByTestId("content").textContent).toBe("server");
+  });
+
+  it("falls back to the server render and warns when the live render throws", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const Throws = () => {
+      throw new Error("settings is undefined");
+    };
+    const renderAction = vi.fn<RenderAction>(async () => ({
+      ok: true,
+      node: React.createElement(Throws),
+    }));
+    const { getByTestId, emit } = await renderLiveEditing(renderAction);
+
+    await emit(incoming("live"));
+
+    await vi.waitFor(() => expect(warnSpy).toHaveBeenCalled());
+    expect(getByTestId("content").textContent).toBe("server");
+
+    // The next change renders live again.
+    renderAction.mockImplementation(async () => rendered("fixed"));
+    await emit(incoming("fixed"));
+    await vi.waitFor(() => expect(getByTestId("content").textContent).toBe("fixed"));
+  });
+
+  it("shows the new story's server render when the story changes in place", async () => {
+    let listener: ((story: ISbStoryData) => void) | null = null;
+    vi.mocked(registerStoryblokBridge).mockImplementation((_id, cb) => {
+      listener = cb;
+    });
+    const renderAction = vi.fn<RenderAction>(async () => rendered("A-live"));
+    const a = nextStoryId++;
+    const b = nextStoryId++;
+    const view = (id: number, label: string) =>
+      React.createElement(
+        StoryblokLiveEditing,
+        { story: { id } as ISbStoryData, renderAction, renderProps: DEFAULT_PROPS },
+        React.createElement("p", { "data-testid": "content" }, label),
+      );
+    const { getByTestId, rerender } = render(view(a, "A"));
+    await vi.waitFor(() => expect(listener).not.toBeNull());
+    await act(async () => listener!(incoming("A-live")));
+    await vi.waitFor(() => expect(getByTestId("content").textContent).toBe("A-live"));
+
+    rerender(view(b, "B"));
+
+    expect(getByTestId("content").textContent).toBe("B");
+  });
+
+  it("retries more than once while the server keeps landing on cold instances", async () => {
+    const renderAction = vi
+      .fn<RenderAction>()
+      .mockResolvedValueOnce({ ok: false, retry: true })
+      .mockResolvedValueOnce({ ok: false, retry: true })
+      .mockImplementation(async () => rendered("live"));
+    const { getByTestId, emit } = await renderLiveEditing(renderAction);
+
+    await emit(incoming("live"));
+
+    await vi.waitFor(() => expect(getByTestId("content").textContent).toBe("live"));
+  });
+
+  it("warns once about props left out of the live render", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    let listener: ((story: ISbStoryData) => void) | null = null;
+    vi.mocked(registerStoryblokBridge).mockImplementation((_id, cb) => {
+      listener = cb;
+    });
+    render(
+      React.createElement(
+        StoryblokLiveEditing,
+        {
+          story: { id: nextStoryId++ } as ISbStoryData,
+          renderAction: vi.fn<RenderAction>(async () => rendered("live")),
+          renderProps: DEFAULT_PROPS,
+          omittedRenderProps: ["settings"],
+        },
+        serverOutput(),
+      ),
+    );
+    await vi.waitFor(() => expect(listener).not.toBeNull());
+
+    await act(async () => listener!(incoming("a")));
+    await act(async () => listener!(incoming("b")));
+
+    const omittedWarnings = warnSpy.mock.calls.filter((args) =>
+      String(args[0]).includes("settings"),
+    );
+    expect(omittedWarnings).toHaveLength(1);
+  });
+
+  it("warns once and keeps the server render when the action runs in the browser", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const renderAction = vi.fn<RenderAction>(async () => ({ ok: false, unsupported: true }));
+    const { getByTestId, emit } = await renderLiveEditing(renderAction);
+
+    await emit(incoming("a"));
+    await vi.waitFor(() => expect(renderAction).toHaveBeenCalledTimes(1));
+    await emit(incoming("b"));
+    await vi.waitFor(() => expect(renderAction).toHaveBeenCalledTimes(2));
+
+    const unsupportedWarnings = warnSpy.mock.calls.filter((args) =>
+      String(args[0]).includes("Next.js 14"),
+    );
+    expect(unsupportedWarnings).toHaveLength(1);
     expect(getByTestId("content").textContent).toBe("server");
   });
 });

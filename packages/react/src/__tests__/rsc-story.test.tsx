@@ -6,6 +6,7 @@ import type { ISbStoryData } from "@storyblok/js";
 import StoryblokStory from "../rsc/story";
 import StoryblokServerStory from "../server/server-story";
 import { setComponents } from "../core/state";
+import { getOmittedRenderPropNames, toLiveEditRenderProps } from "../rsc/live-edit-props";
 
 // StoryblokLiveEditing registers the bridge on mount; for rendering tests we
 // keep `isVisualEditor` falsy so it only renders the server output.
@@ -81,5 +82,15 @@ describe("storyblokStory", () => {
     } finally {
       Reflect.deleteProperty(globalThis, "storyCache");
     }
+  });
+
+  it("forwards only primitive props to the live render and names the others", () => {
+    const props = { className: "hero", count: 2, settings: { theme: "dark" }, onClick: () => {} };
+
+    expect(toLiveEditRenderProps({ ...props, key: "k", ref: null })).toEqual({
+      className: "hero",
+      count: 2,
+    });
+    expect(getOmittedRenderPropNames(props)).toEqual(["settings", "onClick"]);
   });
 });

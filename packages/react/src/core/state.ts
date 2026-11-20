@@ -35,6 +35,11 @@ const isRenderState = (value: unknown): value is RenderState =>
  * `storyblokInit`. Every `react-server` instance registers the same kind of
  * component, so sharing is safe there. SSR and browser instances keep their own
  * state, as before.
+ *
+ * Only the render state is shared, because the live editing action only
+ * renders. The API client stays per module instance: in an instance that didn't
+ * run `storyblokInit`, `getStoryblokApi()` returns `null` even though components
+ * are registered. Share it too before a Server Action needs it.
  */
 const resolveRenderState = (): RenderState => {
   if (!isReactServerEnvironment()) {

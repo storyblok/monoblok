@@ -1,7 +1,7 @@
 "use server";
 import type { ReactNode } from "react";
 import type { ISbStoryData, SbBlokData } from "@/types";
-import { getComponentsMap } from "../core/state";
+import { getComponentsMap, isReactServerEnvironment } from "../core/state";
 import StoryblokServerComponent from "../server/server-component";
 import { type LiveEditRenderProps, toLiveEditRenderProps } from "./live-edit-props";
 
@@ -10,8 +10,12 @@ import { type LiveEditRenderProps, toLiveEditRenderProps } from "./live-edit-pro
  * - `retry`: this server instance hadn't run the app's `storyblokInit` yet, so
  *   no components were registered. The response re-renders the page, which runs
  *   it; sending the story again then succeeds.
+ * - `unsupported`: this module runs in the browser instead of as a Server
+ *   Action, so it can't render the story with the app's server components.
  */
-export type LiveEditRenderResult = { ok: true; node: ReactNode } | { ok: false; retry?: boolean };
+export type LiveEditRenderResult =
+  | { ok: true; node: ReactNode }
+  | { ok: false; retry?: boolean; unsupported?: boolean };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === "object" && !Array.isArray(value);
@@ -65,6 +69,13 @@ export async function renderLiveEditStory(input: {
   story: Pick<ISbStoryData, "content">;
   props?: LiveEditRenderProps;
 }): Promise<LiveEditRenderResult> {
+  // Next.js 13 bundles a `"use server"` module imported by a client component
+  // into the browser as plain code, even with `experimental.serverActions`. A
+  // real Server Action always runs under `react-server`.
+  if (!isReactServerEnvironment()) {
+    return { ok: false, unsupported: true };
+  }
+
   // The payload comes from the network: check every level instead of trusting the type.
   const story: unknown = isRecord(input) ? input.story : null;
   const blok = isRecord(story) ? toBlok(story.content) : null;

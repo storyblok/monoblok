@@ -1,8 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
 import React, { type ReactNode } from "react";
-import { setComponents } from "../core/state";
+import { getComponentsMap, isReactServerEnvironment, setComponents } from "../core/state";
 import { renderLiveEditStory } from "../rsc/live-edit-render-action";
+
+// A real Server Action runs under `react-server`; jsdom has the client React build.
+vi.mock("../core/state", async (importOriginal) => {
+  const original = await importOriginal<typeof import("../core/state")>();
+  return {
+    ...original,
+    getComponentsMap: vi.fn(original.getComponentsMap),
+    isReactServerEnvironment: vi.fn(() => true),
+  };
+});
 
 function Marker({ blok, className }: { blok: { label?: string }; className?: string }) {
   return (
@@ -21,6 +31,19 @@ const renderNode = (node: ReactNode) => render(<>{node}</>);
 describe("renderLiveEditStory", () => {
   beforeEach(() => {
     setComponents({ marker: Marker });
+    vi.mocked(isReactServerEnvironment).mockReturnValue(true);
+  });
+
+  it("doesn't render when bundled into the browser instead of running as a Server Action", async () => {
+    // Next.js 13 bundles the `"use server"` module as plain client code.
+    vi.mocked(isReactServerEnvironment).mockReturnValue(false);
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await expect(
+      renderLiveEditStory({ story: { content: { _uid: "1", component: "unknown" } } }),
+    ).resolves.toEqual({ ok: false, unsupported: true });
+    expect(errorSpy).not.toHaveBeenCalled();
+    errorSpy.mockRestore();
   });
 
   it("renders the story content with the registered components", async () => {
@@ -80,13 +103,12 @@ describe("renderLiveEditStory", () => {
   });
 
   it("asks the client to retry when this server instance has no components yet", async () => {
-    // A fresh module instance stands in for a cold server instance (or a
-    // separate bundle layer) where the app's `storyblokInit` hasn't run.
-    vi.resetModules();
-    const { renderLiveEditStory: coldAction } = await import("../rsc/live-edit-render-action");
+    // A cold server instance (or a separate bundle layer) where the app's
+    // `storyblokInit` hasn't run has an empty registry.
+    vi.mocked(getComponentsMap).mockReturnValueOnce(new Map());
 
     await expect(
-      coldAction({ story: { content: { _uid: "1", component: "marker" } } }),
+      renderLiveEditStory({ story: { content: { _uid: "1", component: "marker" } } }),
     ).resolves.toEqual({ ok: false, retry: true });
   });
 

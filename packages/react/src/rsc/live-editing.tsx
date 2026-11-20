@@ -6,7 +6,7 @@ import {
   registerStoryblokBridge,
   type StoryblokBridgeConfigV2,
 } from "@storyblok/js";
-import { type ReactNode, startTransition, useEffect, useRef, useState } from "react";
+import { Component, type ReactNode, startTransition, useEffect, useRef, useState } from "react";
 import { isBridgeLoaded, isVisualEditor } from "../utils";
 import type { LiveEditRenderProps } from "./live-edit-props";
 import type { LiveEditRenderResult } from "./live-edit-render-action";
@@ -29,6 +29,11 @@ interface StoryblokLiveEditingProps {
    * Their presence turns on rendering Visual Editor updates on the server.
    */
   renderProps?: LiveEditRenderProps;
+  /**
+   * @internal Names of `StoryblokStory` props left out of `renderProps` because
+   * they aren't primitives. Only used to warn in the Visual Editor.
+   */
+  omittedRenderProps?: string[];
   /** @internal Replaces the live editing Server Action. Only for tests. */
   renderAction?: LiveEditRenderAction;
 }
@@ -53,6 +58,86 @@ const warnStandalone = (): void => {
     "StoryblokLiveEditing: Visual Editor changes aren't shown when it's used on its own. Render the story with `StoryblokStory` to see them live.",
   );
 };
+
+let warnedUnsupported = false;
+const warnUnsupported = (): void => {
+  if (warnedUnsupported) {
+    return;
+  }
+  warnedUnsupported = true;
+  console.warn(
+    "StoryblokStory: Visual Editor changes can't be shown live, because the live editing Server Action runs in the browser. Live editing needs Next.js 14 or later. Changes show after you save.",
+  );
+};
+
+let warnedOmittedProps = false;
+const warnOmittedProps = (names: string[] | undefined): void => {
+  if (warnedOmittedProps || !names?.length) {
+    return;
+  }
+  warnedOmittedProps = true;
+  console.warn(
+    `StoryblokStory: these props aren't applied while live editing, because only string, number, boolean, and null props are: ${names.join(", ")}`,
+  );
+};
+
+/**
+ * Retries per Visual Editor change when the server instance is cold. On
+ * serverless platforms, a retry can land on another cold instance.
+ */
+const MAX_RETRIES = 3;
+
+interface LiveContentBoundaryProps {
+  /** Whether `children` is a live render, rather than the server render. */
+  live: boolean;
+  /** Shown instead of a live render that throws. */
+  fallback: ReactNode;
+  children: ReactNode;
+}
+
+interface LiveContentBoundaryState {
+  error: unknown;
+  children: ReactNode;
+}
+
+/**
+ * A live render gets only primitive props, so a component that needs another
+ * prop can throw. Show the server render instead of breaking the preview. Each
+ * new render gets another chance; errors outside a live render propagate.
+ */
+class LiveContentBoundary extends Component<LiveContentBoundaryProps, LiveContentBoundaryState> {
+  state: LiveContentBoundaryState = { error: null, children: this.props.children };
+
+  static getDerivedStateFromError(error: unknown): Partial<LiveContentBoundaryState> {
+    return { error: error ?? new Error("Unknown render error") };
+  }
+
+  static getDerivedStateFromProps(
+    props: LiveContentBoundaryProps,
+    state: LiveContentBoundaryState,
+  ): Partial<LiveContentBoundaryState> | null {
+    return props.children === state.children ? null : { error: null, children: props.children };
+  }
+
+  componentDidCatch(error: unknown): void {
+    if (this.props.live) {
+      console.warn(
+        "StoryblokLiveEditing: the live update couldn't be rendered, showing the server render instead:",
+        error,
+      );
+    }
+  }
+
+  render(): ReactNode {
+    if (this.state.error) {
+      if (!this.props.live) {
+        throw this.state.error;
+      }
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
 
 type InputHandler = (story: ISbStoryData) => void;
 
@@ -97,10 +182,16 @@ const StoryblokLiveEditing = ({
   children = null,
   renderAction,
   renderProps,
+  omittedRenderProps,
 }: StoryblokLiveEditingProps): ReactNode => {
-  const [liveContent, setLiveContent] = useState<{ node: ReactNode } | null>(null);
-  const latest = useRef({ renderAction, renderProps });
-  latest.current = { renderAction, renderProps };
+  // Tagged with its story, so a different story passed to the same instance
+  // shows its own server render instead of the previous story's live render.
+  const [liveContent, setLiveContent] = useState<{
+    storyId: number;
+    node: ReactNode;
+  } | null>(null);
+  const latest = useRef({ renderAction, renderProps, omittedRenderProps });
+  latest.current = { renderAction, renderProps, omittedRenderProps };
 
   const storyId = typeof story?.id === "number" ? story.id : null;
   useEffect(() => {
@@ -111,17 +202,17 @@ const StoryblokLiveEditing = ({
     let disposed = false;
     let unsubscribe: (() => void) | null = null;
     let inFlight = false;
-    let queued: ISbStoryData | null = null;
-    let retried = false;
+    let queued: { story: ISbStoryData; retries: number } | null = null;
 
     // One render at a time. A story arriving meanwhile replaces any queued one,
     // so fast typing renders the latest content without piling up requests.
-    const render = (incoming: ISbStoryData) => {
-      const { renderAction, renderProps } = latest.current;
+    const render = (incoming: ISbStoryData, retries = 0) => {
+      const { renderAction, renderProps, omittedRenderProps } = latest.current;
       if (!renderAction && !renderProps) {
         warnStandalone();
         return;
       }
+      warnOmittedProps(omittedRenderProps);
       inFlight = true;
       Promise.resolve(renderAction ?? loadRenderAction())
         .then((action) => action({ story: { content: incoming.content }, props: renderProps }))
@@ -130,15 +221,14 @@ const StoryblokLiveEditing = ({
             return;
           }
           if (result.ok) {
-            // A later cold instance (serverless) can ask for a retry again.
-            retried = false;
             const { node } = result;
-            startTransition(() => setLiveContent({ node }));
-          } else if ("retry" in result && result.retry && !retried) {
+            startTransition(() => setLiveContent({ storyId, node }));
+          } else if ("unsupported" in result && result.unsupported) {
+            warnUnsupported();
+          } else if ("retry" in result && result.retry && retries < MAX_RETRIES) {
             // The server instance was cold and has now loaded the app's
             // components. Send the story again, unless a newer one is queued.
-            retried = true;
-            queued ??= incoming;
+            queued ??= { story: incoming, retries: retries + 1 };
           }
         })
         .catch((error: unknown) => {
@@ -149,7 +239,7 @@ const StoryblokLiveEditing = ({
           const next = queued;
           queued = null;
           if (next && !disposed) {
-            render(next);
+            render(next.story, next.retries);
           }
         });
     };
@@ -160,7 +250,7 @@ const StoryblokLiveEditing = ({
         return;
       }
       if (inFlight) {
-        queued = incoming;
+        queued = { story: incoming, retries: 0 };
         return;
       }
       render(incoming);
@@ -185,7 +275,12 @@ const StoryblokLiveEditing = ({
     };
   }, [storyId, JSON.stringify(bridgeOptions)]);
 
-  return <>{liveContent ? liveContent.node : children}</>;
+  const live = liveContent !== null && liveContent.storyId === storyId;
+  return (
+    <LiveContentBoundary live={live} fallback={children}>
+      {live ? liveContent.node : children}
+    </LiveContentBoundary>
+  );
 };
 
 export default StoryblokLiveEditing;

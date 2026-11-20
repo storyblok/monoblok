@@ -455,7 +455,17 @@ export async function fetchData() {
 - Manages bridge registration and cleanup
 
 > [!NOTE] Only string, number, boolean, and `null` props you pass to `StoryblokStory` are applied
-> while live editing, and they are sent to the browser. Don't pass secrets as props.
+> while live editing, and they are sent to the browser of every visitor, not only in the Visual
+> Editor. Don't pass secrets as props. If a component needs another prop and fails to render in the
+> live preview, the Visual Editor shows the page as it was loaded until the next change renders.
+
+> [!NOTE] Live editing with `StoryblokStory` needs Server Actions, so it needs Next.js 14 or later.
+> On Next.js 13, Visual Editor changes show after you save.
+
+> [!WARNING] Live editing renders the posted story with your registered components in a Server
+> Action, which is a public endpoint: anyone can call it with any field values, and only they see
+> the result. Don't let a component fetch privileged data, or read cookies, headers, or secrets,
+> based on a field value alone.
 
 **Advanced: Bridge Options**
 

@@ -1,0 +1,4 @@
+node_modules/
+# Local CLI state: pulled resources, logs, reports, and the per-machine migration journal.
+.storyblok/*
+!.storyblok/migrations/

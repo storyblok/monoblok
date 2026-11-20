@@ -4,6 +4,7 @@ import { http, HttpResponse } from "msw";
 import { createApiClient } from "../index";
 import type { CacheEntry, CacheProvider } from "../index";
 import { ClientError } from "../error";
+import { createMemoryCacheProvider } from "../utils/cache";
 
 const server = setupServer();
 
@@ -671,7 +672,7 @@ describe("inlineRelations", () => {
     vi.useRealTimers();
   });
 
-  it("should throw when relation fetching fails", async () => {
+  it("should return an error when fetching relations fails", async () => {
     vi.useFakeTimers();
     server.use(
       http.get("https://api.storyblok.com/v2/cdn/stories/*", () => {
@@ -693,13 +694,14 @@ describe("inlineRelations", () => {
       inlineRelations: true,
     });
 
-    await expect(async () => {
-      const resultPromise = client.stories.get("test-story", {
-        query: { resolve_relations: "page.author" },
-      });
-      await Promise.all([resultPromise, vi.runAllTimersAsync()]);
-    }).rejects.toThrow();
+    const resultPromise = client.stories.get("test-story", {
+      query: { resolve_relations: "page.author" },
+    });
+    const [result] = await Promise.all([resultPromise, vi.runAllTimersAsync()]);
     vi.useRealTimers();
+
+    expect(result.data).toBeUndefined();
+    expect(result.error).toBeInstanceOf(ClientError);
   });
 
   it("should merge inline relations from rels and rel_uuids for stories.list()", async () => {
@@ -1644,5 +1646,610 @@ describe("cv pinning while the cv is unknown", () => {
 
     expect(fast.response?.status).toBe(200);
     expect(cvs).toEqual([null, null]);
+  });
+});
+
+describe("inlineLinks", () => {
+  const storyLink = (uuid: string) => ({
+    id: uuid,
+    url: "",
+    linktype: "story",
+    fieldtype: "multilink",
+    cached_url: `stories/${uuid}`,
+  });
+  const richTextWithLink = (uuid: string) => ({
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        content: [
+          {
+            type: "text",
+            text: "Read more",
+            marks: [{ type: "link", attrs: { href: "", uuid, linktype: "story" } }],
+          },
+        ],
+      },
+    ],
+  });
+  const getRichTextLinkAttrs = (richText: any) => richText.content[0].content[0].marks[0].attrs;
+
+  const linkPageResponse = () => ({
+    links: [makeStory("target-1", { _uid: "t1", component: "page" })],
+    story: makeStory("page-1", {
+      _uid: "page-content-1",
+      component: "page",
+      cta: storyLink("target-1"),
+      body: richTextWithLink("target-1"),
+      external: { id: "", url: "https://example.com", linktype: "url", fieldtype: "multilink" },
+      missing: storyLink("not-resolved"),
+    }),
+  });
+
+  it("should keep default behavior when inlineLinks is false", async () => {
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories/*", () =>
+        HttpResponse.json(linkPageResponse()),
+      ),
+    );
+    const client = createApiClient({ accessToken: "test-token" });
+
+    const result = await client.stories.get("page-1", { query: { resolve_links: "story" } });
+
+    expect(result.data?.story.content.cta).not.toHaveProperty("story");
+  });
+
+  it("should inline links into multilink fields and richtext link marks", async () => {
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories/*", () =>
+        HttpResponse.json(linkPageResponse()),
+      ),
+    );
+    const client = createApiClient({ accessToken: "test-token", inlineLinks: true });
+
+    const result = await client.stories.get("page-1", { query: { resolve_links: "story" } });
+
+    expect(result.error).toBeUndefined();
+    const content: any = result.data?.story.content;
+    expect(content.cta.story).toMatchObject({ uuid: "target-1" });
+    expect(getRichTextLinkAttrs(content.body).story).toMatchObject({ uuid: "target-1" });
+    expect(content.external).not.toHaveProperty("story");
+    expect(content.missing).not.toHaveProperty("story");
+  });
+
+  it("should not inline links without resolve_links", async () => {
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories/*", () =>
+        HttpResponse.json(linkPageResponse()),
+      ),
+    );
+    const client = createApiClient({ accessToken: "test-token", inlineLinks: true });
+
+    const result = await client.stories.get("page-1");
+
+    expect(result.data?.story.content.cta).not.toHaveProperty("story");
+  });
+
+  it("should inline links for stories.list() and fetch link_uuids", async () => {
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }: { request: Request }) => {
+        const url = new URL(request.url);
+        if (url.searchParams.get("by_uuids") === "target-2") {
+          return HttpResponse.json({
+            stories: [makeStory("target-2", { _uid: "t2", component: "page" })],
+          });
+        }
+        return HttpResponse.json({
+          link_uuids: ["target-2"],
+          stories: [
+            makeStory("page-2", { _uid: "p2", component: "page", cta: storyLink("target-2") }),
+          ],
+        });
+      }),
+    );
+    const client = createApiClient({ accessToken: "test-token", inlineLinks: true });
+
+    const result = await client.stories.list({ query: { resolve_links: "story" } });
+
+    expect(result.error).toBeUndefined();
+    const cta: any = result.data?.stories[0]?.content.cta;
+    expect(cta.story).toMatchObject({ uuid: "target-2" });
+  });
+
+  it("should inline links inside inlined relations", async () => {
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories/*", () =>
+        HttpResponse.json({
+          rels: [
+            makeStory("author-1", {
+              _uid: "a1",
+              component: "author",
+              website: storyLink("target-1"),
+            }),
+          ],
+          links: [makeStory("target-1", { _uid: "t1", component: "page" })],
+          story: makeStory("page-1", { _uid: "p1", component: "page", author: "author-1" }),
+        }),
+      ),
+    );
+    const client = createApiClient({
+      accessToken: "test-token",
+      inlineRelations: true,
+      inlineLinks: true,
+    });
+
+    const result = await client.stories.get("page-1", {
+      query: {
+        resolve_relations: "page.author",
+        resolve_links: "story",
+        resolve_links_in_relations: 1,
+      },
+    });
+
+    expect(result.error).toBeUndefined();
+    const author: any = result.data?.story.content.author;
+    expect(author.content.website.story).toMatchObject({ uuid: "target-1" });
+  });
+
+  it("should leave the response's rels and links unchanged", async () => {
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories/*", () =>
+        HttpResponse.json({
+          rels: [
+            makeStory("author-1", {
+              _uid: "a1",
+              component: "author",
+              website: storyLink("target-1"),
+            }),
+          ],
+          links: [
+            makeStory("target-1", { _uid: "t1", component: "page", next: storyLink("target-2") }),
+            makeStory("target-2", { _uid: "t2", component: "page" }),
+          ],
+          story: makeStory("page-1", { _uid: "p1", component: "page", author: "author-1" }),
+        }),
+      ),
+    );
+    const client = createApiClient({
+      accessToken: "test-token",
+      inlineRelations: true,
+      inlineLinks: true,
+    });
+
+    const result = await client.stories.get("page-1", {
+      query: {
+        resolve_relations: "page.author",
+        resolve_links: "story",
+        resolve_links_in_relations: 1,
+      },
+    });
+
+    const data: any = result.data;
+    expect(data.rels[0].content.website).not.toHaveProperty("story");
+    expect(data.links[0].content.next).not.toHaveProperty("story");
+  });
+
+  const linkedPagesResponse = () => ({
+    links: [
+      makeStory("target-1", { _uid: "t1", component: "page", next: storyLink("target-2") }),
+      makeStory("target-2", { _uid: "t2", component: "page", back: storyLink("target-1") }),
+    ],
+    story: makeStory("page-1", { _uid: "p1", component: "page", cta: storyLink("target-1") }),
+  });
+
+  it("should not inline the links of linked stories by default", async () => {
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories/*", () =>
+        HttpResponse.json(linkedPagesResponse()),
+      ),
+    );
+    const client = createApiClient({ accessToken: "test-token", inlineLinks: true });
+
+    const result = await client.stories.get("page-1", { query: { resolve_links: "story" } });
+
+    const cta: any = result.data?.story.content.cta;
+    expect(cta.story).toMatchObject({ uuid: "target-1" });
+    expect(cta.story.content.next).not.toHaveProperty("story");
+  });
+
+  it("should inline the links of linked stories one level deep with resolve_links_level 2", async () => {
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories/*", () =>
+        HttpResponse.json(linkedPagesResponse()),
+      ),
+    );
+    const client = createApiClient({ accessToken: "test-token", inlineLinks: true });
+
+    const result = await client.stories.get("page-1", {
+      query: { resolve_links: "story", resolve_links_level: 2 },
+    });
+
+    const cta: any = result.data?.story.content.cta;
+    expect(cta.story.content.next.story).toMatchObject({ uuid: "target-2" });
+    expect(cta.story.content.next.story.content.back).not.toHaveProperty("story");
+    expect(() => JSON.stringify(result.data)).not.toThrow();
+  });
+
+  it("should keep the relations of linked stories as UUIDs", async () => {
+    const relatedPost = (uuid: string, related: string) =>
+      makeStory(uuid, { _uid: uuid, component: "post", related });
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories/*", () =>
+        HttpResponse.json({
+          rels: [relatedPost("post-1", "post-2"), relatedPost("post-2", "post-1")],
+          links: [relatedPost("post-1", "post-2")],
+          story: makeStory("page-1", {
+            _uid: "p1",
+            component: "page",
+            first: storyLink("post-1"),
+            second: storyLink("post-1"),
+          }),
+        }),
+      ),
+    );
+    const client = createApiClient({
+      accessToken: "test-token",
+      inlineRelations: true,
+      inlineLinks: true,
+    });
+
+    const result = await client.stories.get("page-1", {
+      query: { resolve_relations: "post.related", resolve_links: "story" },
+    });
+
+    expect(result.error).toBeUndefined();
+    const content: any = result.data?.story.content;
+    expect(content.first.story.content.related).toBe("post-2");
+    expect(content.second.story.content.related).toBe("post-2");
+  });
+
+  it("should reduce links fetched beyond the resolve limit to the url shape", async () => {
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }: { request: Request }) => {
+        if (new URL(request.url).searchParams.get("by_uuids") === "target-1") {
+          return HttpResponse.json({
+            stories: [{ ...makeStory("target-1", { _uid: "t1", component: "page" }), path: "" }],
+          });
+        }
+        return HttpResponse.json({
+          link_uuids: ["target-1"],
+          stories: [
+            makeStory("page-1", { _uid: "p1", component: "page", cta: storyLink("target-1") }),
+          ],
+        });
+      }),
+    );
+    const client = createApiClient({ accessToken: "test-token", inlineLinks: true });
+
+    const result = await client.stories.list({ query: { resolve_links: "url" } });
+
+    const cta: any = result.data?.stories[0]?.content.cta;
+    expect(cta.story).toEqual({
+      id: 1,
+      uuid: "target-1",
+      name: "Story target-1",
+      slug: "target-1",
+      full_slug: "stories/target-1",
+      url: "stories/target-1",
+    });
+  });
+
+  it("should inline the links of relations fetched beyond the resolve limit", async () => {
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }: { request: Request }) => {
+        if (new URL(request.url).searchParams.get("by_uuids") === "author-1") {
+          return HttpResponse.json({
+            links: [makeStory("target-1", { _uid: "t1", component: "page" })],
+            stories: [
+              makeStory("author-1", {
+                _uid: "a1",
+                component: "author",
+                website: storyLink("target-1"),
+              }),
+            ],
+          });
+        }
+        return HttpResponse.json({
+          rel_uuids: ["author-1"],
+          stories: [makeStory("page-1", { _uid: "p1", component: "page", author: "author-1" })],
+        });
+      }),
+    );
+    const client = createApiClient({
+      accessToken: "test-token",
+      inlineRelations: true,
+      inlineLinks: true,
+    });
+
+    const result = await client.stories.list({
+      query: {
+        resolve_relations: "page.author",
+        resolve_links: "story",
+        resolve_links_in_relations: 1,
+      },
+    });
+
+    const author: any = result.data?.stories[0]?.content.author;
+    expect(author.content.website.story).toMatchObject({ uuid: "target-1" });
+  });
+
+  it("should return a failed request for links beyond the resolve limit as an error", async () => {
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }: { request: Request }) => {
+        if (new URL(request.url).searchParams.has("by_uuids")) {
+          return HttpResponse.json({ error: "Too Many Requests" }, { status: 429 });
+        }
+        return HttpResponse.json({
+          link_uuids: ["target-1"],
+          stories: [
+            makeStory("page-1", { _uid: "p1", component: "page", cta: storyLink("target-1") }),
+          ],
+        });
+      }),
+    );
+    const client = createApiClient({
+      accessToken: "test-token",
+      inlineLinks: true,
+      retry: { limit: 0 },
+    });
+
+    const result = await client.stories.list({ query: { resolve_links: "url" } });
+    const thrown = client.stories.list({
+      query: { resolve_links: "url" },
+      throwOnError: true,
+    });
+
+    expect(result.data).toBeUndefined();
+    expect(result.error).toBeInstanceOf(ClientError);
+    await expect(thrown).rejects.toBeInstanceOf(ClientError);
+  });
+
+  it("should cache responses inlined with links apart from raw ones", async () => {
+    let requests = 0;
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories/*", () => {
+        requests += 1;
+        return HttpResponse.json(linkPageResponse());
+      }),
+    );
+    const cache = createMemoryCacheProvider();
+    const rawClient = createApiClient({ accessToken: "test-token", cache: { provider: cache } });
+    const linkClient = createApiClient({
+      accessToken: "test-token",
+      inlineLinks: true,
+      cache: { provider: cache },
+    });
+
+    await rawClient.stories.get("page-1", { query: { resolve_links: "story" } });
+    const result = await linkClient.stories.get("page-1", { query: { resolve_links: "story" } });
+
+    const cta: any = result.data?.story.content.cta;
+    expect(cta.story).toMatchObject({ uuid: "target-1" });
+    expect(requests).toBe(2);
+  });
+
+  it("should share one copy of a linked story between the links to it", async () => {
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories", () =>
+        HttpResponse.json({
+          links: [makeStory("target-1", { _uid: "t1", component: "page" })],
+          stories: [
+            makeStory("page-1", { _uid: "p1", component: "page", cta: storyLink("target-1") }),
+            makeStory("page-2", { _uid: "p2", component: "page", cta: storyLink("target-1") }),
+          ],
+        }),
+      ),
+    );
+    const client = createApiClient({ accessToken: "test-token", inlineLinks: true });
+
+    const result = await client.stories.list({ query: { resolve_links: "story" } });
+
+    const [first, second]: any[] = result.data?.stories ?? [];
+    expect(first.content.cta.story).toBe(second.content.cta.story);
+  });
+});
+
+describe("circularRelations", () => {
+  const relatedPage = (uuid: string, related?: string) =>
+    makeStory(uuid, { _uid: `${uuid}-content`, component: "page", related });
+
+  /** Serves `stories.get()` from the given relation chain: the first story is requested. */
+  const serveRelationChain = (...links: Array<[uuid: string, related?: string]>) => {
+    const stories = links.map(([uuid, related]) => relatedPage(uuid, related));
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories/*", () =>
+        HttpResponse.json({ story: stories[0], rels: stories, cv: 1 }),
+      ),
+    );
+  };
+
+  /** A fresh module instance, so the once-per-process warning has not fired yet. */
+  const importFreshCreateApiClient = async () => {
+    vi.resetModules();
+    const { createApiClient: freshCreateApiClient } = await import("../index");
+    return freshCreateApiClient;
+  };
+
+  const resolveRelatedQuery = { version: "published", resolve_relations: "page.related" } as const;
+
+  const relatedOf = (story: unknown): unknown =>
+    (story as { content: { related: unknown } }).content.related;
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("should return a circular result and warn once across clients when the option is unset", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const freshCreateApiClient = await importFreshCreateApiClient();
+    serveRelationChain(["a", "b"], ["b", "a"]);
+    const first = freshCreateApiClient({ accessToken: "token-1", inlineRelations: true });
+    const second = freshCreateApiClient({ accessToken: "token-2", inlineRelations: true });
+
+    const result = await first.stories.get("a", { query: resolveRelatedQuery });
+    await first.stories.get("a", { query: { ...resolveRelatedQuery, version: "draft" } });
+    await second.stories.get("a", { query: resolveRelatedQuery });
+
+    const story = result.data?.story;
+    expect(relatedOf(relatedOf(story))).toBe(story);
+    expect(() => JSON.stringify(story)).toThrow(TypeError);
+    expect(warn).toHaveBeenCalledOnce();
+    expect(warn.mock.calls[0]?.[0]).toMatch(/^\[storyblok\/api-client\] .*circular/);
+    expect(warn.mock.calls[0]?.[0]).toContain("JSON.stringify");
+    expect(warn.mock.calls[0]?.[0]).toContain("circularRelations");
+    expect(warn.mock.calls[0]?.[0]).toContain("1.0");
+  });
+
+  it("should not warn when the option is unset and the result is not circular", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const freshCreateApiClient = await importFreshCreateApiClient();
+    serveRelationChain(["a", "b"], ["b", "c"], ["c"]);
+    const client = freshCreateApiClient({ accessToken: "test-token", inlineRelations: true });
+
+    const result = await client.stories.get("a", { query: resolveRelatedQuery });
+
+    expect(relatedOf(relatedOf(result.data?.story))).toMatchObject({ uuid: "c" });
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("should return a circular result without warning when the option is true", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const freshCreateApiClient = await importFreshCreateApiClient();
+    serveRelationChain(["a", "b"], ["b", "a"]);
+    const client = freshCreateApiClient({
+      accessToken: "test-token",
+      inlineRelations: true,
+      circularRelations: true,
+    });
+
+    const result = await client.stories.get("a", { query: resolveRelatedQuery });
+
+    const story = result.data?.story;
+    expect(relatedOf(relatedOf(story))).toBe(story);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("should stop inlining two levels below the requested story when the option is false", async () => {
+    serveRelationChain(["a", "b"], ["b", "c"], ["c", "d"], ["d"]);
+    const client = createApiClient({
+      accessToken: "test-token",
+      inlineRelations: true,
+      circularRelations: false,
+    });
+
+    const result = await client.stories.get("a", { query: resolveRelatedQuery });
+
+    const b = relatedOf(result.data?.story);
+    const c = relatedOf(b);
+    expect(b).toMatchObject({ uuid: "b" });
+    expect(c).toMatchObject({ uuid: "c" });
+    expect(relatedOf(c)).toBe("d");
+  });
+
+  it.each([
+    {
+      cycle: "A → B → A",
+      links: [
+        ["a", "b"],
+        ["b", "a"],
+      ],
+    },
+    {
+      cycle: "A → B → C → A",
+      links: [
+        ["a", "b"],
+        ["b", "c"],
+        ["c", "a"],
+      ],
+    },
+  ] satisfies Array<{ cycle: string; links: Array<[string, string]> }>)(
+    "should return a serializable result for $cycle without warning when the option is false",
+    async ({ links }) => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const freshCreateApiClient = await importFreshCreateApiClient();
+      serveRelationChain(...links);
+      const client = freshCreateApiClient({
+        accessToken: "test-token",
+        inlineRelations: true,
+        circularRelations: false,
+      });
+
+      const result = await client.stories.get("a", { query: resolveRelatedQuery });
+
+      const story = result.data?.story;
+      const secondLevel = relatedOf(relatedOf(story));
+      expect(secondLevel).toMatchObject({ uuid: links[1]?.[1] });
+      expect(secondLevel).not.toBe(story);
+      expect(relatedOf(secondLevel)).toBe(links[2]?.[1] ?? "b");
+      expect(() => JSON.stringify(story)).not.toThrow();
+      expect(warn).not.toHaveBeenCalled();
+    },
+  );
+
+  it("should return serializable stories from stories.list() when the option is false", async () => {
+    const stories = [relatedPage("a", "b"), relatedPage("b", "a")];
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories", () =>
+        HttpResponse.json({ stories, rels: stories, cv: 1 }),
+      ),
+    );
+    const client = createApiClient({
+      accessToken: "test-token",
+      inlineRelations: true,
+      circularRelations: false,
+    });
+
+    const result = await client.stories.list({ query: resolveRelatedQuery });
+
+    const [a, b] = result.data?.stories ?? [];
+    expect(relatedOf(relatedOf(a))).toMatchObject({ uuid: "a" });
+    expect(relatedOf(relatedOf(b))).toMatchObject({ uuid: "b" });
+    expect(() => JSON.stringify(result.data?.stories)).not.toThrow();
+  });
+
+  it("should not share cached results between clients with and without circular references", async () => {
+    let requestCount = 0;
+    const stories = [relatedPage("a", "b"), relatedPage("b", "a")];
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories/*", () => {
+        requestCount++;
+        return HttpResponse.json({ story: stories[0], rels: stories, cv: 1 });
+      }),
+    );
+    const store = new Map<string, CacheEntry>();
+    const sharedProvider: CacheProvider = {
+      async get<TValue>(key: string) {
+        return store.get(key) as CacheEntry<TValue> | undefined;
+      },
+      async set(key, entry) {
+        store.set(key, { ...entry, storedAt: entry.storedAt ?? Date.now() });
+      },
+      async flush() {
+        store.clear();
+      },
+    };
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const circularClient = createApiClient({
+      accessToken: "shared-cache-token",
+      inlineRelations: true,
+      cache: { provider: sharedProvider },
+    });
+    const acyclicClient = createApiClient({
+      accessToken: "shared-cache-token",
+      inlineRelations: true,
+      circularRelations: false,
+      cache: { provider: sharedProvider },
+    });
+
+    await circularClient.stories.get("a", { query: resolveRelatedQuery });
+    const acyclic = await acyclicClient.stories.get("a", { query: resolveRelatedQuery });
+    const cachedAcyclic = await acyclicClient.stories.get("a", { query: resolveRelatedQuery });
+    const cachedCircular = await circularClient.stories.get("a", { query: resolveRelatedQuery });
+
+    expect(requestCount).toBe(2);
+    expect(() => JSON.stringify(acyclic.data?.story)).not.toThrow();
+    expect(() => JSON.stringify(cachedAcyclic.data?.story)).not.toThrow();
+    const circularStory = cachedCircular.data?.story;
+    expect(relatedOf(relatedOf(circularStory))).toBe(circularStory);
   });
 });

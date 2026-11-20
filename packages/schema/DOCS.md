@@ -65,9 +65,34 @@ export const schema = defineSchema({ blocks: { authorBlock, mvpBlock } });
 export type Before = Schema<typeof schema>;
 ```
 
-Keep the snapshot unchanged once the migration ships, so the names the migration reads stay typed.
-The names it writes are typed against `Schema`, so a later rename or removal of such a field is a
-type error in the migration. Once every space has applied the migration, delete it and its snapshot.
+[`schema push --typed`](/docs/tooling/cli/schema/push#typed-content-migrations) and
+[`migrations generate --schema`](/docs/tooling/cli/migrations/generate#typed-content-migrations)
+write both files from the blocks in the space. Keep the snapshot unchanged once the migration ships,
+so the names the migration reads stay typed. The names it writes are typed against `Schema`, so a
+later rename or removal of such a field is a type error in the migration. Once every space has run
+the migration, delete it and its snapshot, or exclude them from your type check.
+
+### Write rerunnable ops
+
+`migrations run` runs every migration in the directory on each run, so a second pass of an op must
+change nothing. The ops take care of this, and `alterField()` and `alterBlock()` callbacks have to
+as well. Return `undefined` to leave a value unchanged:
+
+```ts
+const trimmed = (value: string | null | undefined) => {
+  const result = value?.trim();
+  return result === value ? undefined : result;
+};
+
+export default defineMigration<Schema, Before>([
+  alterField({ block: "new_quote", field: "full_name" }, trimmed),
+  alterField({ block: "new_quote", field: "role" }, trimmed),
+]);
+```
+
+Check a value’s shape before you convert it, since it can already hold the converted value. A second
+pass must change nothing across migrations too: a migration that uppercases a value and a later one
+that lowercases it change the story on every run.
 
 ### Schema types
 
@@ -119,7 +144,7 @@ accept `under` (see [Key ops and value ops](#key-ops-and-value-ops)):
 | `splitField({ block, field, into, merge?, overwrite? }, split)`   | Key   | Replaces `field` with the values `split(value)` returns, assigned to the `into` fields by position. Splits each translation on its own. Refuses a story whose `into` fields hold a value in any language, unless `overwrite` is `true`. With `merge`, the op can be undone without a recorded run.                           |
 | `mergeFields({ block, fields, into, split?, overwrite? }, merge)` | Key   | Replaces `fields` with `merge(values)` in the `into` field, with `values` in the order of `fields`. Merges each language on its own. Refuses a story whose `into` field holds a value in any language, unless `overwrite` is `true` or `into` is one of `fields`. With `split`, the op can be undone without a recorded run. |
 | `fieldsToBlock({ block, fields, into: { block, field } })`        | Key   | Moves each field in `fields` (source → target) into one new `into.block` block in the `into.field` field. Creates the block only when a moved field holds a value. Refuses a story whose `into.field` field already holds a value.                                                                                           |
-| `renameBlock({ block, to })`                                      | Key   | Changes the `component` of every instance. Rename the block in the schema separately.                                                                                                                                                                                                                                        |
+| `renameBlock({ block, to })`                                      | Key   | Changes the `component` of every instance. Rename the block in the schema separately. `schema push` has the space rename a block in its stories along with the block, so a migration needs this op only for stories the space didn’t rename.                                                                                 |
 | `wrapChildren({ block, field, into: { block, field } })`          | Key   | Moves all child blocks of `field` into the `into.field` of one new `into.block` block, which takes their place. The new block’s `_uid` derives from the parent, `field`, and `into.block`, so a rerun doesn’t add a second level.                                                                                            |
 | `unwrapChildren({ block, field, from: { block, field } })`        | Key   | Replaces each `from.block` block in `field` with the child blocks of its `from.field`. Drops the container’s own fields. Only an undo of a recorded run restores them.                                                                                                                                                       |
 | `alterField({ block, field, under? }, fn)`                        | Value | Sets the field to `fn(value, context)`, once for the base key and once per translation key. Returning `undefined` leaves the key unchanged; use `removeField()` to remove a field.                                                                                                                                           |

@@ -58,3 +58,5 @@ without a conflict, which is why ADR-0017 and ADR-0022 each exist twice.
 - `adr-0028.md`: New ADRs are named by number only, so a reused number causes a merge conflict.
 - `adr-0029.md`: `migrations run` and `rollback` handle both migration functions and content
   migrations.
+- `adr-0030.md`: `schema push --typed` generates typed content migrations against committed schema
+  snapshots.

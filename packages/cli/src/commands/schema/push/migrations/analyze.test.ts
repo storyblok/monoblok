@@ -457,4 +457,57 @@ describe("analyzeBreakingChanges", () => {
       { kind: "required_changed", field: "title", fieldType: "text" },
     ]);
   });
+  it("should name every unpaired addition of the same type as a possible rename target", () => {
+    const local: SchemaData = {
+      components: [
+        {
+          name: "hero",
+          schema: {
+            kicker: { type: "text", pos: 0 },
+            headline: { type: "text", pos: 1, required: true },
+          },
+        },
+      ] as any,
+      folders: [],
+      datasources: [],
+    };
+    const remote: RemoteSchemaData = {
+      components: new Map([
+        [
+          "hero",
+          {
+            name: "hero",
+            schema: { eyebrow: { type: "text", pos: 0 }, accent: { type: "text", pos: 1 } },
+          } as any,
+        ],
+      ]),
+      internalTags: new Map(),
+      componentFolders: new Map(),
+      datasources: new Map(),
+    };
+    const diffResult: DiffResult = {
+      diffs: [
+        {
+          type: "component",
+          name: "hero",
+          action: "update",
+          changes: [],
+          before: null,
+          after: null,
+        },
+      ],
+      unmanagedFolders: [],
+      creates: 0,
+      updates: 1,
+      unchanged: 0,
+      stale: 0,
+    };
+
+    const [result] = analyzeBreakingChanges(diffResult, local, remote);
+
+    expect(result.changes.filter((change) => change.kind === "removed")).toEqual([
+      { kind: "removed", field: "eyebrow", renameHint: { newFields: ["kicker", "headline"] } },
+      { kind: "removed", field: "accent", renameHint: { newFields: ["kicker", "headline"] } },
+    ]);
+  });
 });

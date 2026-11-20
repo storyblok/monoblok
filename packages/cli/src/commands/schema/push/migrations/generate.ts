@@ -1,12 +1,16 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "pathe";
+import {
+  coercionBetween,
+  isIdentifier,
+  type MigrationOpSource,
+  quoteString,
+} from "@storyblok/schema/internal/codegen";
 
 import { resolvePath } from "../../../../utils/filesystem";
+import { buildMigrationFilename } from "../../../migrations/migration-filename";
 import { fileTimestamp } from "../../utils";
-import type { BreakingChange } from "./types";
-
-/** Compatible type pairs that don't need a content migration. */
-const COMPATIBLE_TYPES = new Set(["text:textarea", "textarea:text"]);
+import type { BreakingChange, ComponentBreakingChanges } from "./types";
 
 /** Returns a safe default literal for a Storyblok field type, or null if no safe default exists. */
 function defaultForType(fieldType: string): string | null {
@@ -24,26 +28,53 @@ function defaultForType(fieldType: string): string | null {
   }
 }
 
-/** Returns a conversion expression for a type change, or null if compatible. */
-function typeConversion(field: string, oldType: string, newType: string): string | null {
-  const key = `${oldType}:${newType}`;
-  if (COMPATIBLE_TYPES.has(key)) {
-    return null;
-  }
+const LINE_TERMINATORS = /[\r\n\u2028\u2029]+/g;
 
-  const accessor = `block.${field}`;
+/** Keeps text on one line, so a line comment cannot end early and run the rest as code. */
+function lineComment(text: string): string {
+  return `// ${text.replace(LINE_TERMINATORS, " ")}`;
+}
+
+/** A property access on `block` that stays one expression whatever the field name holds. */
+function accessor(field: string): string {
+  return isIdentifier(field) ? `block.${field}` : `block[${quoteString(field)}]`;
+}
+
+/** Returns a conversion statement for a type change. */
+function typeConversion(field: string, oldType: string, newType: string): string {
+  const key = `${oldType}:${newType}`;
+  const target = accessor(field);
   switch (key) {
     case "text:number":
-      return `${accessor} = Number(${accessor}) || 0;`;
+      return `${target} = Number(${target}) || 0;`;
     case "number:text":
-      return `${accessor} = String(${accessor});`;
+      return `${target} = String(${target});`;
     case "text:boolean":
-      return `${accessor} = !!${accessor};`;
+      return `${target} = !!${target};`;
     case "boolean:text":
-      return `${accessor} = String(${accessor});`;
+      return `${target} = String(${target});`;
     default:
-      return `${accessor}; // TODO: convert from ${oldType} to ${newType}`;
+      return `${target}; ${lineComment(`TODO: convert from ${oldType} to ${newType}`)}`;
   }
+}
+
+const TRANSLATION_SEPARATOR = "__i18n__";
+
+/**
+ * A one-line statement that renames a field and its `__i18n__` translations
+ * without moving them to the end of the block. Where the block already holds
+ * the new key too, the old value wins and takes the old key's position.
+ */
+function renameStatement(from: string, to: string): string {
+  const [fromKey, toKey] = [quoteString(from), quoteString(to)];
+  const [fromTranslation, toTranslation] = [
+    quoteString(`${from}${TRANSLATION_SEPARATOR}`),
+    quoteString(`${to}${TRANSLATION_SEPARATOR}`),
+  ];
+  const isTarget = `key === ${toKey} || key.startsWith(${toTranslation})`;
+  const isSource = `key === ${fromKey} || key.startsWith(${fromTranslation})`;
+  const replacedBySource = `(${fromKey} + key.slice(${to.length}) in block)`;
+  return `block = Object.fromEntries(Object.entries(block).filter(([key]) => !(${isTarget}) || !${replacedBySource}).map(([key, value]) => [${isSource} ? ${toKey} + key.slice(${from.length}) : key, value]));`;
 }
 
 /**
@@ -52,74 +83,72 @@ function typeConversion(field: string, oldType: string, newType: string): string
  */
 export function renderMigrationCode(changes: BreakingChange[]): string {
   const lines: string[] = [];
+  // Names, types, and option values come from the space, so they pass through
+  // `lineComment` or `quoteString` before they reach the file.
+  const code = (text: string) => lines.push(`  ${text}`);
+  const comment = (text: string) => lines.push(`  ${lineComment(text)}`);
 
-  lines.push("  // Review this migration before running it against your space.");
-  lines.push("  // Generated migrations are scaffolds and may need manual adjustments.");
-  lines.push("  // Example rename migration:");
-  lines.push("  // block.new_field = block.old_field;");
-  lines.push("  // delete block.old_field;");
+  comment("Review this migration before running it against your space.");
+  comment("Generated migrations are scaffolds and may need manual adjustments.");
+  comment("Example rename migration, which keeps the field's position in the block:");
+  comment(renameStatement("old_field", "new_field"));
   lines.push("");
 
   for (const change of changes) {
     switch (change.kind) {
       case "rename":
-        lines.push(`  // Rename: ${change.oldField} → ${change.field}`);
-        lines.push(`  if ('${change.oldField}' in block) {`);
-        lines.push(`    block.${change.field} = block.${change.oldField};`);
-        lines.push(`    delete block.${change.oldField};`);
-        lines.push(`  }`);
+        comment(`Rename: ${change.oldField} → ${change.field}`);
+        code(renameStatement(change.oldField, change.field));
         break;
 
       case "removed":
         if (change.renameHint) {
-          lines.push(
-            `  // If '${change.field}' was renamed to '${change.renameHint.newField}', uncomment:`,
-          );
-          lines.push(`  // block.${change.renameHint.newField} = block.${change.field};`);
+          for (const newField of change.renameHint.newFields) {
+            comment(`If '${change.field}' was renamed to '${newField}', uncomment:`);
+            comment(renameStatement(change.field, newField));
+          }
         } else {
-          lines.push(`  // Removed field: ${change.field}`);
+          comment(`Removed field: ${change.field}`);
         }
-        lines.push(`  delete block.${change.field};`);
+        code(`delete ${accessor(change.field)};`);
         break;
 
-      case "type_changed": {
-        const conversion = typeConversion(change.field, change.oldType, change.newType);
-        if (conversion) {
-          lines.push(`  // Type change: ${change.field} (${change.oldType} → ${change.newType})`);
-          lines.push(`  ${conversion}`);
-        }
+      case "type_changed":
+        comment(`Type change: ${change.field} (${change.oldType} → ${change.newType})`);
+        code(typeConversion(change.field, change.oldType, change.newType));
         break;
-      }
 
-      case "required_added": {
-        const defaultValue = defaultForType(change.fieldType);
-        lines.push(`  // New required field: ${change.field} (${change.fieldType})`);
-        if (defaultValue !== null) {
-          lines.push(`  // TODO: provide a meaningful default value`);
-          lines.push(`  block.${change.field} = block.${change.field} ?? ${defaultValue};`);
-        } else {
-          lines.push(
-            `  // TODO: provide a default value appropriate for the '${change.fieldType}' type`,
-          );
-          lines.push(`  // block.${change.field} = block.${change.field} ?? <default>;`);
-        }
-        break;
-      }
-
+      case "required_added":
       case "required_changed": {
+        const target = accessor(change.field);
         const defaultValue = defaultForType(change.fieldType);
-        lines.push(`  // Field is now required: ${change.field} (${change.fieldType})`);
-        lines.push(
-          `  // Existing stories may have null/undefined values — provide a default for those.`,
-        );
-        if (defaultValue !== null) {
-          lines.push(`  // TODO: provide a meaningful default value`);
-          lines.push(`  block.${change.field} = block.${change.field} ?? ${defaultValue};`);
+        if (change.kind === "required_added") {
+          comment(`New required field: ${change.field} (${change.fieldType})`);
         } else {
-          lines.push(
-            `  // TODO: provide a default value appropriate for the '${change.fieldType}' type`,
+          comment(`Field is now required: ${change.field} (${change.fieldType})`);
+          comment(`Existing stories may have null/undefined values — provide a default for those.`);
+        }
+        if (defaultValue !== null) {
+          comment(`TODO: provide a meaningful default value`);
+          code(`${target} = ${target} ?? ${defaultValue};`);
+        } else {
+          comment(`TODO: provide a default value appropriate for the '${change.fieldType}' type`);
+          comment(`${target} = ${target} ?? <default>;`);
+        }
+        break;
+      }
+
+      case "options_removed": {
+        const target = accessor(change.field);
+        const values = change.values.map(quoteString);
+        comment(`Options no longer offered by ${change.field}: ${values.join(", ")}`);
+        comment(`TODO: map each removed value to one the field still offers`);
+        for (const value of values) {
+          comment(
+            change.multiple
+              ? `${target} = ${target}?.map((value) => (value === ${value} ? <value> : value));`
+              : `if (${target} === ${value}) ${target} = <value>;`,
           );
-          lines.push(`  // block.${change.field} = block.${change.field} ?? <default>;`);
         }
         break;
       }
@@ -131,6 +160,156 @@ export function renderMigrationCode(changes: BreakingChange[]): string {
   const body = lines.length > 0 ? `\n${lines.join("\n")}` : "\n";
 
   return `export default function (block) {${body}  return block;\n}\n`;
+}
+
+/** A Storyblok `number` field stores its value as a string, so `""` is empty there too. */
+const STRING_STORED_FIELD_TYPES = new Set(["text", "textarea", "markdown", "number"]);
+
+/** `false` is the only default every required field of its type accepts. */
+function requiredDefaultFor(fieldType: string): false | undefined {
+  return fieldType === "boolean" ? false : undefined;
+}
+
+function defaultTodo(field: string, fieldType: string, value: unknown): string {
+  return value === undefined
+    ? `TODO: provide a default for the required ${fieldType} field '${field}'.`
+    : `TODO: replace the placeholder default for the required field '${field}'.`;
+}
+
+/**
+ * A new field that isn't required has no op, so a rename onto it replaces only
+ * the removeField; a new required field has an addField to replace as well.
+ */
+function renameHintTodo(field: string, newFields: string[], changes: BreakingChange[]): string {
+  const withAddField = new Set(
+    changes.flatMap((change) => (change.kind === "required_added" ? [change.field] : [])),
+  );
+  const withoutOp = newFields.filter((newField) => !withAddField.has(newField));
+  const clauses = [
+    ...(withoutOp.length > 0
+      ? [
+          `renamed to ${withoutOp.map((newField) => `'${newField}'`).join(" or ")}, replace this removeField with renameField`,
+        ]
+      : []),
+    ...newFields
+      .filter((newField) => withAddField.has(newField))
+      .map(
+        (newField) =>
+          `renamed to '${newField}', replace this removeField and the addField of '${newField}' with renameField`,
+      ),
+  ];
+  const [first, ...rest] = clauses;
+  const conditions = [`if '${field}' was ${first}`, ...rest.map((clause) => `if it was ${clause}`)];
+  return rest.length === 0
+    ? `TODO: ${conditions[0]}, or the content of '${field}' is lost.`
+    : `TODO: ${conditions.join("; ")}. Otherwise, the content of '${field}' is lost.`;
+}
+
+export function toMigrationOps(block: string, changes: BreakingChange[]): MigrationOpSource[] {
+  return changes.flatMap((change): MigrationOpSource[] => {
+    switch (change.kind) {
+      case "rename":
+        return [{ kind: "renameField", block, field: change.oldField, to: change.field }];
+      case "removed":
+        return [
+          {
+            kind: "removeField",
+            block,
+            field: change.field,
+            todo: change.renameHint
+              ? [renameHintTodo(change.field, change.renameHint.newFields, changes)]
+              : undefined,
+          },
+        ];
+      case "type_changed": {
+        const coercion = coercionBetween(change.oldType, change.newType);
+        if (coercion) {
+          return [{ kind: "coerceField", block, field: change.field, ...coercion }];
+        }
+        return [
+          {
+            kind: "alterField",
+            block,
+            field: change.field,
+            todo: [
+              `TODO: convert '${change.field}' from ${change.oldType} to ${change.newType}. A rerun passes already-converted values.`,
+            ],
+          },
+        ];
+      }
+      case "options_removed":
+        return [
+          {
+            kind: "alterField",
+            block,
+            field: change.field,
+            removedValues: change.values,
+            multiple: change.multiple,
+            todo: [
+              `TODO: map the values '${change.field}' no longer offers to ones it does. A rerun passes already-mapped values.`,
+            ],
+          },
+        ];
+      case "required_added": {
+        const value = requiredDefaultFor(change.fieldType);
+        return [
+          {
+            kind: "addField",
+            block,
+            field: change.field,
+            value,
+            todo: [defaultTodo(change.field, change.fieldType, value)],
+          },
+        ];
+      }
+      case "required_changed": {
+        const value = requiredDefaultFor(change.fieldType);
+        return [
+          {
+            kind: "fillField",
+            block,
+            field: change.field,
+            value,
+            fillEmptyString: STRING_STORED_FIELD_TYPES.has(change.fieldType),
+            todo: [defaultTodo(change.field, change.fieldType, value)],
+          },
+        ];
+      }
+    }
+  });
+}
+
+function describeChange(change: BreakingChange): string {
+  switch (change.kind) {
+    case "rename":
+      return `rename ${change.oldField} to ${change.field}`;
+    case "removed":
+      return `remove ${change.field}`;
+    case "type_changed":
+      return `convert ${change.field} to ${change.newType}`;
+    case "required_added":
+      return `add ${change.field}`;
+    case "required_changed":
+      return `require ${change.field}`;
+    case "options_removed":
+      return `remove options from ${change.field}`;
+  }
+}
+
+const MAX_TITLE_LENGTH = 100;
+
+const listFormat = new Intl.ListFormat("en", { type: "conjunction" });
+
+/**
+ * The title of a typed migration: its changes by block, or only the blocks
+ * when the changes don't fit.
+ */
+export function migrationTitle(changes: readonly ComponentBreakingChanges[]): string {
+  const blocks = changes.map((comp) => comp.componentName);
+  const detailed = `Update ${changes
+    .map((comp) => `${comp.componentName}: ${comp.changes.map(describeChange).join(", ")}`)
+    .join("; ")}`;
+  return detailed.length <= MAX_TITLE_LENGTH ? detailed : `Update ${listFormat.format(blocks)}`;
 }
 
 /** Options for writing a migration file. */
@@ -150,7 +329,7 @@ export async function writeMigrationFile(options: WriteMigrationFileOptions): Pr
   const { spaceId, componentName, code, timestamp, basePath } = options;
   const dir = resolvePath(basePath, `migrations/${spaceId}`);
   await mkdir(dir, { recursive: true });
-  const fileName = `${componentName}.${fileTimestamp(timestamp)}.js`;
+  const fileName = buildMigrationFilename(componentName, fileTimestamp(timestamp));
   const filePath = join(dir, fileName);
   await writeFile(filePath, code, "utf-8");
   return filePath;

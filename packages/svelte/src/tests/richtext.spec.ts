@@ -18,6 +18,7 @@ import CustomLink from "./richtext/CustomLink.svelte";
 import CustomText from "./richtext/CustomText.svelte";
 import HeadingWithRichText from "./richtext/HeadingWithRichText.svelte";
 import Blok from "./richtext/Blok.svelte";
+import LocalizedBlok from "./richtext/LocalizedBlok.svelte";
 
 // Helper function to clean up the HTML output for easier comparison
 export function cleanHtml(html: string) {
@@ -201,6 +202,35 @@ describe("storyblok Richtext", () => {
       unmount(component);
     });
 
+    it("should pass data to the blok renderer as context.data", () => {
+      const target = document.createElement("div");
+      const component = mount(StoryblokRichText<{ locale: string }>, {
+        target,
+        props: {
+          document: {
+            type: "doc",
+            content: [
+              {
+                type: "blok",
+                attrs: {
+                  id: "blok-1",
+                  body: [{ _uid: "1", component: "localized", headline: "Bonjour" }],
+                },
+              },
+            ],
+          },
+          components: { blok: LocalizedBlok },
+          data: { locale: "fr" },
+        },
+      });
+      flushSync();
+
+      const localized = target.querySelector("[data-locale]");
+      expect(localized?.getAttribute("data-locale")).toBe("fr");
+      expect(localized?.textContent).toBe("Bonjour");
+      unmount(component);
+    });
+
     it("should warn when embedded bloks have no custom renderer", () => {
       const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => {});
       const target = document.createElement("div");
@@ -274,7 +304,7 @@ describe("storyblok Richtext", () => {
     const text_node = customRendererFixture.text_node;
     it(text_node.title, () => {
       const target = document.createElement("div");
-      const component = mount(StoryblokRichText, {
+      const component = mount(StoryblokRichText<{ prefix: string }>, {
         target,
         props: {
           document: text_node.input,

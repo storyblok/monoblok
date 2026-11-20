@@ -10,13 +10,20 @@
   let story = $derived<LivePreviewStory>(data.story);
 
   $effect(() =>
-    onStoryblokEditorEvent((newStory) => (story = newStory), {
-      preventClicks: true,
-      resolveLinks: 'url',
-      // Refetch the story on save and publish instead of reloading the page.
-      onChange: () => invalidateAll(),
-      resolveRelations: ['featured-articles.posts'],
-    }),
+    onStoryblokEditorEvent(
+      (newStory) => {
+        // The Visual Editor can send another story's updates, for example after a
+        // client-side navigation inside the preview. Only take this page's story.
+        if (newStory.id === data.story.id) story = newStory;
+      },
+      {
+        preventClicks: true,
+        resolveLinks: 'url',
+        // Refetch the story on save and publish instead of reloading the page.
+        onChange: () => invalidateAll(),
+        resolveRelations: ['featured-articles.posts'],
+      },
+    ),
   );
 </script>
 

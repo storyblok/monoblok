@@ -67,7 +67,7 @@ pnpm release
 ```
 
 This script will:
-- Check that you're on a release branch (`main`, `alpha`, `beta`, or `next`)
+- Check that you're on a release branch (`main`, `alpha`, `beta`, `next`, or a maintenance branch such as `react-v5`)
 - Check for uncommitted changes
 - Fetch the latest changes from remote
 - Verify you're up to date with the remote branch
@@ -187,6 +187,7 @@ The publish workflow will:
   - `next` branch → `next` tag
   - `beta` branch → `beta` tag
   - `alpha` branch → `alpha` tag
+  - Maintenance branch, for example `react-v5` → `react-v5` tag
 
 ## Distribution Tags
 
@@ -214,6 +215,7 @@ The repository uses different branches for different types of releases:
 - `next`: Next version releases
 - `beta`: Beta releases
 - `alpha`: Alpha releases
+- `<package>-v<major>`, for example `react-v5`: stable patch releases of an older major version. Versions have no pre-release suffix, and they're published under the branch name as npm tag, so `latest` keeps pointing to the current major version. Only the packages bumped in the release commit are published.
 
 Each branch corresponds to a specific npm distribution tag, ensuring users can install the appropriate version for their needs.
 
@@ -338,7 +340,7 @@ git push origin main
 
 ### Common Error Messages
 
-- **"You must be on a release branch"**: Switch to `main`, `alpha`, `beta`, or `next` branch
+- **"You must be on a release branch"**: Switch to `main`, `alpha`, `beta`, `next`, or a maintenance branch
 - **"GITHUB_TOKEN not found"**: Set up your GitHub token as described in Prerequisites
 - **"No commits since last release"**: Ensure you have commits following conventional commit format
 - **"Authentication failed"**: Check your NPM_TOKEN and GITHUB_TOKEN credentials

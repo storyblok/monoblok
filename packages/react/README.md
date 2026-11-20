@@ -451,8 +451,11 @@ export async function fetchData() {
 
 - Renders your Storyblok content components on the server
 - Loads the bridge script for live editing (when in Visual Editor)
-- Handles live content updates via global cache
+- Renders each Visual Editor change on the server and shows it only in that editor's browser
 - Manages bridge registration and cleanup
+
+> [!NOTE] Only string, number, boolean, and `null` props you pass to `StoryblokStory` are applied
+> while live editing, and they are sent to the browser. Don't pass secrets as props.
 
 **Advanced: Bridge Options**
 
@@ -466,18 +469,17 @@ const bridgeOptions = { resolveRelations: ["article.author"] };
 
 **Advanced: Manual Component Separation**
 
-For advanced use cases where you need more control, you can use the individual components:
+You can render the content and load the bridge separately:
 
 ```jsx
 import { StoryblokServerComponent, StoryblokLiveEditing } from '@storyblok/react/rsc';
 
-// Manual approach (only use if you need special control)
 <StoryblokServerComponent blok={data.story.content} />
 <StoryblokLiveEditing story={data.story} bridgeOptions={bridgeOptions} />
 ```
 
-> [!NOTE] Most applications should use `StoryblokStory` for the best developer experience and
-> automatic live editing support.
+> [!WARNING] Used this way, `StoryblokLiveEditing` only loads the bridge: Visual Editor changes
+> aren't shown until the story is saved and the page reloads. Use `StoryblokStory` for live editing.
 
 **Important: Individual Content Components**
 
@@ -980,8 +982,8 @@ with static exports. The SSR export provides server-side rendering without serve
 1. **Using SSR export**: Live editing isn't available with `@storyblok/react/ssr`. Use
    `@storyblok/react/rsc` for live editing.
 
-2. **Missing bridge loading**: Ensure you're using `StoryblokStory` (RSC) which automatically loads
-   the bridge, or manually add `StoryblokLiveEditing`.
+2. **Not using `StoryblokStory`**: With RSC, only `StoryblokStory` shows Visual Editor changes live.
+   `StoryblokLiveEditing` on its own loads the bridge but doesn't render changes.
 
 3. **Development mode**: Live editing only works in development mode or when the Visual Editor is
    active.

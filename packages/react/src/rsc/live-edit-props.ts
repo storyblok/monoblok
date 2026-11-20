@@ -10,12 +10,15 @@ const isRenderPropValue = (value: unknown): value is LiveEditRenderProps[string]
   typeof value === "number" ||
   typeof value === "boolean";
 
+/** React reserves these: spreading them into JSX doesn't pass them as props, and a `ref` throws on the server. */
+const RESERVED_PROPS = new Set(["key", "ref"]);
+
 /** Keeps only primitive props, so nothing else can be passed to the rendered component. */
 export const toLiveEditRenderProps = (props: unknown): LiveEditRenderProps => {
   const safe: LiveEditRenderProps = {};
   if (isRecord(props)) {
     for (const [key, value] of Object.entries(props)) {
-      if (isRenderPropValue(value)) {
+      if (!RESERVED_PROPS.has(key) && isRenderPropValue(value)) {
         safe[key] = value;
       }
     }

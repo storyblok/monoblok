@@ -5,12 +5,17 @@ import type { ISbStoryData } from "@storyblok/js";
 import { loadStoryblokBridge, registerStoryblokBridge } from "@storyblok/js";
 
 import StoryblokLiveEditing from "../rsc/live-editing";
-import type { LiveEditRenderResult } from "../rsc/live-edit-render-action";
+import type { LiveEditRenderProps } from "../rsc/live-edit-props";
+import { type LiveEditRenderResult, renderLiveEditStory } from "../rsc/live-edit-render-action";
 import { isBridgeLoaded, isVisualEditor } from "../utils";
 
 vi.mock("@storyblok/js", () => ({
   registerStoryblokBridge: vi.fn(),
   loadStoryblokBridge: vi.fn(() => Promise.resolve()),
+}));
+
+vi.mock("../rsc/live-edit-render-action", () => ({
+  renderLiveEditStory: vi.fn(),
 }));
 
 vi.mock("../utils", () => ({
@@ -41,24 +46,35 @@ const deferred = <T>() => {
 
 const serverOutput = () => React.createElement("p", { "data-testid": "content" }, "server");
 
-const liveEditing = (storyId: number, renderAction?: RenderAction) =>
+const DEFAULT_PROPS: LiveEditRenderProps = { className: "hero" };
+
+const liveEditing = (
+  storyId: number,
+  renderAction?: RenderAction,
+  /** `null` renders it the way a standalone setup does, without props. */
+  renderProps: LiveEditRenderProps | null = DEFAULT_PROPS,
+) =>
   React.createElement(
     StoryblokLiveEditing,
     {
       story: { id: storyId } as ISbStoryData,
       bridgeOptions: {},
       renderAction,
-      renderProps: { className: "hero" },
+      renderProps: renderProps ?? undefined,
     },
     serverOutput(),
   );
 
-const renderLiveEditing = async (renderAction?: RenderAction) => {
+const renderLiveEditing = async (
+  renderAction?: RenderAction,
+  /** `null` renders it the way a standalone setup does, without props. */
+  renderProps: LiveEditRenderProps | null = DEFAULT_PROPS,
+) => {
   let listener: ((story: ISbStoryData) => void) | null = null;
   vi.mocked(registerStoryblokBridge).mockImplementation((_id, cb) => {
     listener = cb;
   });
-  const result = render(liveEditing(nextStoryId++, renderAction));
+  const result = render(liveEditing(nextStoryId++, renderAction, renderProps));
   await vi.waitFor(() => expect(listener).not.toBeNull());
   const emit = (story: ISbStoryData) =>
     act(async () => {
@@ -168,6 +184,23 @@ describe("storyblokLiveEditing", () => {
     await vi.waitFor(() => expect(getByTestId("content").textContent).toBe("live"));
   });
 
+  it("retries again after a successful render, for a later cold instance", async () => {
+    const renderAction = vi
+      .fn<RenderAction>()
+      .mockResolvedValueOnce({ ok: false, retry: true })
+      .mockResolvedValueOnce(rendered("first"))
+      .mockResolvedValueOnce({ ok: false, retry: true })
+      .mockImplementation(async () => rendered("second"));
+    const { getByTestId, emit } = await renderLiveEditing(renderAction);
+
+    await emit(incoming("first"));
+    await vi.waitFor(() => expect(getByTestId("content").textContent).toBe("first"));
+
+    await emit(incoming("second"));
+    await vi.waitFor(() => expect(getByTestId("content").textContent).toBe("second"));
+    expect(renderAction).toHaveBeenCalledTimes(4);
+  });
+
   it("keeps the current render when the server can't render the story", async () => {
     const renderAction = vi.fn<RenderAction>(async () => ({ ok: false }));
     const { getByTestId, emit } = await renderLiveEditing(renderAction);
@@ -227,9 +260,28 @@ describe("storyblokLiveEditing", () => {
     expect(first).not.toHaveBeenCalled();
   });
 
-  it("registers the bridge without a server action (standalone use)", async () => {
-    const { emit } = await renderLiveEditing(undefined);
+  it("loads the live editing Server Action lazily when none is passed", async () => {
+    vi.mocked(renderLiveEditStory).mockImplementation(async () => rendered("lazy"));
+    const { getByTestId, emit } = await renderLiveEditing(undefined);
 
-    await expect(emit(incoming("live"))).resolves.not.toThrow();
+    await emit(incoming("live"));
+
+    await vi.waitFor(() => expect(getByTestId("content").textContent).toBe("lazy"));
+    expect(renderLiveEditStory).toHaveBeenCalledWith({
+      story: { content: incoming("live").content },
+      props: DEFAULT_PROPS,
+    });
+  });
+
+  it("warns once and keeps the server render when used on its own", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { getByTestId, emit } = await renderLiveEditing(undefined, null);
+
+    await emit(incoming("a"));
+    await emit(incoming("b"));
+
+    expect(renderLiveEditStory).not.toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(getByTestId("content").textContent).toBe("server");
   });
 });

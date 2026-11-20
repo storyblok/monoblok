@@ -56,6 +56,19 @@ describe("renderLiveEditStory", () => {
     expect(getByTestId("marker").className).toBe("");
   });
 
+  it("drops the props React reserves", async () => {
+    // A `ref` would make React throw on the server.
+    const result = await callUntyped({
+      story: { content: { _uid: "1", component: "marker", label: "live" } },
+      props: { ref: "r", key: "k", className: "hero" },
+    });
+
+    const { getByTestId } = renderNode(
+      result && typeof result === "object" && "node" in result ? (result.node as ReactNode) : null,
+    );
+    expect(getByTestId("marker").className).toBe("hero");
+  });
+
   it.each([
     ["no payload", undefined],
     ["no story", { story: null }],

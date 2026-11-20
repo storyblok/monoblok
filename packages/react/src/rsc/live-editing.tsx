@@ -24,11 +24,35 @@ interface StoryblokLiveEditingProps {
    * rendered, and for every visitor outside the Visual Editor.
    */
   children?: ReactNode;
-  /** @internal Server Action that renders an updated story; passed by `StoryblokStory`. */
-  renderAction?: LiveEditRenderAction;
-  /** @internal Props forwarded to the rendered story; passed by `StoryblokStory`. */
+  /**
+   * @internal Props forwarded to the rendered story; passed by `StoryblokStory`.
+   * Their presence turns on rendering Visual Editor updates on the server.
+   */
   renderProps?: LiveEditRenderProps;
+  /** @internal Replaces the live editing Server Action. Only for tests. */
+  renderAction?: LiveEditRenderAction;
 }
+
+/**
+ * Imported on first use from this client component, not passed down by
+ * `StoryblokStory`: a static import from a Server Component makes Next.js 13
+ * reject the build unless Server Actions are enabled.
+ */
+const loadRenderAction = async (): Promise<LiveEditRenderAction> => {
+  const { renderLiveEditStory } = await import("./live-edit-render-action");
+  return renderLiveEditStory;
+};
+
+let warnedStandalone = false;
+const warnStandalone = (): void => {
+  if (warnedStandalone) {
+    return;
+  }
+  warnedStandalone = true;
+  console.warn(
+    "StoryblokLiveEditing: Visual Editor changes aren't shown when it's used on its own. Render the story with `StoryblokStory` to see them live.",
+  );
+};
 
 type InputHandler = (story: ISbStoryData) => void;
 
@@ -37,7 +61,8 @@ type InputHandler = (story: ISbStoryData) => void;
  * and has no way to remove one. So each story id is registered once, through a
  * dispatcher that forwards to the handler of the currently mounted component.
  * Remounts (React Strict Mode, client-side navigation) replace the handler
- * instead of registering a listener that would never be called.
+ * instead of registering a listener that would never be called. For the same
+ * reason, the `bridgeOptions` of the first registration stay in effect.
  */
 const inputHandlers = new Map<number, InputHandler>();
 const registeredStoryIds = new Set<number>();
@@ -92,19 +117,21 @@ const StoryblokLiveEditing = ({
     // One render at a time. A story arriving meanwhile replaces any queued one,
     // so fast typing renders the latest content without piling up requests.
     const render = (incoming: ISbStoryData) => {
-      const action = latest.current.renderAction;
-      if (!action) {
+      const { renderAction, renderProps } = latest.current;
+      if (!renderAction && !renderProps) {
+        warnStandalone();
         return;
       }
       inFlight = true;
-      Promise.resolve(
-        action({ story: { content: incoming.content }, props: latest.current.renderProps }),
-      )
+      Promise.resolve(renderAction ?? loadRenderAction())
+        .then((action) => action({ story: { content: incoming.content }, props: renderProps }))
         .then((result) => {
           if (disposed || !result) {
             return;
           }
           if (result.ok) {
+            // A later cold instance (serverless) can ask for a retry again.
+            retried = false;
             const { node } = result;
             startTransition(() => setLiveContent({ node }));
           } else if ("retry" in result && result.retry && !retried) {

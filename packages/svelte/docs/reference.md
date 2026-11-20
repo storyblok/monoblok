@@ -143,9 +143,16 @@ Render the story’s content with `StoryblokBlock`, and subscribe to Visual Edit
   let story = $derived<LivePreviewStory>(data.story);
 
   $effect(() =>
-    onStoryblokEditorEvent((newStory) => (story = newStory), {
-      onChange: () => invalidateAll(),
-    }),
+    onStoryblokEditorEvent(
+      (newStory) => {
+        // The Visual Editor can send another story's updates, for example after a
+        // client-side navigation inside the preview. Only take this page's story.
+        if (newStory.id === data.story.id) story = newStory;
+      },
+      {
+        onChange: () => invalidateAll(),
+      },
+    ),
   );
 </script>
 
@@ -275,8 +282,9 @@ are available:
 | `onError`  | Called if the Storyblok Bridge fails to load. Without it, the error is logged.                                                                       | `function` |
 
 The callback receives every story the Visual Editor sends, not only the story of the current page.
-All subscriptions on a page share one Storyblok Bridge, so the page reloads on save unless every
-subscription passes `onChange`.
+Compare the story’s `id` with the page’s story before you apply it, as in
+[Fetching and rendering](#fetching-and-rendering). All subscriptions on a page share one Storyblok
+Bridge, so the page reloads on save unless every subscription passes `onChange`.
 
 ### `loadStoryblokBridge`
 
@@ -292,15 +300,19 @@ bridge.on("enterEditmode", () => {
 
 ### `isInEditor`
 
-`isInEditor()` takes a URL and returns `true` if the request comes from the Visual Editor. Pass a
-`spaceId` option to also check that the request belongs to that space.
+`isInEditor()` takes a URL and returns `true` if it has the query parameters the Visual Editor adds
+when it opens a page. Pass a `spaceId` option to also check that the request belongs to that space.
 
 ```ts
-export const load: PageLoad = async ({ url }) => {
-  const version = isInEditor(url) ? "draft" : "published";
-  // ...
-};
+import { browser } from "$app/environment";
+
+const inEditor = browser && isInEditor(new URL(window.location.href));
 ```
+
+The Visual Editor adds these parameters only to the URL it opens. After a client-side navigation
+inside the preview, they’re gone and `isInEditor()` returns `false`. Don’t use it in a `load`
+function to choose between draft and published content: it switches to published content after the
+first navigation in the Visual Editor, and reading `url.searchParams` fails on prerendered pages.
 
 ### `StoryblokRichText`
 

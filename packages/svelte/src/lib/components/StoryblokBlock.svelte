@@ -40,12 +40,7 @@
 
   const editable = $derived(block ? storyblokEditable(block) : undefined);
 
-  function warnIfUndefinedBlock() {
-    if (block) return;
-    // Skipped in the Visual Editor, where the bridge sends a story without
-    // `content` while the editor shows a previous version (visual history).
-    const inEditor = typeof window !== 'undefined' && isInEditor(new URL(window.location.href));
-    if (inEditor) return;
+  function warnUndefinedBlock() {
     registry.warn(
       'undefined-block',
       '[storyblok] <StoryblokBlock /> received an undefined `block` prop and rendered nothing. ' +
@@ -55,8 +50,15 @@
   }
 
   // Effects don't run during SSR, so check once up front on the server.
-  if (typeof window === 'undefined') warnIfUndefinedBlock();
-  $effect(warnIfUndefinedBlock);
+  if (typeof window === 'undefined' && !block) warnUndefinedBlock();
+
+  $effect(() => {
+    if (block) return;
+    // Skipped in the Visual Editor, where the bridge sends a story without
+    // `content` while the editor shows a previous version (visual history).
+    if (isInEditor(new URL(window.location.href))) return;
+    warnUndefinedBlock();
+  });
 </script>
 
 {#if Resolved && block}

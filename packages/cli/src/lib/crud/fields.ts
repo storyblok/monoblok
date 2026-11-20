@@ -32,9 +32,6 @@ export type FlagPatch = {
 
 const SET_SYNTAX = "<field>=<value>";
 
-/** What a field name can look like. Anything else is not repeated: it may hold a value. */
-const FIELD_NAME = /^[A-Za-z_][\w.-]*$/;
-
 /** Own keys only: `toString` or `__proto__` must not pass as fields. */
 function writableField(fields: ResourceFields, field: string): FieldDescriptor | undefined {
   return Object.hasOwn(fields.writable, field) ? fields.writable[field] : undefined;
@@ -49,8 +46,8 @@ function assertWritable(fields: ResourceFields, field: string, flag: string): Fi
   if (fields.readOnly.includes(field)) {
     throw usageError(`${flag}: "${field}" is read-only. Writable fields: ${valid}.`);
   }
-  const unknown = FIELD_NAME.test(field) ? `unknown field "${field}"` : "unknown field";
-  throw usageError(`${flag}: ${unknown}. Writable fields: ${valid}.`);
+  // Not repeated: an unknown name may be a misplaced secret.
+  throw usageError(`${flag}: unknown field. Writable fields: ${valid}.`);
 }
 
 function assertNullable(fields: ResourceFields, field: string, flag: string): void {

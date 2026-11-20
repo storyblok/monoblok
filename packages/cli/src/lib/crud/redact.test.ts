@@ -2,12 +2,12 @@ import { describe, expect, it } from "vitest";
 import { redactedData, redactedField, redactedSet, SecretScrubber, stripSecrets } from "./redact";
 
 const secretFields = ["secret"];
-const visibleFields = ["name", "description"];
+const fieldNames = { known: ["name", "description", "secret"], visible: ["name", "description"] };
 
 describe("redactedSet", () => {
   it("should serialize a secret assignment without its value", () => {
     const options = {
-      set: [redactedSet("name=a", visibleFields), redactedSet("secret=s3", visibleFields)],
+      set: [redactedSet("name=a", fieldNames), redactedSet("secret=s3", fieldNames)],
     };
 
     expect(JSON.stringify(options)).toBe('{"set":["name=a","secret=[redacted]"]}');
@@ -16,24 +16,29 @@ describe("redactedSet", () => {
 });
 
 describe("redactedSet with a field it does not know", () => {
-  it("should redact the value of a mistyped or unknown field", () => {
-    expect(JSON.stringify([redactedSet("Secret=s3", visibleFields)])).toBe('["Secret=[redacted]"]');
-    expect(JSON.stringify([redactedSet("s3cret-without-equals", visibleFields)])).toBe(
-      '["[redacted]"]',
-    );
+  it("should redact a mistyped or unknown field with its value, as either may hold the secret", () => {
+    for (const raw of ["Secret=s3", "secret:s3cret=", "s3cret-without-equals", "a b=s3"]) {
+      expect(JSON.stringify(redactedSet(raw, fieldNames))).toBe('"[redacted]"');
+    }
   });
 });
 
 describe("redactedData", () => {
   it("should serialize --data with its secret fields redacted", () => {
-    const data = redactedData('{"secret":"s3","name":"a"}', visibleFields);
+    const data = redactedData('{"secret":"s3","name":"a"}', fieldNames);
 
     expect(JSON.stringify({ data })).toBe('{"data":{"secret":"[redacted]","name":"a"}}');
     expect(String(data)).toBe('{"secret":"s3","name":"a"}');
   });
 
   it("should serialize unparseable --data as redacted", () => {
-    expect(JSON.stringify(redactedData('{"secret":"s3"', visibleFields))).toBe('"[redacted]"');
+    expect(JSON.stringify(redactedData('{"secret":"s3"', fieldNames))).toBe('"[redacted]"');
+  });
+
+  it("should serialize --data with a key it does not know as redacted", () => {
+    expect(JSON.stringify(redactedData('{"secret: s3cret":1,"name":"a"}', fieldNames))).toBe(
+      '"[redacted]"',
+    );
   });
 });
 
@@ -59,8 +64,8 @@ describe("SecretScrubber with a short secret", () => {
 
 describe("redactedField", () => {
   it("should serialize a field name, and anything else as redacted", () => {
-    expect(JSON.stringify(redactedField("secret", ["secret", "name"]))).toBe('"secret"');
-    expect(JSON.stringify(redactedField("secret=s3cret-value", ["secret"]))).toBe('"[redacted]"');
+    expect(JSON.stringify(redactedField("secret", fieldNames))).toBe('"secret"');
+    expect(JSON.stringify(redactedField("whsec_s3cret", fieldNames))).toBe('"[redacted]"');
   });
 });
 

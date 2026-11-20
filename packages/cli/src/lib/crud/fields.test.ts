@@ -48,10 +48,17 @@ describe("parseFlagPatch", () => {
     );
   });
 
-  it("should not echo an --unset value that is not a field name", () => {
-    expect(() => parseFlagPatch(fields, flags({ unset: ["note=s3cret-value"] }))).toThrow(
-      expect.objectContaining({ message: expect.not.stringContaining("s3cret-value") }),
-    );
+  it("should not echo an unknown field, which may be a misplaced secret", () => {
+    const misplaced = [
+      flags({ unset: ["whsec_s3cretvalue"] }),
+      flags({ set: ["whsec_s3cretvalue=x"] }),
+      flags({ data: '{"whsec_s3cretvalue":1}' }),
+    ];
+    for (const flagSet of misplaced) {
+      expect(() => parseFlagPatch(fields, flagSet)).toThrow(
+        expect.objectContaining({ message: expect.not.stringContaining("s3cretvalue") }),
+      );
+    }
   });
 
   it("should name a field given twice without mentioning a flag the command lacks", () => {

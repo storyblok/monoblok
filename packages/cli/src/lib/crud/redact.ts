@@ -16,27 +16,35 @@ export const REDACTED = "[redacted]";
 const MIN_SCRUBBED_LENGTH = 8;
 
 /**
+ * The field names a payload flag is checked against. Only `known` names are
+ * logged, as anything else may be a misplaced secret; only `visible` fields
+ * have their values logged.
+ */
+export type FieldNames = {
+  readonly known: readonly string[];
+  readonly visible: readonly string[];
+};
+
+/**
  * A payload flag value as commander stores it: its string form is what the
- * command reads, `toJSON` what the log and report files get. Only values of
- * `visibleFields` are logged, so a secret under a mistyped field name stays
- * out too. Data only, no closures: config resolution `structuredClone`s every
- * option.
+ * command reads, `toJSON` what the log and report files get. Data only, no
+ * closures: config resolution `structuredClone`s every option.
  */
 export class RedactedOption {
   constructor(
     readonly raw: string,
     readonly kind: "set" | "data" | "field",
-    readonly visibleFields: readonly string[],
+    readonly fields: FieldNames,
   ) {}
 
   toJSON(): unknown {
     switch (this.kind) {
       case "set":
-        return redactAssignment(this.raw, this.visibleFields);
+        return redactAssignment(this.raw, this.fields);
       case "data":
-        return redactJson(this.raw, this.visibleFields);
+        return redactJson(this.raw, this.fields);
       case "field":
-        return this.visibleFields.includes(this.raw) ? this.raw : REDACTED;
+        return this.fields.known.includes(this.raw) ? this.raw : REDACTED;
     }
   }
 
@@ -45,44 +53,45 @@ export class RedactedOption {
   }
 }
 
-function redactAssignment(raw: string, visibleFields: readonly string[]): string {
+function redactAssignment(raw: string, fields: FieldNames): string {
   const separator = raw.indexOf("=");
-  if (separator <= 0) {
+  const field = raw.slice(0, Math.max(separator, 0));
+  if (!fields.known.includes(field)) {
     return REDACTED;
   }
-  const field = raw.slice(0, separator);
-  return visibleFields.includes(field) ? raw : `${field}=${REDACTED}`;
+  return fields.visible.includes(field) ? raw : `${field}=${REDACTED}`;
 }
 
-function redactJson(raw: string, visibleFields: readonly string[]): unknown {
+function redactJson(raw: string, fields: FieldNames): unknown {
+  let data: unknown;
   try {
-    const data: unknown = JSON.parse(raw);
-    if (!isRecord(data)) {
-      return REDACTED;
-    }
-    return Object.fromEntries(
-      Object.entries(data).map(([key, value]) => [
-        key,
-        visibleFields.includes(key) ? value : REDACTED,
-      ]),
-    );
+    data = JSON.parse(raw);
   } catch {
     return REDACTED;
   }
+  if (!isRecord(data) || Object.keys(data).some((key) => !fields.known.includes(key))) {
+    return REDACTED;
+  }
+  return Object.fromEntries(
+    Object.entries(data).map(([key, value]) => [
+      key,
+      fields.visible.includes(key) ? value : REDACTED,
+    ]),
+  );
 }
 
 /** A `--set` value, logged only for a known field that is not secret. */
-export function redactedSet(raw: string, visibleFields: readonly string[]): RedactedOption {
-  return new RedactedOption(raw, "set", visibleFields);
+export function redactedSet(raw: string, fields: FieldNames): RedactedOption {
+  return new RedactedOption(raw, "set", fields);
 }
 
-/** A `--data` value, logged with every field redacted that is unknown or secret. */
-export function redactedData(raw: string, visibleFields: readonly string[]): RedactedOption {
-  return new RedactedOption(raw, "data", visibleFields);
+/** A `--data` value, logged only when every key is a known field, with secret values redacted. */
+export function redactedData(raw: string, fields: FieldNames): RedactedOption {
+  return new RedactedOption(raw, "data", fields);
 }
 
-/** A `--unset` value, logged only when it is one of `fields`: anything else may be a value. */
-export function redactedField(raw: string, fields: readonly string[]): RedactedOption {
+/** An `--unset` value, logged only when it is a known field. */
+export function redactedField(raw: string, fields: FieldNames): RedactedOption {
   return new RedactedOption(raw, "field", fields);
 }
 

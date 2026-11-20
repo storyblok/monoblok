@@ -58,7 +58,7 @@ type PayloadOptions = {
   set?: FlagValue | FlagValue[];
   unset?: FlagValue | FlagValue[];
   /** A list on the command line, so a repeat is caught instead of replacing the first. */
-  data?: unknown;
+  data?: FlagValue | FlagValue[];
   dryRun?: boolean;
 };
 
@@ -152,24 +152,16 @@ function toList<T>(value: T | T[] | undefined): T[] {
 }
 
 function readFlagPatch(resource: ResourceInfo, options: PayloadOptions): FlagPatch {
-  // A config file gives `--data` as one object or JSON string, the command line as a list.
-  const data = Array.isArray(options.data) ? options.data : toList(options.data);
+  const data = toList(options.data);
   if (data.length > 1) {
     throw usageError("--data is given more than once. Pass one JSON object.");
   }
+  // `String()` rather than `.raw`: a value from a config file is a plain string.
   return parseFlagPatch(resource.fields, {
-    // `String()` rather than `.raw`: a value from a config file is a plain string.
     set: toList(options.set).map(String),
     unset: toList(options.unset).map(String),
-    data: data.length === 0 ? undefined : stringifyData(data[0]),
+    data: data.length === 0 ? undefined : String(data[0]),
   });
-}
-
-/** `--data` from the command line is JSON text; from a config file it can be an object. */
-function stringifyData(data: unknown): string {
-  return typeof data === "string" || data instanceof RedactedOption
-    ? String(data)
-    : JSON.stringify(data);
 }
 
 function hasFlagPatch(options: PayloadOptions): boolean {
@@ -469,7 +461,10 @@ function addPayloadOptions(
   { unset, dataHelp }: { unset: boolean; dataHelp: string },
 ): Command {
   const fields = Object.keys(resource.fields.writable);
-  const visibleFields = fields.filter((field) => !isSecret(resource, field));
+  const fieldNames = {
+    known: fields,
+    visible: fields.filter((field) => !isSecret(resource, field)),
+  };
   const nullableFields = fields.filter((field) => resource.fields.writable[field].nullable);
   command
     .option(
@@ -477,12 +472,12 @@ function addPayloadOptions(
       `set a field, repeatable. Fields: ${fields.join(", ")}. Lists are comma-separated`,
       (value: string, previous: RedactedOption[] = []) => [
         ...previous,
-        redactedSet(value, visibleFields),
+        redactedSet(value, fieldNames),
       ],
     )
     .option("--data <json>", dataHelp, (value: string, previous: RedactedOption[] = []) => [
       ...previous,
-      redactedData(value, visibleFields),
+      redactedData(value, fieldNames),
     ]);
   if (unset && nullableFields.length > 0) {
     command.option(
@@ -490,7 +485,7 @@ function addPayloadOptions(
       `clear a field, repeatable. Fields: ${nullableFields.join(", ")}`,
       (value: string, previous: RedactedOption[] = []) => [
         ...previous,
-        redactedField(value, fields),
+        redactedField(value, fieldNames),
       ],
     );
   }
@@ -507,10 +502,7 @@ export function createCrudCommand(
   program: Command,
   { name, description }: { name: string; description: string },
 ): Command {
-  const command = withCrudErrors(new Command(name))
-    .description(description)
-    // List each verb with its usage line, so a required target shows as `<target>`.
-    .configureHelp({ subcommandTerm: (verb) => `${verb.name()} ${verb.usage()}` });
+  const command = withCrudErrors(new Command(name)).description(description);
   program.addCommand(command);
   return command;
 }
@@ -526,6 +518,11 @@ export function addCrudVerbs<T extends ResourceRecord>(
   { verbs = CRUD_VERBS }: { verbs?: readonly CrudVerb[] } = {},
 ): void {
   const { noun } = resource;
+  // List each verb with its usage line, so a required target shows as `<target>`.
+  parent.configureHelp({
+    ...parent.configureHelp(),
+    subcommandTerm: (verb) => `${verb.name()} ${verb.usage()}`,
+  });
   const targetHelp = resource.nameField
     ? `${noun.singular} ID or ${resource.nameField}`
     : `${noun.singular} ID`;

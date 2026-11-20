@@ -1,0 +1,54 @@
+/**
+ * `defineMigration<After, Before>`: a migration is a list of ops, plain objects
+ * built by imported factories. Ops run in order, and every op addresses blocks
+ * by the name they had before the migration ran.
+ *
+ * Parameter order is `After` first because one type parameter has to mean the
+ * schema people actually have. Under the one-parameter shorthand, reads widen
+ * to `… | (string & {})`: a surviving name autocompletes, one the schema no
+ * longer has still compiles. Naming `Before` — generated as a snapshot next to
+ * the migration — tightens reads back to an error.
+ *
+ * Two call shapes. The bare array is the common case; the object exists so a
+ * title has somewhere to live. There is no `down`: an inverse is recorded from
+ * the run or derived from the ops, never authored, so a hand-written one could
+ * only disagree with what actually happened.
+ */
+import type { MigrationOp, MigrationOpOf } from "./ops";
+import type { SchemaShape } from "./types";
+
+export type { AlterFieldContext, AnyChild, MigrationOp } from "./ops";
+
+/** An op list as authored. The element type is what the factories infer against. */
+export type MigrationOps<
+  TAfter extends SchemaShape,
+  TBefore extends SchemaShape,
+> = readonly MigrationOpOf<TAfter, TBefore>[];
+
+export interface MigrationDefinition<TAfter extends SchemaShape, TBefore extends SchemaShape> {
+  /** CLI output only; identity stays with the filename. */
+  title?: string;
+  ops: MigrationOps<TAfter, TBefore>;
+}
+
+export interface CompiledMigration {
+  title?: string;
+  ops: MigrationOp[];
+  /** Block names any op targets, so a caller can fetch only the stories that contain one. */
+  targets: string[];
+}
+
+export function defineMigration<TAfter extends SchemaShape, TBefore extends SchemaShape = TAfter>(
+  definition: MigrationOps<TAfter, TBefore> | MigrationDefinition<TAfter, TBefore>,
+): CompiledMigration {
+  const spec = Array.isArray(definition)
+    ? { ops: definition as MigrationOps<TAfter, TBefore> }
+    : (definition as MigrationDefinition<TAfter, TBefore>);
+  const ops = [...spec.ops] as MigrationOp[];
+
+  return {
+    title: spec.title,
+    ops,
+    targets: [...new Set(ops.map((op) => op.block))],
+  };
+}

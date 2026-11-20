@@ -1,6 +1,5 @@
 import { forwardRef } from "react";
 import type { ISbStoryData } from "@/types";
-import { consumeCachedStory } from "../core/story-cache";
 import StoryblokServerComponent from "./server-component";
 
 interface StoryblokServerStoryProps extends Omit<Record<string, unknown>, "story"> {
@@ -17,9 +16,6 @@ const StoryblokServerStory = forwardRef<HTMLElement, StoryblokServerStoryProps>(
       console.error("Please provide a 'story' property to the StoryblokServerStory");
       return null;
     }
-
-    // Handle cached story updates (for revalidation scenarios)
-    story = consumeCachedStory(story);
 
     // Parse story content if it's a string
     if (typeof story.content === "string") {

@@ -11,6 +11,11 @@ export interface MigrationsRunOptions extends CommandOptions {
   query?: string;
   startsWith?: string;
   publish?: "all" | "published" | "published-with-changes";
+  /** A schema entry file to check the selected content migration against. */
+  schema?: string;
+  /** `false` when `--no-validate` skips checking content migrations against their snapshots. */
+  validate: boolean;
+  allowPendingReleases?: boolean;
 }
 
 export interface ReadMigrationFilesOptions {

@@ -455,6 +455,35 @@ describe("validateStory", () => {
       expect(result.ok).toBe(false);
       expect(codesFor(result)).toContain("async_validator_unsupported");
     });
+
+    it("should report a plugin issue whose path holds a symbol key", () => {
+      const symbolKey = Symbol("color");
+      const symbolPathValue: StandardSchemaV1<{ color: string }> = {
+        "~standard": {
+          version: 1,
+          vendor: "test",
+          validate: () => ({
+            issues: [{ message: "Bad color", path: [symbolKey, { key: symbolKey }] }],
+          }),
+        },
+      };
+      const symbolPathPlugin = defineFieldPlugin({
+        fieldType: "storyblok-colorpicker",
+        value: symbolPathValue,
+      });
+      const result = validateStory(
+        {
+          content: {
+            component: "page",
+            headline: "Hi",
+            accent: { plugin: "storyblok-colorpicker", _uid: "abc-123", color: "x" },
+          },
+        },
+        { blocks: { page: pageWithPlugin }, fieldPlugins: { symbolPathPlugin } },
+      );
+      const pluginIssue = result.issues.find((i) => i.code === "invalid_value");
+      expect(pluginIssue?.path).toEqual(["content", "accent", "Symbol(color)", "Symbol(color)"]);
+    });
   });
 });
 

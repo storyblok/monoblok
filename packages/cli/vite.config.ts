@@ -40,6 +40,9 @@ export default defineConfig({
   test: {
     globals: true,
     setupFiles: ["./test/setup.ts"],
+    // @storyblok/schema reads migration files and run records through node:fs,
+    // so the memfs mock only reaches it when Vitest transforms the package.
+    server: { deps: { inline: [/@storyblok\/schema/, /packages\/schema\/dist/] } },
     coverage: {
       reporter: ["text", "json", "html"],
     },

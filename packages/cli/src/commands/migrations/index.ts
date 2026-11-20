@@ -2,6 +2,7 @@ import "./command";
 import "./generate";
 import "./run";
 import "./rollback";
+import "./list";
 
 export * from "./generate/actions";
 export * from "./generate/constants";

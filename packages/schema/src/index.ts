@@ -146,7 +146,13 @@ export type { IsTranslatable } from "./migrations/runner";
 
 export { MigrationError } from "./migrations/migration-error";
 export { planUndo, undoStories } from "./migrations/undo-run";
-export type { UndoOutcome, UndoPlan, UndoStoriesInput, UndoWrite } from "./migrations/undo-run";
+export type {
+  ConflictingBlock,
+  UndoOutcome,
+  UndoPlan,
+  UndoStoriesInput,
+  UndoWrite,
+} from "./migrations/undo-run";
 
 export { checkPendingReleases } from "./migrations/releases";
 export type { PendingReleasesCheck, ReleaseForMigration } from "./migrations/releases";
@@ -154,8 +160,14 @@ export type { PendingReleasesCheck, ReleaseForMigration } from "./migrations/rel
 export {
   discoverMigrations,
   loadMigrations,
+  misnamedMigrationFiles,
   selectMigrationFiles,
 } from "./migrations/load-migrations";
-export type { ImportDefault, LoadedMigration, MigrationFile } from "./migrations/load-migrations";
+export type {
+  ImportDefault,
+  LoadedMigration,
+  LoadMigrationsOptions,
+  MigrationFile,
+} from "./migrations/load-migrations";
 
 export { localJournal } from "./migrations/local-journal";

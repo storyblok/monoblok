@@ -419,14 +419,10 @@ async function findTarget<T extends ResourceRecord>(
  */
 const INLINE_OPTION_VALUE = /'(--?[^=' ]+)=.*'/gs;
 
-/** `unknown option '-Zvalue'`: a short option with its value glued on. */
-const GLUED_OPTION_VALUE = /^(unknown option )'(-[^-\s'])[^']+'/;
-
 function toUsageMessage(text: string): string {
   return text
     .replace(/^error:\s*/i, "")
     .replace(INLINE_OPTION_VALUE, "'$1=…'")
-    .replace(GLUED_OPTION_VALUE, "$1'$2…'")
     .trim();
 }
 

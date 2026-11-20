@@ -2,7 +2,6 @@
 // against a resource's generated field descriptor and composed into the body of
 // one request.
 
-import { isDeepStrictEqual } from "node:util";
 import { isRecord } from "../../utils/object";
 import { isSidecarKey } from "../pipe/contract";
 import { CrudError, usageError } from "./errors";
@@ -241,23 +240,6 @@ function assertFieldTypes(fields: ResourceFields, payload: Payload, given: Set<s
 }
 
 /**
- * Each value of a list field once: the API stores a repeated value twice. A
- * list kept as the server has it stays as it is, so it is not a change.
- */
-function withUniqueLists(fields: ResourceFields, payload: Payload, base: Payload = {}): Payload {
-  return Object.fromEntries(
-    Object.entries(payload).map(([field, value]) => [
-      field,
-      writableField(fields, field)?.type === "string[]" &&
-      Array.isArray(value) &&
-      !isDeepStrictEqual(value, base[field])
-        ? [...new Set(value)]
-        : value,
-    ]),
-  );
-}
-
-/**
  * The fields a record should have after the write: the server's record
  * (`base`, on update), then the input line, then `--data` as a JSON Merge
  * Patch, then `--set`/`--unset`. A top-level `null` in `--data` clears the
@@ -282,7 +264,7 @@ export function composePayload(
     ...Object.keys(patch.assignments),
   ]);
   assertFieldTypes(fields, composed, given);
-  return withUniqueLists(fields, composed, base);
+  return composed;
 }
 
 /** The API rejects these as blank, so a required field holding one is missing. */

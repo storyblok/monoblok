@@ -154,20 +154,6 @@ describe("composePayload", () => {
     });
   });
 
-  it("should keep each value of a list field once", () => {
-    const patch = parseFlagPatch(fields, flags({ set: ["tags=a,b,a"] }));
-
-    expect(composePayload(fields, undefined, patch)).toEqual({ tags: ["a", "b"] });
-  });
-
-  it("should keep a list the write leaves as the server has it, repeats included", () => {
-    const server = { tags: ["a", "a"] };
-
-    expect(
-      composePayload(fields, { tags: ["a", "a"] }, parseFlagPatch(fields, flags()), server),
-    ).toEqual({ tags: ["a", "a"] });
-  });
-
   it("should take only writable fields from an input line", () => {
     const line = { id: 1, updated_at: "t", _skipped: true, added_later: "x", name: "a" };
 

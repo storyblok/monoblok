@@ -7,6 +7,8 @@ import Fallback from "../blocks/Fallback.svelte";
 import RequiresEditable from "../blocks/RequiresEditable.svelte";
 import RequiresLocale from "../blocks/RequiresLocale.svelte";
 import Teaser from "../blocks/Teaser.svelte";
+import Heading from "../richtext/Heading.svelte";
+import LocalizedBlok from "../richtext/LocalizedBlok.svelte";
 
 // A component typed with the pre-v8 `blok` prop is rejected.
 defineStoryblokBlocks(() => ({
@@ -66,3 +68,35 @@ export const typoProps: StoryblokRichTextComponentProps = {
   // @ts-expect-error `optimiseImage` is not a `StoryblokRichText` prop.
   optimiseImage: true,
 };
+
+// `StoryblokRichText` infers `TData` from its props the same way this does.
+function richText<TData = unknown>(props: StoryblokRichTextComponentProps<TData>): void {
+  void props;
+}
+const doc: StoryblokRichTextComponentProps["document"] = { type: "doc", content: [] };
+
+// `data` matching the type the `blok` renderer declares is accepted, next to
+// components that don't read `data`.
+richText({
+  document: doc,
+  components: { blok: LocalizedBlok, heading: Heading },
+  data: { locale: "fr" },
+});
+
+// Without data-typed components, `data` stays optional and untyped.
+richText({ document: doc, components: { heading: Heading } });
+richText({ document: doc, data: { anything: true } });
+
+// `data` of the wrong shape is rejected.
+// @ts-expect-error `locale` must be a string.
+richText({ document: doc, components: { blok: LocalizedBlok }, data: { locale: 1 } });
+// @ts-expect-error `lang` is not part of the declared data.
+richText({ document: doc, components: { blok: LocalizedBlok }, data: { lang: "fr" } });
+
+// `data` is required once a component declares it.
+// @ts-expect-error `data` is missing.
+richText({ document: doc, components: { blok: LocalizedBlok } });
+
+// A component is checked against the props of its key.
+// @ts-expect-error a `blok` renderer isn't a `heading` renderer.
+richText({ document: doc, components: { heading: LocalizedBlok }, data: { locale: "fr" } });

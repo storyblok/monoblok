@@ -341,7 +341,8 @@ The component accepts the following optional props:
 
 - `components`: custom Svelte components for supported rich text nodes and marks.
 - `optimizeImage`: image optimization options for image nodes.
-- `data`: custom data passed to custom components through `context`.
+- `data`: custom data passed to custom components as `context.data`. Learn more in
+  [Passing data to custom components](#passing-data-to-custom-components).
 - `warnings`: logs a warning for embedded blocks without a `components.blok` renderer. Defaults to
   `true`. Set it to `false` to silence it.
 
@@ -468,6 +469,35 @@ Then pass it as `components.blok`:
 <StoryblokRichText document={block.text} components={{ blok: RichTextBlok }} />
 ```
 
+#### Passing data to custom components
+
+Custom components receive the `data` prop of `StoryblokRichText` as `context.data`. Declare its type
+as the second type argument of `StoryblokSvelteRichTextProps`. For example, a `blok` renderer for a
+registry that requires a `locale` prop:
+
+```svelte
+<!-- src/lib/RichTextBlok.svelte -->
+<script lang="ts">
+  import type { StoryblokSvelteRichTextProps } from '@storyblok/svelte';
+  import { StoryblokBlock } from '$lib/storyblok';
+
+  const { attrs, context }: StoryblokSvelteRichTextProps<'blok', { locale: string }> = $props();
+  const blocks = $derived(Array.isArray(attrs?.body) ? attrs.body : []);
+</script>
+
+{#each blocks as block, index (block._uid ?? index)}
+  <StoryblokBlock {block} locale={context.data.locale} />
+{/each}
+```
+
+```svelte
+<StoryblokRichText document={block.text} components={{ blok: RichTextBlok }} data={{ locale }} />
+```
+
+`StoryblokRichText` checks `data` against the components you pass: once a component declares a
+`data` type, `data` is required and must match it. Components that don't read `data` work with any
+`data`.
+
 ### Types
 
 `@storyblok/svelte` exports the following types.
@@ -483,9 +513,9 @@ Then pass it as `components.blok`:
 | `StoryblokComponentMap`                        | Map of technical block names to block components.                                                                                                           |
 | `StoryblokEditableProps`                       | Return value of `storyblokEditable()`.                                                                                                                      |
 | `StoryblokExtraProps`                          | Constraint for the `TExtraProps` type argument. Excludes `block` and `editable`.                                                                            |
-| `StoryblokRichTextComponentProps`              | Props of `StoryblokRichText`.                                                                                                                               |
+| `StoryblokRichTextComponentProps<TData>`       | Props of `StoryblokRichText`. `TData` is the type of `data`.                                                                                                |
 | `StoryblokSvelteRichTextComponentMap`          | Map of rich text node and mark names to custom components.                                                                                                  |
-| `StoryblokSvelteRichTextProps<T>`              | Props of a custom rich text component for the node or mark `T`.                                                                                             |
+| `StoryblokSvelteRichTextProps<T, TData>`       | Props of a custom rich text component for the node or mark `T`. `TData` types `context.data`.                                                               |
 | `StoryblokSvelteRichTextRenderContext`         | The `context` prop of a custom rich text component.                                                                                                         |
 | `BridgeParams`                                 | Preview Bridge options, re-exported from `@storyblok/live-preview`.                                                                                         |
 | `LivePreviewOptions`                           | Options of `onStoryblokEditorEvent`, re-exported from `@storyblok/live-preview`.                                                                            |

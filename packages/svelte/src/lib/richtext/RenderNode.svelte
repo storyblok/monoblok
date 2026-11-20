@@ -1,5 +1,6 @@
 <script lang="ts">
   import { getStaticChildren, hasContent, type StoryblokRichTextNodeWithKey } from '@storyblok/richtext';
+  import type { Component } from 'svelte';
   import type { StoryblokSvelteRichTextRenderContext } from '../richtext-helpers';
   import RenderTextNodeWithMarks from './RenderTextNodeWithMarks.svelte';
   import RenderChildren from './RenderChildren.svelte';
@@ -15,7 +16,10 @@
   };
 
   const { node, options }: Props = $props();
-  const CustomComponent = $derived(
+  // `any`: the node or mark type is only known at runtime, so the props of
+  // the component looked up for it can't be checked here. The map was checked
+  // where it was passed to `StoryblokRichText`.
+  const CustomComponent: Component<any> | undefined = $derived(
     options.components ? options.components[node.type] : undefined,
   );
 

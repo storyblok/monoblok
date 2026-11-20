@@ -31,8 +31,8 @@ export type {
 } from "./client";
 
 // Error
-export { ClientError } from "./error";
-export type { ApiErrorBody } from "./error";
+export { ClientError, PaginationError } from "./error";
+export type { ApiErrorBody, PaginationFailureReason } from "./error";
 
 // Generated client utilities
 export type { Middleware } from "./generated/capi/client/utils.gen";
@@ -59,6 +59,8 @@ export type {
   WithInlinedRelations,
 } from "./resources/stories";
 export type { StrataSearchQuery } from "./resources/strata";
+// Pagination types
+export type { PageResult } from "./utils/paginate";
 // Cache types
 export type {
   CacheEntry,

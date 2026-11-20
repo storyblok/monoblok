@@ -10,6 +10,33 @@ afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
 describe("links.list()", () => {
+  it("should track the current cv a cache-busting cv was redirected to", async () => {
+    const CURRENT_CV = "2000";
+    const storyUrls: string[] = [];
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/links", ({ request }) => {
+        const url = new URL(request.url);
+        // The edge redirects a cv it does not hold to the current version.
+        if (url.searchParams.get("cv") !== CURRENT_CV) {
+          url.searchParams.set("cv", CURRENT_CV);
+          return HttpResponse.redirect(url.toString(), 301);
+        }
+        // `/cdn/links` responses carry no cv of their own.
+        return HttpResponse.json({ links: {} });
+      }),
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        storyUrls.push(request.url);
+        return HttpResponse.json({ stories: [], cv: Number(CURRENT_CV) });
+      }),
+    );
+    const client = createApiClient({ accessToken: "links-cache-bust-token" });
+
+    await client.links.list({ query: { cv: 9_999_999_999 } });
+    await client.stories.list();
+
+    expect(new URL(storyUrls[0] ?? "").searchParams.get("cv")).toBe(CURRENT_CV);
+  });
+
   it("should successfully retrieve multiple links", async () => {
     server.use(
       http.get("https://api.storyblok.com/v2/cdn/links", () => {

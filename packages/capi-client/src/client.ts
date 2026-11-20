@@ -237,6 +237,22 @@ export interface ContentApiClientConfig<
    * @default false
    */
   inlineLinks?: InlineLinks;
+  /**
+   * Controls whether `inlineRelations` may return a circular result.
+   *
+   * - `true`: every related story is inlined at any depth, and each one is a single
+   *   shared object. Stories that reference each other (e.g. A → B → A) make the result
+   *   circular, so `JSON.stringify` throws on it, as does anything that serializes it,
+   *   such as Astro island props or Next.js Pages Router props.
+   * - `false`: matches `storyblok-js-client`. Related stories of a requested story have
+   *   their relations inlined, and relations below that stay UUID strings. The result is
+   *   never circular.
+   *
+   * Leaving it unset behaves like `true` and logs a warning the first time a result is
+   * circular. That default is deprecated. The option is removed in 1.0; relations then
+   * always behave like `false`.
+   */
+  circularRelations?: boolean;
   retry?: RetryOptions;
   /**
    * Request timeout in milliseconds.
@@ -373,6 +389,7 @@ export const createApiClientBase = <
     cache = {},
     inlineRelations = false,
     inlineLinks = false,
+    circularRelations,
     retry,
     timeout = 30_000,
     rateLimit,
@@ -849,6 +866,7 @@ export const createApiClientBase = <
     ...resourceDeps,
     inlineRelations,
     inlineLinks,
+    circularRelations,
   });
 
   return {

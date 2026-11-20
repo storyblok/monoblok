@@ -312,8 +312,8 @@ type InlinedBlockContent<
  * each relation field listed in `TResolveRelations` (the `resolve_relations` query
  * format, e.g. `"featured-articles.posts,article.author"`) becomes the related story,
  * or an array of them, at any nesting depth and inside related stories. A relation the
- * API returns no story for (e.g. unpublished or deleted) stays a UUID string, so each
- * value is `string | story`.
+ * API returns no story for (e.g. unpublished or deleted) stays a UUID string, as does
+ * one below the inlined levels (see below), so each value is `string | story`.
  *
  * `TBlock` is the block definition and `TBlocks` the union of all blocks in the space;
  * related stories are typed from its root blocks. Pass the same `TResolveRelations` as
@@ -325,8 +325,10 @@ type InlinedBlockContent<
  * `TFieldPlugins` types `custom` fields, as in {@link Story}. With `inlineLinks: true`
  * too, use {@link WithInlinedContent}.
  *
- * Related stories that reference each other resolve to the same object, so the
- * result can be circular and `JSON.stringify` throws on it.
+ * With `circularRelations: false`, related stories are inlined two levels deep and
+ * relations below that stay UUID strings, so the result is never circular. Otherwise,
+ * related stories that reference each other resolve to the same object, so the result
+ * can be circular and `JSON.stringify` throws on it.
  *
  * @example
  * // `featuredArticles` is a `defineBlock` result, `Blocks` the union of all blocks.
@@ -492,7 +494,7 @@ type LooseStoryWithInlinedLinks<TLink, InlineRelations extends boolean> = Omit<S
  * when `TComponents` is the default Component base type (no type argument provided).
  *
  * With `inlineRelations: true` and `resolve_relations` (e.g. `"article.author"`), matched
- * fields can hold the related story at any depth (see {@link WithInlinedRelations}).
+ * fields can hold the related story (see {@link WithInlinedRelations}).
  * Without `inlineRelations`, relations stay UUIDs. With `inlineLinks: true` and
  * `resolve_links`, story links carry the resolved link (see {@link WithInlinedLinks}).
  */
@@ -613,7 +615,12 @@ export interface StoriesResourceDeps<
 > extends ResourceDeps<DefaultThrowOnError> {
   inlineRelations: boolean;
   inlineLinks?: boolean;
+  circularRelations: boolean | undefined;
 }
+
+/** Acyclic results must not be served to clients that expect circular ones, or vice versa. */
+const getInlineCacheKeyPrefix = (circularRelations: boolean | undefined) =>
+  circularRelations === false ? "inline-acyclic" : "inline";
 
 export function createStoriesResource<
   TComponents extends Component = Component,
@@ -628,6 +635,7 @@ export function createStoriesResource<
     asApiResponse,
     inlineRelations,
     inlineLinks: shouldInlineLinks = false,
+    circularRelations,
     throttleManager,
   } = deps;
 
@@ -637,7 +645,10 @@ export function createStoriesResource<
    */
   const getCacheOptions = (query: { resolve_links?: unknown }) => {
     const cacheKeyPrefix =
-      [inlineRelations && "inline", shouldInlineLinks && query.resolve_links && "links"]
+      [
+        inlineRelations && getInlineCacheKeyPrefix(circularRelations),
+        shouldInlineLinks && query.resolve_links && "links",
+      ]
         .filter(Boolean)
         .join("-") || undefined;
     return cacheKeyPrefix ? { cacheKeyPrefix } : undefined;
@@ -676,7 +687,9 @@ export function createStoriesResource<
     }
 
     return resolvedRelations && relationMap
-      ? inlineStoriesContent(stories, resolvedRelations.relationPaths, relationMap)
+      ? inlineStoriesContent(stories, resolvedRelations.relationPaths, relationMap, {
+          circularRelations,
+        })
       : stories;
   };
 

@@ -2048,3 +2048,208 @@ describe("inlineLinks", () => {
     expect(first.content.cta.story).toBe(second.content.cta.story);
   });
 });
+
+describe("circularRelations", () => {
+  const relatedPage = (uuid: string, related?: string) =>
+    makeStory(uuid, { _uid: `${uuid}-content`, component: "page", related });
+
+  /** Serves `stories.get()` from the given relation chain: the first story is requested. */
+  const serveRelationChain = (...links: Array<[uuid: string, related?: string]>) => {
+    const stories = links.map(([uuid, related]) => relatedPage(uuid, related));
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories/*", () =>
+        HttpResponse.json({ story: stories[0], rels: stories, cv: 1 }),
+      ),
+    );
+  };
+
+  /** A fresh module instance, so the once-per-process warning has not fired yet. */
+  const importFreshCreateApiClient = async () => {
+    vi.resetModules();
+    const { createApiClient: freshCreateApiClient } = await import("../index");
+    return freshCreateApiClient;
+  };
+
+  const resolveRelatedQuery = { version: "published", resolve_relations: "page.related" } as const;
+
+  const relatedOf = (story: unknown): unknown =>
+    (story as { content: { related: unknown } }).content.related;
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("should return a circular result and warn once across clients when the option is unset", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const freshCreateApiClient = await importFreshCreateApiClient();
+    serveRelationChain(["a", "b"], ["b", "a"]);
+    const first = freshCreateApiClient({ accessToken: "token-1", inlineRelations: true });
+    const second = freshCreateApiClient({ accessToken: "token-2", inlineRelations: true });
+
+    const result = await first.stories.get("a", { query: resolveRelatedQuery });
+    await first.stories.get("a", { query: { ...resolveRelatedQuery, version: "draft" } });
+    await second.stories.get("a", { query: resolveRelatedQuery });
+
+    const story = result.data?.story;
+    expect(relatedOf(relatedOf(story))).toBe(story);
+    expect(() => JSON.stringify(story)).toThrow(TypeError);
+    expect(warn).toHaveBeenCalledOnce();
+    expect(warn.mock.calls[0]?.[0]).toMatch(/^\[storyblok\/api-client\] .*circular/);
+    expect(warn.mock.calls[0]?.[0]).toContain("JSON.stringify");
+    expect(warn.mock.calls[0]?.[0]).toContain("circularRelations");
+    expect(warn.mock.calls[0]?.[0]).toContain("1.0");
+  });
+
+  it("should not warn when the option is unset and the result is not circular", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const freshCreateApiClient = await importFreshCreateApiClient();
+    serveRelationChain(["a", "b"], ["b", "c"], ["c"]);
+    const client = freshCreateApiClient({ accessToken: "test-token", inlineRelations: true });
+
+    const result = await client.stories.get("a", { query: resolveRelatedQuery });
+
+    expect(relatedOf(relatedOf(result.data?.story))).toMatchObject({ uuid: "c" });
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("should return a circular result without warning when the option is true", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const freshCreateApiClient = await importFreshCreateApiClient();
+    serveRelationChain(["a", "b"], ["b", "a"]);
+    const client = freshCreateApiClient({
+      accessToken: "test-token",
+      inlineRelations: true,
+      circularRelations: true,
+    });
+
+    const result = await client.stories.get("a", { query: resolveRelatedQuery });
+
+    const story = result.data?.story;
+    expect(relatedOf(relatedOf(story))).toBe(story);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("should stop inlining two levels below the requested story when the option is false", async () => {
+    serveRelationChain(["a", "b"], ["b", "c"], ["c", "d"], ["d"]);
+    const client = createApiClient({
+      accessToken: "test-token",
+      inlineRelations: true,
+      circularRelations: false,
+    });
+
+    const result = await client.stories.get("a", { query: resolveRelatedQuery });
+
+    const b = relatedOf(result.data?.story);
+    const c = relatedOf(b);
+    expect(b).toMatchObject({ uuid: "b" });
+    expect(c).toMatchObject({ uuid: "c" });
+    expect(relatedOf(c)).toBe("d");
+  });
+
+  it.each([
+    {
+      cycle: "A → B → A",
+      links: [
+        ["a", "b"],
+        ["b", "a"],
+      ],
+    },
+    {
+      cycle: "A → B → C → A",
+      links: [
+        ["a", "b"],
+        ["b", "c"],
+        ["c", "a"],
+      ],
+    },
+  ] satisfies Array<{ cycle: string; links: Array<[string, string]> }>)(
+    "should return a serializable result for $cycle without warning when the option is false",
+    async ({ links }) => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const freshCreateApiClient = await importFreshCreateApiClient();
+      serveRelationChain(...links);
+      const client = freshCreateApiClient({
+        accessToken: "test-token",
+        inlineRelations: true,
+        circularRelations: false,
+      });
+
+      const result = await client.stories.get("a", { query: resolveRelatedQuery });
+
+      const story = result.data?.story;
+      const secondLevel = relatedOf(relatedOf(story));
+      expect(secondLevel).toMatchObject({ uuid: links[1]?.[1] });
+      expect(secondLevel).not.toBe(story);
+      expect(relatedOf(secondLevel)).toBe(links[2]?.[1] ?? "b");
+      expect(() => JSON.stringify(story)).not.toThrow();
+      expect(warn).not.toHaveBeenCalled();
+    },
+  );
+
+  it("should return serializable stories from stories.list() when the option is false", async () => {
+    const stories = [relatedPage("a", "b"), relatedPage("b", "a")];
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories", () =>
+        HttpResponse.json({ stories, rels: stories, cv: 1 }),
+      ),
+    );
+    const client = createApiClient({
+      accessToken: "test-token",
+      inlineRelations: true,
+      circularRelations: false,
+    });
+
+    const result = await client.stories.list({ query: resolveRelatedQuery });
+
+    const [a, b] = result.data?.stories ?? [];
+    expect(relatedOf(relatedOf(a))).toMatchObject({ uuid: "a" });
+    expect(relatedOf(relatedOf(b))).toMatchObject({ uuid: "b" });
+    expect(() => JSON.stringify(result.data?.stories)).not.toThrow();
+  });
+
+  it("should not share cached results between clients with and without circular references", async () => {
+    let requestCount = 0;
+    const stories = [relatedPage("a", "b"), relatedPage("b", "a")];
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories/*", () => {
+        requestCount++;
+        return HttpResponse.json({ story: stories[0], rels: stories, cv: 1 });
+      }),
+    );
+    const store = new Map<string, CacheEntry>();
+    const sharedProvider: CacheProvider = {
+      async get<TValue>(key: string) {
+        return store.get(key) as CacheEntry<TValue> | undefined;
+      },
+      async set(key, entry) {
+        store.set(key, { ...entry, storedAt: entry.storedAt ?? Date.now() });
+      },
+      async flush() {
+        store.clear();
+      },
+    };
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const circularClient = createApiClient({
+      accessToken: "shared-cache-token",
+      inlineRelations: true,
+      cache: { provider: sharedProvider },
+    });
+    const acyclicClient = createApiClient({
+      accessToken: "shared-cache-token",
+      inlineRelations: true,
+      circularRelations: false,
+      cache: { provider: sharedProvider },
+    });
+
+    await circularClient.stories.get("a", { query: resolveRelatedQuery });
+    const acyclic = await acyclicClient.stories.get("a", { query: resolveRelatedQuery });
+    const cachedAcyclic = await acyclicClient.stories.get("a", { query: resolveRelatedQuery });
+    const cachedCircular = await circularClient.stories.get("a", { query: resolveRelatedQuery });
+
+    expect(requestCount).toBe(2);
+    expect(() => JSON.stringify(acyclic.data?.story)).not.toThrow();
+    expect(() => JSON.stringify(cachedAcyclic.data?.story)).not.toThrow();
+    const circularStory = cachedCircular.data?.story;
+    expect(relatedOf(relatedOf(circularStory))).toBe(circularStory);
+  });
+});

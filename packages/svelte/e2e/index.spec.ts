@@ -13,6 +13,23 @@ test.describe("@storyblok/svelte", () => {
     await expect(teaser).toHaveText(/\S+/);
   });
 
+  test("should fetch the story only on the server", async ({ page }) => {
+    const browserApiRequests: string[] = [];
+    page.on("request", (request) => {
+      if (new URL(request.url()).hostname.endsWith("storyblok.com")) {
+        browserApiRequests.push(request.url());
+      }
+    });
+
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+
+    // The teaser comes from the story, so the page rendered it, without the
+    // browser fetching the story again during hydration.
+    await expect(page.locator('article[data-blok-c*=\'"name":"teaser"\']').first()).toBeVisible();
+    expect(browserApiRequests.filter((url) => url.includes("/cdn/stories"))).toEqual([]);
+  });
+
   test("should load the bridge when opened in the Visual Editor", async ({ page }) => {
     await page.goto(`/${EDITOR_QUERY}`);
 

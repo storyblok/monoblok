@@ -42,20 +42,27 @@ the `$lib` alias: replace `$lib/...` with `#lib/...` in the imports, or add
 
 ### Configuration
 
-Create an `@storyblok/api-client` instance with the space’s access token, and register the Svelte
-components that render your Storyblok blocks:
+Create an `@storyblok/api-client` instance with the space’s access token in a server-only module.
+SvelteKit keeps modules in `src/lib/server` out of the browser, so the access token stays on the
+server:
 
 ```ts
-// src/lib/storyblok.ts
+// src/lib/server/storyblok.ts
 import { createApiClient } from "@storyblok/api-client";
-import { defineStoryblokBlocks } from "@storyblok/svelte";
-import Page from "$lib/blocks/Page.svelte";
-import Feature from "$lib/blocks/Feature.svelte";
 
 export const apiClient = createApiClient({
   accessToken: "YOUR_ACCESS_TOKEN",
   region: "eu",
 });
+```
+
+Register the Svelte components that render your Storyblok blocks:
+
+```ts
+// src/lib/storyblok.ts
+import { defineStoryblokBlocks } from "@storyblok/svelte";
+import Page from "$lib/blocks/Page.svelte";
+import Feature from "$lib/blocks/Feature.svelte";
 
 export const { StoryblokBlock } = defineStoryblokBlocks(() => ({
   components: { page: Page, feature: Feature },
@@ -107,15 +114,16 @@ To render nested blocks, import `StoryblokBlock` from the module that calls `def
 
 ### Fetching and rendering
 
-Fetch a story in a `load` function:
+Fetch a story in a server `load` function. The server renders the page with the story and sends it
+to the browser along with the HTML, so the browser doesn’t fetch the story again:
 
 ```ts
-// src/routes/[...slug]/+page.ts
+// src/routes/[...slug]/+page.server.ts
 import { error } from "@sveltejs/kit";
-import { apiClient } from "$lib/storyblok";
-import type { PageLoad } from "./$types";
+import { apiClient } from "$lib/server/storyblok";
+import type { PageServerLoad } from "./$types";
 
-export const load: PageLoad = async ({ params }) => {
+export const load: PageServerLoad = async ({ params }) => {
   const { data, error: apiError } = await apiClient.stories.get(params.slug || "home", {
     query: { version: "draft" },
   });
@@ -310,9 +318,11 @@ const inEditor = browser && isInEditor(new URL(window.location.href));
 ```
 
 The Visual Editor adds these parameters only to the URL it opens. After a client-side navigation
-inside the preview, they’re gone and `isInEditor()` returns `false`. Don’t use it in a `load`
-function to choose between draft and published content: it switches to published content after the
-first navigation in the Visual Editor, and reading `url.searchParams` fails on prerendered pages.
+inside the preview, the parameters are gone and `isInEditor()` returns `false`. To choose between
+draft and published content, use a setting that holds for the whole deployment, such as an
+environment variable, instead of `isInEditor(url)` in a `load` function. A `load` function that
+checks `isInEditor(url)` switches to published content after the first navigation in the Visual
+Editor, and fails on prerendered pages, which can’t read `url.searchParams`.
 
 ### `StoryblokRichText`
 

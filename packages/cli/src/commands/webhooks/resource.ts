@@ -24,6 +24,7 @@ export const webhooksResource: CrudResource<Webhook> = {
     { header: "Endpoint", value: (webhook) => webhook.endpoint, flexible: true },
     { header: "Actions", value: (webhook) => webhook.actions.join(", ") },
     { header: "Activated", value: (webhook) => (webhook.activated ? "yes" : "no") },
+    { header: "Secret", value: (webhook) => (webhook.has_secret ? "yes" : "no") },
   ],
   connect: ({ spaceId }) => {
     const client = getMapiClient();

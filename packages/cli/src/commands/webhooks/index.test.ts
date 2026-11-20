@@ -366,6 +366,20 @@ describe("webhooks command", () => {
       expect(stdoutText()).toContain("https://example.com/");
       expect(stdoutText()).not.toContain(SECRET);
     });
+
+    it("should show in the table which webhooks have a secret", async () => {
+      preconditions.hasWebhooks(
+        { name: "signed", secret: SECRET },
+        { name: "unsigned", secret: null },
+      );
+      preconditions.stdoutIsATerminal();
+
+      await run("list", "--space", SPACE);
+
+      expect(stdoutText()).toMatch(/Secret/i);
+      expect(stdoutText()).toMatch(/signed\b.*\byes\b/);
+      expect(stdoutText()).toMatch(/unsigned\b.*\bno\b/);
+    });
   });
 
   describe("list (empty)", () => {
@@ -1490,6 +1504,21 @@ describe("webhooks command", () => {
       expect(stderrErrors()).toEqual([
         expect.objectContaining({ line: 2, details: { name: ["has already been taken"] } }),
       ]);
+    });
+
+    it("should leave fields a dry-run create sets to nothing out of its diff", async () => {
+      preconditions.stdinCarries(
+        JSON.stringify({
+          name: "copy",
+          endpoint: "https://example.com",
+          actions: ["story.published"],
+          description: null,
+        }),
+      );
+
+      await run("create", "--space", SPACE, "--dry-run", "-");
+
+      expect(stdoutLines()[0]._diff).not.toHaveProperty("description");
     });
 
     it("should show a dry-run create's fields, without the secret's value", async () => {

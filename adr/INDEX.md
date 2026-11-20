@@ -56,4 +56,4 @@ without a conflict, which is why ADR-0017 and ADR-0022 each exist twice.
 - `0027-cli-live-ui-follows-both-streams.md`: CLI progress bars and spinners draw only when stderr
   is a terminal and stdout is not a pipe.
 - `adr-0028.md`: New ADRs are named by number only, so a reused number causes a merge conflict.
-- `adr-0030.md`: Inlined links only go as deep as the API resolves them and are never circular.
+- `adr-0029.md`: Inlined links only go as deep as the API resolves them and are never circular.

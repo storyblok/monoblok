@@ -35,37 +35,63 @@ const decodeIfEncoded = (value: string): string => {
   return value;
 };
 
+export interface InlineRelationsOptions {
+  /**
+   * Whether a relation back to a story that is still being inlined resolves to that
+   * story, making the result circular. Otherwise it stays a UUID.
+   * @default true
+   */
+  circularReferences?: boolean;
+  /** Called for each relation that makes the result circular. */
+  onCircularReference?: () => void;
+}
+
+interface InlineContext<TStory> {
+  relationPaths: ReadonlySet<RelationPath>;
+  relationMap: ReadonlyMap<string, TStory>;
+  resolved: Map<string, TStory>;
+  storiesInProgress: Set<string>;
+  circularReferences: boolean;
+  onCircularReference?: () => void;
+}
+
+const createInlineContext = <TStory>(
+  relationPaths: RelationPath[],
+  relationMap: ReadonlyMap<string, TStory>,
+  { circularReferences = true, onCircularReference }: InlineRelationsOptions,
+): InlineContext<TStory> => ({
+  relationPaths: new Set(relationPaths),
+  relationMap,
+  resolved: new Map(),
+  storiesInProgress: new Set(),
+  circularReferences,
+  onCircularReference,
+});
+
 const inlineStoryContentInternal = <TStory extends Story | StoryWithInlinedRelations>(
   story: TStory,
-  relationPaths: ReadonlySet<RelationPath>,
-  relationMap: ReadonlyMap<string, TStory>,
-  resolved: Map<string, TStory>,
+  context: InlineContext<TStory>,
 ): TStory => {
-  const existingStory = resolved.get(story.uuid);
+  const existingStory = context.resolved.get(story.uuid);
   if (existingStory) {
     return existingStory;
   }
 
   const clonedStory = structuredClone(story);
-  resolved.set(story.uuid, clonedStory);
+  context.resolved.set(story.uuid, clonedStory);
+  context.storiesInProgress.add(story.uuid);
   // resolveNode returns `unknown` to handle arbitrary JSON trees; shape is preserved at runtime.
-  clonedStory.content = resolveNode(
-    clonedStory.content,
-    relationMap,
-    relationPaths,
-    resolved,
-  ) as Story["content"];
+  clonedStory.content = resolveNode(clonedStory.content, context) as Story["content"];
+  context.storiesInProgress.delete(story.uuid);
   return clonedStory;
 };
 
 function resolveNode<TStory extends Story | StoryWithInlinedRelations>(
   value: unknown,
-  relationMap: ReadonlyMap<string, TStory>,
-  relationPaths: ReadonlySet<RelationPath>,
-  resolved: Map<string, TStory>,
+  context: InlineContext<TStory>,
 ): unknown {
   if (Array.isArray(value)) {
-    return value.map((item) => resolveNode(item, relationMap, relationPaths, resolved));
+    return value.map((item) => resolveNode(item, context));
   }
 
   if (!isRecord(value)) {
@@ -79,16 +105,16 @@ function resolveNode<TStory extends Story | StoryWithInlinedRelations>(
       }
 
       const relationPath: RelationPath = `${value.component}.${fieldName}`;
-      value[fieldName] = relationPaths.has(relationPath)
-        ? resolveFieldValue(fieldValue, relationMap, relationPaths, resolved)
-        : resolveNode(fieldValue, relationMap, relationPaths, resolved);
+      value[fieldName] = context.relationPaths.has(relationPath)
+        ? resolveFieldValue(fieldValue, context)
+        : resolveNode(fieldValue, context);
     }
 
     return value;
   }
 
   for (const [fieldName, fieldValue] of Object.entries(value)) {
-    value[fieldName] = resolveNode(fieldValue, relationMap, relationPaths, resolved);
+    value[fieldName] = resolveNode(fieldValue, context);
   }
 
   return value;
@@ -123,46 +149,47 @@ export const buildRelationMap = (rels: Array<Story> | undefined): Map<string, St
 
 function resolveFieldValue<TStory extends Story | StoryWithInlinedRelations>(
   value: unknown,
-  relationMap: ReadonlyMap<string, TStory>,
-  relationPaths: ReadonlySet<RelationPath>,
-  resolved: Map<string, TStory>,
+  context: InlineContext<TStory>,
 ): unknown {
   if (typeof value === "string") {
-    const relatedStory = relationMap.get(value);
+    const relatedStory = context.relationMap.get(value);
     if (!relatedStory) {
       return value;
     }
 
-    return inlineStoryContentInternal(relatedStory, relationPaths, relationMap, resolved);
+    if (context.storiesInProgress.has(value)) {
+      if (!context.circularReferences) {
+        return value;
+      }
+      context.onCircularReference?.();
+    }
+
+    return inlineStoryContentInternal(relatedStory, context);
   }
 
   if (Array.isArray(value)) {
-    return value.map((item) => resolveFieldValue(item, relationMap, relationPaths, resolved));
+    return value.map((item) => resolveFieldValue(item, context));
   }
 
-  return resolveNode(value, relationMap, relationPaths, resolved);
+  return resolveNode(value, context);
 }
 
 export const inlineStoryContent = <TStory extends Story | StoryWithInlinedRelations>(
   story: TStory,
   relationPaths: RelationPath[],
   relationMap: ReadonlyMap<string, TStory>,
-): TStory => {
-  const normalizedPaths = new Set(relationPaths);
-  const resolved = new Map<string, TStory>();
-  return inlineStoryContentInternal(story, normalizedPaths, relationMap, resolved);
-};
+  options: InlineRelationsOptions = {},
+): TStory =>
+  inlineStoryContentInternal(story, createInlineContext(relationPaths, relationMap, options));
 
 export const inlineStoriesContent = <TStory extends Story | StoryWithInlinedRelations>(
   stories: Array<TStory>,
   relationPaths: RelationPath[],
   relationMap: ReadonlyMap<string, TStory>,
+  options: InlineRelationsOptions = {},
 ): Array<TStory> => {
-  const normalizedPaths = new Set(relationPaths);
-  const resolved = new Map<string, TStory>();
-  return stories.map((story) =>
-    inlineStoryContentInternal(story, normalizedPaths, relationMap, resolved),
-  );
+  const context = createInlineContext(relationPaths, relationMap, options);
+  return stories.map((story) => inlineStoryContentInternal(story, context));
 };
 
 interface ResolveRelationMapOptions {

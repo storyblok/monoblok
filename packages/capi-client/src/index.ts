@@ -55,11 +55,13 @@ export type { Story } from "./generated/types/story";
 // Resource types
 export type {
   ExcludableStoryField,
+  StoryWithInlinedLinks,
   StoryWithInlinedRelations,
+  WithInlinedLinks,
   WithInlinedRelations,
 } from "./resources/stories";
 export type { StrataSearchQuery } from "./resources/strata";
-export type { InlinedLink } from "./utils/inline-links";
+export type { InlinedLink, InlinedMultilinkValue } from "./utils/inline-links";
 // Cache types
 export type {
   CacheEntry,

@@ -2,7 +2,7 @@ import type { DomMorphOptions } from "./dom/morph-storyblok-dom";
 import type { LivePreviewStory } from "./on-storyblok-editor-event";
 import type { Story } from "./generated/types/story";
 
-import { morphStoryblokDom } from "./dom/morph-storyblok-dom";
+import { captureServerAttributes, morphStoryblokDom } from "./dom/morph-storyblok-dom";
 
 export type LivePreviewEvent<TStory extends Story = Story> = {
   action: string;
@@ -78,6 +78,12 @@ export function createLivePreviewHandler<TStory extends Story = Story>(
   let timeout: ReturnType<typeof setTimeout> | undefined;
   let abortController: AbortController | null = null;
   let active = true;
+
+  if (options.morph?.preserveElementAttributes) {
+    // The page is still as the server rendered it: record that, so client
+    // attribute changes made before the first update survive it.
+    captureServerAttributes(options.currentRoot());
+  }
 
   const cancelPendingUpdate = (): void => {
     abortController?.abort();

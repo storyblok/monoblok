@@ -27,13 +27,17 @@ export type DomMorphOptions = {
    */
   preserveStateAttribute?: string;
   /**
-   * Preserve every matching element's attributes from the current tree
-   * instead of applying the next tree's. Off by default: a server-driven
-   * attribute change (a new image `src`, a toggled `class`) is applied like
-   * any other content update. Turning this on blocks legitimate server
-   * attribute changes on every matched element; for protecting one specific
-   * element or subtree (e.g. a framework island), use
-   * `preserveStateAttribute` instead.
+   * Keep attributes the client changed, added, or removed since the last
+   * server render (an opened `<details>`, a class toggled by a script)
+   * instead of resetting them to the next render's values. Attributes the
+   * client never touched still follow the server, so a server-driven change
+   * (a new image `src`, a `class` derived from a field) is applied either
+   * way. When the client and the server both changed the same attribute,
+   * the client's value wins.
+   *
+   * Off by default: the next render's attributes are applied verbatim. To
+   * protect one specific element or subtree completely (e.g. a framework
+   * island), use `preserveStateAttribute` instead.
    */
   preserveElementAttributes?: boolean;
   /** Additional element update policy applied after the default policy. */
@@ -63,8 +67,9 @@ export type DomMorphResult = {
  * match in document order is used.
  *
  * This mutates `nextRoot`: the focused element gets `focusedAttribute` set on
- * it, and, with `preserveElementAttributes` on, matching elements have their
- * attributes rewritten in place. Don't reuse or cache `nextRoot` afterwards.
+ * it, and, with `preserveElementAttributes` on, elements carrying client-side
+ * attribute changes have them written onto their `nextRoot` counterpart.
+ * Don't reuse or cache `nextRoot` afterwards.
  *
  * Skips the morph entirely (no DOM mutations, no `onBeforeElUpdated` calls)
  * when the relevant subtree (the focused element, or `currentRoot`/`nextRoot`
@@ -147,12 +152,27 @@ function updateDom(currentRoot: Element, nextRoot: Element, options: UpdateOptio
         return false;
       }
       preserveInteractiveState(fromEl, toEl);
-      if (options.preserveElementAttributes) {
-        preserveMatchingElementAttributes(fromEl, toEl, options.keyAttribute);
+      if (!options.preserveElementAttributes) {
+        return options.onBeforeElUpdated?.(fromEl, toEl) ?? true;
       }
-      return options.onBeforeElUpdated?.(fromEl, toEl) ?? true;
+      // Read before `preserveClientAttributes` writes client state onto `toEl`.
+      const nextServerAttributes = readAttributes(toEl);
+      preserveClientAttributes(fromEl, toEl, options.keyAttribute);
+      const shouldUpdate = options.onBeforeElUpdated?.(fromEl, toEl) ?? true;
+      if (shouldUpdate !== false) {
+        // morphdom keeps `fromEl` and syncs it to `toEl`, so `fromEl` now
+        // stands for this server render.
+        serverAttributes.set(fromEl, nextServerAttributes);
+      }
+      return shouldUpdate;
     },
-    onNodeAdded: reviveInsertedScript,
+    onNodeAdded: (node) => {
+      if (options.preserveElementAttributes && node.nodeType === ELEMENT_NODE) {
+        serverAttributes.set(node as Element, readAttributes(node as Element));
+      }
+      reviveInsertedScript(node);
+      return node;
+    },
   });
 }
 
@@ -245,24 +265,61 @@ function preserveInteractiveState(fromEl: Element, toEl: Element): void {
 /** Attributes whose live state lives on properties handled by `preserveInteractiveState`, not on the attribute copied here. */
 const INTERACTIVE_STATE_ATTRIBUTES = new Set(["value", "checked", "selected"]);
 
-function preserveMatchingElementAttributes(
-  fromEl: Element,
-  toEl: Element,
-  keyAttribute: string,
-): void {
+/**
+ * Attributes of each live element as the server last rendered them: the base
+ * of the three-way merge in `preserveClientAttributes`. A `WeakMap`, so
+ * elements removed from the page don't leak.
+ */
+const serverAttributes = new WeakMap<Element, Map<string, string>>();
+
+function readAttributes(element: Element): Map<string, string> {
+  return new Map(Array.from(element.attributes, (attribute) => [attribute.name, attribute.value]));
+}
+
+/**
+ * Records the attributes of `root` and its descendants as server-rendered,
+ * so client-side changes made afterwards (before the first live update) can
+ * be told apart from the server's. Call it while the DOM still matches the
+ * server render, e.g. when the live-preview handler is created. Elements
+ * that already have a record keep it.
+ */
+export function captureServerAttributes(root: Element): void {
+  for (const element of [root, ...Array.from(root.querySelectorAll("*"))]) {
+    if (!serverAttributes.has(element)) {
+      serverAttributes.set(element, readAttributes(element));
+    }
+  }
+}
+
+/**
+ * Writes attributes the client changed since the last server render onto
+ * `toEl`, so morphdom keeps them, and leaves every other attribute at the
+ * next render's value. Without a record of the last render (an element the
+ * client inserted), only attributes the next render doesn't define are kept.
+ */
+function preserveClientAttributes(fromEl: Element, toEl: Element, keyAttribute: string): void {
+  // A different block reusing this element: none of its state applies.
   if (fromEl.getAttribute(keyAttribute) !== toEl.getAttribute(keyAttribute)) {
     return;
   }
+  const isMergeable = (name: string) =>
+    name !== keyAttribute && !INTERACTIVE_STATE_ATTRIBUTES.has(name);
+  const base = serverAttributes.get(fromEl);
 
-  Array.from(fromEl.attributes).forEach((attribute) => {
-    if (attribute.name === keyAttribute || INTERACTIVE_STATE_ATTRIBUTES.has(attribute.name)) {
-      return;
+  for (const { name, value } of Array.from(fromEl.attributes)) {
+    if (!isMergeable(name)) {
+      continue;
     }
-    if (
-      !toEl.hasAttribute(attribute.name) ||
-      toEl.getAttribute(attribute.name) !== attribute.value
-    ) {
-      toEl.setAttribute(attribute.name, attribute.value);
+    const isClientChange = base ? base.get(name) !== value : !toEl.hasAttribute(name);
+    if (isClientChange) {
+      toEl.setAttribute(name, value);
+    }
+  }
+
+  // Attributes the client removed stay removed, unless the server changed them too.
+  base?.forEach((value, name) => {
+    if (isMergeable(name) && !fromEl.hasAttribute(name) && toEl.getAttribute(name) === value) {
+      toEl.removeAttribute(name);
     }
   });
 }

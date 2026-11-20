@@ -8,6 +8,7 @@
 | Module initialization, global `preAction` behavior   | `src/program.ts`                                                                                                                    |
 | Commander command definition                         | `src/commands/<name>/index.ts` or `command.ts`                                                                                      |
 | API calls, filesystem writes, transformations        | `actions.ts`                                                                                                                        |
+| A resource's `list`/`get`/`create`/`update`/`delete` | `src/commands/<name>/resource.ts` (a `CrudResource`), on the shared layer in `src/lib/crud/`                                        |
 | Utilities shared by sibling subcommands              | parent command directory (e.g. `schema/serialize.ts`, not `schema/push/serialize.ts`) — subcommands must not import from each other |
 | JSONL on stdout/stdin, `-`, staged-run progress      | `src/lib/pipe/`                                                                                                                     |
 | Config resolution, global option behavior            | `src/lib/config/`                                                                                                                   |

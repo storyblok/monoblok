@@ -1,6 +1,6 @@
 {
   "name": "@storyblok/react",
-  "version": "7.5.1",
+  "version": "7.5.2",
   "private": false,
   "description": "SDK to integrate Storyblok into your project using React.",
   "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/react#readme",
@@ -77,7 +77,9 @@
     "test:e2e:next-13": "start-server-and-test playground:next-13 http://localhost:3000/ cy:run",
     "test:e2e:next-latest": "start-server-and-test playground:next-latest http://localhost:3000/ cy:run",
     "test:e2e:watch": "start-server-and-test playground:next-latest http-get://localhost:3000/ cy:open",
-    "test:coverage": "vp test run --coverage"
+    "test:coverage": "vp test run --coverage",
+    "qa:dev": "pnpm run build && pnpm --filter @storyblok/playground-react-integration-tests-rsc dev",
+    "qa:editor": "playwright test --config test/visual-editor/playwright.config.ts"
   },
   "dependencies": {
     "@storyblok/js": "workspace:^",
@@ -88,7 +90,9 @@
     "@babel/preset-env": "^7.27.2",
     "@cypress/react": "^9.0.1",
     "@cypress/vite-dev-server": "^7.3.4",
+    "@playwright/test": "catalog:",
     "@storyblok/lint-config": "workspace:*",
+    "@storyblok/visual-editor-qa": "workspace:*",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@tsconfig/recommended": "^1.0.8",

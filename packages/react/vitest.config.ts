@@ -12,6 +12,8 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
+    // Keeps the Playwright Visual Editor specs in `test/` out of the unit run.
+    include: ["src/**/*.test.{ts,tsx}"],
     setupFiles: ["./src/__tests__/setup.ts"],
     globals: true,
   },

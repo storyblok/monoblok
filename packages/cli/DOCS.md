@@ -177,13 +177,13 @@ storyblok webhooks create - [flags]
 
 ## Flags
 
-| Flag              | Type    | Description                                                                                                                                                                                                                                                             |
-| ----------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--space`, `-s`   | integer | _Required._ The ID of the Storyblok space to create webhooks in.                                                                                                                                                                                                        |
-| `--set`           | string  | _Optional._ Set a field as `<field>=<value>`. Repeat the flag for each field. Separate list values with commas: `actions=story.published,story.unpublished`.                                                                                                            |
-| `--data`          | string  | _Optional._ Fields as a JSON object. With `-`, the command applies them to each webhook from stdin. `--set` takes precedence over `--data`, which takes precedence over a record from stdin. Unlike a record from stdin, `--data` rejects read-only and unknown fields. |
-| `--if-not-exists` | boolean | _Optional._ Skip a webhook whose name exists in the space, so the command can run again without failing. The existing webhook keeps its settings.                                                                                                                       |
-| `--dry-run`, `-d` | boolean | _Optional._ Validate the webhooks and print the result lines, with the fields in `_diff`, without creating anything.                                                                                                                                                    |
+| Flag              | Type    | Description                                                                                                                                                                                                                                                                                                                |
+| ----------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--space`, `-s`   | integer | _Required._ The ID of the Storyblok space to create webhooks in.                                                                                                                                                                                                                                                           |
+| `--set`           | string  | _Optional._ Set a field as `<field>=<value>`. Repeat the flag for each field. Separate list values with commas: `actions=story.published,story.unpublished`.                                                                                                                                                               |
+| `--data`          | string  | _Optional._ Fields as a JSON object. With `-`, the command applies them to each webhook from stdin. `--set` takes precedence over `--data`, which takes precedence over a record from stdin. Unlike a record from stdin, `--data` rejects read-only and unknown fields. In a configuration file, give it as a JSON string. |
+| `--if-not-exists` | boolean | _Optional._ Skip a webhook whose name exists in the space, so the command can run again without failing. The existing webhook keeps its settings.                                                                                                                                                                          |
+| `--dry-run`, `-d` | boolean | _Optional._ Validate the webhooks and print the result lines, with the fields in `_diff`, without creating anything.                                                                                                                                                                                                       |
 
 ## Examples
 
@@ -253,14 +253,14 @@ storyblok webhooks update - [flags]
 
 ## Flags
 
-| Flag              | Type    | Description                                                                                                                    |
-| ----------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `--space`, `-s`   | integer | _Required._ The ID of the Storyblok space the webhooks are in.                                                                 |
-| `--set`           | string  | _Optional._ Set a field as `<field>=<value>`. Repeat the flag for each field.                                                  |
-| `--unset`         | string  | _Optional._ Clear a field. Repeat the flag for each field. You can clear `description` and `secret`.                           |
-| `--data`          | string  | _Optional._ Fields as a JSON object, merged into the webhook as a JSON Merge Patch. `--set` and `--unset` take precedence.     |
-| `--ignore-stale`  | boolean | _Optional._ Write records from stdin even if their webhook changed since they were read, undoing those changes. Only with `-`. |
-| `--dry-run`, `-d` | boolean | _Optional._ Print the changes, in a `_diff` field, without writing them.                                                       |
+| Flag              | Type    | Description                                                                                                                                                                   |
+| ----------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--space`, `-s`   | integer | _Required._ The ID of the Storyblok space the webhooks are in.                                                                                                                |
+| `--set`           | string  | _Optional._ Set a field as `<field>=<value>`. Repeat the flag for each field.                                                                                                 |
+| `--unset`         | string  | _Optional._ Clear a field. Repeat the flag for each field. You can clear `description` and `secret`.                                                                          |
+| `--data`          | string  | _Optional._ Fields as a JSON object, merged into the webhook as a JSON Merge Patch. `--set` and `--unset` take precedence. In a configuration file, give it as a JSON string. |
+| `--ignore-stale`  | boolean | _Optional._ Write records from stdin even if their webhook changed since they were read, undoing those changes. Only with `-`.                                                |
+| `--dry-run`, `-d` | boolean | _Optional._ Print the changes, in a `_diff` field, without writing them.                                                                                                      |
 
 ## Examples
 
@@ -361,8 +361,10 @@ long output opens in your pager.
 
 A webhook that fails gets an error on stderr instead of a result line, and the command continues
 with the next one. A rejected or under-scoped access token, or a Management API out of reach, stops
-the run, and the report file counts the remaining webhooks as `unprocessed`. When stderr isn’t a
-terminal, it holds only errors, each as one line of JSON:
+the run. If that happens while writing, the report file counts the remaining webhooks as
+`unprocessed`. If it happens while the command reads the space, the command writes nothing and
+reports that one error. When stderr isn’t a terminal, it holds only errors, each as one line of
+JSON:
 
 ```text
 {"error":"The Management API rejected the request.","status":422,"details":{"name":["has already been taken"]},"line":2,"id":4522}

@@ -17,6 +17,18 @@ New pages under `src/content/docs/docs/tooling/cli/webhooks/`. Navigation entry 
 },
 ```
 
+<!-- target: src/content/docs/docs/tooling/cli/index.mdx, a new section after "Types" -->
+
+### Webhooks
+
+<CardGrid>
+  <LinkCard description="List the webhooks of a space. Read when auditing webhooks or copying them to another space." href="/docs/tooling/cli/webhooks/list" title="webhooks list" />
+  <LinkCard description="Print one webhook. Read when checking a webhook's endpoint or triggers." href="/docs/tooling/cli/webhooks/get" title="webhooks get" />
+  <LinkCard description="Create webhooks from flags or JSON. Read when provisioning a space, or in CI." href="/docs/tooling/cli/webhooks/create" title="webhooks create" />
+  <LinkCard description="Change webhooks from flags or JSON. Read when rotating a secret or moving endpoints." href="/docs/tooling/cli/webhooks/update" title="webhooks update" />
+  <LinkCard description="Delete webhooks. Read when cleaning up a space." href="/docs/tooling/cli/webhooks/delete" title="webhooks delete" />
+</CardGrid>
+
 <!-- target: src/content/docs/docs/tooling/cli/webhooks/list.mdx -->
 
 ```yaml
@@ -30,6 +42,9 @@ Lists the webhooks of a Storyblok space. In a terminal, the command prints a tab
 redirected, it prints one webhook per line as JSON (JSONL), ready for `jq` or for `webhooks update`
 and `webhooks delete`. The output never contains a webhook’s signing secret.
 
+Older spaces can have a legacy webhook in **Settings** > **Webhooks**. The `webhooks` commands don’t
+list or change it, so a copy to another space leaves it out.
+
 ## Usage
 
 ```bash
@@ -38,9 +53,9 @@ storyblok webhooks list [flags]
 
 ## Flags
 
-| Flag      | Type    | Description                                                    |
-| --------- | ------- | -------------------------------------------------------------- |
-| `--space` | integer | _Required._ The ID of the Storyblok space to list webhooks of. |
+| Flag            | Type    | Description                                                    |
+| --------------- | ------- | -------------------------------------------------------------- |
+| `--space`, `-s` | integer | _Required._ The ID of the Storyblok space to list webhooks of. |
 
 ## Examples
 
@@ -83,9 +98,9 @@ storyblok webhooks get <webhook> [flags]
 
 ## Flags
 
-| Flag      | Type    | Description                                                  |
-| --------- | ------- | ------------------------------------------------------------ |
-| `--space` | integer | _Required._ The ID of the Storyblok space the webhook is in. |
+| Flag            | Type    | Description                                                  |
+| --------------- | ------- | ------------------------------------------------------------ |
+| `--space`, `-s` | integer | _Required._ The ID of the Storyblok space the webhook is in. |
 
 ## Examples
 
@@ -125,38 +140,42 @@ The accepted actions:
 - **Stories:** `story.published`, `story.unpublished`, `story.saved`, `story.deleted`, `story.moved`
 - **Assets:** `asset.created`, `asset.replaced`, `asset.deleted`, `asset.restored`
 - **Users:** `user.added`, `user.removed`, `user.roles_updated`
-- **Datasources:** `datasource.entries_updated`, `datasource.entries_deleted`
+- **Data sources:** `datasource.entries_updated`, `datasource.entries_deleted`
 - **Workflows, Releases, and Pipelines:** `stage.changed`, `release.merged`, `pipeline.deployed`
 - **Discussions:** `discussion.created`, `discussion.resolved`, `discussion.comment_created`,
   `discussion.comment_updated`, `discussion.comment_deleted`
 - **Experiments:** `experiment.created`, `experiment.started`, `experiment.paused`,
   `experiment.resumed`, `experiment.completed`, `experiment.winner_selected`, `experiment.deleted`
 
-`story.saved` is only available in plans that include it. When the API rejects an action, the error
-lists the actions the space accepts in `details.allowed_values`.
+`story.saved` requires a plan that includes it. A webhook keeps it when the plan changes, but it
+can’t be added on a plan without it.
+
+When the API rejects an unknown action, the error lists the actions the space accepts in
+`details.allowed_values`. When it rejects an action the plan doesn’t include, the error is in
+`details.base`, without `allowed_values`.
 
 ## Usage
 
 ```bash
 storyblok webhooks create [flags]
-storyblok webhooks create [flags] -
+storyblok webhooks create - [flags]
 ```
 
 ## Arguments
 
-| Argument | Type | Description                                                                                                                                                                                              |
-| -------- | ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `-`      | –    | _Optional._ Read webhooks from stdin: JSONL, a single JSON object, or objects written back to back. The command ignores read-only fields, such as `id`, so the output of `webhooks list` works as input. |
+| Argument | Type | Description                                                                                         |
+| -------- | ---- | --------------------------------------------------------------------------------------------------- |
+| `-`      | –    | _Optional._ Read webhooks from stdin: JSONL, a single JSON object, or objects written back to back. |
 
 ## Flags
 
-| Flag              | Type    | Description                                                                                                                                                                  |
-| ----------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--space`         | integer | _Required._ The ID of the Storyblok space to create webhooks in.                                                                                                             |
-| `--set`           | string  | _Optional._ Set a field as `<field>=<value>`. Repeat the flag for each field, once per field. Separate list values with commas: `actions=story.published,story.unpublished`. |
-| `--data`          | string  | _Optional._ Fields as a JSON object, applied to each record from stdin. `--set` takes precedence over `--data`, which takes precedence over a record from stdin.             |
-| `--if-not-exists` | boolean | _Optional._ Skip a webhook whose name exists in the space, so the command can run again without failing. The existing webhook keeps its settings.                            |
-| `--dry-run`, `-d` | boolean | _Optional._ Validate the webhooks and print the result lines, with the fields in `_diff`, without creating anything.                                                         |
+| Flag              | Type    | Description                                                                                                                                                                                                                                 |
+| ----------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--space`, `-s`   | integer | _Required._ The ID of the Storyblok space to create webhooks in.                                                                                                                                                                            |
+| `--set`           | string  | _Optional._ Set a field as `<field>=<value>`. Repeat the flag for each field. Separate list values with commas: `actions=story.published,story.unpublished`.                                                                                |
+| `--data`          | string  | _Optional._ Fields as a JSON object, applied to each record from stdin. `--set` takes precedence over `--data`, which takes precedence over a record from stdin. Unlike a record from stdin, `--data` rejects read-only and unknown fields. |
+| `--if-not-exists` | boolean | _Optional._ Skip a webhook whose name exists in the space, so the command can run again without failing. The existing webhook keeps its settings.                                                                                           |
+| `--dry-run`, `-d` | boolean | _Optional._ Validate the webhooks and print the result lines, with the fields in `_diff`, without creating anything.                                                                                                                        |
 
 ## Examples
 
@@ -169,8 +188,8 @@ storyblok webhooks create \
   --set endpoint=https://example.com/deploy \
   --set actions=story.published,story.unpublished
 
-# Create the webhook only if no webhook of that name exists, for example in CI
-storyblok webhooks create --if-not-exists --data "$(cat webhook.json)"
+# Create the webhook from a file, only if no webhook of that name exists, for example in CI
+storyblok webhooks create --if-not-exists - < webhook.json
 
 # Copy every webhook from one space to another
 storyblok webhooks list --space 12345 | storyblok webhooks create --space 67890 -
@@ -179,6 +198,15 @@ storyblok webhooks list --space 12345 | storyblok webhooks create --space 67890 
 The output of `webhooks list` never contains signing secrets, so copied webhooks are unsigned. An
 endpoint that verifies signatures rejects their requests until you set a secret with
 `webhooks update`.
+
+`--if-not-exists` leaves an existing webhook as it is, even if its endpoint or actions differ. To
+bring a webhook to the same settings on every run, follow it with `webhooks update`. Leave `id` and
+`updated_at` out of the file, so both commands find the webhook by `name`:
+
+```bash
+storyblok webhooks create --if-not-exists - < webhook.json
+storyblok webhooks update - < webhook.json
+```
 
 <!-- target: src/content/docs/docs/tooling/cli/webhooks/update.mdx -->
 
@@ -190,18 +218,14 @@ description: "Updates webhooks in a Storyblok space from flags or from JSON on s
 ```
 
 Updates a webhook in a Storyblok space, or one webhook per JSON object read from stdin. The command
-sends only the fields that change and skips a webhook nothing would change on. It prints one result
-line per webhook.
+sends only the fields that change, skips a webhook nothing would change on, and prints one result
+line per webhook. Fields a record leaves out stay as they are.
 
-A record from stdin addresses its webhook by `id`, or by `name` when it has no `id`. The command
-compares every field the record carries with the webhook and sends the ones that differ. Fields the
-record leaves out stay as they are.
+A record from stdin addresses its webhook by `id`, or by `name` when it has no `id`. A record that
+matches no webhook is an error. Two records for the same webhook are applied in order.
 
-A record that carries `updated_at`, as the output of `webhooks list` does, is only written if the
-webhook hasn’t changed since the record was read. Otherwise, the record still holds the old values
-of fields someone else changed, and writing it would undo those changes, so the command reports an
-error for that record. Pass `--ignore-stale` to write it anyway. Two records for the same webhook
-are applied in order.
+A record with an `updated_at`, as `webhooks list` prints it, fails if the webhook changed since:
+writing its old values would undo that change. Pass `--ignore-stale` to write it anyway.
 
 ## Usage
 
@@ -218,14 +242,14 @@ storyblok webhooks update - [flags]
 
 ## Flags
 
-| Flag              | Type    | Description                                                                                                             |
-| ----------------- | ------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `--space`         | integer | _Required._ The ID of the Storyblok space the webhooks are in.                                                          |
-| `--set`           | string  | _Optional._ Set a field as `<field>=<value>`. Repeat the flag for each field, once per field.                           |
-| `--unset`         | string  | _Optional._ Clear a field. Repeat for each field. Only `description` and `secret` can be cleared.                       |
-| `--data`          | string  | _Optional._ Fields as a JSON object, applied as a JSON Merge Patch. `--set` and `--unset` take precedence.              |
-| `--ignore-stale`  | boolean | _Optional._ Write records from stdin even if their webhook changed since they were read. This undoes the other changes. |
-| `--dry-run`, `-d` | boolean | _Optional._ Print the changes, in a `_diff` field, without writing them.                                                |
+| Flag              | Type    | Description                                                                                                                            |
+| ----------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `--space`, `-s`   | integer | _Required._ The ID of the Storyblok space the webhooks are in.                                                                         |
+| `--set`           | string  | _Optional._ Set a field as `<field>=<value>`. Repeat the flag for each field.                                                          |
+| `--unset`         | string  | _Optional._ Clear a field. Repeat for each field. Only `description` and `secret` can be cleared.                                      |
+| `--data`          | string  | _Optional._ Fields as a JSON object, merged into the webhook as a JSON Merge Patch. `--set` and `--unset` take precedence.             |
+| `--ignore-stale`  | boolean | _Optional._ Write records from stdin even if their webhook changed since they were read. This undoes the other changes. Only with `-`. |
+| `--dry-run`, `-d` | boolean | _Optional._ Print the changes, in a `_diff` field, without writing them.                                                               |
 
 ## Examples
 
@@ -255,7 +279,8 @@ description: "Deletes webhooks from a Storyblok space."
 
 Deletes a webhook from a Storyblok space, or one webhook per JSON object read from stdin. The
 command asks for confirmation when both stdin and stderr are terminals. Otherwise, and when reading
-from stdin, pass `--yes`.
+from stdin, pass `--yes`. Canceling the prompt with Ctrl+C or Ctrl+D deletes nothing and exits with
+`0`. A record from stdin whose webhook is already gone is skipped, so the command can run again.
 
 ## Usage
 
@@ -272,12 +297,12 @@ storyblok webhooks delete - --yes [flags]
 
 ## Flags
 
-| Flag              | Type    | Description                                                                               |
-| ----------------- | ------- | ----------------------------------------------------------------------------------------- |
-| `--space`         | integer | _Required._ The ID of the Storyblok space to delete webhooks from.                        |
-| `--yes`           | boolean | _Optional._ Delete without asking for confirmation. Required with `-`.                    |
-| `--ignore-stale`  | boolean | _Optional._ Delete records from stdin even if their webhook changed since they were read. |
-| `--dry-run`, `-d` | boolean | _Optional._ Print what the command would delete without deleting it.                      |
+| Flag              | Type    | Description                                                                                              |
+| ----------------- | ------- | -------------------------------------------------------------------------------------------------------- |
+| `--space`, `-s`   | integer | _Required._ The ID of the Storyblok space to delete webhooks from.                                       |
+| `--yes`           | boolean | _Optional._ Delete without asking for confirmation. Required with `-`.                                   |
+| `--ignore-stale`  | boolean | _Optional._ Delete records from stdin even if their webhook changed since they were read. Only with `-`. |
+| `--dry-run`, `-d` | boolean | _Optional._ Print what the command would delete without deleting it.                                     |
 
 ## Examples
 
@@ -291,14 +316,14 @@ storyblok webhooks delete "Deploy preview"
 storyblok webhooks list | jq -c 'select(.activated == false)' | storyblok webhooks delete --yes -
 ```
 
-<!-- target: src/content/docs/docs/tooling/cli/webhooks/index.mdx (or a "Webhooks" section on each page) -->
+<!-- target: src/content/docs/docs/tooling/cli/webhooks/index.mdx -->
 
 ## Access
 
-The commands need a token with the `webhooks:read` scope, and `webhooks:write` for `create`,
-`update`, and `delete`, from a user who can manage the space. Otherwise the Management API answers
-with `403`. A space that doesn’t exist, or that the user can’t access, answers with `404`, the same
-as a missing webhook.
+The commands need a personal access token with the **Webhooks** scope, or one with **Full user
+permission**, from a user who can manage the space. Otherwise the Management API answers with `403`.
+A space that doesn’t exist, or that the user can’t access, answers with `404`, the same as a missing
+webhook.
 
 ## Output and errors
 
@@ -310,9 +335,9 @@ Every write prints one line per webhook it handled:
 ```
 
 `action` is `create`, `update`, `delete`, or `skip`. A skipped webhook carries `_skipped: true` and
-a `_reason`: `exists` (with `--if-not-exists`), `unchanged`, or `not_found` (a webhook the space no
-longer has). A dry run adds `_dry_run: true`, and for `create` and `update` the fields it would
-write in `_diff`, each as `{ "from": …, "to": … }`. A signing secret shows as
+a `_reason`: `exists` (with `--if-not-exists`), `unchanged`, or `not_found` (with `delete`, a
+webhook that’s already gone). A dry run adds `_dry_run: true`, and for `create` and `update` the
+fields it would write in `_diff`, each as `{ "from": …, "to": … }`. A signing secret shows as
 `"secret": "[changed]"`, never as its value. On a terminal, the commands print a table instead, and
 long output opens in your pager.
 
@@ -324,19 +349,22 @@ only errors, each as one line of JSON:
 {"error":"The Management API rejected the request.","status":422,"details":{"name":["has already been taken"]},"line":2,"id":4522}
 ```
 
-`line` is the position of the record on stdin, counted from 1. For JSONL, it’s the line number.
-`details` holds the field errors of the Management API.
+`line` is the line on stdin where the record starts. `details` holds the field errors of the
+Management API.
 
 The exit codes:
 
-| Code | Meaning                                                                                            |
-| ---- | -------------------------------------------------------------------------------------------------- |
-| `0`  | Every webhook was written or skipped.                                                              |
-| `1`  | At least one webhook failed, or the Management API rejected the request.                           |
-| `2`  | The command can’t run as called: a missing login, an invalid flag, or a missing target or `--yes`. |
+| Code | Meaning                                                                                                                           |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `0`  | Every webhook was written or skipped, or the confirmation prompt was canceled.                                                    |
+| `1`  | At least one webhook failed, or the Management API rejected the request.                                                          |
+| `2`  | The command can’t run as called: a missing login, an invalid flag or flag value, malformed stdin, or a missing target or `--yes`. |
 
-The commands read stdin only when passed `-`. A record from stdin can carry any field: the commands
-ignore read-only and unknown fields, so the output of `webhooks list` works as input. A dry run
-validates required fields, actions, and name conflicts, but only a real run checks plan limits and
-endpoint addresses. Like every run, a dry run writes its log and report files, without the signing
-secret.
+The commands read stdin only when passed `-`, and fail if stdin is a terminal. A record from stdin
+can carry any field: the commands ignore read-only and unknown fields, so the output of
+`webhooks list` works as input. Send a JSON array as one object per line, for example with
+`jq -c '.[]'`.
+
+A dry run checks required fields, actions, and name conflicts. Only a real run checks plan limits,
+the length of names and descriptions, and endpoint addresses. Like every run, a dry run writes its
+log and report files, without the signing secret.

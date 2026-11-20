@@ -1,8 +1,7 @@
 # ADR-0021: CLI JSONL Pipe Contract
 
 **Status:** Accepted; the streaming consumer side (decisions 4 and 5) is not yet implemented. CRUD
-commands read `-` through a buffered reader instead, see [ADR-0029](adr-0029.md). **Date:**
-2026-08-27
+commands read `-` through a buffered reader instead ([ADR-0029](adr-0029.md)). **Date:** 2026-08-27
 
 ## Context
 

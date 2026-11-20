@@ -294,8 +294,11 @@ function run(...args: string[]) {
   return webhooksCommand.parseAsync(["node", "test", ...args]);
 }
 
+/** What `list` prints for these webhooks, as input for a pipe. */
 const asListOutput = (webhooks: FakeWebhook[]) =>
-  webhooks.map(({ secret: _secret, ...line }) => JSON.stringify(line)).join("\n");
+  webhooks
+    .map(({ secret, ...line }) => JSON.stringify({ ...line, has_secret: Boolean(secret) }))
+    .join("\n");
 
 describe("webhooks command", () => {
   beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -340,6 +343,14 @@ describe("webhooks command", () => {
       expect(stdoutLines().map((line) => line.id)).toEqual(webhooks.map(({ id }) => id));
       expect(stdoutLines()[0]).not.toHaveProperty("secret");
       expect(stdoutText()).not.toContain(SECRET);
+    });
+
+    it("should tell which webhooks have a secret, without its value", async () => {
+      preconditions.hasWebhooks({ secret: SECRET }, { secret: null });
+
+      await run("list", "--space", SPACE);
+
+      expect(stdoutLines().map((line) => line.has_secret)).toEqual([true, false]);
     });
 
     it("should print a table when stdout is a terminal", async () => {
@@ -573,8 +584,8 @@ describe("webhooks command", () => {
         "actions=story.typo",
       );
 
-      expect(stderrErrors()[0].details).toMatchObject({
-        actions: ["not allowed"],
+      expect(stderrErrors()[0]).toMatchObject({
+        details: { actions: ["not allowed"] },
         allowed_values: { actions: ALLOWED_ACTIONS },
       });
     });
@@ -818,9 +829,43 @@ describe("webhooks command", () => {
         expect.objectContaining({ id: webhook.id, action: "update" }),
       ]);
       expect(stderrErrors()).toEqual([
-        expect.objectContaining({ line: 1, error: "No webhook matches the record's ID." }),
+        expect.objectContaining({
+          line: 1,
+          id: expect.any(Number),
+          error: "No webhook matches the record's ID.",
+        }),
       ]);
       expect(process.exitCode).toBe(1);
+    });
+
+    it("should not rewrite a webhook whose stored actions repeat a value", async () => {
+      const webhooks = preconditions.hasWebhooks({
+        actions: ["story.published", "story.published"],
+      });
+      preconditions.stdinCarries(asListOutput(webhooks));
+
+      await run("update", "--space", SPACE, "-");
+
+      expect(api.writes).toEqual([]);
+      expect(stdoutLines()).toEqual([expect.objectContaining({ _reason: "unchanged" })]);
+    });
+
+    it("should refuse --data given twice rather than drop one", async () => {
+      const [webhook] = preconditions.hasWebhooks({});
+
+      await run(
+        "update",
+        String(webhook.id),
+        "--space",
+        SPACE,
+        "--data",
+        '{"description":"a"}',
+        "--data",
+        '{"activated":false}',
+      );
+
+      expect(process.exitCode).toBe(2);
+      expect(api.writes).toEqual([]);
     });
 
     it("should fail on a field that clears a required one", async () => {
@@ -828,9 +873,11 @@ describe("webhooks command", () => {
 
       await run("update", "deploy", "--space", SPACE, "--dry-run", "--set", "actions=");
       await run("update", "deploy", "--space", SPACE, "--set", "name=");
+      await run("update", "deploy", "--space", SPACE, "--dry-run", "--set", "name= ");
 
       expect(stderrErrors().map((error) => error.error)).toEqual([
         "Missing required fields: actions.",
+        "Missing required fields: name.",
         "Missing required fields: name.",
       ]);
       expect(process.exitCode).toBe(2);
@@ -906,8 +953,10 @@ describe("webhooks command", () => {
 
     it("should show the webhook as the target in the usage line", async () => {
       await run("update", "--help").catch(() => {});
+      await run("--help").catch(() => {});
 
-      expect(stdoutText()).toContain("update [options] <webhook>");
+      expect(stdoutText()).toContain("webhooks update [options] <webhook>");
+      expect(stdoutText()).toMatch(/^\s+update \[options\] <webhook>/m);
     });
 
     it("should show a dry run's changes without the secret's value", async () => {
@@ -972,15 +1021,54 @@ describe("webhooks command", () => {
       expect(stdoutLines()).toEqual([{ id: webhook.id, name: "deploy", action: "delete" }]);
     });
 
-    it("should skip a piped webhook the space does not have, so reruns pass", async () => {
-      preconditions.stdinCarries(asListOutput([makeWebhook({ name: "gone" })]));
+    it("should fail a webhook the space does not have, so a typo does not pass", async () => {
+      preconditions.stdinCarries(JSON.stringify({ name: "typo" }));
+
+      await run("delete", "--space", SPACE, "--yes", "-");
+      await run("delete", "typo", "--space", SPACE, "--yes");
+
+      expect(stdoutLines()).toEqual([]);
+      expect(stderrErrors()).toEqual([
+        expect.objectContaining({ line: 1, error: "No webhook matches the record's name." }),
+        expect.objectContaining({ error: "No webhook matches the given ID or name." }),
+      ]);
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("should skip a webhook the space does not have with --if-exists, so reruns pass", async () => {
+      const gone = makeWebhook({ name: "gone" });
+      preconditions.stdinCarries(asListOutput([gone]));
+
+      await run("delete", "--space", SPACE, "--yes", "--if-exists", "-");
+      await run("delete", "gone", "--space", SPACE, "--yes", "--if-exists");
+
+      expect(stdoutLines()).toEqual([
+        { id: gone.id, name: "gone", action: "skip", _skipped: true, _reason: "not_found" },
+        { id: null, name: null, action: "skip", _skipped: true, _reason: "not_found" },
+      ]);
+      expect(process.exitCode).toBeFalsy();
+    });
+
+    it("should delete a webhook again on a later line after its delete failed", async () => {
+      const [webhook] = preconditions.hasWebhooks({});
+      server.use(
+        http.delete(`${BASE}/:id`, () => HttpResponse.json({}, { status: 500 }), { once: true }),
+      );
+      preconditions.stdinCarries(asListOutput([webhook, webhook]));
 
       await run("delete", "--space", SPACE, "--yes", "-");
 
-      expect(stdoutLines()).toEqual([
-        expect.objectContaining({ action: "skip", _skipped: true, _reason: "not_found" }),
-      ]);
-      expect(process.exitCode).toBeFalsy();
+      expect(api.webhooks).toEqual([]);
+      expect(stdoutLines()).toEqual([expect.objectContaining({ action: "delete" })]);
+    });
+
+    it("should require --yes before reading the space when nobody can confirm", async () => {
+      const requests = preconditions.countsRequests();
+
+      await run("delete", "typo", "--space", SPACE);
+
+      expect(process.exitCode).toBe(2);
+      expect(requests).toEqual([]);
     });
 
     it("should refuse to delete a line read before the webhook last changed, until --ignore-stale", async () => {
@@ -1073,7 +1161,7 @@ describe("webhooks command", () => {
       preconditions.stdinCarries(asListOutput([...webhooks, makeWebhook({ name: "gone" })]));
       preconditions.stderrIsATerminal();
 
-      await run("delete", "--space", SPACE, "--dry-run", "-");
+      await run("delete", "--space", SPACE, "--dry-run", "--if-exists", "-");
 
       expect(confirm).not.toHaveBeenCalled();
       expect(api.writes).toEqual([]);
@@ -1249,6 +1337,21 @@ describe("webhooks command", () => {
 
       expect(stderrText()).not.toContain(LEAKED);
     });
+
+    it("should not echo an unknown option's value that spans lines", async () => {
+      await run("create", "--space", SPACE, `--dta={\n  "secret": "${LEAKED}"\n}`).catch(() => {});
+
+      expect(stderrText()).not.toContain(LEAKED);
+    });
+
+    it("should keep a value given to --unset out of errors, logs and reports", async () => {
+      const [webhook] = preconditions.hasWebhooks({});
+
+      await run("update", String(webhook.id), "--space", SPACE, "--unset", `secret=${LEAKED}`);
+
+      expect(process.exitCode).toBe(2);
+      expect(filesAndStreams()).not.toContain(LEAKED);
+    });
   });
 
   describe("payload rules", () => {
@@ -1418,7 +1521,7 @@ describe("webhooks command", () => {
       expect(process.exitCode).toBe(1);
     });
 
-    it("should skip a delete of a webhook deleted while the run is going", async () => {
+    it("should treat a webhook deleted while the run is going as one the space does not have", async () => {
       const [webhook] = preconditions.hasWebhooks({});
       server.use(
         http.delete(`${BASE}/:id`, () =>
@@ -1427,7 +1530,11 @@ describe("webhooks command", () => {
       );
 
       await run("delete", String(webhook.id), "--space", SPACE, "--yes");
+      expect(stderrErrors()).toEqual([expect.objectContaining({ status: 404, id: webhook.id })]);
+      expect(process.exitCode).toBe(1);
 
+      process.exitCode = undefined;
+      await run("delete", String(webhook.id), "--space", SPACE, "--yes", "--if-exists");
       expect(stdoutLines()).toEqual([
         expect.objectContaining({ action: "skip", _reason: "not_found", id: webhook.id }),
       ]);
@@ -1450,6 +1557,9 @@ describe("webhooks command", () => {
 
       expect(api.writes).toHaveLength(1);
       expect(process.exitCode).toBe(1);
+      expect(getReport("storyblok-webhooks-create-", SPACE)?.summary).toMatchObject({
+        createResults: { total: 3, failed: 1, unprocessed: 2 },
+      });
     });
 
     it("should report a wrong type in --data as a usage error", async () => {

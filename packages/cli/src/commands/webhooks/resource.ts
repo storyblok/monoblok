@@ -4,32 +4,15 @@ import { webhookFields } from "../../generated/mapi/resource-fields.gen";
 import { CrudError } from "../../lib/crud/errors";
 import type { Payload } from "../../lib/crud/fields";
 import { hasRequiredFields, toRequestBody } from "../../lib/crud/request";
-import type { FieldGuards } from "../../lib/crud/request";
 import type { CrudResource, Noun } from "../../lib/crud/types";
 
 const NOUN: Noun = { singular: "webhook", plural: "webhooks" };
 
-const isString = (value: unknown): value is string => typeof value === "string";
-const isNullableString = (value: unknown): value is string | null =>
-  value === null || isString(value);
-const isBoolean = (value: unknown): value is boolean => typeof value === "boolean";
-const isStringList = (value: unknown): value is string[] =>
-  Array.isArray(value) && value.every(isString);
-
-const WEBHOOK_FIELDS: FieldGuards<WebhookUpdate> = {
-  name: isString,
-  description: isNullableString,
-  endpoint: isString,
-  secret: isNullableString,
-  activated: isBoolean,
-  actions: isStringList,
-};
-
 const toWebhookUpdate = (payload: Payload): WebhookUpdate =>
-  toRequestBody(WEBHOOK_FIELDS, payload, NOUN);
+  toRequestBody(webhookFields, payload, NOUN);
 
 function toWebhookCreate(payload: Payload): WebhookCreate {
-  const body = toWebhookUpdate(payload);
+  const body = toRequestBody(webhookFields, payload, NOUN);
   if (!hasRequiredFields(webhookFields, body)) {
     throw new CrudError("The webhook lacks a required field.");
   }

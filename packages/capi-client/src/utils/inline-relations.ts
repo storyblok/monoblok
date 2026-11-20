@@ -66,9 +66,9 @@ const warnAboutCircularDefault = () => {
   hasWarnedAboutCircularDefault = true;
   console.warn(
     "[storyblok/api-client] Inlined relations produced a circular result, so `JSON.stringify` throws on it. " +
-      "In 1.0, the `circularRelations` client option is removed and relations always behave like " +
+      "From 1.0.0, the `circularRelations` client option is removed and relations always behave like " +
       "`circularRelations: false`: inlined two levels deep and never circular. " +
-      "Set `circularRelations: false` to switch now, or `true` to keep circular results until 1.0. " +
+      "Set `circularRelations: false` to switch now, or `true` to keep circular results until 1.0.0. " +
       "Setting either value silences this warning.",
   );
 };

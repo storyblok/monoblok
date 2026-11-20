@@ -7,7 +7,7 @@ import type {
   StoryblokBridgeConfigV2,
 } from './types';
 
-import { getStoryblokApi } from './core';
+import { getStoryblokApi } from './common';
 
 import { useStoryblokRichText } from './richtext';
 
@@ -64,7 +64,8 @@ export const useStoryblok = (
   return story;
 };
 
-export * from './core';
+export * from './common/client';
+export * from './common/index';
 
 // Export the main function
 export { useStoryblokRichText };

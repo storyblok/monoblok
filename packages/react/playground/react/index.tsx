@@ -6,8 +6,9 @@ import Teaser from './components/teaser';
 import Grid from './components/grid';
 import Page from './components/page';
 import Feature from './components/feature';
-import EmojiRandomizer from './components/emiji-randomizer';
+
 import { apiPlugin, storyblokInit } from '@storyblok/react';
+import IFrameEmbed from './components/iframe-embed';
 
 // https://app.storyblok.com/#/me/spaces/147897
 storyblokInit({
@@ -18,7 +19,7 @@ storyblokInit({
     'grid': Grid,
     'feature': Feature,
     'page': Page,
-    'emoji-randomizer': EmojiRandomizer,
+    'iframe-embed': IFrameEmbed,
   },
 });
 

@@ -1,49 +1,25 @@
-import { defineConfig } from 'vitest/config';
-import { resolve } from 'node:path';
+import { defineConfig, type Plugin } from 'vitest/config';
+import path from 'node:path';
 import preserveDirectives from 'rollup-plugin-preserve-directives';
 import dts from 'vite-plugin-dts';
-import react from '@vitejs/plugin-react';
 
 export default defineConfig({
-  plugins: [
-    react(),
-    dts({
-      insertTypesEntry: true,
-      rollupTypes: true,
-    }),
-    preserveDirectives(),
-  ],
-  resolve: {
-    alias: {
-      '@': resolve(__dirname, './src'),
-    },
-  },
+  plugins: [dts({ insertTypesEntry: true }), preserveDirectives()] as Plugin[],
   build: {
     lib: {
-      entry: {
-        index: resolve(__dirname, 'src/index.ts'),
-        ssr: resolve(__dirname, 'src/ssr/index.ts'),
-        rsc: resolve(__dirname, 'src/rsc/index.ts'),
-      },
+      entry: [
+        path.resolve(__dirname, 'src', 'index.ts'),
+        path.resolve(__dirname, 'src', 'rsc/index.ts'),
+      ],
       name: 'storyblokReact',
       fileName: (format, entry) => {
-        const name = entry;
+        const isRscEntry = entry.includes('rsc/index');
+        const name = isRscEntry ? 'rsc' : entry.split('/').pop();
         return format === 'es' ? `${name}.mjs` : `${name}.js`;
       },
-      formats: ['es', 'cjs'],
     },
     rollupOptions: {
-      external: [
-        'react',
-        'react-dom',
-        'react/jsx-runtime',
-        'react/jsx-dev-runtime',
-        'next',
-        'next/cache',
-        'next/server',
-        '@storyblok/js',
-        /^next\//,
-      ],
+      external: ['react', 'react/jsx-runtime', 'react-dom', 'react-dom/client', 'next/headers'],
       output: {
         preserveModules: true,
         globals: { react: 'React' },

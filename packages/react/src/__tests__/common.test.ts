@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { SbReactSDKOptions } from '../types';
-import { apiPlugin, getStoryblokApi, storyblokInit } from '../core';
+import { apiPlugin, getStoryblokApi, storyblokInit } from '../common';
 
 describe('storyblokInit', () => {
   let pluginOptions: SbReactSDKOptions;

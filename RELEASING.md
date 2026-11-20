@@ -67,7 +67,7 @@ pnpm release
 ```
 
 This script will:
-- Check that you're on a release branch (`main`, `alpha`, `beta`, or `next`)
+- Check that you're on a release branch (`main`, `alpha`, `beta`, `next`, or a maintenance branch such as `react-v4`)
 - Check for uncommitted changes
 - Fetch the latest changes from remote
 - Verify you're up to date with the remote branch
@@ -133,6 +133,27 @@ pnpm release
 # Then run Publish workflow on main
 ```
 
+### Maintenance Releases (`<package>-v<major>`)
+
+A branch named after a package and an earlier major version, e.g. `react-v4`, releases stable
+versions of that major. List the branch in the package's `release.branches`.
+
+Git tags of later majors are reachable from these branches, so versioning from git tags would
+continue the later major (e.g. `5.4.23` instead of `4.7.1`). The package therefore reads its
+current version from `package.json` (`currentVersionResolver: "disk"`). Nx only allows that without
+conventional commits, so `pnpm release` asks for the bump type (`specifierSource: "prompt"`):
+
+```json
+"nx": {
+  "release": {
+    "version": { "currentVersionResolver": "disk", "specifierSource": "prompt" }
+  }
+}
+```
+
+Run the Publish workflow on the branch: it publishes with the branch name as the npm tag (e.g.
+`npm install @storyblok/react@react-v4`), so `latest` stays on the current major.
+
 ### Silent Versioning (without GitHub Release)
 
 For release candidates or silent releases, use the version command:
@@ -187,6 +208,7 @@ The publish workflow will:
   - `next` branch → `next` tag
   - `beta` branch → `beta` tag
   - `alpha` branch → `alpha` tag
+  - Maintenance branches, e.g. `react-v4` → `react-v4` tag
 
 ## Distribution Tags
 

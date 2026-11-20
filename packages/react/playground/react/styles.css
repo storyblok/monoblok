@@ -1,6 +1,0 @@
-@import 'tailwindcss';
-@plugin '@tailwindcss/typography';
-
-span[data-type='emoji'] img {
-  @apply m-0;
-}

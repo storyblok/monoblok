@@ -1,18 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render } from "@testing-library/react";
+import { act, render } from "@testing-library/react";
 import React from "react";
 import type { ISbStoryData } from "@storyblok/js";
-
-// Import after mocks
-import StoryblokLiveEditing from "../rsc/live-editing";
-import { isBridgeLoaded, isVisualEditor } from "../utils";
 import { loadStoryblokBridge, registerStoryblokBridge } from "@storyblok/js";
-import { liveEditUpdateAction } from "../rsc/live-edit-update-action";
 
-// Mock dependencies - need to define functions inline to avoid hoisting issues
-vi.mock("../rsc/live-edit-update-action", () => ({
-  liveEditUpdateAction: vi.fn(),
-}));
+import StoryblokLiveEditing from "../rsc/live-editing";
+import type { LiveEditRenderResult } from "../rsc/live-edit-render-action";
+import { isBridgeLoaded, isVisualEditor } from "../utils";
 
 vi.mock("@storyblok/js", () => ({
   registerStoryblokBridge: vi.fn(),
@@ -24,149 +18,218 @@ vi.mock("../utils", () => ({
   isBridgeLoaded: vi.fn(() => false),
 }));
 
+type RenderAction = (input: unknown) => Promise<LiveEditRenderResult>;
+
+const STORY = { id: 10, uuid: "uuid-10" } as ISbStoryData;
+// Bridge registrations are per story id and page-wide, so every test uses its own id.
+let nextStoryId = 1000;
+const incoming = (label: string) =>
+  ({ id: 10, content: { _uid: "x", component: "page", label } }) as unknown as ISbStoryData;
+
+const rendered = (label: string): LiveEditRenderResult => ({
+  ok: true,
+  node: React.createElement("p", { "data-testid": "content" }, label),
+});
+
+const deferred = <T>() => {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((r) => {
+    resolve = r;
+  });
+  return { promise, resolve };
+};
+
+const serverOutput = () => React.createElement("p", { "data-testid": "content" }, "server");
+
+const liveEditing = (storyId: number, renderAction?: RenderAction) =>
+  React.createElement(
+    StoryblokLiveEditing,
+    {
+      story: { id: storyId } as ISbStoryData,
+      bridgeOptions: {},
+      renderAction,
+      renderProps: { className: "hero" },
+    },
+    serverOutput(),
+  );
+
+const renderLiveEditing = async (renderAction?: RenderAction) => {
+  let listener: ((story: ISbStoryData) => void) | null = null;
+  vi.mocked(registerStoryblokBridge).mockImplementation((_id, cb) => {
+    listener = cb;
+  });
+  const result = render(liveEditing(nextStoryId++, renderAction));
+  await vi.waitFor(() => expect(listener).not.toBeNull());
+  const emit = (story: ISbStoryData) =>
+    act(async () => {
+      listener!(story);
+    });
+  return { ...result, emit };
+};
+
 describe("storyblokLiveEditing", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(isVisualEditor).mockReturnValue(false);
-    vi.mocked(isBridgeLoaded).mockReturnValue(false);
-
-    // Mock window
-    vi.stubGlobal("window", {
-      storyblokRegisterEvent: undefined,
-      location: {
-        search: "",
-        pathname: "/",
-      },
-      self: {},
-      top: {},
-    });
+    vi.mocked(isVisualEditor).mockReturnValue(true);
+    vi.mocked(isBridgeLoaded).mockReturnValue(true);
   });
 
   afterEach(() => {
-    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
-  it("should return null when not in visual editor", () => {
+  it("renders the server output and skips the bridge outside the Visual Editor", () => {
     vi.mocked(isVisualEditor).mockReturnValue(false);
-
-    const { container } = render(
-      React.createElement(StoryblokLiveEditing, {
-        story: { uuid: "123", id: 456 } as ISbStoryData,
-        bridgeOptions: {},
-      }),
-    );
-
-    expect(container.firstChild).toBeNull();
-    expect(loadStoryblokBridge).not.toHaveBeenCalled();
-  });
-
-  it("should load bridge and register when in visual editor", async () => {
-    vi.mocked(isVisualEditor).mockReturnValue(true);
     vi.mocked(isBridgeLoaded).mockReturnValue(false);
 
-    const story = { id: 789, uuid: "test-uuid" } as ISbStoryData;
-
-    const { container } = render(
-      React.createElement(StoryblokLiveEditing, {
-        story,
-        bridgeOptions: { resolveRelations: ["test.relation"] },
-      }),
+    const { getByTestId } = render(
+      React.createElement(StoryblokLiveEditing, { story: STORY }, serverOutput()),
     );
 
-    // Component should return null but load bridge
-    expect(container.firstChild).toBeNull();
-
-    // Wait for async bridge loading
-    await vi.waitFor(() => {
-      expect(loadStoryblokBridge).toHaveBeenCalled();
-    });
-  });
-
-  it("should handle null story gracefully", () => {
-    vi.mocked(isVisualEditor).mockReturnValue(false);
-
-    const { container } = render(
-      React.createElement(StoryblokLiveEditing, {
-        // @ts-expect-error - Testing invalid input
-        story: null,
-        bridgeOptions: {},
-      }),
-    );
-
-    expect(container.firstChild).toBeNull();
-  });
-
-  it("should not load bridge when already loaded", () => {
-    vi.mocked(isVisualEditor).mockReturnValue(true);
-    vi.mocked(isBridgeLoaded).mockReturnValue(true);
-
-    render(
-      React.createElement(StoryblokLiveEditing, {
-        story: { id: 123, uuid: "test" } as ISbStoryData,
-        bridgeOptions: {},
-      }),
-    );
-
-    // Since bridge is already loaded, we should not call loadStoryblokBridge
+    expect(getByTestId("content").textContent).toBe("server");
     expect(loadStoryblokBridge).not.toHaveBeenCalled();
+    expect(registerStoryblokBridge).not.toHaveBeenCalled();
   });
 
-  it("should call liveEditUpdateAction for regular live-edit events", async () => {
-    vi.mocked(isVisualEditor).mockReturnValue(true);
-    vi.mocked(isBridgeLoaded).mockReturnValue(true);
+  it("loads the bridge when it isn't loaded yet", async () => {
+    vi.mocked(isBridgeLoaded).mockReturnValue(false);
 
-    let captured: ((story: ISbStoryData) => void) | null = null;
-    vi.mocked(registerStoryblokBridge).mockImplementation((_id, cb) => {
-      captured = cb as (story: ISbStoryData) => void;
-    });
+    await renderLiveEditing(vi.fn());
 
-    render(
-      React.createElement(StoryblokLiveEditing, {
-        story: { id: 10, uuid: "uuid-10" } as ISbStoryData,
-        bridgeOptions: {},
-      }),
-    );
-
-    await vi.waitFor(() => expect(captured).not.toBeNull());
-
-    captured!({ id: 10, uuid: "uuid-10", content: { _uid: "x" } } as ISbStoryData);
-
-    await vi.waitFor(() => expect(liveEditUpdateAction).toHaveBeenCalled());
-    expect(liveEditUpdateAction).toHaveBeenCalledWith(
-      expect.objectContaining({
-        story: expect.objectContaining({ uuid: "uuid-10" }),
-        pathToRevalidate: "/",
-      }),
-    );
+    expect(loadStoryblokBridge).toHaveBeenCalled();
   });
 
-  it("should call liveEditUpdateAction with the same payload shape for Visual History events", async () => {
-    vi.mocked(isVisualEditor).mockReturnValue(true);
-    vi.mocked(isBridgeLoaded).mockReturnValue(true);
+  it("renders the server action's result for a Visual Editor change", async () => {
+    const renderAction = vi.fn<RenderAction>(async () => rendered("live"));
+    const { getByTestId, emit } = await renderLiveEditing(renderAction);
 
-    let captured: ((story: ISbStoryData) => void) | null = null;
+    await emit(incoming("live"));
+
+    await vi.waitFor(() => expect(getByTestId("content").textContent).toBe("live"));
+  });
+
+  it("sends only the story content and the primitive props to the server", async () => {
+    const renderAction = vi.fn<RenderAction>(async () => rendered("live"));
+    const { emit } = await renderLiveEditing(renderAction);
+
+    await emit({ ...incoming("live"), name: "Home", full_slug: "home" });
+
+    expect(renderAction).toHaveBeenCalledWith({
+      story: { content: incoming("live").content },
+      props: { className: "hero" },
+    });
+  });
+
+  it("keeps the current render for Visual History events without content", async () => {
+    const renderAction = vi.fn<RenderAction>(async () => rendered("live"));
+    const { emit } = await renderLiveEditing(renderAction);
+
+    await emit({ id: 10 } as ISbStoryData);
+
+    expect(renderAction).not.toHaveBeenCalled();
+  });
+
+  it("sends one request at a time and renders only the latest queued story", async () => {
+    const first = deferred<LiveEditRenderResult>();
+    const renderAction = vi
+      .fn<RenderAction>()
+      .mockReturnValueOnce(first.promise)
+      .mockImplementation(async () => rendered("c"));
+    const { getByTestId, emit } = await renderLiveEditing(renderAction);
+
+    await emit(incoming("a"));
+    await emit(incoming("b"));
+    await emit(incoming("c"));
+    expect(renderAction).toHaveBeenCalledTimes(1);
+
+    await act(async () => first.resolve(rendered("a")));
+
+    await vi.waitFor(() => expect(getByTestId("content").textContent).toBe("c"));
+    expect(renderAction).toHaveBeenCalledTimes(2);
+    expect(renderAction.mock.calls[1][0]).toMatchObject({ story: { content: { label: "c" } } });
+  });
+
+  it("sends the story once more when the server asks for a retry", async () => {
+    const renderAction = vi
+      .fn<RenderAction>()
+      .mockResolvedValueOnce({ ok: false, retry: true })
+      .mockResolvedValueOnce({ ok: false, retry: true })
+      .mockImplementation(async () => rendered("live"));
+    const { getByTestId, emit } = await renderLiveEditing(renderAction);
+
+    await emit(incoming("live"));
+
+    // Retried once, not in a loop: the second `retry` isn't followed up.
+    await vi.waitFor(() => expect(renderAction).toHaveBeenCalledTimes(2));
+    expect(renderAction.mock.calls[1][0]).toEqual(renderAction.mock.calls[0][0]);
+    expect(getByTestId("content").textContent).toBe("server");
+
+    await emit(incoming("next"));
+    await vi.waitFor(() => expect(getByTestId("content").textContent).toBe("live"));
+  });
+
+  it("keeps the current render when the server can't render the story", async () => {
+    const renderAction = vi.fn<RenderAction>(async () => ({ ok: false }));
+    const { getByTestId, emit } = await renderLiveEditing(renderAction);
+
+    await emit(incoming("live"));
+
+    await vi.waitFor(() => expect(renderAction).toHaveBeenCalled());
+    expect(getByTestId("content").textContent).toBe("server");
+  });
+
+  it("keeps the current render and warns when the server action fails", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { getByTestId, emit } = await renderLiveEditing(
+      vi.fn<RenderAction>(async () => {
+        throw new Error("network");
+      }),
+    );
+
+    await emit(incoming("live"));
+
+    await vi.waitFor(() => expect(warnSpy).toHaveBeenCalled());
+    expect(getByTestId("content").textContent).toBe("server");
+  });
+
+  it("ignores bridge events after unmount", async () => {
+    const renderAction = vi.fn<RenderAction>(async () => rendered("live"));
+    const { unmount, emit } = await renderLiveEditing(renderAction);
+
+    unmount();
+    await emit(incoming("live"));
+
+    expect(renderAction).not.toHaveBeenCalled();
+  });
+
+  it("registers the bridge once per story and routes events to the current mount", async () => {
+    // React Strict Mode mounts, unmounts and remounts. The bridge only calls the
+    // first listener registered on the page, so a second registration would
+    // never fire and the first one belongs to the unmounted component.
+    let listener: ((story: ISbStoryData) => void) | null = null;
     vi.mocked(registerStoryblokBridge).mockImplementation((_id, cb) => {
-      captured = cb as (story: ISbStoryData) => void;
+      listener ??= cb;
+    });
+    const storyId = nextStoryId++;
+    const first = vi.fn<RenderAction>(async () => rendered("first"));
+    const second = vi.fn<RenderAction>(async () => rendered("second"));
+
+    const { unmount } = render(liveEditing(storyId, first));
+    await vi.waitFor(() => expect(listener).not.toBeNull());
+    unmount();
+    const { getByTestId } = render(liveEditing(storyId, second));
+    await vi.waitFor(() => expect(registerStoryblokBridge).toHaveBeenCalledTimes(1));
+    await act(async () => {
+      listener!(incoming("live"));
     });
 
-    render(
-      React.createElement(StoryblokLiveEditing, {
-        story: { id: 42, uuid: "uuid-42" } as ISbStoryData,
-        bridgeOptions: {},
-      }),
-    );
+    await vi.waitFor(() => expect(getByTestId("content").textContent).toBe("second"));
+    expect(first).not.toHaveBeenCalled();
+  });
 
-    await vi.waitFor(() => expect(captured).not.toBeNull());
+  it("registers the bridge without a server action (standalone use)", async () => {
+    const { emit } = await renderLiveEditing(undefined);
 
-    // Visual History payload: minimal, no uuid
-    captured!({ id: 42, content: { _uid: "hist" } } as unknown as ISbStoryData);
-
-    await vi.waitFor(() => expect(liveEditUpdateAction).toHaveBeenCalled());
-    expect(liveEditUpdateAction).toHaveBeenCalledWith(
-      expect.objectContaining({
-        story: expect.objectContaining({ id: 42 }),
-        pathToRevalidate: "/",
-      }),
-    );
+    await expect(emit(incoming("live"))).resolves.not.toThrow();
   });
 });

@@ -43,8 +43,11 @@ const pruneStoryCache = (now: number): void => {
   }
   // Map iteration follows insertion order, so the first keys are the oldest.
   while (cache.size > STORY_CACHE_MAX_ENTRIES) {
-    const oldestKey = cache.keys().next().value as string;
-    cache.delete(oldestKey);
+    const oldest = cache.keys().next();
+    if (oldest.done) {
+      break;
+    }
+    cache.delete(oldest.value);
   }
 };
 

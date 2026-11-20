@@ -28,8 +28,9 @@ export const storyblokInit = (pluginOptions: SbReactSDKOptions = {}): (() => Sto
     setCustomFallbackComponent(pluginOptions.customFallbackComponent);
   }
 
+  // Only remember the token on the server, where the live edit action verifies requests.
   const accessToken = pluginOptions.accessToken || pluginOptions.apiOptions?.accessToken;
-  if (accessToken) {
+  if (accessToken && typeof window === "undefined") {
     setPreviewAccessToken(accessToken);
   }
 

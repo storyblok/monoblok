@@ -174,6 +174,68 @@ describe("storyblokLiveEditing", () => {
     warnSpy.mockRestore();
   });
 
+  const renderAndCapture = async (storyId = 10) => {
+    let captured: ((story: ISbStoryData) => Promise<void> | void) | null = null;
+    vi.mocked(registerStoryblokBridge).mockImplementation((_id, cb) => {
+      captured = cb as (story: ISbStoryData) => void;
+    });
+    render(
+      React.createElement(StoryblokLiveEditing, {
+        story: { id: storyId, uuid: `uuid-${storyId}` } as ISbStoryData,
+        bridgeOptions: {},
+      }),
+    );
+    await vi.waitFor(() => expect(captured).not.toBeNull());
+    return (incoming: ISbStoryData) => captured!(incoming);
+  };
+
+  it("warns about a missing token only once per mount", async () => {
+    vi.mocked(isVisualEditor).mockReturnValue(true);
+    vi.mocked(isBridgeLoaded).mockReturnValue(true);
+    window.location.search = "?_storyblok=10";
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const emit = await renderAndCapture();
+    await emit({ id: 10, content: { _uid: "a" } } as ISbStoryData);
+    await emit({ id: 10, content: { _uid: "b" } } as ISbStoryData);
+    await emit({ id: 10, content: { _uid: "c" } } as ISbStoryData);
+
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    warnSpy.mockRestore();
+  });
+
+  it("warns that restricted release previews are not supported", async () => {
+    vi.mocked(isVisualEditor).mockReturnValue(true);
+    vi.mocked(isBridgeLoaded).mockReturnValue(true);
+    window.location.search =
+      "?_storyblok=10&_storyblok_tk[space_id]=1&_storyblok_tk[timestamp]=1700000000&_storyblok_tk[token]=AbCdEfGhIjKlMnOpQrStUvWx";
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const emit = await renderAndCapture();
+    await emit({ id: 10, content: { _uid: "a" } } as ISbStoryData);
+
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("restricted access"));
+    expect(liveEditUpdateAction).not.toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
+
+  it("surfaces a server rejection once, with an actionable message", async () => {
+    vi.mocked(isVisualEditor).mockReturnValue(true);
+    vi.mocked(isBridgeLoaded).mockReturnValue(true);
+    vi.mocked(liveEditUpdateAction).mockResolvedValue({ ok: false, reason: "expired" });
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const emit = await renderAndCapture();
+    await emit({ id: 10, content: { _uid: "a" } } as ISbStoryData);
+    await emit({ id: 10, content: { _uid: "b" } } as ISbStoryData);
+
+    await vi.waitFor(() =>
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("Reload the story")),
+    );
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    warnSpy.mockRestore();
+  });
+
   it("should call liveEditUpdateAction with the same payload shape for Visual History events", async () => {
     vi.mocked(isVisualEditor).mockReturnValue(true);
     vi.mocked(isBridgeLoaded).mockReturnValue(true);

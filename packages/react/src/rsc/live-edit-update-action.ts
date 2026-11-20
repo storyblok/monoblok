@@ -1,14 +1,48 @@
 "use server";
 import type { ISbStoryData } from "@storyblok/js";
-import { type StoryblokEditorToken, verifyEditorToken } from "../core/editor-token";
-import { getPreviewAccessToken } from "../core/state";
+import {
+  type EditorTokenRejectionReason,
+  type StoryblokEditorToken,
+  verifyEditorToken,
+} from "../core/editor-token";
+import { getPreviewAccessTokenCandidates, PREVIEW_TOKEN_ENV_VAR } from "../core/state";
 import { setCachedStory } from "../core/story-cache";
+
+/**
+ * Why the server rejected a live edit update.
+ * - `invalid-request`: missing or malformed story or path.
+ * - `no-server-token`: no preview access token is configured on the server.
+ * - Every other value comes from verifying the Visual Editor token.
+ */
+export type LiveEditRejectionReason =
+  | "invalid-request"
+  | "no-server-token"
+  | EditorTokenRejectionReason;
+
+export type LiveEditUpdateResult = { ok: true } | { ok: false; reason: LiveEditRejectionReason };
+
+const SERVER_MESSAGES: Record<LiveEditRejectionReason, string> = {
+  "invalid-request": "invalid story or pathToRevalidate",
+  "no-server-token": `no preview access token configured on the server. Set the ${PREVIEW_TOKEN_ENV_VAR} environment variable, or call storyblokInit({ accessToken }) with your preview access token in a server module.`,
+  malformed: "rejected a request without a valid Visual Editor token",
+  expired:
+    "rejected an expired Visual Editor token. Reload the story in the Visual Editor to get a new one.",
+  mismatch:
+    "rejected a Visual Editor token that doesn't match the configured access token. The Visual Editor signs with the space's first preview access token; make sure the server uses that token. Otherwise the request was not sent by the Visual Editor.",
+  "crypto-unavailable":
+    "cannot verify the Visual Editor token because Web Crypto (crypto.subtle) is unavailable in this runtime.",
+};
+
+const reject = (reason: LiveEditRejectionReason): LiveEditUpdateResult => {
+  console.error(`liveEditUpdateAction: ${SERVER_MESSAGES[reason]}`);
+  return { ok: false, reason };
+};
 
 const isValidPath = (path: unknown): path is string =>
   typeof path === "string" && path.startsWith("/") && !path.startsWith("//") && path.length < 2048;
 
 const isValidStory = (story: unknown): story is ISbStoryData =>
-  !!story && typeof story === "object" && typeof (story as ISbStoryData).id === "number";
+  !!story && typeof story === "object" && "id" in story && typeof story.id === "number";
 
 /**
  * Server action used by `StoryblokLiveEditing` to push Visual Editor changes to
@@ -26,24 +60,19 @@ export async function liveEditUpdateAction({
   story: ISbStoryData;
   pathToRevalidate: string;
   editorToken?: StoryblokEditorToken | null;
-}) {
-  if (!story || !pathToRevalidate) {
-    return console.error("liveEditUpdateAction: story or pathToRevalidate is not provided");
-  }
-
-  const previewAccessToken = getPreviewAccessToken();
-  if (!previewAccessToken) {
-    return console.error(
-      "liveEditUpdateAction: no access token configured on the server. Call storyblokInit({ accessToken }) with your preview token in a server module to enable live editing.",
-    );
-  }
-
-  if (!(await verifyEditorToken(editorToken, previewAccessToken))) {
-    return console.error("liveEditUpdateAction: rejected request without a valid editor token");
-  }
-
+}): Promise<LiveEditUpdateResult> {
   if (!isValidStory(story) || !isValidPath(pathToRevalidate)) {
-    return console.error("liveEditUpdateAction: invalid story or pathToRevalidate");
+    return reject("invalid-request");
+  }
+
+  const previewAccessTokens = getPreviewAccessTokenCandidates();
+  if (previewAccessTokens.length === 0) {
+    return reject("no-server-token");
+  }
+
+  const verification = await verifyEditorToken(editorToken, previewAccessTokens);
+  if ("reason" in verification) {
+    return reject(verification.reason);
   }
 
   setCachedStory(story);
@@ -57,4 +86,6 @@ export async function liveEditUpdateAction({
       console.error("liveEditUpdateAction: error while revalidating path", error);
     }
   }
+
+  return { ok: true };
 }

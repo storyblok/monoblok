@@ -227,6 +227,14 @@ export interface ContentApiClientConfig<
   throwOnError?: ThrowOnError;
   cache?: CacheConfig;
   inlineRelations?: InlineRelations;
+  /**
+   * Sets `story` on each story link (a multilink field or a richtext link mark) to its
+   * entry in the response's `links`, when a request passes `resolve_links`. Links beyond
+   * the API's resolve limit are fetched. The entry's shape depends on the
+   * `resolve_links` value.
+   * @default false
+   */
+  inlineLinks?: boolean;
   retry?: RetryOptions;
   /**
    * Request timeout in milliseconds.
@@ -344,6 +352,7 @@ export const createApiClientBase = <
     throwOnError = false,
     cache = {},
     inlineRelations = false,
+    inlineLinks = false,
     retry,
     timeout = 30_000,
     rateLimit,
@@ -807,6 +816,7 @@ export const createApiClientBase = <
   > = createStoriesResource<Component, Record<never, never>, InlineRelations, ThrowOnError>({
     ...resourceDeps,
     inlineRelations,
+    inlineLinks,
   });
 
   return {

@@ -18,11 +18,9 @@ import type {
   RichTextFieldValue,
   TableFieldValue,
 } from "../generated/types/field";
-import {
-  inlineStoriesContent,
-  inlineStoryContent,
-  resolveRelationMap,
-} from "../utils/inline-relations";
+import { inlineLinks, resolveLinkMap } from "../utils/inline-links";
+import type { StoryLinkData } from "../utils/inline-links";
+import { inlineStoriesContent, resolveRelationMap } from "../utils/inline-relations";
 import type { ApiResponse, FetchOptions, ResourceDeps } from "../client";
 import type {
   BlockFields,
@@ -349,11 +347,11 @@ interface StoryRelationData {
   rel_uuids?: string[];
 }
 
-interface StoryData extends StoryRelationData {
+interface StoryData extends StoryRelationData, StoryLinkData {
   story: Story;
 }
 
-interface StoriesData extends StoryRelationData {
+interface StoriesData extends StoryRelationData, StoryLinkData {
   stories: Story[];
 }
 
@@ -366,6 +364,7 @@ export interface StoriesResourceDeps<
   DefaultThrowOnError extends boolean = false,
 > extends ResourceDeps<DefaultThrowOnError> {
   inlineRelations: boolean;
+  inlineLinks?: boolean;
 }
 
 export function createStoriesResource<
@@ -374,7 +373,44 @@ export function createStoriesResource<
   InlineRelations extends boolean = false,
   DefaultThrowOnError extends boolean = false,
 >(deps: StoriesResourceDeps<DefaultThrowOnError>) {
-  const { client, requestWithCache, asApiResponse, inlineRelations, throttleManager } = deps;
+  const {
+    client,
+    requestWithCache,
+    asApiResponse,
+    inlineRelations,
+    inlineLinks: shouldInlineLinks = false,
+    throttleManager,
+  } = deps;
+  // Inlined responses are cached apart from raw ones; "inline" alone is the relations-only key.
+  const cacheKeyPrefix =
+    [inlineRelations && "inline", shouldInlineLinks && "links"].filter(Boolean).join("-") ||
+    undefined;
+  const cacheOptions = cacheKeyPrefix ? { cacheKeyPrefix } : undefined;
+
+  /** Inlines resolved links and relations into `stories`, reading them from `data`. */
+  const inlineStories = async (
+    stories: Story[],
+    data: StoryRelationData & StoryLinkData,
+    requestQuery: Record<string, unknown>,
+  ): Promise<Story[]> => {
+    const resolved = inlineRelations
+      ? await resolveRelationMap(data, requestQuery, { client, throttleManager })
+      : null;
+
+    if (shouldInlineLinks) {
+      const linkMap = await resolveLinkMap(data, requestQuery, { client, throttleManager });
+      if (linkMap) {
+        // Related stories get their links before they are copied into the content.
+        for (const story of [...stories, ...(resolved?.relationMap.values() ?? [])]) {
+          inlineLinks(story.content, linkMap);
+        }
+      }
+    }
+
+    return resolved
+      ? inlineStoriesContent(stories, resolved.relationPaths, resolved.relationMap)
+      : stories;
+  };
 
   return {
     get: async <
@@ -435,34 +471,18 @@ export function createStoriesResource<
             ThrowOnError
           >;
 
-          if (!inlineRelations || response.data === undefined) {
+          if (!cacheKeyPrefix || response.data === undefined) {
             return response;
           }
 
-          // Narrow to the internal relation shape to read the API's sidecar
-          // `rels`/`rel_uuids`; consumers keep seeing the generic `Story`.
+          // Narrow to the internal shape to read the API's sidecar `rels`/`rel_uuids`
+          // and `links`/`link_uuids`; consumers keep seeing the generic `Story`.
           const storyData = response.data as unknown as StoryData;
-          const resolved = await resolveRelationMap(storyData, requestQuery, {
-            client,
-            throttleManager,
-          });
-          if (!resolved) {
-            return response;
-          }
+          const [story] = await inlineStories([storyData.story], storyData, requestQuery);
 
-          return {
-            ...response,
-            data: {
-              ...response.data,
-              story: inlineStoryContent(
-                storyData.story,
-                resolved.relationPaths,
-                resolved.relationMap,
-              ),
-            },
-          };
+          return { ...response, data: { ...response.data, story } };
         },
-        inlineRelations ? { cacheKeyPrefix: "inline" } : undefined,
+        cacheOptions,
       );
     },
 
@@ -518,34 +538,18 @@ export function createStoriesResource<
             ThrowOnError
           >;
 
-          if (!inlineRelations || response.data === undefined) {
+          if (!cacheKeyPrefix || response.data === undefined) {
             return response;
           }
 
-          // Narrow to the internal relation shape to read the API's sidecar
-          // `rels`/`rel_uuids`; consumers keep seeing the generic `Story`.
+          // Narrow to the internal shape to read the API's sidecar `rels`/`rel_uuids`
+          // and `links`/`link_uuids`; consumers keep seeing the generic `Story`.
           const storiesData = response.data as unknown as StoriesData;
-          const resolved = await resolveRelationMap(storiesData, requestQuery, {
-            client,
-            throttleManager,
-          });
-          if (!resolved) {
-            return response;
-          }
+          const stories = await inlineStories(storiesData.stories, storiesData, requestQuery);
 
-          return {
-            ...response,
-            data: {
-              ...response.data,
-              stories: inlineStoriesContent(
-                storiesData.stories,
-                resolved.relationPaths,
-                resolved.relationMap,
-              ),
-            },
-          };
+          return { ...response, data: { ...response.data, stories } };
         },
-        inlineRelations ? { cacheKeyPrefix: "inline" } : undefined,
+        cacheOptions,
       );
     },
   };

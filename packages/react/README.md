@@ -388,8 +388,17 @@ export async function fetchData() {
 **The `StoryblokStory` component automatically:**
 - Renders your Storyblok content components on the server
 - Loads the bridge script for live editing (when in Visual Editor)
-- Handles live content updates via global cache
+- Renders each Visual Editor change on the server and shows it only in that editor's browser
 - Manages bridge registration and cleanup
+
+> [!NOTE]
+> Only string, number, boolean, and `null` props you pass to `StoryblokStory` are applied while live editing, and they are sent to the browser of every visitor, not only in the Visual Editor. Don't pass secrets as props. If a component needs another prop and fails to render in the live preview, the Visual Editor shows the page as it was loaded until the next change renders.
+
+> [!NOTE]
+> Live editing with `StoryblokStory` needs Server Actions, so it needs Next.js 14 or later. On Next.js 13, Visual Editor changes show after you save.
+
+> [!WARNING]
+> Live editing renders the posted story with your registered components in a Server Action, which is a public endpoint: anyone can call it with any field values, and only they see the result. Don't let a component fetch privileged data, or read cookies, headers, or secrets, based on a field value alone.
 
 **Advanced: Bridge Options**
 
@@ -403,18 +412,17 @@ const bridgeOptions = { resolveRelations: ['article.author'] };
 
 **Advanced: Manual Component Separation**
 
-For advanced use cases where you need more control, you can use the individual components:
+You can render the content and load the bridge separately:
 
 ```jsx
 import { StoryblokServerComponent, StoryblokLiveEditing } from '@storyblok/react/rsc';
 
-// Manual approach (only use if you need special control)
 <StoryblokServerComponent blok={data.story.content} />
 <StoryblokLiveEditing story={data.story} bridgeOptions={bridgeOptions} />
 ```
 
-> [!NOTE]
-> Most applications should use `StoryblokStory` for the best developer experience and automatic live editing support.
+> [!WARNING]
+> Used this way, `StoryblokLiveEditing` only loads the bridge: Visual Editor changes aren't shown until the story is saved and the page reloads. Use `StoryblokStory` for live editing.
 
 **Important: Individual Content Components**
 
@@ -888,7 +896,7 @@ Error: Server Actions are not supported with static export
 
 1. **Using SSR export**: Live editing isn't available with `@storyblok/react/ssr`. Use `@storyblok/react/rsc` for live editing.
 
-2. **Missing bridge loading**: Ensure you're using `StoryblokStory` (RSC) which automatically loads the bridge, or manually add `StoryblokLiveEditing`.
+2. **Not using `StoryblokStory`**: With RSC, only `StoryblokStory` shows Visual Editor changes live. `StoryblokLiveEditing` on its own loads the bridge but doesn't render changes.
 
 3. **Development mode**: Live editing only works in development mode or when the Visual Editor is active.
 

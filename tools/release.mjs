@@ -6,10 +6,12 @@ import { join } from 'path';
 import { exit, argv, stdin, stdout } from 'process';
 import * as readline from 'readline';
 
-import { getBranchEligiblePackages } from './release-branches.mjs';
+import { getBranchEligiblePackages, isMaintenanceBranch } from './release-branches.mjs';
 
 const MAIN_BRANCH = 'main';
-const RELEASE_BRANCHES = ['main', 'alpha', 'beta', 'next'];
+const PRERELEASE_BRANCHES = ['alpha', 'beta', 'next'];
+const isReleaseBranch = branch =>
+  branch === MAIN_BRANCH || PRERELEASE_BRANCHES.includes(branch) || isMaintenanceBranch(branch);
 
 // Parse command line arguments
 const args = argv.slice(2);
@@ -148,10 +150,10 @@ async function main() {
 
   // Check 2: Are we on a release branch?
   const currentBranch = getCurrentBranch();
-  if (!RELEASE_BRANCHES.includes(currentBranch)) {
+  if (!isReleaseBranch(currentBranch)) {
     log(`❌ Error: You must be on a release branch to release`, RED);
     log(`\nCurrent branch: ${currentBranch}`, YELLOW);
-    log(`Allowed branches: ${RELEASE_BRANCHES.join(', ')}`, YELLOW);
+    log(`Allowed branches: ${[MAIN_BRANCH, ...PRERELEASE_BRANCHES].join(', ')}, or a maintenance branch like react-v6`, YELLOW);
     log('\n📋 Instructions:', BLUE);
     log(`  1. Commit or stash your current changes`);
     log(`  2. Switch to a release branch: ${YELLOW}git checkout ${MAIN_BRANCH}${RESET}`);
@@ -160,8 +162,10 @@ async function main() {
     exit(1);
   }
 
-  const isPrerelease = currentBranch !== MAIN_BRANCH;
-  log(`✅ On ${currentBranch} branch${isPrerelease ? ' (pre-release)' : ''}`, GREEN);
+  const isPrerelease = PRERELEASE_BRANCHES.includes(currentBranch);
+  const isMaintenance = isMaintenanceBranch(currentBranch);
+  const branchKind = isPrerelease ? ' (pre-release)' : isMaintenance ? ' (maintenance)' : '';
+  log(`✅ On ${currentBranch} branch${branchKind}`, GREEN);
 
   // Check 3: Do we have uncommitted changes?
   if (hasUncommittedChanges()) {
@@ -279,7 +283,7 @@ async function main() {
       log('  1. Go to the GitHub Actions tab');
       log('  2. Select the "Publish" workflow');
       log(`  3. Click "Run workflow" and select the ${YELLOW}${currentBranch}${RESET} branch`);
-      log(`  4. Click "Run workflow" to publish to npm${isPrerelease ? ` with the ${YELLOW}${currentBranch}${RESET} tag` : ''}\n`);
+      log(`  4. Click "Run workflow" to publish to npm${currentBranch !== MAIN_BRANCH ? ` with the ${YELLOW}${currentBranch}${RESET} tag` : ''}\n`);
     }
   } catch (error) {
     log('\n━'.repeat(50), BLUE);

@@ -67,7 +67,7 @@ pnpm release
 ```
 
 This script will:
-- Check that you're on a release branch (`main`, `alpha`, `beta`, or `next`)
+- Check that you're on a release branch (`main`, `alpha`, `beta`, `next`, or a maintenance branch like `react-v6`)
 - Check for uncommitted changes
 - Fetch the latest changes from remote
 - Verify you're up to date with the remote branch
@@ -111,9 +111,17 @@ To release a pre-release version (e.g., for testing before stable release):
    - Click **Run workflow** and select your pre-release branch
    - Packages will be published with the branch name as the npm tag
 
+### Maintenance Releases (e.g. `react-v6`)
+
+Branches named `<name>-v<major>` (e.g. `react-v6`) ship stable patch releases of an older major:
+
+1. Add the branch name to the package's `release.branches` on that branch. Maintenance branches only release packages that list them.
+2. Commit fixes with conventional commits and run `pnpm release` on the branch. Versions are bumped without a pre-release suffix, based on the latest tag reachable from the branch.
+3. Run the **Publish** workflow on the branch. Packages are published with the branch name as the npm tag (e.g. `react-v6`), so `latest` keeps pointing at the current major.
+
 #### Supported Pre-release Channels by Package
 
-Each package's `release.branches` in its `package.json` is the source of truth for which branches it may release from. Packages without a `release.branches` field release from every release branch (`main`, `alpha`, `beta`, `next`).
+Each package's `release.branches` in its `package.json` is the source of truth for which branches it may release from. Packages without a `release.branches` field release from every release branch (`main`, `alpha`, `beta`, `next`), but not from maintenance branches.
 
 The gate is enforced in three places:
 
@@ -239,6 +247,7 @@ The publish workflow will:
   - `next` branch → `next` tag
   - `beta` branch → `beta` tag
   - `alpha` branch → `alpha` tag
+  - maintenance branch (e.g. `react-v6`) → tag named after the branch
 
 ## Distribution Tags
 

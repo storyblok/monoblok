@@ -4,10 +4,12 @@ import React from 'react';
 import type { ISbStoryData } from '@storyblok/js';
 
 import StoryblokStory from '../rsc/story';
+import StoryblokServerStory from '../server/server-story';
 import { setComponents } from '../core/state';
+import { getOmittedRenderPropNames, toLiveEditRenderProps } from '../rsc/live-edit-props';
 
 // StoryblokLiveEditing registers the bridge on mount; for rendering tests we
-// keep `isVisualEditor` falsy so it short-circuits to `return null`.
+// keep `isVisualEditor` falsy so it only renders the server output.
 vi.mock('../utils', async () => {
   const actual = await vi.importActual<typeof import('../utils')>('../utils');
   return {
@@ -22,13 +24,23 @@ vi.mock('@storyblok/js', () => ({
   loadStoryblokBridge: vi.fn(() => Promise.resolve()),
 }));
 
-function Marker({ blok }: { blok: { label?: string } }) {
-  return <span data-testid="marker">{blok?.label ?? 'no-label'}</span>;
+function Marker({ blok, className }: { blok: { label?: string }; className?: string }) {
+  return (
+    <span data-testid="marker" className={className}>
+      {blok?.label ?? 'no-label'}
+    </span>
+  );
 }
 
-describe('storyblokStory cache lookup', () => {
+const story = (label: string) =>
+  ({
+    id: 1,
+    uuid: 'u-1',
+    content: { component: 'marker', label },
+  }) as unknown as ISbStoryData;
+
+describe('storyblokStory', () => {
   beforeEach(() => {
-    globalThis.storyCache = new Map();
     setComponents({ marker: Marker });
   });
 
@@ -36,57 +48,50 @@ describe('storyblokStory cache lookup', () => {
     vi.clearAllMocks();
   });
 
-  it('renders the id-keyed cached story and clears the id entry', () => {
-    const server = { id: 1, uuid: 'u-1', content: { component: 'marker', label: 'server' } } as unknown as ISbStoryData;
-    const cached = { id: 1, uuid: 'u-1', content: { component: 'marker', label: 'cached' } } as unknown as ISbStoryData;
-    globalThis.storyCache.set('1', cached);
+  it('renders the server story with its props', () => {
+    const { getByTestId } = render(<StoryblokStory story={story('server')} className="hero" />);
 
-    const { getByTestId } = render(<StoryblokStory story={server} />);
-
-    expect(getByTestId('marker').textContent).toBe('cached');
-    expect(globalThis.storyCache.has('1')).toBe(false);
+    expect(getByTestId('marker').textContent).toBe('server');
+    expect(getByTestId('marker').className).toBe('hero');
   });
 
-  it('merges the id-keyed payload onto the server story', () => {
+  it('parses string content', () => {
     const server = {
-      id: 42,
-      uuid: 'u-draft',
-      slug: 'home',
-      full_slug: 'home',
-      content: { component: 'marker', label: 'draft' },
+      id: 2,
+      content: JSON.stringify({ component: 'marker', label: 'from-string' }),
     } as unknown as ISbStoryData;
-    const historyPayload = {
-      id: 42,
-      content: { component: 'marker', label: 'history' },
-    } as unknown as ISbStoryData;
-    globalThis.storyCache.set('42', historyPayload);
 
     const { getByTestId } = render(<StoryblokStory story={server} />);
 
-    expect(getByTestId('marker').textContent).toBe('history');
-    expect(globalThis.storyCache.has('42')).toBe(false);
+    expect(getByTestId('marker').textContent).toBe('from-string');
   });
 
-  it('renders the server story when no cache entry matches', () => {
-    const server = { id: 7, uuid: 'u-7', content: { component: 'marker', label: 'only-draft' } } as unknown as ISbStoryData;
+  it('ignores a stale shared cache left by an earlier version', () => {
+    // Earlier versions served live edits from `globalThis.storyCache`, which any
+    // caller of the public Server Action could fill. Nothing reads it anymore.
+    Reflect.set(globalThis, 'storyCache', new Map([['1', story('injected')]]));
+    try {
+      const { getAllByTestId } = render(
+        <>
+          <StoryblokStory story={story('server')} />
+          <StoryblokServerStory story={story('server')} />
+        </>,
+      );
 
-    const { getByTestId } = render(<StoryblokStory story={server} />);
-
-    expect(getByTestId('marker').textContent).toBe('only-draft');
+      expect(getAllByTestId('marker').map(el => el.textContent)).toEqual(['server', 'server']);
+    }
+    finally {
+      Reflect.deleteProperty(globalThis, 'storyCache');
+    }
   });
 
-  it('clears a stale id entry even when no fresh cache hit occurs later', () => {
-    const server = { id: 11, uuid: 'u-11', content: { component: 'marker', label: 'draft' } } as unknown as ISbStoryData;
-    const staleHistory = { id: 11, content: { component: 'marker', label: 'stale-history' } } as unknown as ISbStoryData;
-    globalThis.storyCache.set('11', staleHistory);
+  it('forwards only primitive props to the live render and names the others', () => {
+    const props = { className: 'hero', count: 2, settings: { theme: 'dark' }, onClick: () => {} };
 
-    const { getByTestId, rerender } = render(<StoryblokStory story={server} />);
-    // First render merges the stale history payload but consumes the entry.
-    expect(getByTestId('marker').textContent).toBe('stale-history');
-    expect(globalThis.storyCache.has('11')).toBe(false);
-
-    // Second render without any fresh cache entry renders the server story.
-    rerender(<StoryblokStory story={server} />);
-    expect(getByTestId('marker').textContent).toBe('draft');
+    expect(toLiveEditRenderProps({ ...props, key: 'k', ref: null })).toEqual({
+      className: 'hero',
+      count: 2,
+    });
+    expect(getOmittedRenderPropNames(props)).toEqual(['settings', 'onClick']);
   });
 });

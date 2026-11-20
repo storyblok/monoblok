@@ -111,7 +111,8 @@
   },
   "release": {
     "branches": [
-      "main"
+      "main",
+      "react-v6"
     ]
   },
   "publishConfig": {

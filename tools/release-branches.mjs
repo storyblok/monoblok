@@ -4,11 +4,17 @@ import { readdirSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
 import { fileURLToPath } from 'url';
 
+const MAINTENANCE_BRANCH_PATTERN = /^[^/]+-v\d+$/;
+
+/** Stable release branches of an older major, e.g. `react-v6`. */
+export const isMaintenanceBranch = branch => MAINTENANCE_BRANCH_PATTERN.test(branch);
+
 /**
  * Reads `packages/*​/package.json` and splits packages by whether their
  * `release.branches` field allows releasing from the given branch.
  * Packages without a `release.branches` field are eligible on every
- * release branch.
+ * release branch except maintenance branches (e.g. `react-v6`), which
+ * only release the packages that list them.
  */
 export function getBranchEligiblePackages(branch, packagesDir = 'packages') {
   const eligible = [];
@@ -37,7 +43,7 @@ export function getBranchEligiblePackages(branch, packagesDir = 'packages') {
 
     const branches = pkg.release?.branches;
     if (!Array.isArray(branches)) {
-      eligible.push(pkg.name);
+      (isMaintenanceBranch(branch) ? excluded : eligible).push(pkg.name);
       continue;
     }
 

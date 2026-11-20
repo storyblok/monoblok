@@ -3,6 +3,30 @@ import { getStderrTarget, getStdinTarget } from "../ui/stream-target";
 import { stderrPromptContext } from "../ui";
 import { usageError } from "./errors";
 
+type Keypress = { name?: string; ctrl?: boolean };
+
+/**
+ * Asks on the terminal. Ctrl-D cancels like Ctrl-C: inquirer closes its
+ * input on Ctrl-D without settling the prompt, and Node then exits with 13.
+ */
+async function ask(message: string): Promise<boolean> {
+  const controller = new AbortController();
+  const onKeypress = (_text: unknown, key: Keypress | undefined) => {
+    if (key?.ctrl && key.name === "d") {
+      controller.abort();
+    }
+  };
+  process.stdin.on("keypress", onKeypress);
+  try {
+    return await confirm(
+      { message, default: false },
+      { ...stderrPromptContext, signal: controller.signal },
+    );
+  } finally {
+    process.stdin.off("keypress", onKeypress);
+  }
+}
+
 /**
  * Whether a destructive write may go ahead.
  *
@@ -34,5 +58,5 @@ export async function confirmWrite({
   if (getStdinTarget() !== "terminal" || getStderrTarget() !== "terminal") {
     throw usageError("Pass --yes to confirm: there is no terminal to ask on.");
   }
-  return confirm({ message: message(), default: false }, stderrPromptContext);
+  return ask(message());
 }

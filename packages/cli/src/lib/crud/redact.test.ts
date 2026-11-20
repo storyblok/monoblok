@@ -59,6 +59,6 @@ describe("SecretScrubber with a short secret", () => {
 
 describe("stripSecrets", () => {
   it("should drop secret fields from a record", () => {
-    expect(stripSecrets({ id: 1, secret: "s3" }, secretFields)).toEqual({ id: 1 });
+    expect(stripSecrets({ id: 1, secret: "s3" }, ["secret"])).toEqual({ id: 1 });
   });
 });

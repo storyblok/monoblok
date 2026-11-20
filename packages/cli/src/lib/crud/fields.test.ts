@@ -69,12 +69,10 @@ describe("parseFlagPatch", () => {
 
   it("should not take keys inherited from Object.prototype as fields", () => {
     expect(() => parseFlagPatch(fields, flags({ set: ["toString=1"] }))).toThrow(/unknown field/);
-    expect(() => parseFlagPatch(fields, flags({ set: ["__proto__=1"] }))).toThrow(
-      /unknown field/,
-    );
-    expect(composePayload(fields, JSON.parse('{"constructor":1}'), parseFlagPatch(fields, flags()))).toEqual(
-      {},
-    );
+    expect(() => parseFlagPatch(fields, flags({ set: ["__proto__=1"] }))).toThrow(/unknown field/);
+    expect(
+      composePayload(fields, JSON.parse('{"constructor":1}'), parseFlagPatch(fields, flags())),
+    ).toEqual({});
   });
 
   it("should reject a wrong type in --data as a usage error", () => {
@@ -124,6 +122,31 @@ describe("composePayload", () => {
     expect(composePayload(fields, { config: { a: 1, b: { d: 2 } } }, patch)).toEqual({
       config: { b: { c: 1, d: 2 } },
     });
+  });
+
+  it("should merge --data into the server's json field when no input line has it", () => {
+    const patch = parseFlagPatch(fields, flags({ data: '{"config":{"a":null,"c":3}}' }));
+    const server = { id: 1, name: "a", config: { a: 1, b: 2 } };
+
+    expect(composePayload(fields, undefined, patch, server)).toMatchObject({
+      config: { b: 2, c: 3 },
+    });
+  });
+
+  it("should not type-check server fields the write leaves alone", () => {
+    const patch = parseFlagPatch(fields, flags({ set: ["name=b"] }));
+    const server = { id: 1, name: "a", weight: "legacy" };
+
+    expect(composePayload(fields, undefined, patch, server)).toEqual({
+      name: "b",
+      weight: "legacy",
+    });
+  });
+
+  it("should keep each value of a list field once", () => {
+    const patch = parseFlagPatch(fields, flags({ set: ["tags=a,b,a"] }));
+
+    expect(composePayload(fields, undefined, patch)).toEqual({ tags: ["a", "b"] });
   });
 
   it("should take only writable fields from an input line", () => {

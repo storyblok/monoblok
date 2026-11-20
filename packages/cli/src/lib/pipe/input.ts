@@ -9,6 +9,12 @@ import { isRecord } from "../../utils/object";
 
 export type InputRecord = Record<string, unknown>;
 
+export type InputItem = {
+  /** The line the record starts on, counted from 1. */
+  line: number;
+  value: InputRecord;
+};
+
 /**
  * A record that is not a JSON object. The message names the record and the
  * line it starts on, never its content: a record can carry a secret.
@@ -28,8 +34,8 @@ const OPENING = new Set(["{", "["]);
 const CLOSING = new Set(["}", "]"]);
 
 /** Splits text into the JSON values it holds back to back. */
-function parseRecords(text: string): InputRecord[] {
-  const records: InputRecord[] = [];
+function parseRecords(text: string): InputItem[] {
+  const records: InputItem[] = [];
   let line = 1;
   let index = 0;
 
@@ -45,6 +51,13 @@ function parseRecords(text: string): InputRecord[] {
 
     const recordNumber = records.length + 1;
     const startLine = line;
+    if (char === "[" && recordNumber === 1) {
+      throw new MalformedInputError(
+        recordNumber,
+        startLine,
+        "is a JSON array, not one object per record: pipe it through `jq -c '.[]'`",
+      );
+    }
     if (char !== "{") {
       throw new MalformedInputError(recordNumber, startLine, "is not a JSON object");
     }
@@ -92,14 +105,13 @@ function parseRecords(text: string): InputRecord[] {
     if (!isRecord(value)) {
       throw new MalformedInputError(recordNumber, startLine, "is not a JSON object");
     }
-    records.push(value);
+    records.push({ line: startLine, value });
   }
 
   return records;
 }
 
-/** Reads every record from `input`, stdin by default. */
-export async function readRecords(input: Readable = process.stdin): Promise<InputRecord[]> {
+export async function readRecords(input: Readable = process.stdin): Promise<InputItem[]> {
   let text = "";
   input.setEncoding?.("utf8");
   for await (const chunk of input) {

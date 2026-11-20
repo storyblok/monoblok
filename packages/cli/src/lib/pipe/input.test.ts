@@ -8,25 +8,35 @@ describe("readRecords", () => {
   it("should read one record per JSONL line", async () => {
     const records = await readRecords(stdin('{"id":1}\n{"id":2}\n'));
 
-    expect(records).toEqual([{ id: 1 }, { id: 2 }]);
+    expect(records.map(({ value }) => value)).toEqual([{ id: 1 }, { id: 2 }]);
   });
 
   it("should read a single pretty-printed object", async () => {
     const records = await readRecords(stdin('{\n  "id": 1,\n  "name": "a}"\n}\n'));
 
-    expect(records).toEqual([{ id: 1, name: "a}" }]);
+    expect(records.map(({ value }) => value)).toEqual([{ id: 1, name: "a}" }]);
   });
 
   it("should read objects written back to back", async () => {
     const records = await readRecords(stdin('{"id":1}{"id":2} {\n"id":3}'));
 
-    expect(records).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }]);
+    expect(records.map(({ value }) => value)).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }]);
   });
 
   it("should read a record split across chunks", async () => {
     const records = await readRecords(stdin('{"id":1,"na', 'me":"x"}\n'));
 
-    expect(records).toEqual([{ id: 1, name: "x" }]);
+    expect(records.map(({ value }) => value)).toEqual([{ id: 1, name: "x" }]);
+  });
+
+  it("should give each record the line it starts on, counting blank lines", async () => {
+    const records = await readRecords(stdin('{"id":1}\n\n{\n"id":2\n}\n{"id":3}'));
+
+    expect(records.map(({ line }) => line)).toEqual([1, 3, 6]);
+  });
+
+  it("should suggest splitting a JSON array into records", async () => {
+    await expect(readRecords(stdin('[{"id":1}]'))).rejects.toThrow("jq -c '.[]'");
   });
 
   it("should read nothing from empty input", async () => {

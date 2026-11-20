@@ -166,7 +166,8 @@ export function mergePatch(target: unknown, patch: unknown): unknown {
 
 /**
  * The writable fields of an input line. Read-only, sidecar and unknown keys
- * are dropped, so a field the API adds later does not break the pipe.
+ * are dropped, so a field the API adds later does not break the pipe; a typo
+ * is dropped too (ADR-0029).
  */
 export function pickWritable(fields: ResourceFields, line: Payload | undefined): Payload {
   const writable: Payload = {};
@@ -203,9 +204,12 @@ function holdsType(type: FieldType, value: unknown): boolean {
  * Fails a record whose field cannot be what the API expects. Flags are
  * coerced on parsing, so this catches input lines.
  */
-function assertFieldTypes(fields: ResourceFields, payload: Payload): void {
+function assertFieldTypes(fields: ResourceFields, payload: Payload, given: Set<string>): void {
   for (const [field, value] of Object.entries(payload)) {
     const descriptor = writableField(fields, field);
+    if (!given.has(field)) {
+      continue;
+    }
     if (!descriptor) {
       continue;
     }
@@ -216,31 +220,57 @@ function assertFieldTypes(fields: ResourceFields, payload: Payload): void {
   }
 }
 
+/** A list field holding a value twice: the API would store it twice. */
+function withUniqueLists(fields: ResourceFields, payload: Payload): Payload {
+  return Object.fromEntries(
+    Object.entries(payload).map(([field, value]) => [
+      field,
+      writableField(fields, field)?.type === "string[]" && Array.isArray(value)
+        ? [...new Set(value)]
+        : value,
+    ]),
+  );
+}
+
 /**
- * The fields to write for one record: its input line, then `--data`, then
- * `--set`/`--unset`. A top-level `null` in `--data` clears the field rather
- * than leaving it out: leaving it out would keep the server's value.
+ * The fields a record should have after the write: the server's record
+ * (`base`, on update), then the input line, then `--data` as a JSON Merge
+ * Patch, then `--set`/`--unset`. A top-level `null` in `--data` clears the
+ * field rather than leaving it out: leaving it out would keep the server's
+ * value.
  */
 export function composePayload(
   fields: ResourceFields,
   line: Payload | undefined,
   patch: FlagPatch,
+  base?: Payload,
 ): Payload {
-  const payload = pickWritable(fields, line);
+  const fromLine = pickWritable(fields, line);
+  const payload = { ...pickWritable(fields, base), ...fromLine };
   for (const [field, value] of Object.entries(patch.data ?? {})) {
     payload[field] = value === null ? null : mergePatch(payload[field], value);
   }
   const composed = { ...payload, ...patch.assignments };
-  assertFieldTypes(fields, composed);
-  return composed;
+  const given = new Set([
+    ...Object.keys(fromLine),
+    ...Object.keys(patch.data ?? {}),
+    ...Object.keys(patch.assignments),
+  ]);
+  assertFieldTypes(fields, composed, given);
+  return withUniqueLists(fields, composed);
 }
 
 /** The API rejects these as blank, so a required field holding one is missing. */
 function isBlank(value: unknown): boolean {
-  return value === null || value === undefined || value === "" || (Array.isArray(value) && value.length === 0);
+  return (
+    value === null ||
+    value === undefined ||
+    value === "" ||
+    (Array.isArray(value) && value.length === 0)
+  );
 }
 
-/** Required fields the payload lacks, for validating a create before it is sent. */
+/** Required fields the payload lacks or holds blank, for validating a write before it is sent. */
 export function missingRequired(fields: ResourceFields, payload: Payload): string[] {
   return Object.entries(fields.writable)
     .filter(([field, descriptor]) => descriptor.required && isBlank(payload[field]))

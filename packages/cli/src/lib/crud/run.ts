@@ -37,10 +37,16 @@ export function createResultWriter<T>(columns: TableColumn<T>[]): ResultWriter<T
 }
 
 const formatValue = (value: unknown): string =>
-  value === null || value === undefined ? "–" : typeof value === "string" ? value : JSON.stringify(value);
+  value === null || value === undefined
+    ? "–"
+    : typeof value === "string"
+      ? value
+      : JSON.stringify(value);
 
 const describeChange = ([field, change]: [string, unknown]): string =>
-  isRecord(change) ? `${field}: ${formatValue(change.from)} → ${formatValue(change.to)}` : `${field}: ${String(change)}`;
+  isRecord(change)
+    ? `${field}: ${formatValue(change.from)} → ${formatValue(change.to)}`
+    : `${field}: ${String(change)}`;
 
 const describeResult = (line: ResultLine): string => {
   if (line._reason) {
@@ -60,9 +66,8 @@ const RESULT_COLUMNS: TableColumn<ResultLine>[] = [
 
 const PAST_TENSE = { create: "Created", update: "Updated", delete: "Deleted" } as const;
 
-/** One record of a batch: where it came from, for errors, and its input line if piped. */
 export type BatchItem<T> = {
-  /** Position in the input, counted from 1. Unset for a target named on the command line. */
+  /** The line on stdin the record starts on. Unset for a target named on the command line. */
   line?: number;
   value: T;
 };
@@ -100,6 +105,16 @@ async function withAllowedValues(maybeError: unknown, operations: CrudOperations
   return error;
 }
 
+/**
+ * Prints a notice on a terminal only: a program reading stderr gets error
+ * lines and nothing else.
+ */
+export function announce(message: string): void {
+  if (getStderrTarget() === "terminal") {
+    getUI().info(message);
+  }
+}
+
 export async function runBatch<T>({
   verb,
   noun,
@@ -117,7 +132,6 @@ export async function runBatch<T>({
   scrubber: SecretScrubber;
   handle: (item: BatchItem<T>, context: BatchContext) => Promise<ResultLine>;
 }): Promise<void> {
-  const ui = getUI();
   const logger = getLogger();
   const writer = createResultWriter(RESULT_COLUMNS);
   let done = 0;
@@ -158,10 +172,7 @@ export async function runBatch<T>({
     skipped > 0 && `skipped ${skipped}`,
     failed > 0 && `failed ${failed}`,
   ].filter(Boolean);
-  // On a terminal only: a program reading stderr gets error lines and nothing else.
-  if (getStderrTarget() === "terminal") {
-    ui.info(`${parts.join(", ")}.`);
-  }
+  announce(`${parts.join(", ")}.`);
 
   getReporter()
     .addSummary(`${verb}Results`, { total: items.length, succeeded: done, skipped, failed })

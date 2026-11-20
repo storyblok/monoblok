@@ -76,12 +76,21 @@ export function redactedData(raw: string, visibleFields: readonly string[]): Red
   return new RedactedOption(raw, "data", visibleFields);
 }
 
-/** A record without its secret fields: how a resource leaves the CLI. */
-export function stripSecrets(
-  record: Record<string, unknown>,
-  secretFields: readonly string[],
-): Record<string, unknown> {
-  return Object.fromEntries(Object.entries(record).filter(([key]) => !secretFields.includes(key)));
+/**
+ * A record without its secret fields: how a resource leaves the CLI. The key
+ * is dropped rather than marked: `list` output is valid input, and a marker
+ * such as `null` would clear the secret of every webhook piped back to
+ * `update`.
+ */
+export function stripSecrets<T extends Record<string, unknown>>(
+  record: T,
+  secretFields: readonly (keyof T)[],
+): T {
+  const stripped = { ...record };
+  for (const field of secretFields) {
+    delete stripped[field];
+  }
+  return stripped;
 }
 
 /**
@@ -93,7 +102,6 @@ export class SecretScrubber {
 
   constructor(private readonly secretFields: readonly string[]) {}
 
-  /** Records the secret values of a record or payload. */
   collect(record: Record<string, unknown> | undefined): void {
     for (const field of this.secretFields) {
       const value = record?.[field];

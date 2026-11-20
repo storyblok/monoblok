@@ -3,6 +3,11 @@ import type { Noun, ResourceRecord } from "./types";
 
 const ALL_DIGITS = /^\d+$/;
 
+/** The ID an all-digit target names, if it names one; it may still be a name. */
+export function targetId(target: string): number | undefined {
+  return ALL_DIGITS.test(target) ? Number(target) : undefined;
+}
+
 /**
  * Several records share a name: an error listing their IDs, never a guess.
  * The API keeps names unique, but records from before it did, or from a race,
@@ -28,8 +33,9 @@ export function resolveTarget<T extends ResourceRecord>(
   records: readonly T[],
   { nameField, noun }: { nameField?: string; noun: Noun },
 ): T {
-  if (ALL_DIGITS.test(target)) {
-    const byId = records.find((record) => record.id === Number(target));
+  const id = targetId(target);
+  if (id !== undefined) {
+    const byId = records.find((record) => record.id === id);
     if (byId) {
       return byId;
     }

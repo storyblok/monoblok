@@ -8,8 +8,9 @@ import type { SecretScrubber } from "./redact";
 
 // How a CRUD command reports an error: JSON on stderr when a program reads it,
 // the usual human-readable error on a terminal, the same split stdout makes
-// between JSONL and a table. Exit codes: 2 for a usage error (bad flags, missing
-// login, a missing target), 1 for everything else, API errors included.
+// between JSONL and a table (see ADR-0029). Exit codes: 2 for a usage error (bad
+// flags, missing login, a missing target), 1 for everything else, API errors
+// included.
 
 export type ErrorDetails = Record<string, unknown>;
 
@@ -17,10 +18,7 @@ export type ErrorLine = {
   error: string;
   status?: number;
   details?: ErrorDetails;
-  /**
-   * The position of the failing record on stdin, counted from 1. For JSONL it
-   * is the text line; for pretty-printed objects it counts records.
-   */
+  /** The line on stdin the failing record starts on, counted from 1. */
   line?: number;
   id?: number;
 };
@@ -72,7 +70,7 @@ export function toCrudError(maybeError: unknown): CrudError {
         : status === 403
           ? "The access token has no permission for this space or action."
           : status === 404
-            ? "Not found."
+            ? "Not found: the space or the record doesn't exist, or the access token can't see it."
             : status === 422
               ? "The Management API rejected the request."
               : `The Management API responded with ${status} ${statusText}.`.replace(/ \.$/, ".");
@@ -93,7 +91,7 @@ function toErrorLine(error: CrudError, context: { line?: number; id?: number }):
 function printHuman(errorLine: ErrorLine): void {
   const ui = getUI();
   const where = [
-    errorLine.line !== undefined && `record ${errorLine.line}`,
+    errorLine.line !== undefined && `line ${errorLine.line}`,
     errorLine.id !== undefined && `ID ${errorLine.id}`,
   ].filter(Boolean);
   ui.error(where.length > 0 ? `${errorLine.error} (${where.join(", ")})` : errorLine.error);

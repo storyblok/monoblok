@@ -78,7 +78,7 @@ function handleVerboseError(error: unknown): void {
  * Detect user-initiated prompt cancellation (Ctrl+C or Escape in @inquirer/prompts).
  * These are not application errors — exit cleanly with code 0.
  */
-function isPromptCancellation(error: Error): boolean {
+export function isPromptCancellation(error: Error): boolean {
   return (
     error.name === "ExitPromptError" ||
     error.name === "AbortPromptError" ||

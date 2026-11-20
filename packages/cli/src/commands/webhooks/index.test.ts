@@ -14,6 +14,9 @@ import { getProgram } from "../../program";
 import "../languages";
 import { loadConfigLayers } from "../../lib/config/helpers";
 import { webhookFields } from "../../generated/mapi/resource-fields.gen";
+import { Command } from "commander";
+import { addCrudVerbs } from "../../lib/crud";
+import { webhooksResource } from "./resource";
 import { webhooksCommand } from ".";
 
 // The config files on disk, as layers: everything else of config resolution is real.
@@ -942,6 +945,15 @@ describe("webhooks command", () => {
       expect(stderrErrors()).toEqual([expect.objectContaining({ line: 3 })]);
     });
 
+    it("should apply --data from a config file, given as a JSON string", async () => {
+      const [webhook] = preconditions.hasWebhooks({ name: "deploy", activated: true });
+      preconditions.configFileSets("update", { data: '{"activated":false}' });
+
+      await run("update", "deploy", "--space", SPACE);
+
+      expect(api.writes).toEqual([{ method: "PATCH", id: webhook.id, body: { activated: false } }]);
+    });
+
     it("should apply --set from a config file", async () => {
       const [webhook] = preconditions.hasWebhooks({ name: "deploy", activated: true });
       preconditions.configFileSets("update", { set: "activated=false" });
@@ -949,6 +961,13 @@ describe("webhooks command", () => {
       await run("update", "deploy", "--space", SPACE);
 
       expect(api.writes).toEqual([{ method: "PATCH", id: webhook.id, body: { activated: false } }]);
+    });
+
+    it("should show the webhook as the target where the verbs join an existing command", () => {
+      const parent = new Command("existing");
+      addCrudVerbs(parent, webhooksResource, { verbs: ["get", "delete"] });
+
+      expect(parent.helpInformation()).toMatch(/^\s+delete \[options\] <webhook>/m);
     });
 
     it("should show the webhook as the target in the usage line", async () => {
@@ -1348,6 +1367,25 @@ describe("webhooks command", () => {
       const [webhook] = preconditions.hasWebhooks({});
 
       await run("update", String(webhook.id), "--space", SPACE, "--unset", `secret=${LEAKED}`);
+      await run("update", String(webhook.id), "--space", SPACE, "--unset", LEAKED);
+
+      expect(process.exitCode).toBe(2);
+      expect(filesAndStreams()).not.toContain(LEAKED);
+    });
+
+    it("should keep a value out of errors, logs and reports when = is mistyped", async () => {
+      const [webhook] = preconditions.hasWebhooks({});
+
+      await run("update", String(webhook.id), "--space", SPACE, "--set", `secret:${LEAKED}`);
+      await run("update", String(webhook.id), "--space", SPACE, "--set", `a ${LEAKED}=1`);
+      await run(
+        "update",
+        String(webhook.id),
+        "--space",
+        SPACE,
+        "--data",
+        `{"secret: ${LEAKED}":1}`,
+      );
 
       expect(process.exitCode).toBe(2);
       expect(filesAndStreams()).not.toContain(LEAKED);

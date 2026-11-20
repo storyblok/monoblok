@@ -1,23 +1,17 @@
 import type { Webhook, WebhookCreate, WebhookUpdate } from "@storyblok/management-api-client";
 import { getMapiClient } from "../../api";
 import { webhookFields } from "../../generated/mapi/resource-fields.gen";
-import { CrudError } from "../../lib/crud/errors";
 import type { Payload } from "../../lib/crud/fields";
-import { hasRequiredFields, toRequestBody } from "../../lib/crud/request";
+import { requestBodies } from "../../lib/crud/request";
 import type { CrudResource, Noun } from "../../lib/crud/types";
 
 const NOUN: Noun = { singular: "webhook", plural: "webhooks" };
 
-const toWebhookUpdate = (payload: Payload): WebhookUpdate =>
-  toRequestBody(webhookFields, payload, NOUN);
+const webhookBodies = requestBodies<WebhookUpdate>()(webhookFields, {}, NOUN);
 
-function toWebhookCreate(payload: Payload): WebhookCreate {
-  const body = toRequestBody(webhookFields, payload, NOUN);
-  if (!hasRequiredFields(webhookFields, body)) {
-    throw new CrudError("The webhook lacks a required field.");
-  }
-  return body;
-}
+const toWebhookUpdate = (payload: Payload): WebhookUpdate => webhookBodies.update(payload);
+
+const toWebhookCreate = (payload: Payload): WebhookCreate => webhookBodies.create(payload);
 
 export const webhooksResource: CrudResource<Webhook> = {
   noun: NOUN,

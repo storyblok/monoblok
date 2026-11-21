@@ -1,0 +1,90 @@
+{
+  "id": 1,
+  "uuid": "3f2b7c10-1111-4aaa-9bbb-000000000001",
+  "name": "Page",
+  "slug": "page",
+  "full_slug": "page",
+  "content": {
+    "_uid": "page-root",
+    "component": "page",
+    "title": "Page",
+    "body": [
+      {
+        "_uid": "section-a",
+        "component": "section",
+        "heading": "First section",
+        "meta": [
+          {
+            "_uid": "meta-a",
+            "component": "meta",
+            "author": "Ada",
+            "og_title": "A"
+          }
+        ],
+        "items": [
+          {
+            "_uid": "card-a1",
+            "component": "card",
+            "title": "Card A1",
+            "description": "First card",
+            "legacy_price": "19.99",
+            "featured": "true",
+            "old_slug": "card-a-1",
+            "slug": "",
+            "meta": [
+              {
+                "_uid": "meta-a1",
+                "component": "meta",
+                "author": "Grace",
+                "og_title": "A1"
+              }
+            ]
+          },
+          {
+            "_uid": "card-a2",
+            "component": "card",
+            "title": "Card A2",
+            "description": "Second card",
+            "legacy_price": "not-a-number",
+            "featured": "",
+            "old_slug": "",
+            "slug": "kept",
+            "meta": []
+          }
+        ]
+      },
+      {
+        "_uid": "section-b",
+        "component": "section",
+        "heading": "Second section",
+        "meta": [],
+        "items": [
+          {
+            "_uid": "card-b1",
+            "component": "card",
+            "title": "Card B1",
+            "description": "Third card",
+            "legacy_price": "5",
+            "featured": "false",
+            "old_slug": "card-b-1",
+            "slug": "",
+            "meta": [
+              {
+                "_uid": "meta-b1",
+                "component": "meta",
+                "author": "Alan",
+                "og_title": "B1"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "_uid": "meta-top",
+        "component": "meta",
+        "author": "Editor",
+        "og_title": "Top"
+      }
+    ]
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "results": [
+    {
+      "scenarioKey": "skills/triage@case-one",
+      "agentName": "monoblok",
+      "exitCode": 0,
+      "file": "scenarios/skills/triage@case-one/monoblok/run-1/result.json",
+      "runCount": 2,
+      "runs": [
+        {
+          "runIndex": 1,
+          "exitCode": 0,
+          "file": "x",
+          "axisScore": 90,
+          "totalCostUsd": 0.5,
+          "tokenUsage": { "input": 100, "output": 900 }
+        },
+        {
+          "runIndex": 2,
+          "exitCode": 1,
+          "failed": true,
+          "file": "x",
+          "totalCostUsd": 0.1,
+          "tokenUsage": { "input": 50, "output": 50 }
+        }
+      ]
+    },
+    {
+      "scenarioKey": "skills/triage@case-one",
+      "agentName": "bare",
+      "exitCode": 0,
+      "file": "scenarios/skills/triage@case-one/bare.json",
+      "totalCostUsd": 0.4,
+      "tokenUsage": { "input": 1000, "output": 119000 },
+      "score": { "axisScore": 82 }
+    }
+  ]
+}

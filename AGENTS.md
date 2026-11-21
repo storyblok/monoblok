@@ -7,7 +7,8 @@ job skip the `blueprints/*` projects (tag `blueprint`); build one with
 `pnpm nx build blueprint-core-<framework>` (ADR-0023).
 
 - `packages/`: Public packages and integrations.
-- `tools/`: Internal development tools and scripts.
+- `tools/`: Internal development tools and scripts. `tools/agent-evals/` measures skills against
+  baselines; read `tools/agent-evals/README.md` before changing skills or running evals.
 - Packages use the `@storyblok/` scope (with the exception of: `storyblok` (the CLI) and
   `storyblok-js-client`). Note that some folder names differ from their package names: `capi-client`
   → `@storyblok/api-client`, `mapi-client` → `@storyblok/management-api-client`, `cli` →

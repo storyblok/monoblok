@@ -7,7 +7,7 @@ import type { ChangesetData, ChangesetEntry, RemoteSchemaData } from "../types";
 import { applyDefaults, COMPONENT_DEFAULTS, COMPONENT_OPTIONAL_KEYS } from "../utils";
 import { serializeComponent, serializeDatasource } from "../serialize";
 import { getMapiClient } from "../../../api";
-import { handleAPIError } from "../../../utils";
+import { CommandError, handleAPIError } from "../../../utils";
 import { fileExists, readDirectory } from "../../../utils/filesystem";
 import {
   toComponentCreate,
@@ -16,6 +16,7 @@ import {
   toDatasourceUpdate,
 } from "../transform";
 import { buildGroupPathByUuid, mapSchemaGroupLists } from "../folders";
+import { describeDimensionConflicts } from "../dimensions";
 
 /** API-assigned fields stripped before sending a rollback create payload to MAPI. */
 const API_ASSIGNED_FIELDS = [
@@ -281,6 +282,26 @@ function remapGroupUuids(
 }
 
 /**
+ * Throws when a datasource the rollback restores holds dimensions the
+ * Management API would reject, before any rollback op is applied.
+ */
+export function assertRollbackApplicable(ops: RollbackOp[], remote: RemoteSchemaData): void {
+  for (const op of ops) {
+    if (op.type !== "datasource" || op.action !== "update") {
+      continue;
+    }
+    const conflict = describeDimensionConflicts(
+      op.name,
+      op.payload.dimensions,
+      remote.datasources.get(op.name)?.dimensions,
+    );
+    if (conflict) {
+      throw new CommandError(conflict);
+    }
+  }
+}
+
+/**
  * Applies rollback ops to the MAPI in dependency-safe order:
  * 1. Folder creates (parent-first) — recreated groups get new uuids, tracked in
  *    an old→new map so restored components can be remapped onto them.
@@ -309,6 +330,8 @@ export async function executeRollback(
   const componentOps = ops.filter((op) => op.type === "component");
   const datasourceOps = ops.filter((op) => op.type === "datasource");
   const folderOps = ops.filter((op) => op.type === "folder");
+
+  assertRollbackApplicable(datasourceOps, remote);
 
   // Live group state (path → { id, uuid }), grown as folders are recreated, plus
   // an old→new uuid map so restored components point at the recreated groups.

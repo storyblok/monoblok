@@ -4,7 +4,7 @@ import chalk from "chalk";
 import { createTwoFilesPatch } from "diff";
 
 import type { ChangesetData, ChangesetEntry, RemoteSchemaData } from "../types";
-import { applyDefaults, COMPONENT_DEFAULTS, COMPONENT_OPTIONAL_KEYS } from "../utils";
+import { applyDefaults, COMPONENT_DEFAULTS, COMPONENT_OPTIONAL_KEYS, isRecord } from "../utils";
 import { serializeComponent, serializeDatasource } from "../serialize";
 import { getMapiClient } from "../../../api";
 import { handleAPIError } from "../../../utils";
@@ -15,7 +15,8 @@ import {
   toDatasourceCreate,
   toDatasourceUpdate,
 } from "../transform";
-import { buildGroupPathByUuid, mapSchemaGroupLists } from "../folders";
+import { buildFolderByPath, mapSchemaGroupLists } from "../folders";
+import { CHANGESETS_DIR } from "../changeset";
 
 /** API-assigned fields stripped before sending a rollback create payload to MAPI. */
 const API_ASSIGNED_FIELDS = [
@@ -68,7 +69,7 @@ export interface RollbackOp {
  * @returns Full file paths sorted newest-first. Empty array if the directory does not exist or has no `.json` files.
  */
 export async function listChangesets(basePath: string): Promise<string[]> {
-  const dir = join(basePath, "schema", "changesets");
+  const dir = join(basePath, CHANGESETS_DIR);
 
   if (!(await fileExists(dir))) {
     return [];
@@ -82,16 +83,54 @@ export async function listChangesets(basePath: string): Promise<string[]> {
     .map((f) => join(dir, f));
 }
 
+function isChangesetData(value: unknown): value is ChangesetData {
+  return isRecord(value) && typeof value.spaceId === "number" && Array.isArray(value.changes);
+}
+
 /**
- * Reads and JSON-parses a changeset file.
+ * Reads a changeset file.
  *
- * @param filePath - Absolute path to the changeset `.json` file.
- * @returns Parsed `ChangesetData`.
- * @throws If the file does not exist or cannot be parsed as JSON.
+ * @throws If the file does not exist or does not hold a changeset.
  */
 export async function loadChangeset(filePath: string): Promise<ChangesetData> {
-  const content = await readFile(filePath, "utf-8");
-  return JSON.parse(content) as ChangesetData;
+  const raw = await readFile(filePath, "utf-8");
+  let content: unknown;
+  try {
+    content = JSON.parse(raw);
+  } catch {
+    throw new Error(`${filePath} is not valid JSON.`);
+  }
+  if (!isChangesetData(content)) {
+    throw new Error(`${filePath} is not a schema changeset.`);
+  }
+  return content;
+}
+
+/** A changeset file, with `changeset: null` when the file can't be read as one. */
+export interface ChangesetFile {
+  path: string;
+  changeset: ChangesetData | null;
+}
+
+/** Reads every changeset file, newest first, without failing on unreadable ones. */
+export async function* readChangesets(basePath: string): AsyncGenerator<ChangesetFile> {
+  for (const path of await listChangesets(basePath)) {
+    let changeset: ChangesetData | null = null;
+    try {
+      changeset = await loadChangeset(path);
+    } catch {
+      // Reported to the caller as `changeset: null`.
+    }
+    yield { path, changeset };
+  }
+}
+
+/**
+ * Update and delete entries without a `before` snapshot. Rollbacks made with
+ * earlier CLI versions saved changesets like this, and they can't be restored.
+ */
+export function findUnrestorableEntries(changeset: ChangesetData): ChangesetEntry[] {
+  return changeset.changes.filter((entry) => entry.action !== "create" && !entry.before);
 }
 
 /**
@@ -130,6 +169,95 @@ export function buildRollbackOps(changeset: ChangesetData): RollbackOp[] {
         return { type: entry.type, name: entry.name, action: entry.action, payload: {} };
     }
   });
+}
+
+function remoteEntityLookup(
+  remote: RemoteSchemaData,
+): (op: RollbackOp) => Record<string, unknown> | undefined {
+  const folderByPath = buildFolderByPath([...remote.componentFolders.values()]);
+  return (op) => {
+    switch (op.type) {
+      case "component":
+        return remote.components.get(op.name);
+      case "datasource":
+        return remote.datasources.get(op.name);
+      case "folder":
+        return folderByPath.get(op.name);
+    }
+  };
+}
+
+/**
+ * Resolves rollback ops against the live space. An update or delete whose entity no
+ * longer exists is skipped. Restoring a block or data source that still exists
+ * updates it instead of creating a duplicate, so re-running a rollback that
+ * failed midway, or rolling back a push that failed midway, does not fail on
+ * entities already in the restored state.
+ */
+export function resolveRollbackOps(
+  ops: RollbackOp[],
+  remote: RemoteSchemaData,
+): { ops: RollbackOp[]; skipped: RollbackOp[] } {
+  const remoteEntity = remoteEntityLookup(remote);
+  const resolved: RollbackOp[] = [];
+  const skipped: RollbackOp[] = [];
+  for (const op of ops) {
+    const exists = remoteEntity(op) !== undefined;
+    if (op.action !== "create" && !exists) {
+      skipped.push(op);
+    } else if (op.action === "create" && op.type !== "folder" && exists) {
+      resolved.push({ ...op, action: "update" });
+    } else {
+      resolved.push(op);
+    }
+  }
+  return { ops: resolved, skipped };
+}
+
+/**
+ * Changeset entries for a rollback of resolved ops. An update or a delete
+ * records the entity as it is before the rollback, so the rollback can itself
+ * be rolled back. A folder that already exists is reused, not created, so it
+ * gets no entry.
+ */
+export function buildRollbackChangesetEntries(
+  ops: RollbackOp[],
+  remote: RemoteSchemaData,
+): ChangesetEntry[] {
+  const remoteEntity = remoteEntityLookup(remote);
+  const entries: ChangesetEntry[] = [];
+  for (const op of ops) {
+    const existing = remoteEntity(op);
+    if (op.action === "create" && existing) {
+      continue;
+    }
+    entries.push({
+      type: op.type,
+      name: op.name,
+      action: op.action,
+      ...(op.action !== "create" && existing && { before: { ...existing } }),
+      ...(Object.keys(op.payload).length > 0 && { after: op.payload }),
+    });
+  }
+  return entries;
+}
+
+/**
+ * Changesets recorded for `spaceId` that have changes to roll back, newest
+ * first. Files that can't be read as a changeset are passed to `onUnreadable`.
+ */
+export async function* findRollbackCandidates(
+  basePath: string,
+  spaceId: number,
+  onUnreadable: (path: string) => void,
+): AsyncGenerator<{ path: string; changeset: ChangesetData }> {
+  for await (const { path, changeset } of readChangesets(basePath)) {
+    if (!changeset) {
+      onUnreadable(path);
+    } else if (changeset.spaceId === spaceId && changeset.changes.length > 0) {
+      yield { path, changeset };
+    }
+  }
 }
 
 /** Maps a changeset action to the rollback action that inverts it. */
@@ -229,26 +357,6 @@ interface GroupRef {
   uuid: string;
 }
 
-/**
- * Builds a `slug path → { id, uuid }` map from the live remote component groups.
- *
- * Duplicated (intentionally, kept small) from `push/actions.ts`'s
- * `buildGroupByPath` so rollback stays decoupled from the push module; both walk
- * the same `buildGroupPathByUuid` output.
- */
-function buildGroupRefByPath(remote: RemoteSchemaData): Map<string, GroupRef> {
-  const folders = [...remote.componentFolders.values()];
-  const pathByUuid = buildGroupPathByUuid(folders);
-  const byPath = new Map<string, GroupRef>();
-  for (const folder of folders) {
-    const segments = pathByUuid.get(folder.uuid);
-    if (segments?.length) {
-      byPath.set(segments.join("/"), { id: folder.id, uuid: folder.uuid });
-    }
-  }
-  return byPath;
-}
-
 /** The parent slug path of a folder path, or `null` for a root folder. */
 function parentPathOf(path: string): string | null {
   const segments = path.split("/");
@@ -312,7 +420,9 @@ export async function executeRollback(
 
   // Live group state (path → { id, uuid }), grown as folders are recreated, plus
   // an old→new uuid map so restored components point at the recreated groups.
-  const groupRefByPath = buildGroupRefByPath(remote);
+  const groupRefByPath = new Map<string, GroupRef>(
+    buildFolderByPath([...remote.componentFolders.values()]),
+  );
   const groupUuidMap = new Map<string, string>();
 
   // 1. Folder creates (parent-first): recreate groups the push deleted. Each

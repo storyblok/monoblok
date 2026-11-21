@@ -14,11 +14,14 @@ import { saveChangeset } from "../changeset";
 import { displayPath } from "../utils";
 import type { SchemaRollbackOptions } from "./constants";
 import {
+  buildRollbackChangesetEntries,
   buildRollbackOps,
   executeRollback,
+  findRollbackCandidates,
+  findUnrestorableEntries,
   formatRollbackOutput,
-  listChangesets,
   loadChangeset,
+  resolveRollbackOps,
 } from "./actions";
 
 schemaCommand
@@ -27,7 +30,11 @@ schemaCommand
   .option("-s, --space <space>", "space ID")
   .option("--dry-run", "Show what would be undone without applying changes", false)
   .option("--yes", "Skip confirmation prompt", false)
-  .option("--latest", "Automatically select the most recent changeset", false)
+  .option(
+    "--latest",
+    "Automatically select the most recent changeset with changes for the space",
+    false,
+  )
   .action(async (changesetFile: string | undefined, options: SchemaRollbackOptions, command) => {
     const ui = getUI();
     const logger = getLogger();
@@ -55,29 +62,37 @@ schemaCommand
     try {
       // 1. Resolve changeset file
       const resolvedBase = resolvePath(basePath, "");
+      const spaceId = Number(space);
+      const noCandidatesMessage = `No changesets with changes found for space ${space}. Run \`schema push\` first to create one.`;
+      const candidates = findRollbackCandidates(resolvedBase, spaceId, (path) => {
+        ui.warn(`Skipped ${basename(path)}: not a readable schema changeset.`);
+      });
       let resolvedFile: string;
 
       if (changesetFile) {
         resolvedFile = changesetFile;
       } else if (options.latest) {
-        const available = await listChangesets(resolvedBase);
-        if (available.length === 0) {
-          ui.warn("No changesets found. Run `schema push` first to create one.");
+        const { value: latest } = await candidates.next();
+        if (!latest) {
+          ui.warn(noCandidatesMessage);
           return;
         }
-        resolvedFile = available[0];
+        resolvedFile = latest.path;
         ui.info(`Using latest changeset: ${basename(resolvedFile)}`);
       } else {
-        const available = await listChangesets(resolvedBase);
-        if (available.length === 0) {
-          ui.warn("No changesets found. Run `schema push` first to create one.");
+        const choices = [];
+        for await (const { path, changeset } of candidates) {
+          choices.push({
+            name: `${basename(path)} (${changeset.changes.length} change(s))`,
+            value: path,
+          });
+        }
+        if (choices.length === 0) {
+          ui.warn(noCandidatesMessage);
           return;
         }
         resolvedFile = await select(
-          {
-            message: "Select a changeset to roll back:",
-            choices: available.map((f) => ({ name: basename(f), value: f })),
-          },
+          { message: "Select a changeset to roll back:", choices },
           stderrPromptContext,
         );
       }
@@ -92,6 +107,29 @@ schemaCommand
       }
 
       logger.info("Changeset loaded", { file: resolvedFile, changes: changeset.changes.length });
+
+      const changesetName = displayPath(resolvedFile, basePath);
+      if (changeset.spaceId !== spaceId) {
+        handleError(
+          new CommandError(
+            `${changesetName} was recorded for space ${changeset.spaceId}, not space ${space}.`,
+          ),
+          verbose,
+        );
+        return;
+      }
+
+      const unrestorable = findUnrestorableEntries(changeset);
+      if (unrestorable.length > 0) {
+        const names = unrestorable.map((entry) => `${entry.type} '${entry.name}'`).join(", ");
+        handleError(
+          new CommandError(
+            `Cannot roll back ${changesetName}: it does not record the state to restore for ${names}. Rollbacks made with earlier CLI versions saved changesets without it. Pass another changeset file, or delete this one.`,
+          ),
+          verbose,
+        );
+        return;
+      }
 
       // 3. Build rollback ops
       const ops = buildRollbackOps(changeset);
@@ -144,11 +182,38 @@ schemaCommand
         `Remote: ${remote.components.size} components, ${remote.componentFolders.size} component folders, ${remote.datasources.size} datasources`,
       );
 
-      // 8. Execute rollback
+      // 8. Resolve the ops against the live space
+      const resolved = resolveRollbackOps(ops, remote);
+      if (resolved.skipped.length > 0) {
+        const names = resolved.skipped.map((op) => `${op.type} '${op.name}'`).join(", ");
+        ui.info(`Skipped ${resolved.skipped.length} change(s), no longer in the space: ${names}.`);
+      }
+      const rollbackEntries = buildRollbackChangesetEntries(resolved.ops, remote);
+      if (rollbackEntries.length === 0) {
+        ui.ok("The space already matches the changeset — nothing to roll back.");
+        return;
+      }
+
+      // 9. Save the rollback changeset before applying, so a rollback failing midway can be rolled back.
+      const rollbackChangesetPath = await saveChangeset(resolvedBase, {
+        timestamp: new Date().toISOString(),
+        spaceId,
+        remote: {
+          components: remoteResult.rawComponents,
+          componentFolders: remoteResult.rawComponentFolders,
+          datasources: remoteResult.rawDatasources,
+        },
+        changes: rollbackEntries,
+      });
+      logger.info("Rollback changeset saved", {
+        path: displayPath(rollbackChangesetPath, basePath),
+      });
+
+      // 10. Execute rollback
       const rollbackSpinner = ui.createSpinner("Applying rollback...");
       let result: Awaited<ReturnType<typeof executeRollback>>;
       try {
-        result = await executeRollback(space, ops, remote);
+        result = await executeRollback(space, resolved.ops, remote);
       } catch (error) {
         rollbackSpinner.failed("Failed to apply rollback");
         throw error;
@@ -160,27 +225,6 @@ schemaCommand
       rollbackSpinner.succeed(
         `Rolled back: ${result.created} created, ${result.updated} updated, ${result.deleted} deleted.`,
       );
-
-      // 9. Save rollback changeset
-      const timestamp = new Date().toISOString();
-      const rollbackChangesetPath = await saveChangeset(resolvedBase, {
-        timestamp,
-        spaceId: Number(space),
-        remote: {
-          components: remoteResult.rawComponents,
-          componentFolders: remoteResult.rawComponentFolders,
-          datasources: remoteResult.rawDatasources,
-        },
-        changes: ops.map((op) => ({
-          type: op.type,
-          name: op.name,
-          action: op.action,
-          ...(Object.keys(op.payload).length > 0 && { after: op.payload }),
-        })),
-      });
-      logger.info("Rollback changeset saved", {
-        path: displayPath(rollbackChangesetPath, basePath),
-      });
     } catch (maybeError) {
       summary.failed += 1;
       handleError(toError(maybeError), verbose);

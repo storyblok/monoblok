@@ -1,7 +1,8 @@
 import chalk from "chalk";
 import { input, password, select } from "@inquirer/prompts";
+import { REGIONAL_DATA } from "@storyblok/region-helper";
 import type { RegionCode } from "../../constants";
-import { colorPalette, regionNames, regions } from "../../constants";
+import { colorPalette, regions } from "../../constants";
 import { handleError } from "../../utils";
 import { loginWithEmailAndPassword, loginWithOtp, loginWithToken } from "./actions";
 import { session } from "../../session";
@@ -72,7 +73,7 @@ export async function performInteractiveLogin(options?: {
           {
             message: "Please select the region you would like to work in:",
             choices: Object.values(regions).map((region: RegionCode) => ({
-              name: regionNames[region],
+              name: REGIONAL_DATA[region].name,
               value: region,
             })),
             default: regions.EU,
@@ -90,7 +91,7 @@ export async function performInteractiveLogin(options?: {
         await persistCredentials(userRegion);
         if (showWelcomeMessage) {
           ui.ok(
-            `Successfully logged in to region ${chalk.hex(colorPalette.PRIMARY)(`${regionNames[userRegion]} (${userRegion})`)}. Welcome ${chalk.hex(colorPalette.PRIMARY)(user.friendly_name)}.`,
+            `Successfully logged in to region ${chalk.hex(colorPalette.PRIMARY)(`${REGIONAL_DATA[userRegion].name} (${userRegion})`)}. Welcome ${chalk.hex(colorPalette.PRIMARY)(user.friendly_name)}.`,
             true,
           );
         }
@@ -121,7 +122,7 @@ export async function performInteractiveLogin(options?: {
           {
             message: "Please select the region you would like to work in:",
             choices: Object.values(regions).map((region: RegionCode) => ({
-              name: regionNames[region],
+              name: REGIONAL_DATA[region].name,
               value: region,
             })),
             default: regions.EU,
@@ -157,7 +158,7 @@ export async function performInteractiveLogin(options?: {
         await persistCredentials(userRegion);
         if (showWelcomeMessage) {
           ui.ok(
-            `Successfully logged in to region ${chalk.hex(colorPalette.PRIMARY)(`${regionNames[userRegion]} (${userRegion})`)}. Welcome ${chalk.hex(colorPalette.PRIMARY)(userEmail)}.`,
+            `Successfully logged in to region ${chalk.hex(colorPalette.PRIMARY)(`${REGIONAL_DATA[userRegion].name} (${userRegion})`)}. Welcome ${chalk.hex(colorPalette.PRIMARY)(userEmail)}.`,
             true,
           );
         }

@@ -8,7 +8,7 @@ import type {
   UpdateOrganizationResponses,
 } from "../generated/mapi/types.gen";
 import type { ApiResponse, FetchOptions, MapiResourceDeps } from "../client";
-import { buildCallOptions } from "./shared";
+import { buildCallOptions } from "../utils/call-options";
 
 /** The organization of the authenticated user. */
 export function createOrgsResource<DefaultThrowOnError extends boolean = false>(

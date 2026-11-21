@@ -10,6 +10,7 @@ import type {
 } from "../generated/mapi/types.gen";
 import type { ApiResponse, FetchOptions, MapiResourceDeps } from "../client";
 import { resolveSpaceId, type SpaceIdPathOverride } from "./shared";
+import { buildCallOptions } from "../utils/call-options";
 
 /**
  * Shared (organization-level) internal tags, scoped to a library. Every method
@@ -22,10 +23,6 @@ export function createSharedInternalTagsResource<DefaultThrowOnError extends boo
 ) {
   const { client, spaceId, wrapRequest } = deps;
   const getSpaceId = (path?: SpaceIdPathOverride["path"]) => resolveSpaceId(spaceId, path);
-  const kyOpts = (fetchOptions?: FetchOptions) =>
-    fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {};
-  const maybeThrow = (throwOnError?: boolean) =>
-    throwOnError === undefined ? {} : { throwOnError };
 
   return {
     list<ThrowOnError extends boolean = false>(
@@ -44,8 +41,7 @@ export function createSharedInternalTagsResource<DefaultThrowOnError extends boo
             path: { space_id: getSpaceId(path) },
             query,
             signal,
-            ...maybeThrow(throwOnError),
-            ...kyOpts(fetchOptions),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -66,8 +62,7 @@ export function createSharedInternalTagsResource<DefaultThrowOnError extends boo
             path: { space_id: getSpaceId(path) },
             body,
             signal,
-            ...maybeThrow(throwOnError),
-            ...kyOpts(fetchOptions),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -89,8 +84,7 @@ export function createSharedInternalTagsResource<DefaultThrowOnError extends boo
             path: { space_id: getSpaceId(path), id: tagId },
             body,
             signal,
-            ...maybeThrow(throwOnError),
-            ...kyOpts(fetchOptions),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -112,8 +106,7 @@ export function createSharedInternalTagsResource<DefaultThrowOnError extends boo
             path: { space_id: getSpaceId(path), id: tagId },
             query,
             signal,
-            ...maybeThrow(throwOnError),
-            ...kyOpts(fetchOptions),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );

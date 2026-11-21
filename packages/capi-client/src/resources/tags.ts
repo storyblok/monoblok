@@ -1,6 +1,7 @@
 import { listTags as listTagsApi } from "../generated/capi/sdk.gen";
 import type { ListTagsData, ListTagsResponses } from "../generated/capi/types.gen";
 import type { ApiResponse, FetchOptions, ResourceDeps } from "../client";
+import { buildCallOptions } from "../utils/call-options";
 
 export function createTagsResource<DefaultThrowOnError extends boolean = false>(
   deps: ResourceDeps<DefaultThrowOnError>,
@@ -29,10 +30,7 @@ export function createTagsResource<DefaultThrowOnError extends boolean = false>(
                 client,
                 query: requestQuery,
                 signal,
-                ...(throwOnError === undefined ? {} : { throwOnError }),
-                ...(fetchOptions
-                  ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-                  : {}),
+                ...buildCallOptions(client, throwOnError, fetchOptions),
               }),
             ),
           );

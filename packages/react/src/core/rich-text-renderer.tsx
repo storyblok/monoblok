@@ -10,6 +10,7 @@ import type {
 } from "@storyblok/richtext";
 import {
   buildStoryblokImage,
+  excludeComponentFromContext,
   getInnerMarks,
   getStaticChildren,
   groupLinkNodes,
@@ -160,11 +161,7 @@ function renderNode(
   const Custom = resolveComponent(node.type, options.components);
 
   if (Custom) {
-    // When passing context to a custom component, exclude that component type
-    // to prevent infinite loops if the custom component uses StoryblokRichText internally
-    const contextForCustom = options.components?.[node.type]
-      ? { ...options, components: { ...options.components, [node.type]: undefined } }
-      : options;
+    const contextForCustom = excludeComponentFromContext(options, node.type);
     return (
       <Custom key={key} {...node} context={contextForCustom}>
         {content}

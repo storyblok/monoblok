@@ -27,7 +27,7 @@ The package is ESM-only and doesn’t ship a CommonJS build.
 Add the SDK and the Storyblok API client to a project by running this command in the terminal:
 
 ```bash
-npm install @storyblok/react@rc @storyblok/api-client
+npm install @storyblok/react @storyblok/api-client
 ```
 
 ## Usage
@@ -572,6 +572,7 @@ export function CustomLink({ children, attrs }: StoryblokReactRichTextProps<"lin
 Nodes can use the `children` prop to render child content.
 
 ```tsx
+import type { JSX } from "react";
 import type { StoryblokReactRichTextProps } from "@storyblok/react";
 
 export function CustomHeading({ children, attrs }: StoryblokReactRichTextProps<"heading">) {

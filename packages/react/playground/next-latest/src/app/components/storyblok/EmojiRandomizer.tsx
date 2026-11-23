@@ -18,7 +18,7 @@ type EmojiRandomizerProps = StoryblokBlockComponentProps<{ label?: string }>;
 /**
  * A component that displays a label and a random emoji that changes on click
  */
-const EmojiRandomizer: FC<EmojiRandomizerProps> = ({ block }) => {
+const EmojiRandomizer: FC<EmojiRandomizerProps> = ({ block, editable }) => {
   const emojis = ["😊", "🎉", "🚀", "✨", "🌈", "🎨", "🎸", "🎮", "🍕", "🌺"];
 
   const [currentEmoji, setCurrentEmoji] = useState(
@@ -40,7 +40,10 @@ const EmojiRandomizer: FC<EmojiRandomizerProps> = ({ block }) => {
   };
 
   return (
-    <div className="flex flex-col items-center gap-6 p-4 bg-gray-100 dark:bg-gray-900 rounded-lg">
+    <div
+      className="flex flex-col items-center gap-6 p-4 bg-gray-100 dark:bg-gray-900 rounded-lg"
+      {...editable}
+    >
       <div className="text-6xl">{currentEmoji}</div>
       <button
         onClick={randomizeEmoji}

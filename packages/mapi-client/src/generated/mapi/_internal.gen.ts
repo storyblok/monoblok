@@ -118,6 +118,12 @@ export type MapiStory = {
      */
     user_ids: Array<number>;
     /**
+     * Assigned user IDs grouped by language code, keyed by "[default]" for the default language
+     */
+    assigned_users_per_language: {
+        [key: string]: Array<number>;
+    };
+    /**
      * Space role IDs (read-only, set automatically via workflow or workflow stage changes)
      */
     space_role_ids: Array<number>;
@@ -200,6 +206,10 @@ export type MapiStory = {
      * IDs of experiments this story participates in (only included on show, not index).
      */
     experiment_ids?: Array<number>;
+    /**
+     * IDs of pending (not yet released) releases this story belongs to, limited to releases the user can access (included on show only)
+     */
+    release_ids?: Array<number>;
 };
 
 export type StoryCreate = {

@@ -1,5 +1,6 @@
 import type { Client } from "../generated/capi/client";
 import { listStories } from "../generated/capi/sdk.gen";
+import type { ListStoriesResponses } from "../generated/capi/types.gen";
 import type { Story } from "../generated/types/story";
 import type { ThrottleManager } from "./rate-limit";
 import { chunkArray } from "./array";
@@ -7,6 +8,7 @@ import { chunkArray } from "./array";
 const UUID_CHUNK_SIZE = 50;
 const QUERY_CONTEXT_KEYS = new Set([
   "cv",
+  "excluding_fields",
   "excluding_story_fields",
   "fallback_lang",
   "from_release",
@@ -27,19 +29,34 @@ const pickQueryContext = (baseQuery: Record<string, unknown>): Record<string, un
   return query;
 };
 
-interface FetchMissingRelationsOptions {
+type ResolvedLinks = NonNullable<ListStoriesResponses[200]["links"]>;
+
+interface FetchStoriesByUuidsOptions {
   client: Client;
   uuids: string[];
   baseQuery: Record<string, unknown>;
   throttleManager: ThrottleManager;
+  signal?: AbortSignal;
 }
 
-export const fetchMissingRelations = async ({
+export interface StoriesByUuids {
+  stories: Story[];
+  /** The links the API resolved in `stories`, when `baseQuery` has `resolve_links`. */
+  links: ResolvedLinks;
+}
+
+/**
+ * Fetches the stories the API listed by UUID instead of resolving them, e.g. `rel_uuids` or
+ * `link_uuids` beyond its resolve limit, in the context of the original request. Throws the
+ * API error of a failed request.
+ */
+export const fetchStoriesByUuids = async ({
   client,
   uuids,
   baseQuery,
   throttleManager,
-}: FetchMissingRelationsOptions): Promise<Story[]> => {
+  signal,
+}: FetchStoriesByUuidsOptions): Promise<StoriesByUuids> => {
   const queryContext = { ...pickQueryContext(baseQuery), per_page: UUID_CHUNK_SIZE };
   const chunks = chunkArray(uuids, UUID_CHUNK_SIZE);
 
@@ -53,6 +70,8 @@ export const fetchMissingRelations = async ({
             by_uuids: chunk.join(","),
             per_page: UUID_CHUNK_SIZE,
           },
+          signal,
+          throwOnError: false,
         });
 
         if (response.error !== undefined) {
@@ -60,17 +79,23 @@ export const fetchMissingRelations = async ({
         }
 
         if (response.data === undefined) {
-          throw new Error("Failed to fetch missing relations.");
+          throw new Error("Failed to fetch stories by UUID.");
         }
 
-        // SDK return shape is the raw `DraftStory | PublishedStory` union; cast
-        // to the wrapper `Story` (public type) so callers don't have to know
-        // about the spec-level discriminated form and get the benefits of the
-        // generic `Story` with schema support.
-        return response.data.stories as unknown as Story[];
+        return {
+          // SDK return shape is the raw `DraftStory | PublishedStory` union; cast
+          // to the wrapper `Story` (public type) so callers don't have to know
+          // about the spec-level discriminated form and get the benefits of the
+          // generic `Story` with schema support.
+          stories: response.data.stories as unknown as Story[],
+          links: response.data.links ?? [],
+        };
       }),
     ),
   );
 
-  return results.flat();
+  return {
+    stories: results.flatMap((result) => result.stories),
+    links: results.flatMap((result) => result.links),
+  };
 };

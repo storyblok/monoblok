@@ -28,6 +28,40 @@ export const uniqueStoriesStream = ({ onRepeat }: { onRepeat?: (story: Story) =>
 };
 
 /**
+ * Holds every listed story, then passes them on in the order `order` gives.
+ *
+ * For a listing whose order is not the one the results should come in: the
+ * `--mode semantic` listing comes back in the API's order, and Strata's rank has
+ * to be restored before the content fetch, so `--limit` stops it after the top
+ * results rather than after whichever were listed first. Only for a small,
+ * bounded listing: nothing moves on until the last story has arrived.
+ */
+export const reorderStoriesStream = ({
+  order,
+}: {
+  order: (stories: Story[]) => Iterable<Story>;
+}) => {
+  const buffered: Story[] = [];
+  return new Transform({
+    objectMode: true,
+    transform(story: Story, _encoding, callback) {
+      buffered.push(story);
+      callback();
+    },
+    flush(callback) {
+      try {
+        for (const story of order(buffered)) {
+          this.push(story);
+        }
+        callback();
+      } catch (maybeError) {
+        callback(toError(maybeError));
+      }
+    },
+  });
+};
+
+/**
  * Drops stories before their content is fetched. The per-story fetch is the
  * expensive part of the pipeline, so any filter decidable from the list response
  * (such as `--publish-status`) belongs here rather than at the end.

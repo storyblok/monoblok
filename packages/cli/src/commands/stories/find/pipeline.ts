@@ -10,6 +10,7 @@ import {
   capiFilterStream,
   filterListedStoriesStream,
   filterStoriesStream,
+  reorderStoriesStream,
   uniqueStoriesStream,
 } from "./streams";
 import { CAPI_BATCH_SIZE, createCapiContentFetcher, parseCapiParams } from "./capi";
@@ -90,6 +91,7 @@ export async function runStoryPipeline({
   sink,
   onListed,
   capi,
+  orderListed,
   skipContent = false,
   signal,
   logger,
@@ -107,6 +109,11 @@ export async function runStoryPipeline({
   onListed?: (story: Story) => void;
   /** Prunes candidates with bulk CAPI content before the per-story MAPI fetch. */
   capi?: CapiFilter;
+  /**
+   * Puts the whole listing in another order (and may annotate it) before
+   * anything is fetched. For `--mode semantic`, which lists Strata's matches.
+   */
+  orderListed?: (stories: Story[]) => Iterable<Story>;
   /** Emits list metadata without fetching content at all. */
   skipContent?: boolean;
 }): Promise<void> {
@@ -171,6 +178,7 @@ export async function runStoryPipeline({
           }),
         ]
       : []),
+    ...(orderListed ? [reorderStoriesStream({ order: orderListed })] : []),
     filterListedStoriesStream({
       filters: preContentFilters,
       onDropped: () => {

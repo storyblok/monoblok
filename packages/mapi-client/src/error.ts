@@ -1,10 +1,16 @@
+import type { StrataErrorResponse } from "./generated/mapi/types.gen";
+
 /**
  * Common shape of error bodies returned by the Storyblok Management API.
  *
  * Most error responses include an `error` field with a human-readable message.
  */
 export interface ApiErrorBody {
-  error?: string;
+  /**
+   * A message string on most endpoints. Strata endpoints send an object instead,
+   * with a fixed `code` to check.
+   */
+  error?: string | StrataErrorResponse["error"];
   message?: string;
   [key: string]: unknown;
 }

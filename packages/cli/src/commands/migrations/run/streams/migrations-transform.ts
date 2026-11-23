@@ -23,6 +23,7 @@ export interface MigrationStreamOptions {
   componentName?: string;
   onProgress: (current: number) => void;
   onTotal: (total: number) => void;
+  onError?: (failed: FailedMigration) => void;
 }
 
 export interface MigrationStreamResult {
@@ -96,10 +97,16 @@ export class MigrationStream extends Transform {
     return migrationFunction;
   }
 
+  private recordFailure(failed: FailedMigration): void {
+    this.results.failed.push(failed);
+    this.options.onError?.(failed);
+  }
+
   private async processStory(story: Story): Promise<
     Array<{
       storyId: number;
       name: string | undefined;
+      full_slug?: string;
       content: BlokContent;
       published?: boolean;
       unpublished_changes?: boolean;
@@ -113,13 +120,16 @@ export class MigrationStream extends Transform {
       : this.options.migrationFiles;
 
     if (!story.content) {
-      this.results.failed.push({
+      this.recordFailure({
         storyId: story.id,
+        name: story.name,
+        full_slug: story.full_slug,
         migrationNames: relevantMigrations.map((m) => m.name),
         error: new Error("Story content is missing"),
       });
       getLogger().error("Failed to process story: Content is missing", {
         storyId: story.id,
+        storyName: story.name,
         errorCode: ERROR_CODES.MIGRATION_STORY_CONTENT_MISSING,
       });
       return [];
@@ -128,6 +138,7 @@ export class MigrationStream extends Transform {
     const successfulResults: Array<{
       storyId: number;
       name: string | undefined;
+      full_slug?: string;
       content: BlokContent;
       published?: boolean;
       unpublished_changes?: boolean;
@@ -148,11 +159,13 @@ export class MigrationStream extends Transform {
   ): Promise<{
     storyId: number;
     name: string | undefined;
+    full_slug?: string;
     content: BlokContent;
     published?: boolean;
     unpublished_changes?: boolean;
   } | null> {
     const migrationNames = migrationFiles.map((f) => f.name);
+    let migrationName: string | undefined;
 
     try {
       const storyContent = structuredClone(story.content) as BlokContent;
@@ -160,17 +173,22 @@ export class MigrationStream extends Transform {
 
       let processed = false;
       for (const migrationFile of migrationFiles) {
+        migrationName = migrationFile.name;
         const migrationFunction = await this.getOrLoadMigrationFunction(migrationFile);
         if (!migrationFunction) {
           const error = new Error(
             `Failed to load migration function from file "${migrationFile.name}"`,
           );
-          this.results.failed.push({
+          this.recordFailure({
             storyId: story.id,
+            name: story.name,
+            full_slug: story.full_slug,
             migrationNames,
             error,
           });
           getLogger().error(error.message, {
+            storyId: story.id,
+            storyName: story.name,
             errorCode: ERROR_CODES.MIGRATION_FILE_NOT_FOUND,
           });
           return null;
@@ -185,6 +203,8 @@ export class MigrationStream extends Transform {
         );
         processed = processed || migrationProcessed;
       }
+      // Whatever fails from here on isn't the fault of a migration file.
+      migrationName = undefined;
 
       const newContentHash = hash(storyContent);
       const contentChanged = originalContentHash !== newContentHash;
@@ -216,6 +236,7 @@ export class MigrationStream extends Transform {
         return {
           storyId: story.id,
           name: story.name,
+          full_slug: story.full_slug,
           content: storyContent,
           published: story.published ?? undefined,
           unpublished_changes: story.unpublished_changes ?? undefined,
@@ -248,14 +269,19 @@ export class MigrationStream extends Transform {
       }
     } catch (maybeError) {
       const error = toError(maybeError);
-      this.results.failed.push({
+      this.recordFailure({
         storyId: story.id,
+        name: story.name,
+        full_slug: story.full_slug,
         migrationNames,
+        migrationName,
         error,
       });
       getLogger().error(error.message, {
         storyId: story.id,
+        storyName: story.name,
         migrationNames,
+        migrationName,
         error,
         errorCode: ERROR_CODES.MIGRATION_APPLY_TO_STORY_ERROR,
       });
@@ -282,7 +308,7 @@ export class MigrationStream extends Transform {
 
     const successfulStoryIds = new Set(successful.map((result) => result.storyId));
 
-    let summary = `Migration Results: ${successfulStoryIds.size} stories updated, ${skipped.length} stories skipped`;
+    let summary = `Migration Results: ${successfulStoryIds.size} stories migrated, ${skipped.length} stories skipped`;
 
     if (skipped.length > 0) {
       const skippedByReason = skipped.reduce(

@@ -69,9 +69,10 @@ working with OpenAPI specs.
 
 ## Architecture Decision Records
 
-When a significant architectural decision is made, add a concise new ADR in `adr/` following the
-existing numbering convention (`0001-`, `0002-`, …). Cite an ADR to explain why something was built
-a certain way, not as a reference for how it works now; point to the code or docs for that.
+When a significant architectural decision is made, add a concise new ADR as `adr/adr-NNNN.md`,
+numbered after the highest existing ADR, and list it in `adr/INDEX.md`. Cite an ADR to explain why
+something was built a certain way, not as a reference for how it works now; point to the code or
+docs for that.
 
 ## Git
 

@@ -24,6 +24,7 @@ import { createSharedAssetsResource } from "./resources/shared-assets";
 import { createSharedInternalTagsResource } from "./resources/shared-internal-tags";
 import { createSpaceRolesResource } from "./resources/space-roles";
 import { createSpacesResource } from "./resources/spaces";
+import { createStrataResource } from "./resources/strata";
 import { createStoriesResource } from "./resources/stories";
 import { createUsersResource } from "./resources/users";
 import { createWebhooksResource } from "./resources/webhooks";
@@ -416,6 +417,7 @@ function buildResources<DefaultThrowOnError extends boolean = false>(
     sharedInternalTags: createSharedInternalTagsResource(deps),
     spaceRoles: createSpaceRolesResource(deps),
     spaces: createSpacesResource(deps),
+    strata: createStrataResource(deps),
     users: createUsersResource<DefaultThrowOnError>({ client, wrapRequest: deps.wrapRequest }),
     webhooks: createWebhooksResource(deps),
     workflowStages: createWorkflowStagesResource(deps),

@@ -3,10 +3,9 @@ import { MultiBar, Presets } from "cli-progress";
 import { Spinner } from "@topcli/spinner";
 import { colorPalette } from "../../constants";
 import { DEFAULT_GLOBAL_CONFIG } from "../config/defaults";
-import { getActiveConfig } from "../config/store";
 import { capitalize } from "../../utils/format";
 import { getRuntimeErrorExitCode } from "../../utils/error/exit-code";
-import { getStderrTarget } from "./stream-target";
+import { getStderrTarget, getStdoutTarget } from "./stream-target";
 
 interface InfoOptions {
   header?: boolean;
@@ -106,6 +105,8 @@ export class UI {
   private console: Pick<typeof console, "log" | "info" | "warn" | "error"> | null;
   private enabled: boolean;
   private multiBar: MultiBar | null;
+  /** Whether a bar was drawn since the last stop: stopping an empty MultiBar still writes. */
+  private hasBars = false;
 
   constructor({ enabled }: { enabled: boolean }) {
     this.enabled = enabled;
@@ -153,7 +154,6 @@ export class UI {
     } else {
       this.console?.log(chalk.bgHex(color).bold(` ${capitalize(message)} `));
     }
-    this.br();
     this.br();
   }
 
@@ -260,9 +260,14 @@ export class UI {
    * `cli-progress` already refuses to render on a non-terminal stream, but
    * `@topcli/spinner` has no such check and writes escapes unconditionally. The
    * guard lives here so the rule holds whichever library backs a given widget.
+   *
+   * A terminal on stderr is not enough when stdout is a pipe: the reader, such
+   * as `jq`, usually prints to that same terminal, and each redraw moves the
+   * cursor back over the lines it printed, overwriting results. A redirect to a
+   * file or `/dev/null` has no such reader, so it keeps the live UI. See ADR-0027.
    */
   private get canRedraw(): boolean {
-    return getStderrTarget() === "terminal";
+    return getStderrTarget() === "terminal" && getStdoutTarget() !== "pipe";
   }
 
   /**
@@ -297,6 +302,7 @@ export class UI {
     if (!bar) {
       return noopProgressBar;
     }
+    this.hasBars = true;
     // cli-progress only substitutes payload tokens ({title}) when the payload is
     // passed alongside the update. Keep forwarding the original options on every call.
     return {
@@ -313,6 +319,12 @@ export class UI {
   }
 
   stopAllProgressBars() {
+    // `MultiBar.stop()` restores the cursor and ends the line even when it never
+    // drew a bar, leaving a stray blank line and escape codes behind.
+    if (!this.hasBars) {
+      return;
+    }
+    this.hasBars = false;
     this.multiBar?.stop();
   }
 
@@ -323,7 +335,9 @@ export class UI {
     if (!this.canRedraw) {
       return this.plainSpinner(title);
     }
-    const spinner = new Spinner({ verbose: getActiveConfig().verbose });
+    // A spinner is progress, not diagnostics: it shows whether or not --verbose
+    // is set. `@topcli/spinner` writes nothing at all with `verbose: false`.
+    const spinner = new Spinner();
     spinner.stream = process.stderr;
     return spinner.start(title);
   }

@@ -6,9 +6,8 @@ const OVERFLOW_SUFFIX = "more failure reason(s)";
  * Accumulates per-item failures keyed by their human-readable reason string
  * and produces a compact grouped summary for terminal output.
  *
- * Mirrors the grouping convention in `assets/transfer/index.ts` so all
- * asset-push/transfer/pipeline failure displays are consistent: one line per
- * unique cause instead of one line per failed item.
+ * Keeps failure displays consistent across commands (assets, migrations):
+ * one line per unique cause instead of one line per failed item.
  *
  * Usage:
  * ```ts
@@ -16,8 +15,8 @@ const OVERFLOW_SUFFIX = "more failure reason(s)";
  * // …during processing:
  * failures.record(toError(error).message, asset.short_filename);
  * // …after processing, before/after stopping progress bars:
- * for (const line of failures.toListLines()) {
- *   ui.warn(line);        // or ui.list(failures.toListLines())
+ * for (const line of failures.toListLines("push", ["asset", "assets"])) {
+ *   ui.warn(line);
  * }
  * ```
  */
@@ -61,9 +60,10 @@ export class FailureReasonGroup {
    * - Multiple:                   `Failed to push N assets — reason (e.g. "a", "b")`
    * - Overflow:                   `… and N more failure reason(s)`
    *
-   * Pass `verb` to customise the opening word ("push", "read", "transfer", …).
+   * `verb` is the opening word ("push", "transfer", "migrate", …) and the
+   * nouns name what failed, singular and plural.
    */
-  toListLines(verb = "push"): string[] {
+  toListLines(verb: string, [singular, plural]: [string, string]): string[] {
     const all = this.entries();
     const visible = all.slice(0, MAX_REASONS);
 
@@ -71,7 +71,7 @@ export class FailureReasonGroup {
       if (count === 1 && examples.length > 0) {
         return `Failed to ${verb} "${examples[0]}": ${reason}`;
       }
-      const noun = count === 1 ? "asset" : "assets";
+      const noun = count === 1 ? singular : plural;
       const exampleStr =
         examples.length > 0 ? ` (e.g. ${examples.map((e) => `"${e}"`).join(", ")})` : "";
       return `Failed to ${verb} ${count} ${noun} — ${reason}${exampleStr}`;

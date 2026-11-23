@@ -209,7 +209,7 @@ describe("defineStoryblokBlocks", () => {
     });
   });
 
-  // ─── Embedded bloks via `components.blok` (ADR-0029 §7) ──────────────────
+  // ─── Embedded bloks via `components.blok` ────────────────────────────────
   //
   // Rich text is standalone: embedded bloks render only through a
   // `components.blok` renderer, which renders `attrs.body` with the app's

@@ -1,6 +1,6 @@
 import { type ReactNode, StrictMode, Suspense, useState } from "react";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { render, act } from "@testing-library/react";
+import { render, act, within } from "@testing-library/react";
 import { type LivePreviewStory, onStoryblokEditorEvent } from "@storyblok/live-preview";
 import type { Story } from "../types";
 import { StoryblokPreview } from "./storyblok-preview";
@@ -272,12 +272,15 @@ describe("StoryblokPreview (server mode)", () => {
     expect(editor.getByTestId("headline")).toHaveTextContent("unsaved edit");
 
     renderContent.mockClear();
-    const visitor = render(await StoryblokPreview({ story, renderContent, debounceMs: 0 }), {
-      container: document.body.appendChild(document.createElement("div")),
-    });
+    const visitor = render(await StoryblokPreview({ story, renderContent, debounceMs: 0 }));
 
-    expect(renderContent).toHaveBeenCalledExactlyOnceWith(story);
-    expect(visitor.getByTestId("headline")).toHaveTextContent("saved");
+    // A fresh copy, so an edit written into `story` in place can't pass.
+    expect(renderContent).toHaveBeenCalledExactlyOnceWith(
+      makeStory({ content: { headline: "saved" } }),
+    );
+    // Scoped to the visitor's tree: bound queries search all of `document.body`,
+    // which still holds the editor's. Exact, as "saved" is in "unsaved edit".
+    expect(within(visitor.container).getByTestId("headline")).toHaveTextContent(/^saved$/);
   });
 
   it("preserves state across the first live update", async () => {

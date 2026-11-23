@@ -55,7 +55,15 @@ test.describe("the Visual Editor live-updates the playground", () => {
     for (const path of [QA_CONFIG.previewPath, `${QA_CONFIG.previewPath}?_storyblok=1`]) {
       const html = await (await request.get(`${QA_CONFIG.previewBaseUrl}${path}`)).text();
       expect(html, `${path} served the unsaved live edit to another visitor`).not.toContain(edited);
-      expect(html).toContain(SEEDED_HEADLINE);
+      // Scoped to `StoryblokPreview`'s output (`data-test="live"`), which the
+      // page renders before its static headline: that one would match alone.
+      const live = html.slice(
+        html.indexOf('data-test="live"'),
+        html.indexOf('data-test="static-teaser-headline"'),
+      );
+      expect(live, `${path} did not render StoryblokPreview's output`).toContain(
+        `<h2>${SEEDED_HEADLINE}</h2>`,
+      );
     }
   });
 

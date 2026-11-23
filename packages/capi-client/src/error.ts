@@ -1,3 +1,5 @@
+import type { StrataErrorResponse } from "./generated/capi/types.gen";
+
 /**
  * Common shape of error bodies returned by the Storyblok Content Delivery API.
  *
@@ -5,7 +7,11 @@
  * human-readable description.
  */
 export interface ApiErrorBody {
-  error?: string;
+  /**
+   * A message string on most endpoints. Strata endpoints send an object instead,
+   * with a fixed `code` to check.
+   */
+  error?: string | StrataErrorResponse["error"];
   message?: string;
   [key: string]: unknown;
 }

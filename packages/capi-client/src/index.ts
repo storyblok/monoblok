@@ -47,15 +47,23 @@ export type {
 
 export type { Space, StoryLocalizedPath, StoryTranslatedSlug } from "./generated/mapi/types.gen";
 
+export type { StrataErrorResponse, StrataSearchHit } from "./generated/capi/types.gen";
+
 // Domain types
 export type { Block as Component } from "./generated/types/block";
 export type { Story } from "./generated/types/story";
 // Resource types
 export type {
   ExcludableStoryField,
+  InlinedContentOptions,
+  StoryWithInlinedLinks,
   StoryWithInlinedRelations,
+  WithInlinedContent,
+  WithInlinedLinks,
   WithInlinedRelations,
 } from "./resources/stories";
+export type { StrataSearchQuery } from "./resources/strata";
+export type { InlinedLink, InlinedMultilinkValue } from "./utils/inline-links";
 // Cache types
 export type {
   CacheEntry,

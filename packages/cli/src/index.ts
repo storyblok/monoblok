@@ -29,7 +29,6 @@ const ui = getUI();
 
 ui.br();
 ui.title("Storyblok CLI", colorPalette.PRIMARY);
-ui.br();
 
 // Handle invalid commands
 program.on("command:*", () => {

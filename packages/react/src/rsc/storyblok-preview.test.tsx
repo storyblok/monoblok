@@ -1,7 +1,7 @@
 import { type ReactNode, StrictMode, Suspense, useState } from "react";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { render, act } from "@testing-library/react";
-import { onStoryblokEditorEvent } from "@storyblok/live-preview";
+import { render, act, within } from "@testing-library/react";
+import { type LivePreviewStory, onStoryblokEditorEvent } from "@storyblok/live-preview";
 import type { Story } from "../types";
 import { StoryblokPreview } from "./storyblok-preview";
 
@@ -254,6 +254,33 @@ describe("StoryblokPreview (server mode)", () => {
 
     expect(getByTestId("live")).toBeInTheDocument();
     expect(getByTestId("live")).toHaveTextContent("live content");
+  });
+
+  // Guards against the hole fixed in #956: the live update's Server Action is a
+  // public endpoint, so a live edit must reach only the editor's own tree and
+  // never shared server state that a later render, for another visitor, reads.
+  it("keeps a live edit out of a later server render for another visitor", async () => {
+    const story = makeStory({ content: { headline: "saved" } });
+    const editedStory = makeStory({ content: { headline: "unsaved edit" } });
+    const renderContent = vi.fn(async (s: LivePreviewStory) => (
+      <div data-testid="headline">{String(s.content?.headline)}</div>
+    ));
+
+    const editor = render(await StoryblokPreview({ story, renderContent, debounceMs: 0 }));
+    await vi.waitFor(() => expect(editorCallback).toBeDefined());
+    await fireEditorEvent(editorCallback!, editedStory);
+    expect(editor.getByTestId("headline")).toHaveTextContent("unsaved edit");
+
+    renderContent.mockClear();
+    const visitor = render(await StoryblokPreview({ story, renderContent, debounceMs: 0 }));
+
+    // A fresh copy, so an edit written into `story` in place can't pass.
+    expect(renderContent).toHaveBeenCalledExactlyOnceWith(
+      makeStory({ content: { headline: "saved" } }),
+    );
+    // Scoped to the visitor's tree: bound queries search all of `document.body`,
+    // which still holds the editor's. Exact, as "saved" is in "unsaved edit".
+    expect(within(visitor.container).getByTestId("headline")).toHaveTextContent(/^saved$/);
   });
 
   it("preserves state across the first live update", async () => {

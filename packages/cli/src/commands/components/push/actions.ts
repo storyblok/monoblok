@@ -131,6 +131,9 @@ export const upsertComponent = async (
     schema: toWritableSchema(component.schema),
     // MAPI ignores `metadata: null`; only an empty object clears it.
     metadata: component.metadata === null ? {} : component.metadata,
+    // Only read for optimistic locking (`enforce_version_validation`), which push
+    // does not opt into: the local schema is meant to overwrite the remote one.
+    updated_at: undefined,
   } satisfies ExhaustiveComponentRequest;
 
   if (existingId) {

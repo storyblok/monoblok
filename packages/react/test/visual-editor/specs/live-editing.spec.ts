@@ -30,6 +30,43 @@ test.describe("the Visual Editor live-updates the playground", () => {
     await expect(editor.block("teaser-home-1")).toContainText(edited, { timeout: 30_000 });
   });
 
+  // Guards against the hole fixed in #956: the live-editing Server Action is a
+  // public endpoint, so it must render the posted story for its caller only and
+  // never keep it in shared server state (a cache, `revalidatePath`) that other
+  // visitors could be served. Only the RSC target server-renders the story; the
+  // client (CSR) playground serves an HTML shell, so there is nothing to check.
+  test("a live edit reaches only the editor, never other visitors", async ({ page, request }) => {
+    test.skip(
+      process.env.QA_TARGET !== "rsc",
+      "Server-side live edits only apply to the RSC target",
+    );
+    const editor = new StoryblokEditor(page, QA_CONFIG);
+    await editor.openStory(await resolveStoryId(QA_CONFIG, request, "home"));
+    await expect(editor.block("teaser-home-1")).toContainText(SEEDED_HEADLINE, { timeout: 60_000 });
+
+    await editor.selectBlock("teaser-home-1", "headline");
+    const edited = "QA teaser private edit";
+    await editor.textField("headline").fill(edited);
+    // The edit reached the server: it rendered the update for the editor.
+    await expect(editor.block("teaser-home-1")).toContainText(edited, { timeout: 30_000 });
+
+    // A separate visitor, with and without the editor's query parameter, still
+    // gets the saved content: the server kept nothing from the live edit.
+    for (const path of [QA_CONFIG.previewPath, `${QA_CONFIG.previewPath}?_storyblok=1`]) {
+      const html = await (await request.get(`${QA_CONFIG.previewBaseUrl}${path}`)).text();
+      expect(html, `${path} served the unsaved live edit to another visitor`).not.toContain(edited);
+      // Scoped to `StoryblokPreview`'s output (`data-test="live"`), which the
+      // page renders before its static headline: that one would match alone.
+      const live = html.slice(
+        html.indexOf('data-test="live"'),
+        html.indexOf('data-test="static-teaser-headline"'),
+      );
+      expect(live, `${path} did not render StoryblokPreview's output`).toContain(
+        `<h2>${SEEDED_HEADLINE}</h2>`,
+      );
+    }
+  });
+
   test("a nested block updates live and its siblings survive", async ({ page, request }) => {
     const editor = new StoryblokEditor(page, QA_CONFIG);
     await editor.openStory(await resolveStoryId(QA_CONFIG, request, "home"));

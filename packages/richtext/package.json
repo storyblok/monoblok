@@ -163,7 +163,10 @@
           "openapiCodegen"
         ],
         "outputs": [
-          "{projectRoot}/src/generated"
+          "{projectRoot}/src/generated/capi",
+          "{projectRoot}/src/generated/mapi",
+          "{projectRoot}/src/generated/overlay",
+          "{projectRoot}/src/generated/types"
         ],
         "cache": true,
         "dependsOn": [

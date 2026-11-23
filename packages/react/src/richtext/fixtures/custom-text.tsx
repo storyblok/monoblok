@@ -1,11 +1,12 @@
 import type { StoryblokReactRichTextProps } from "../renderer";
 
-export default function CustomText({ text, context }: StoryblokReactRichTextProps<"text">) {
-  const data = context?.data as { prefix: string } | undefined;
-  const prefix = data?.prefix ?? "";
+export default function CustomText({
+  text,
+  context,
+}: StoryblokReactRichTextProps<"text", { prefix: string }>) {
   return (
     <>
-      {prefix} {text.toUpperCase()}
+      {context.data.prefix} {text.toUpperCase()}
     </>
   );
 }

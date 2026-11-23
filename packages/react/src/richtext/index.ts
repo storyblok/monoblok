@@ -2,10 +2,10 @@ export {
   type StoryblokReactRichTextComponent,
   type StoryblokReactRichTextComponentMap,
   type StoryblokReactRichTextComponentProps,
+  type StoryblokReactRichTextOptions,
   type StoryblokReactRichTextProps,
   type StoryblokReactRichTextRenderContext,
   createRichTextRenderer,
 } from "./renderer";
 
-import { createStoryblokRichText } from "./create-storyblok-richtext";
-export { createStoryblokRichText };
+export { StoryblokRichText } from "./storyblok-richtext";

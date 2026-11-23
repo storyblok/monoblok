@@ -65,5 +65,14 @@ test.describe("@storyblok/react", () => {
       await expect(table).toBeVisible();
       await expect(table).toContainText("Header 1");
     });
+
+    // The story embeds two `emoji-randomizer` blocks. They render only through
+    // the page's `components.blok` renderer and the registry's `StoryblokBlock`.
+    test("renders embedded blocks through components.blok", async ({ page }) => {
+      await page.goto("/react/richtext");
+
+      await expect(page.getByRole("button", { name: "Generate random emoji" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Randomize Emoji" })).toBeVisible();
+    });
   });
 });

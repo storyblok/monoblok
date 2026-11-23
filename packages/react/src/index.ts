@@ -20,9 +20,11 @@ export {
   type StoryblokReactRichTextComponent,
   type StoryblokReactRichTextComponentMap,
   type StoryblokReactRichTextComponentProps,
+  type StoryblokReactRichTextOptions,
   type StoryblokReactRichTextProps,
   type StoryblokReactRichTextRenderContext,
   createRichTextRenderer,
+  StoryblokRichText,
 } from "./richtext";
 
 export { editableField, isInEditor, storyblokEditable } from "@storyblok/live-preview";

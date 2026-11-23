@@ -40,3 +40,7 @@ yarn-error.log*
 next-env.d.ts
 
 certificates
+
+# next dev (Next 16) writes these into the playground on every dev run
+AGENTS.md
+CLAUDE.md

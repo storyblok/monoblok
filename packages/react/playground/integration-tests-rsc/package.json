@@ -2,7 +2,7 @@
   "name": "@storyblok/playground-react-integration-tests-rsc",
   "version": "0.0.1",
   "private": true,
-  "description": "RSC playground for Visual Editor QA, written the way the Next.js blueprint uses @storyblok/react v7",
+  "description": "Dedicated RSC integration-test playground for Visual Editor QA",
   "scripts": {
     "dev": "next dev --experimental-https --port 5274",
     "build": "next build",
@@ -13,7 +13,9 @@
     "test:types": "tsc --noEmit --skipLibCheck"
   },
   "dependencies": {
+    "@storyblok/api-client": "workspace:^",
     "@storyblok/react": "workspace:^",
+    "@storyblok/schema": "workspace:^",
     "next": "catalog:next16",
     "react": "catalog:react19",
     "react-dom": "catalog:react19"

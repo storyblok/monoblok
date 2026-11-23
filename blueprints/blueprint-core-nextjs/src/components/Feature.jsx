@@ -1,9 +1,7 @@
-import { storyblokEditable } from '@storyblok/react/rsc';
-
-const Feature = ({ blok }) => {
+const Feature = ({ block, editable }) => {
 	return (
-		<div className="feature" {...storyblokEditable(blok)}>
-			<span>{blok.name}</span>
+		<div className="feature" {...editable}>
+			<span>{block.name}</span>
 		</div>
 	);
 };

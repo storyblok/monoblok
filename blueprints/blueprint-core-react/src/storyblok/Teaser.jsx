@@ -1,9 +1,7 @@
-import { storyblokEditable } from '@storyblok/react';
-
-export default function Teaser({ blok }) {
+export default function Teaser({ block, editable }) {
 	return (
-		<div {...storyblokEditable(blok)} className="teaser">
-			<h2>{blok.headline}</h2>
+		<div {...editable} className="teaser">
+			<h2>{block.headline}</h2>
 		</div>
 	);
 }

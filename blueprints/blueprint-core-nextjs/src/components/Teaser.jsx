@@ -1,9 +1,7 @@
-import { storyblokEditable } from '@storyblok/react/rsc';
-
-const Teaser = ({ blok }) => {
+const Teaser = ({ block, editable }) => {
 	return (
-		<div className="teaser" {...storyblokEditable(blok)}>
-			<h1>{blok.headline}</h1>
+		<div className="teaser" {...editable}>
+			<h1>{block.headline}</h1>
 		</div>
 	);
 };

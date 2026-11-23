@@ -1,8 +1,11 @@
-import { type SbBlokData, storyblokEditable } from "@storyblok/react/rsc";
+import type { StoryblokBlockComponentProps } from "@storyblok/react";
+import type { Block } from "@/schema/blocks";
 
-const Teaser = ({ blok }: { blok: SbBlokData & { headline?: string } }) => (
-  <div {...storyblokEditable(blok)} data-test="teaser">
-    <h2>{blok.headline}</h2>
+type TeaserProps = StoryblokBlockComponentProps<Block<"teaser">>;
+
+const Teaser = ({ block, editable }: TeaserProps) => (
+  <div {...editable} data-test="teaser">
+    <h2>{block.headline}</h2>
   </div>
 );
 

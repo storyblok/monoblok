@@ -1,11 +1,11 @@
-import { storyblokEditable } from "@storyblok/react/rsc";
+import type { StoryblokBlockComponentProps } from "@storyblok/react";
 
-const Teaser = ({ blok }) => {
-  return (
-    <h2 data-cy="teaser" {...storyblokEditable(blok)}>
-      {blok.headline}
-    </h2>
-  );
-};
+type TeaserProps = StoryblokBlockComponentProps<{ headline: string }>;
+
+const Teaser = ({ block, editable }: TeaserProps) => (
+  <h2 data-test="teaser" {...editable}>
+    {block.headline}
+  </h2>
+);
 
 export default Teaser;

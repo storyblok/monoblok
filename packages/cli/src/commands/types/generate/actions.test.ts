@@ -505,6 +505,58 @@ describe("generate types actions", () => {
       expect(result).not.toContain("= ()");
     }
   });
+
+  it("should handle filter_content_type stored as a string", async () => {
+    // The API returns a plain string for fields created with older versions of Storyblok, unlike its spec
+    const schema = {
+      author: {
+        type: "option",
+        pos: 0,
+        source: "internal_stories",
+        filter_content_type: "author",
+      },
+      related: {
+        type: "options",
+        pos: 1,
+        source: "internal_stories",
+        filter_content_type: ["article"],
+      },
+    } as unknown as Component["schema"];
+    const spaceData: SpaceComponentsData = {
+      components: [
+        {
+          id: 1,
+          name: "article",
+          display_name: "Article",
+          created_at: "2021-08-09T12:00:00Z",
+          updated_at: "2021-08-09T12:00:00Z",
+          schema,
+          is_root: true,
+          is_nestable: false,
+        },
+        {
+          id: 2,
+          name: "author",
+          display_name: "Author",
+          created_at: "2021-08-09T12:00:00Z",
+          updated_at: "2021-08-09T12:00:00Z",
+          schema: {},
+          is_root: true,
+          is_nestable: false,
+        },
+      ],
+      datasources: [],
+      groups: [],
+      presets: [],
+      internalTags: [],
+    };
+
+    const result = await generateTypes(spaceData, { strict: false });
+
+    expect(typeof result).toBe("string");
+    expect(result).toContain("author?: ISbStoryData<Author> | string;");
+    expect(result).toContain("related?: (ISbStoryData<Article> | string)[];");
+  });
 });
 
 describe("getComponentType", () => {

@@ -187,6 +187,54 @@ describe("useStoryblokState", () => {
     expect(result.current.slug).toBe("editor-updated");
   });
 
+  it("does not reset a live edit when a parent re-renders with the same story in a different key order", async () => {
+    const story = makeStory({ id: 1, slug: "home", content: { component: "page", _uid: "p1" } });
+    const storyReordered = {
+      content: { _uid: "p1", component: "page" },
+      slug: "home",
+      id: 1,
+    } as unknown as Story;
+
+    const { result, rerender } = renderHook(({ s }) => useStoryblokState(s), {
+      initialProps: { s: story },
+    });
+
+    await vi.waitFor(() => expect(editorCallback).toBeDefined());
+
+    act(() => editorCallback!(makeStory({ id: 1, slug: "editor-updated" })));
+    expect(result.current.slug).toBe("editor-updated");
+
+    await act(async () => {
+      rerender({ s: storyReordered });
+    });
+
+    expect(result.current.slug).toBe("editor-updated");
+  });
+
+  it("resets a live edit when the same story id arrives with changed nested content", async () => {
+    const story = makeStory({ id: 1, slug: "home", content: { component: "page", _uid: "p1" } });
+    const storyRefreshed = makeStory({
+      id: 1,
+      slug: "home",
+      content: { component: "page", _uid: "p1", body: [{ component: "teaser", _uid: "t1" }] },
+    });
+
+    const { result, rerender } = renderHook(({ s }) => useStoryblokState(s), {
+      initialProps: { s: story },
+    });
+
+    await vi.waitFor(() => expect(editorCallback).toBeDefined());
+
+    act(() => editorCallback!(makeStory({ id: 1, slug: "editor-updated" })));
+    expect(result.current.slug).toBe("editor-updated");
+
+    await act(async () => {
+      rerender({ s: storyRefreshed });
+    });
+
+    expect(result.current.slug).toBe("home");
+  });
+
   it("ignores editor events for a different story id", async () => {
     const pageStory = makeStory({ id: 1, slug: "page" });
     const navStory = makeStory({ id: 2, slug: "nav" });

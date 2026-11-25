@@ -19,13 +19,46 @@ interface StoryblokStateSnapshot<TStory extends Story> {
 }
 
 /**
+ * Structural equality for JSON-shaped values (primitives, arrays, plain
+ * objects). Ignores object key order, unlike comparing `JSON.stringify`
+ * output, and stops at the first difference.
+ */
+function isDeepEqual(a: unknown, b: unknown): boolean {
+  if (a === b) {
+    return true;
+  }
+  if (Array.isArray(a) || Array.isArray(b)) {
+    return (
+      Array.isArray(a) &&
+      Array.isArray(b) &&
+      a.length === b.length &&
+      a.every((item, index) => isDeepEqual(item, b[index]))
+    );
+  }
+  if (!isRecord(a) || !isRecord(b)) {
+    return false;
+  }
+  const aKeys = Object.keys(a);
+  return (
+    aKeys.length === Object.keys(b).length &&
+    aKeys.every(
+      (key) => Object.prototype.hasOwnProperty.call(b, key) && isDeepEqual(a[key], b[key]),
+    )
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+/**
  * Whether two stories represent the same data: same reference, or same id and
  * deep-equal content. Value equality (rather than reference equality) means a
- * parent re-render that creates a fresh-but-identical story object does not
- * count as a prop change.
+ * parent re-render that creates a fresh-but-identical story object, even with
+ * its keys in a different order, does not count as a prop change.
  */
 function isSameStory(a: Story, b: Story): boolean {
-  return a === b || (a.id === b.id && JSON.stringify(a) === JSON.stringify(b));
+  return a === b || (a.id === b.id && isDeepEqual(a, b));
 }
 
 /**

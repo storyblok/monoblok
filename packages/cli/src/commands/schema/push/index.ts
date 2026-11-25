@@ -15,7 +15,7 @@ import type { SchemaData } from "../types";
 import { loadSchema } from "../load-schema";
 import { diffSchema } from "../diff-schema";
 import { fetchRemoteSchema, localToNormalized, remoteToNormalized } from "../actions";
-import { buildGroupPathByUuid } from "../folders";
+import { buildFolderByPath } from "../folders";
 import { buildChangesetEntries, executePush, formatDiffOutput } from "./actions";
 import { saveChangeset } from "../changeset";
 import { analyzeBreakingChanges } from "./migrations/analyze";
@@ -224,12 +224,7 @@ schemaCommand
           (d) => d.type === "folder" && d.action === "stale",
         );
         if (staleFolders.length > 0) {
-          const uuidByPath = new Map<string, string>();
-          for (const [uuid, segments] of buildGroupPathByUuid([
-            ...remote.componentFolders.values(),
-          ])) {
-            uuidByPath.set(segments.join("/"), uuid);
-          }
+          const remoteFolderByPath = buildFolderByPath([...remote.componentFolders.values()]);
           // Only components that survive the push are truly ungrouped. A stale
           // component inside the folder is being deleted, not ungrouped, so it
           // must not inflate the count.
@@ -239,7 +234,7 @@ schemaCommand
               .map((d) => d.name),
           );
           for (const folder of staleFolders) {
-            const uuid = uuidByPath.get(folder.name);
+            const uuid = remoteFolderByPath.get(folder.name)?.uuid;
             if (!uuid) {
               continue;
             }
@@ -271,29 +266,27 @@ schemaCommand
         return;
       }
 
-      // 8. Save changeset
-      const resolvedPath = resolvePath(basePath, "");
-      const timestamp = new Date().toISOString();
-
-      const changesetPath = await saveChangeset(resolvedPath, {
-        timestamp,
-        spaceId: Number(space),
-        remote: {
-          components: rawComponents,
-          componentFolders: rawComponentFolders,
-          datasources: rawDatasources,
-        },
-        changes: buildChangesetEntries(diffResult, local, remote, { delete: options.delete }),
-      });
-      logger.info("Changeset saved", { path: displayPath(changesetPath, basePath) });
-
-      // 9. Execute push (skipped when nothing to push).
       const nothingToPush =
         diffResult.creates === 0 &&
         diffResult.updates === 0 &&
         (!options.delete || diffResult.stale === 0);
+
       let pushResult: Awaited<ReturnType<typeof executePush>> | null = null;
       if (!nothingToPush) {
+        // 8. Save the changeset before pushing, so a push failing midway can be rolled back.
+        const changesetPath = await saveChangeset(resolvePath(basePath, ""), {
+          timestamp: new Date().toISOString(),
+          spaceId: Number(space),
+          remote: {
+            components: rawComponents,
+            componentFolders: rawComponentFolders,
+            datasources: rawDatasources,
+          },
+          changes: buildChangesetEntries(diffResult, local, remote, { delete: options.delete }),
+        });
+        logger.info("Changeset saved", { path: displayPath(changesetPath, basePath) });
+
+        // 9. Execute push
         const pushSpinner = ui.createSpinner("Pushing schema...");
         try {
           pushResult = await executePush(space, local, remote, diffResult, {

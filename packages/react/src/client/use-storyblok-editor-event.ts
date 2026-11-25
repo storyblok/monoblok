@@ -49,8 +49,34 @@ export function useStoryblokEditorEvent<TStory extends Story = Story>(
   callback: (story: LivePreviewStory<TStory>) => void,
   { debounceMs, bridgeOptions }: UseStoryblokEditorEventOptions = {},
 ): void {
+  useEditorEvent(callback, { debounceMs, bridgeOptions });
+}
+
+/** Options for {@link useEditorEvent}. Internal: not exported from the package. */
+export interface EditorEventOptions extends UseStoryblokEditorEventOptions {
+  /**
+   * Only handle editor events for the story with this id. Editor events
+   * aren't scoped to one story, so a page preview and a nav preview on the
+   * same page would otherwise both take whichever story is being edited.
+   * Events for another story are dropped before debouncing, so they never
+   * replace a pending update for this one. Read on every event, so a new id
+   * after a client-side navigation applies immediately.
+   */
+  storyId?: Story["id"];
+}
+
+/**
+ * Implementation of {@link useStoryblokEditorEvent}, plus the internal
+ * `storyId` filter used by `useStoryblokState` and the server-mode preview
+ * runtime. Not exported from the package.
+ */
+export function useEditorEvent<TStory extends Story = Story>(
+  callback: (story: LivePreviewStory<TStory>) => void,
+  { debounceMs, storyId, bridgeOptions }: EditorEventOptions = {},
+): void {
   const callbackRef = useRef(callback);
   const debounceRef = useRef(debounceMs);
+  const storyIdRef = useRef(storyId);
 
   // Sync refs after every commit, never during render.
   // A render discarded by React's concurrent mode must not install its
@@ -58,6 +84,7 @@ export function useStoryblokEditorEvent<TStory extends Story = Story>(
   useEffect(() => {
     callbackRef.current = callback;
     debounceRef.current = debounceMs;
+    storyIdRef.current = storyId;
   });
 
   useEffect(() => {
@@ -68,6 +95,11 @@ export function useStoryblokEditorEvent<TStory extends Story = Story>(
     // `bridgeOptions.onError` (`console.error` by default).
     const unsubscribe = onStoryblokEditorEvent<TStory>((updatedStory) => {
       if (!mounted) {
+        return;
+      }
+      // Filtered before the debounce: an event for another story must not
+      // clear the timer holding a pending update for this one.
+      if (storyIdRef.current !== undefined && updatedStory.id !== storyIdRef.current) {
         return;
       }
 

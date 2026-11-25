@@ -3,10 +3,7 @@
 import { useState } from "react";
 import type { LivePreviewStory } from "@storyblok/live-preview";
 import type { Story } from "../types";
-import {
-  useStoryblokEditorEvent,
-  type UseStoryblokEditorEventOptions,
-} from "./use-storyblok-editor-event";
+import { useEditorEvent, type UseStoryblokEditorEventOptions } from "./use-storyblok-editor-event";
 
 /** Options for {@link useStoryblokState}. */
 export interface UseStoryblokStateOptions extends UseStoryblokEditorEventOptions {}
@@ -97,15 +94,15 @@ export function useStoryblokState<TStory extends Story = Story>(
     setSnapshot({ story, current: story });
   }
 
-  useStoryblokEditorEvent<TStory>((updatedStory) => {
-    // Editor `input` events aren't scoped to one story: without this guard, a
-    // page preview and a nav preview mounted on the same layout would both
-    // take whichever story is being edited.
-    if (updatedStory.id !== story.id) {
-      return;
-    }
-    setSnapshot((prev) => ({ ...prev, current: { ...prev.current, ...updatedStory } }));
-  }, options);
+  // `storyId` scopes editor events to this story: without it, a page preview
+  // and a nav preview mounted on the same layout would both take whichever
+  // story is being edited.
+  useEditorEvent<TStory>(
+    (updatedStory) => {
+      setSnapshot((prev) => ({ ...prev, current: { ...prev.current, ...updatedStory } }));
+    },
+    { ...options, storyId: story.id },
+  );
 
   return snapshot.current;
 }

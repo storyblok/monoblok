@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { onStoryblokEditorEvent } from "@storyblok/live-preview";
 import type { Story } from "../types";
-import { useStoryblokEditorEvent } from "./use-storyblok-editor-event";
+import { useEditorEvent, useStoryblokEditorEvent } from "./use-storyblok-editor-event";
 
 // ─── Mock @storyblok/live-preview ─────────────────────────────────────────────
 
@@ -100,6 +100,20 @@ describe("useStoryblokEditorEvent", () => {
     expect(onStoryblokEditorEvent).toHaveBeenCalledWith(expect.any(Function), bridgeOptions);
   });
 
+  it("ignores events for another story when the internal storyId is set", async () => {
+    const callback = vi.fn();
+    const page = makeStory({ id: 1, slug: "page" });
+
+    renderHook(() => useEditorEvent(callback, { storyId: 1 }));
+    await vi.waitFor(() => expect(editorCallback).toBeDefined());
+
+    act(() => editorCallback!(makeStory({ id: 2, slug: "nav" })));
+    act(() => editorCallback!(page));
+
+    expect(callback).toHaveBeenCalledOnce();
+    expect(callback).toHaveBeenCalledWith(page);
+  });
+
   describe("with debounceMs", () => {
     beforeEach(() => {
       vi.useFakeTimers();
@@ -107,6 +121,24 @@ describe("useStoryblokEditorEvent", () => {
 
     afterEach(() => {
       vi.useRealTimers();
+    });
+
+    it("keeps a pending update when an event for another story arrives", async () => {
+      const callback = vi.fn();
+      const page = makeStory({ id: 1, slug: "page" });
+
+      renderHook(() => useEditorEvent(callback, { debounceMs: 100, storyId: 1 }));
+      await vi.waitFor(() => expect(editorCallback).toBeDefined());
+
+      act(() => editorCallback!(page));
+      act(() => editorCallback!(makeStory({ id: 2, slug: "nav" })));
+      await act(async () => {
+        vi.advanceTimersByTime(100);
+        await vi.runAllTimersAsync();
+      });
+
+      expect(callback).toHaveBeenCalledOnce();
+      expect(callback).toHaveBeenCalledWith(page);
     });
 
     it("delays invocation until debounce settles", async () => {

@@ -510,6 +510,66 @@ describe("StoryblokPreview (server mode)", () => {
     expect(navRenderContent).toHaveBeenCalledTimes(1);
   });
 
+  it("filters editor events by the current story id after a client-side navigation", async () => {
+    const storyA = makeStory({ id: 1, slug: "a" });
+    const storyB = makeStory({ id: 2, slug: "b" });
+    const renderContent = vi.fn(
+      async (story: LivePreviewStory): Promise<ReactNode> => (
+        <div data-testid="content">{String(story.slug)}</div>
+      ),
+    );
+
+    const elementA = await StoryblokPreview({ story: storyA, renderContent });
+    const { rerender, getByTestId } = render(elementA);
+    await vi.waitFor(() => expect(editorCallbacks).toHaveLength(1));
+    const [callbackA] = editorCallbacks;
+
+    // A client-side navigation renders the same position with a new story.
+    // The runtime is keyed by story, so it remounts with its own subscription.
+    const elementB = await StoryblokPreview({ story: storyB, renderContent });
+    await act(async () => {
+      rerender(elementB);
+    });
+    await vi.waitFor(() => expect(editorCallbacks).toHaveLength(2));
+    const [, callbackB] = editorCallbacks;
+    expect(getByTestId("content").textContent).toBe("b");
+    renderContent.mockClear();
+
+    // The editor still sends story A. Neither the torn-down subscription for
+    // A nor the new one for B may trigger a render for page B.
+    await fireEditorEvent(callbackA!, makeStory({ id: 1, slug: "a-edited" }));
+    await fireEditorEvent(callbackB!, makeStory({ id: 1, slug: "a-edited" }));
+    expect(renderContent).not.toHaveBeenCalled();
+
+    await fireEditorEvent(callbackB!, makeStory({ id: 2, slug: "b-edited" }));
+    expect(renderContent).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a pending debounced update when an event for another story arrives", async () => {
+    const story = makeStory({ id: 1, slug: "page" });
+    const renderContent = vi.fn(
+      async (live: LivePreviewStory): Promise<ReactNode> => (
+        <div data-testid="content">{String(live.slug)}</div>
+      ),
+    );
+
+    const element = await StoryblokPreview({ story, renderContent });
+    render(element);
+    await vi.waitFor(() => expect(editorCallback).toBeDefined());
+    renderContent.mockClear();
+
+    // A page edit is pending when an event for another story (e.g. a nav
+    // story) arrives inside the default 200 ms debounce window.
+    await act(async () => {
+      editorCallback!(makeStory({ id: 1, slug: "page-edited" }));
+      editorCallback!(makeStory({ id: 2, slug: "nav-edited" }));
+      await vi.runAllTimersAsync();
+    });
+
+    expect(renderContent).toHaveBeenCalledTimes(1);
+    expect(renderContent).toHaveBeenCalledWith(expect.objectContaining({ slug: "page-edited" }));
+  });
+
   // ─── Concurrent action gating ────────────────────────────────────────────
   //
   // Each test below fires an event while a server action is still in-flight.

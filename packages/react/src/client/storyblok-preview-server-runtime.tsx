@@ -16,7 +16,7 @@ import {
   useState,
 } from "react";
 import type { Story } from "../types";
-import { useStoryblokEditorEvent } from "./use-storyblok-editor-event";
+import { useEditorEvent } from "./use-storyblok-editor-event";
 
 /**
  * Props for {@link StoryblokPreviewServerRuntime}.
@@ -270,14 +270,11 @@ export function StoryblokPreviewServerRuntime({
     }
   }
 
-  useStoryblokEditorEvent(
+  // `storyId` scopes editor events to this story: without it, a page preview
+  // and a nav preview mounted on the same layout would both re-render on the
+  // server with whichever story is being edited.
+  useEditorEvent(
     (updatedStory) => {
-      // Editor `input` events aren't scoped to one story: without this guard,
-      // a page preview and a nav preview mounted on the same layout would both
-      // re-render on the server with whichever story is being edited.
-      if (updatedStory.id !== storyId) {
-        return;
-      }
       // While the editor shows a previous version (visual history), the
       // bridge sends the story without `content`. Keep the current render
       // instead of asking the server to render an empty story, which would
@@ -294,7 +291,7 @@ export function StoryblokPreviewServerRuntime({
       }
       run(updatedStory);
     },
-    { debounceMs, bridgeOptions },
+    { debounceMs, storyId, bridgeOptions },
   );
 
   return (

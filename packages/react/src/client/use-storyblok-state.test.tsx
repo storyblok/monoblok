@@ -235,6 +235,52 @@ describe("useStoryblokState", () => {
     expect(result.current.slug).toBe("home");
   });
 
+  it("filters editor events by the current story id after a client-side navigation", async () => {
+    const storyA = makeStory({ id: 1, slug: "a" });
+    const storyB = makeStory({ id: 2, slug: "b" });
+
+    // A client-side navigation re-renders the same mounted hook with a new
+    // story, so the editor subscription made for story A stays in place.
+    const { result, rerender } = renderHook(({ s }) => useStoryblokState(s), {
+      initialProps: { s: storyA },
+    });
+    await vi.waitFor(() => expect(editorCallback).toBeDefined());
+
+    await act(async () => {
+      rerender({ s: storyB });
+    });
+    expect(result.current.slug).toBe("b");
+    expect(editorCallbacks).toHaveLength(1);
+
+    // The editor still sends story A: it must not replace page B.
+    act(() => editorCallback!(makeStory({ id: 1, slug: "a-edited" })));
+    expect(result.current.slug).toBe("b");
+
+    act(() => editorCallback!(makeStory({ id: 2, slug: "b-edited" })));
+    expect(result.current.slug).toBe("b-edited");
+  });
+
+  it("keeps a pending debounced update when an event for another story arrives", async () => {
+    vi.useFakeTimers();
+    try {
+      const story = makeStory({ id: 1, slug: "page" });
+      const { result } = renderHook(() => useStoryblokState(story, { debounceMs: 100 }));
+      await vi.waitFor(() => expect(editorCallback).toBeDefined());
+
+      // A page edit is pending when an event for another story (e.g. a nav
+      // story) arrives inside the debounce window.
+      act(() => {
+        editorCallback!(makeStory({ id: 1, slug: "page-edited" }));
+        editorCallback!(makeStory({ id: 2, slug: "nav-edited" }));
+        vi.advanceTimersByTime(100);
+      });
+
+      expect(result.current.slug).toBe("page-edited");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("ignores editor events for a different story id", async () => {
     const pageStory = makeStory({ id: 1, slug: "page" });
     const navStory = makeStory({ id: 2, slug: "nav" });

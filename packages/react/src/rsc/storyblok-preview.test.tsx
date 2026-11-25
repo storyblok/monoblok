@@ -449,6 +449,31 @@ describe("StoryblokPreview (server mode)", () => {
     consoleSpy.mockRestore();
   });
 
+  it("falls back to a last render that resolved to null, not the page-load render, on error", async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const story = makeStory();
+
+    const renderContent = vi
+      .fn()
+      .mockResolvedValueOnce(<div data-testid="initial">initial</div>)
+      .mockResolvedValueOnce(null)
+      .mockRejectedValueOnce(new Error("server error"));
+
+    const element = await StoryblokPreview({ story, renderContent, debounceMs: 0 });
+    const { queryByTestId } = render(element);
+
+    await vi.waitFor(() => expect(editorCallback).toBeDefined());
+
+    await fireEditorEvent(editorCallback!, makeStory({ slug: "emptied" }));
+    expect(queryByTestId("initial")).toBeNull();
+
+    // The failed update must keep the empty render, not bring back `initial`.
+    await fireEditorEvent(editorCallback!, makeStory({ slug: "failing" }));
+    expect(queryByTestId("initial")).toBeNull();
+
+    consoleSpy.mockRestore();
+  });
+
   it("ignores editor events for a different story id", async () => {
     const pageStory = makeStory({ id: 1, slug: "page" });
     const navStory = makeStory({ id: 2, slug: "nav" });
@@ -789,5 +814,30 @@ describe("StoryblokPreview (server mode)", () => {
     rerender(<div>{elementB}</div>);
 
     expect(getByTestId("content")).toHaveTextContent("2:home");
+  });
+
+  it("shows a server render of a newer version of the same story over the live render", async () => {
+    const renderContent = vi.fn(async (current: { id: unknown; slug?: unknown }) => (
+      <div data-testid="content">{String(current.slug)}</div>
+    ));
+    const saved = makeStory({ slug: "saved", updated_at: "2026-01-01T00:00:00.000Z" });
+
+    const elementA = await StoryblokPreview({ story: saved, renderContent, debounceMs: 0 });
+    const { getByTestId, rerender } = render(<div>{elementA}</div>);
+
+    await vi.waitFor(() => expect(editorCallback).toBeDefined());
+    await fireEditorEvent(editorCallback!, makeStory({ slug: "live" }));
+    expect(getByTestId("content")).toHaveTextContent("live");
+
+    // Same version refreshed from the server: the live render stays.
+    const sameVersion = await StoryblokPreview({ story: saved, renderContent, debounceMs: 0 });
+    rerender(<div>{sameVersion}</div>);
+    expect(getByTestId("content")).toHaveTextContent("live");
+
+    // Newer version (after a save and `router.refresh()`): the server render wins.
+    const newer = makeStory({ slug: "refreshed", updated_at: "2026-01-02T00:00:00.000Z" });
+    const newerVersion = await StoryblokPreview({ story: newer, renderContent, debounceMs: 0 });
+    rerender(<div>{newerVersion}</div>);
+    expect(getByTestId("content")).toHaveTextContent("refreshed");
   });
 });

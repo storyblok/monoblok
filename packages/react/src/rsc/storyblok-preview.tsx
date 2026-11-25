@@ -50,6 +50,11 @@ export interface StoryblokPreviewProps<TStory extends Story = Story> {
  * and Server Actions; use `@storyblok/react` on React 18 or with
  * `output: 'export'`.
  *
+ * A server render of a newer version of the same story (a changed
+ * `updated_at`, e.g. after a save and `router.refresh()`) replaces the live
+ * render and resets client state inside the preview. A server render of the
+ * same version keeps the live render, so it doesn't discard unsaved edits.
+ *
  * @example
  * ```tsx
  * // app/[slug]/page.tsx (Server Component)
@@ -71,7 +76,11 @@ export async function StoryblokPreview<TStory extends Story = Story>({
     <StoryblokPreviewServerRuntime
       // Keyed by story so a reused instance (e.g. in a layout) drops the live
       // render, last good render, and queued story from the previous story.
-      key={story.id}
+      // `updated_at` is part of the key so a server render of a newer version
+      // of the same story (`router.refresh()` after a save) replaces the live
+      // render instead of being hidden behind it. Unsaved edits don't change
+      // `updated_at`, so they never remount the runtime.
+      key={`${story.id}:${story.updated_at ?? ""}`}
       storyId={story.id}
       renderContent={renderContent}
       debounceMs={debounceMs}

@@ -72,9 +72,12 @@ export function useStoryblokEditorEvent<TStory extends Story = Story>(
       }
 
       const ms = debounceRef.current;
+      // Cleared for every event, not only debounced ones: if `debounceMs` was
+      // removed since the timer started, the stale timer would otherwise fire
+      // after this event and overwrite it with an older story.
+      clearTimeout(debounceTimer);
 
       if (ms !== undefined) {
-        clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => callbackRef.current(updatedStory), ms);
       } else {
         callbackRef.current(updatedStory);

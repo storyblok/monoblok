@@ -200,8 +200,10 @@ export function StoryblokPreviewServerRuntime({
   // would reintroduce the forced-await problem described above; setting it
   // later, from a client-only event handler, has no such effect because it
   // never runs during the initial server render.
-  const [lastGoodContent, setLastGoodContent] = useState<ReactNode | null>(null);
-  const fallback = <>{lastGoodContent ?? children}</>;
+  // Wrapped in an object so a render that resolved to `null` (an empty
+  // story) still counts as a render, distinct from "none yet".
+  const [lastGoodContent, setLastGoodContent] = useState<{ node: ReactNode } | null>(null);
+  const fallback = <>{lastGoodContent ? lastGoodContent.node : children}</>;
 
   // One server action at a time. A story arriving while an action is in-flight
   // is held in `queued` (replacing any earlier queued story) and dispatched once
@@ -238,7 +240,7 @@ export function StoryblokPreviewServerRuntime({
         // A failed action later must fall back to this render, not the one
         // from page load.
         if (mounted.current) {
-          setLastGoodContent(node);
+          setLastGoodContent({ node });
         }
         return node;
       })

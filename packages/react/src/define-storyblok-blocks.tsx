@@ -6,6 +6,7 @@ import type {
   StoryblokBlockComponent,
   StoryblokBlockData,
   StoryblokBlockEntry,
+  StoryblokEditableProps,
   StoryblokExtraProps,
 } from "./types";
 
@@ -29,14 +30,20 @@ function isLazyComponent(component: unknown): boolean {
   return Reflect.get(target, "$$typeof") === Symbol.for("react.lazy");
 }
 
-/** Unwraps `React.memo(Component)` to the `Component` it wraps; returns other values unchanged. */
+/**
+ * Unwraps `React.memo(Component)`, at any depth (`memo(memo(...))`), to the
+ * `Component` it wraps; returns other values unchanged.
+ */
 function unwrapMemo(component: unknown): unknown {
-  if (typeof component !== "object" || component === null) {
-    return component;
+  let current = component;
+  while (
+    typeof current === "object" &&
+    current !== null &&
+    Reflect.get(current, "$$typeof") === Symbol.for("react.memo")
+  ) {
+    current = Reflect.get(current, "type");
   }
-  return Reflect.get(component, "$$typeof") === Symbol.for("react.memo")
-    ? Reflect.get(component, "type")
-    : component;
+  return current;
 }
 
 /**
@@ -91,12 +98,31 @@ type ResolvedRegistry = {
   entries: Map<string, ResolvedEntry>;
   /** Warning message for each registered block type whose entry can't render. */
   invalid: Map<string, string>;
-  /** The `fallback`, or `undefined` when it's absent or can't render. */
-  fallback?: StoryblokBlockComponent<any>;
+  /**
+   * The `fallback`, normalized like a registered entry (a lazy `fallback`
+   * gets its own Suspense boundary), or `undefined` when it's absent or
+   * can't render.
+   */
+  fallback?: ResolvedEntry;
   /** Whether a `fallback` was passed that can't render. */
   invalidFallback: boolean;
   warnings: boolean;
 };
+
+/**
+ * Renders a resolved entry, inside its own Suspense boundary when it needs one.
+ * `rest` goes first, so an untyped extra prop can't replace the injected
+ * `block` or `editable`.
+ */
+function renderEntry(
+  { Component, needsSuspense, fallbackNode }: ResolvedEntry,
+  block: StoryblokBlockData,
+  editable: StoryblokEditableProps,
+  rest: Record<string, unknown>,
+): ReactNode {
+  const element = <Component {...rest} block={block} editable={editable} />;
+  return needsSuspense ? <Suspense fallback={fallbackNode}>{element}</Suspense> : element;
+}
 
 /** Props `StoryblokBlock` is called with at runtime: the block plus any extra props. */
 type RuntimeBlockProps = { block?: StoryblokBlockData } & Record<string, unknown>;
@@ -129,7 +155,9 @@ function resolveEntry(
     return {
       Component: entry.component,
       needsSuspense: entry.suspense ?? isLazyComponent(entry.component),
-      fallbackNode: entry.fallback ?? defaultSuspenseFallback,
+      // Not `??`: an explicit `fallback: null` means "show nothing while
+      // loading", and must not inherit `suspenseFallback`.
+      fallbackNode: entry.fallback === undefined ? defaultSuspenseFallback : entry.fallback,
     };
   }
   if (typeof entry === "object" && ("fallback" in entry || "suspense" in entry)) {
@@ -228,7 +256,14 @@ export function defineStoryblokBlocks<TExtraProps extends StoryblokExtraProps = 
     const registry: ResolvedRegistry = {
       entries,
       invalid,
-      fallback: invalidFallback ? undefined : fallback,
+      fallback:
+        fallback == null || invalidFallback
+          ? undefined
+          : {
+              Component: fallback,
+              needsSuspense: isLazyComponent(fallback),
+              fallbackNode: suspenseFallback,
+            },
       invalidFallback,
       warnings,
     };
@@ -282,16 +317,13 @@ export function defineStoryblokBlocks<TExtraProps extends StoryblokExtraProps = 
     const resolvedEntry = entries.get(block.component);
     const editable = storyblokEditable(block);
 
-    // `rest` first in every branch, so an untyped extra prop can't replace
-    // the injected `block` or `editable`.
     if (!resolvedEntry) {
       const invalidMessage = invalid.get(block.component);
       if (invalidMessage !== undefined) {
         warn(`invalid:${block.component}`, invalidMessage, warnings);
       }
       if (fallback) {
-        const FallbackComponent = fallback;
-        return <FallbackComponent {...rest} block={block} editable={editable} />;
+        return renderEntry(fallback, block, editable, rest);
       }
       if (invalidFallback) {
         warn(
@@ -316,9 +348,7 @@ export function defineStoryblokBlocks<TExtraProps extends StoryblokExtraProps = 
       return null;
     }
 
-    const { Component, needsSuspense, fallbackNode } = resolvedEntry;
-    const element = <Component {...rest} block={block} editable={editable} />;
-    return needsSuspense ? <Suspense fallback={fallbackNode}>{element}</Suspense> : element;
+    return renderEntry(resolvedEntry, block, editable, rest);
   }
 
   StoryblokBlock.displayName = "StoryblokBlock";

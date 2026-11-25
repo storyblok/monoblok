@@ -54,9 +54,10 @@ export type StoryblokBlockComponentProps<
 
 /**
  * Extra props shared by every component of a registry. `block` and
- * `editable` are reserved: `StoryblokBlock` injects them.
+ * `editable` are reserved: `StoryblokBlock` injects them. `key` is reserved
+ * too: React consumes it, so a component never receives it.
  */
-export type StoryblokExtraProps = object & { block?: never; editable?: never };
+export type StoryblokExtraProps = object & { block?: never; editable?: never; key?: never };
 
 /**
  * A component that renders a Storyblok block: it accepts the props

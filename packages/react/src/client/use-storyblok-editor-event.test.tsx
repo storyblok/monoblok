@@ -165,6 +165,30 @@ describe("useStoryblokEditorEvent", () => {
       expect(callback).not.toHaveBeenCalled();
     });
 
+    it("should cancel a pending debounced event when debounceMs is removed", async () => {
+      const callback = vi.fn();
+      const older = makeStory({ slug: "older" });
+      const newer = makeStory({ slug: "newer" });
+      let debounceMs: number | undefined = 100;
+
+      const { rerender } = renderHook(() => useStoryblokEditorEvent(callback, { debounceMs }));
+      await vi.waitFor(() => expect(editorCallback).toBeDefined());
+
+      act(() => editorCallback!(older));
+      debounceMs = undefined;
+      rerender();
+      act(() => editorCallback!(newer));
+
+      await act(async () => {
+        vi.advanceTimersByTime(100);
+        await vi.runAllTimersAsync();
+      });
+
+      // The older story's timer must not fire after the newer story.
+      expect(callback).toHaveBeenCalledOnce();
+      expect(callback).toHaveBeenCalledWith(newer);
+    });
+
     it("always uses the latest callback ref without re-subscribing", async () => {
       const first = vi.fn();
       const second = vi.fn();

@@ -189,6 +189,67 @@ describe("defineStoryblokBlocks", () => {
       await waitFor(() => expect(getByTestId("teaser")).toBeInTheDocument());
     });
 
+    it("auto-wraps memo(memo(lazy(...))) components in Suspense", async () => {
+      const LazyTeaser = memo(
+        memo(
+          lazy(
+            () =>
+              new Promise<{ default: typeof Teaser }>((resolve) =>
+                setTimeout(() => resolve({ default: Teaser }), 10),
+              ),
+          ),
+        ),
+      );
+      const { StoryblokBlock } = defineStoryblokBlocks(() => ({
+        components: {
+          teaser: { component: LazyTeaser, fallback: <div data-testid="skeleton">loading</div> },
+        },
+      }));
+
+      const { getByTestId } = render(<StoryblokBlock block={teaserBlock} />);
+      expect(getByTestId("skeleton")).toBeInTheDocument();
+      await waitFor(() => expect(getByTestId("teaser")).toBeInTheDocument());
+    });
+
+    it("should show nothing while loading for an entry with fallback: null, ignoring suspenseFallback", async () => {
+      const LazyPage = lazy(
+        () =>
+          new Promise<{ default: typeof Page }>((resolve) =>
+            setTimeout(() => resolve({ default: Page }), 10),
+          ),
+      );
+      const { StoryblokBlock } = defineStoryblokBlocks(() => ({
+        components: {
+          page: { component: LazyPage, fallback: null },
+        },
+        suspenseFallback: <div data-testid="global-skeleton">global</div>,
+      }));
+
+      const { getByTestId, queryByTestId } = render(<StoryblokBlock block={pageBlock} />);
+      expect(queryByTestId("global-skeleton")).toBeNull();
+      await waitFor(() => expect(getByTestId("page")).toBeInTheDocument());
+    });
+
+    it("should wrap a lazy registry fallback in its own Suspense boundary", async () => {
+      const LazyFallback = lazy(
+        () =>
+          new Promise<{ default: typeof Page }>((resolve) =>
+            setTimeout(() => resolve({ default: Page }), 10),
+          ),
+      );
+      const { StoryblokBlock } = defineStoryblokBlocks(() => ({
+        components: {},
+        fallback: LazyFallback,
+        suspenseFallback: <div data-testid="global-skeleton">global</div>,
+      }));
+
+      // No Suspense boundary around StoryblokBlock: without its own, the lazy
+      // fallback would suspend to the root and render nothing.
+      const { getByTestId } = render(<StoryblokBlock block={unknownBlock} />);
+      expect(getByTestId("global-skeleton")).toBeInTheDocument();
+      await waitFor(() => expect(getByTestId("page")).toBeInTheDocument());
+    });
+
     it("uses the registry-level suspenseFallback when the entry omits its own fallback", async () => {
       const LazyPage = lazy(
         () =>
@@ -1468,11 +1529,13 @@ describe("injected props", () => {
 });
 
 describe("reserved and declared extra props — type safety", () => {
-  it("should reject block or editable as extra props", () => {
+  it("should reject block, editable, or key as extra props", () => {
     // @ts-expect-error — `block` is reserved
     defineStoryblokBlocks<{ block: string }>(() => ({ components: {} }));
     // @ts-expect-error — `editable` is reserved
     defineStoryblokBlocks<{ editable: boolean }>(() => ({ components: {} }));
+    // @ts-expect-error — `key` is reserved: React consumes it
+    defineStoryblokBlocks<{ key: string }>(() => ({ components: {} }));
   });
 
   it("should reject a component that requires an undeclared extra prop", () => {

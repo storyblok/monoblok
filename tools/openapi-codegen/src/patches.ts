@@ -337,9 +337,59 @@ function addAnyInArrayFilter(spec: unknown): void {
   Object.assign(operators, Object.fromEntries(entries));
 }
 
+/**
+ * Type the multi-value `filter_query` operators (`in_array`, `all_in_array`, …) as
+ * `string` only.
+ *
+ * Upstream declares them as `oneOf: [array of strings, string]`, but the API reads one
+ * comma-separated string (`in_array=a,b`), as the docs describe. Sent as an array, the
+ * values arrive as repeated keys and the API keeps only the last one, so the filter
+ * silently uses the last value. Applies to every `filter_query` parameter. No-op once
+ * upstream declares the operators as strings.
+ */
+function narrowFilterQueryOperators(spec: unknown): void {
+  if (!isRecord(spec) || !isRecord(spec.paths)) {
+    return;
+  }
+  for (const pathItem of Object.values(spec.paths)) {
+    for (const operation of isRecord(pathItem) ? Object.values(pathItem) : []) {
+      if (!isRecord(operation) || !Array.isArray(operation.parameters)) {
+        continue;
+      }
+      for (const parameter of operation.parameters) {
+        const operators =
+          isRecord(parameter) &&
+          parameter.name === "filter_query" &&
+          isRecord(parameter.schema) &&
+          isRecord(parameter.schema.additionalProperties)
+            ? parameter.schema.additionalProperties.properties
+            : undefined;
+        if (!isRecord(operators)) {
+          continue;
+        }
+        for (const [name, operator] of Object.entries(operators)) {
+          const branches =
+            isRecord(operator) && Array.isArray(operator.oneOf) ? operator.oneOf : [];
+          const stringBranch = branches.find(
+            (branch) => isRecord(branch) && branch.type === "string",
+          );
+          if (
+            stringBranch &&
+            branches.some((branch) => isRecord(branch) && branch.type === "array")
+          ) {
+            operators[name] = stringBranch;
+          }
+        }
+      }
+    }
+  }
+}
+
 function patchCapiInput(spec: unknown): void {
   // @todo(openapi-spec): Remove once the upstream CDN spec declares `any_in_array`.
   addAnyInArrayFilter(spec);
+  // @todo(openapi-spec): Remove once the upstream CDN spec types these operators as strings.
+  narrowFilterQueryOperators(spec);
 }
 
 /**

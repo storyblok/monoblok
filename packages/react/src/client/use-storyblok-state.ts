@@ -99,7 +99,14 @@ export function useStoryblokState<TStory extends Story = Story>(
   // story is being edited.
   useEditorEvent<TStory>(
     (updatedStory) => {
-      setSnapshot((prev) => ({ ...prev, current: { ...prev.current, ...updatedStory } }));
+      // `storyId` is synced after commit, so an event can still slip through
+      // between a navigation render and that sync. Only merge into the story
+      // the snapshot currently holds.
+      setSnapshot((prev) =>
+        prev.story.id === updatedStory.id
+          ? { ...prev, current: { ...prev.current, ...updatedStory } }
+          : prev,
+      );
     },
     { ...options, storyId: story.id },
   );

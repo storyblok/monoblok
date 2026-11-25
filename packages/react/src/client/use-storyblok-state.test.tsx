@@ -281,6 +281,31 @@ describe("useStoryblokState", () => {
     }
   });
 
+  it("drops a pending debounced edit for the previous story after a client-side navigation", async () => {
+    vi.useFakeTimers();
+    try {
+      const storyA = makeStory({ id: 1, slug: "a" });
+      const storyB = makeStory({ id: 2, slug: "b" });
+      const { result, rerender } = renderHook(
+        ({ s }) => useStoryblokState(s, { debounceMs: 300 }),
+        { initialProps: { s: storyA } },
+      );
+      await vi.waitFor(() => expect(editorCallback).toBeDefined());
+
+      // An edit for A is pending when the same mounted hook moves to B.
+      act(() => editorCallback!(makeStory({ id: 1, slug: "a-edited" })));
+      await act(async () => {
+        rerender({ s: storyB });
+      });
+      act(() => vi.advanceTimersByTime(300));
+
+      expect(result.current.id).toBe(2);
+      expect(result.current.slug).toBe("b");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("ignores editor events for a different story id", async () => {
     const pageStory = makeStory({ id: 1, slug: "page" });
     const navStory = makeStory({ id: 2, slug: "nav" });

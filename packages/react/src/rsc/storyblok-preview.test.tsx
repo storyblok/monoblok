@@ -776,6 +776,65 @@ describe("StoryblokPreview (server mode)", () => {
     consoleSpy.mockRestore();
   });
 
+  it("logs a failed action once even when a queued story replaces it", async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    let rejectFirst!: (err: Error) => void;
+    const renderContent = vi
+      .fn()
+      .mockResolvedValueOnce(<div data-testid="initial">initial</div>)
+      .mockImplementationOnce(
+        () =>
+          new Promise<ReactNode>((_, reject) => {
+            rejectFirst = reject;
+          }),
+      )
+      .mockResolvedValueOnce(<div data-testid="second-live">second</div>);
+
+    const element = await StoryblokPreview({ story: makeStory(), renderContent, debounceMs: 0 });
+    render(element);
+    await vi.waitFor(() => expect(editorCallback).toBeDefined());
+
+    await fireEditorEvent(editorCallback!, makeStory({ slug: "first" }));
+    await fireEditorEvent(editorCallback!, makeStory({ slug: "second" }));
+
+    const error = new Error("server error");
+    await act(async () => {
+      rejectFirst(error);
+      await vi.runAllTimersAsync();
+    });
+
+    const failureLogs = consoleSpy.mock.calls.filter(
+      ([message]) => message === "[storyblok] StoryblokPreview: renderContent failed.",
+    );
+    expect(failureLogs).toEqual([["[storyblok] StoryblokPreview: renderContent failed.", error]]);
+
+    consoleSpy.mockRestore();
+  });
+
+  it("keeps a pending debounced edit when a story without content arrives (visual history)", async () => {
+    const renderContent = vi.fn(
+      async (live: LivePreviewStory): Promise<ReactNode> => (
+        <div data-testid="content">{String(live.slug)}</div>
+      ),
+    );
+    const element = await StoryblokPreview({ story: makeStory(), renderContent });
+    render(element);
+    await vi.waitFor(() => expect(editorCallback).toBeDefined());
+    renderContent.mockClear();
+
+    const { content: _content, ...withoutContent } = makeStory({ slug: "history" });
+    // An edit is pending inside the default 200 ms debounce window when the
+    // editor switches to a previous version.
+    await act(async () => {
+      editorCallback!(makeStory({ slug: "edited" }));
+      editorCallback!(withoutContent);
+      await vi.runAllTimersAsync();
+    });
+
+    expect(renderContent).toHaveBeenCalledTimes(1);
+    expect(renderContent).toHaveBeenCalledWith(expect.objectContaining({ slug: "edited" }));
+  });
+
   it("should not run a queued story after unmount", async () => {
     const story = makeStory();
     let resolveFirst!: (node: ReactNode) => void;

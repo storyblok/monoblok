@@ -130,6 +130,8 @@ interface LiveContentBoundaryState {
  * instead of crashing the page. Resets automatically when a new promise
  * arrives from the next editor event.
  */
+const RENDER_FAILED_MESSAGE = "[storyblok] StoryblokPreview: renderContent failed.";
+
 class LiveContentBoundary extends Component<LiveContentBoundaryProps, LiveContentBoundaryState> {
   state: LiveContentBoundaryState = { hasError: false, capturedPromise: null };
 
@@ -153,7 +155,7 @@ class LiveContentBoundary extends Component<LiveContentBoundaryProps, LiveConten
   }
 
   componentDidCatch(error: unknown) {
-    console.error("[storyblok] StoryblokPreview: renderContent failed.", error);
+    console.error(RENDER_FAILED_MESSAGE, error);
   }
 
   render() {
@@ -236,14 +238,25 @@ export function StoryblokPreviewServerRuntime({
     // Call renderContent eagerly (outside the transition) so the Server Action
     // starts streaming its RSC response immediately.
     const promise = renderContent(story)
-      .then((node) => {
-        // A failed action later must fall back to this render, not the one
-        // from page load.
-        if (mounted.current) {
-          setLastGoodContent({ node });
-        }
-        return node;
-      })
+      .then(
+        (node) => {
+          // A failed action later must fall back to this render, not the one
+          // from page load.
+          if (mounted.current) {
+            setLastGoodContent({ node });
+          }
+          return node;
+        },
+        (error: unknown) => {
+          // With a newer story queued, the `finally` below swaps in its
+          // promise before React reads this rejection, so the error boundary
+          // never sees it. Log here instead; otherwise the boundary logs it.
+          if (mounted.current && queued.current) {
+            console.error(RENDER_FAILED_MESSAGE, error);
+          }
+          throw error;
+        },
+      )
       .finally(() => {
         inFlight.current = false;
 
@@ -273,16 +286,14 @@ export function StoryblokPreviewServerRuntime({
   // `storyId` scopes editor events to this story: without it, a page preview
   // and a nav preview mounted on the same layout would both re-render on the
   // server with whichever story is being edited.
+  // `skipWithoutContent`: while the editor shows a previous version (visual
+  // history), the bridge sends the story without `content`. Keep the current
+  // render instead of asking the server to render an empty story, which would
+  // also log the undefined-block warning: the server has no editor URL to
+  // suppress it with. Dropped before the debounce, so it never cancels a
+  // pending edit.
   useEditorEvent(
     (updatedStory) => {
-      // While the editor shows a previous version (visual history), the
-      // bridge sends the story without `content`. Keep the current render
-      // instead of asking the server to render an empty story, which would
-      // also log the undefined-block warning: the server has no editor URL to
-      // suppress it with.
-      if (updatedStory.content == null) {
-        return;
-      }
       if (inFlight.current) {
         // Replace any previously queued story with the latest — intermediate
         // stories are intentionally discarded.
@@ -291,7 +302,7 @@ export function StoryblokPreviewServerRuntime({
       }
       run(updatedStory);
     },
-    { debounceMs, storyId, bridgeOptions },
+    { debounceMs, storyId, skipWithoutContent: true, bridgeOptions },
   );
 
   return (

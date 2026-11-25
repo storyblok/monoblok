@@ -39,9 +39,14 @@ export interface UseStoryblokEditorEventOptions {
  * ```tsx
  * "use client";
  * function Page({ story }: { story: Story }) {
- *   const [current, setCurrent] = useState(story);
- *   useStoryblokEditorEvent((updated) => setCurrent(updated));
- *   return <StoryblokBlock block={current.content} />;
+ *   const [current, setCurrent] = useState<LivePreviewStory>(story);
+ *   useStoryblokEditorEvent((updated) => {
+ *     // Editor events aren't scoped to one story.
+ *     if (updated.id === story.id) {
+ *       setCurrent(updated);
+ *     }
+ *   });
+ *   return current.content ? <StoryblokBlock block={current.content} /> : null;
  * }
  * ```
  */
@@ -63,16 +68,23 @@ export interface EditorEventOptions extends UseStoryblokEditorEventOptions {
    * after a client-side navigation applies immediately.
    */
   storyId?: Story["id"];
+  /**
+   * Drop stories without `content`, which the Preview Bridge sends while the
+   * editor shows a previous version (visual history). Dropped before
+   * debouncing, so such an event never cancels a pending update. Read at
+   * mount time.
+   */
+  skipWithoutContent?: boolean;
 }
 
 /**
  * Implementation of {@link useStoryblokEditorEvent}, plus the internal
- * `storyId` filter used by `useStoryblokState` and the server-mode preview
- * runtime. Not exported from the package.
+ * `storyId` and `skipWithoutContent` filters used by `useStoryblokState` and
+ * the server-mode preview runtime. Not exported from the package.
  */
 export function useEditorEvent<TStory extends Story = Story>(
   callback: (story: LivePreviewStory<TStory>) => void,
-  { debounceMs, storyId, bridgeOptions }: EditorEventOptions = {},
+  { debounceMs, storyId, skipWithoutContent = false, bridgeOptions }: EditorEventOptions = {},
 ): void {
   const callbackRef = useRef(callback);
   const debounceRef = useRef(debounceMs);
@@ -91,6 +103,10 @@ export function useEditorEvent<TStory extends Story = Story>(
     let mounted = true;
     let debounceTimer: ReturnType<typeof setTimeout> | undefined;
 
+    function isForCurrentStory(updatedStory: LivePreviewStory<TStory>): boolean {
+      return storyIdRef.current === undefined || updatedStory.id === storyIdRef.current;
+    }
+
     // Synchronous, and never throws: Preview Bridge load failures go to
     // `bridgeOptions.onError` (`console.error` by default).
     const unsubscribe = onStoryblokEditorEvent<TStory>((updatedStory) => {
@@ -99,7 +115,10 @@ export function useEditorEvent<TStory extends Story = Story>(
       }
       // Filtered before the debounce: an event for another story must not
       // clear the timer holding a pending update for this one.
-      if (storyIdRef.current !== undefined && updatedStory.id !== storyIdRef.current) {
+      if (!isForCurrentStory(updatedStory)) {
+        return;
+      }
+      if (skipWithoutContent && updatedStory.content == null) {
         return;
       }
 
@@ -110,7 +129,13 @@ export function useEditorEvent<TStory extends Story = Story>(
       clearTimeout(debounceTimer);
 
       if (ms !== undefined) {
-        debounceTimer = setTimeout(() => callbackRef.current(updatedStory), ms);
+        debounceTimer = setTimeout(() => {
+          // Checked again: a client-side navigation during the debounce
+          // window may have moved this subscriber to another story.
+          if (isForCurrentStory(updatedStory)) {
+            callbackRef.current(updatedStory);
+          }
+        }, ms);
       } else {
         callbackRef.current(updatedStory);
       }

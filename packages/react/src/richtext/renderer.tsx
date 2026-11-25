@@ -178,7 +178,7 @@ function warnMissingBlokOnce(warnings: boolean | undefined): void {
  */
 export function createRichTextRenderer<TData = unknown>(
   options: StoryblokReactRichTextOptions<TData>,
-) {
+): (document: StoryblokRichTextInput) => ReactNode | null {
   // `data` is optional only when no component reads it, so a missing `data`
   // is a valid `context.data` of `undefined`.
   const context = options as StoryblokReactRichTextRenderContext;
@@ -306,7 +306,8 @@ function renderNode(
 
   if (node.type === "emoji") {
     const emojiNode = node as Extract<StoryblokRichTextNodeWithKey, { type: "emoji" }>;
-    return createElement(tag, { key, ...props }, emojiNode.attrs.emoji);
+    // Optional, as in the core renderer: hand-built rich text may omit `attrs`.
+    return createElement(tag, { key, ...props }, emojiNode.attrs?.emoji ?? "");
   }
 
   return createElement(

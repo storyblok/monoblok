@@ -110,6 +110,14 @@ describe("react StoryblokRichText component", () => {
       const { container } = render(<StoryblokRichText document={[]} />);
       expect(container.innerHTML).toBe("");
     });
+    it("renders an emoji node without attrs as an empty span, like the core renderer", () => {
+      const document = {
+        type: "doc",
+        content: [{ type: "paragraph", content: [{ type: "emoji" }] }],
+      } as unknown as StoryblokRichTextInput;
+      const { container } = render(<StoryblokRichText document={document} />);
+      expect(container.innerHTML).toBe("<p><span></span></p>");
+    });
   });
   describe("nodes", () => {
     nodeFixtures.forEach(({ title, input, expected }) => {

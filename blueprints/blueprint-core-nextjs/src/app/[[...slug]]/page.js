@@ -12,12 +12,14 @@ export default async function Page({ params }) {
 		query: { version: 'draft' },
 	});
 
-	if (result.error) {
-		throw result.error;
+	// A missing story comes back as a 404 error, so check for it before
+	// rethrowing every other failure.
+	if (result.error?.response.status === 404) {
+		notFound();
 	}
 
-	if (!result.data?.story) {
-		notFound();
+	if (result.error) {
+		throw result.error;
 	}
 
 	return <StoryblokPreview story={result.data.story} renderContent={renderContent} />;

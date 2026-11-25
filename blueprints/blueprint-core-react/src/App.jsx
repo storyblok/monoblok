@@ -8,7 +8,7 @@ async function fetchStory(slug) {
 	const result = await apiClient.stories.get(slug, {
 		query: { version: 'draft' },
 	});
-	if (!result.data) throw new Error(`Story not found: ${slug}`);
+	if (result.error) throw result.error;
 	return result.data.story;
 }
 

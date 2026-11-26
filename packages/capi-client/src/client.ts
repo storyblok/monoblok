@@ -276,10 +276,10 @@ export interface ContentApiClientConfig<
    * - SSR framework fetch wrappers (e.g., Next.js `fetch` with caching)
    * - Custom instrumentation or logging around requests
    *
-   * The client reads the final `response.url` to learn the `cv` a redirect moved a request
-   * to. A wrapper that rebuilds the `Response` (e.g. `new Response(r.body, r)`) loses it, so
-   * `/cdn/links` responses teach no `cv` and their entries can fall back to TTL-only
-   * invalidation.
+   * Keep `response.url`: `/cdn/links` reports its `cv` only there. A rebuilt `Response`
+   * (e.g. `new Response(r.body, r)`) drops it, so links entries fall back to TTL-only
+   * invalidation. Interceptors and framework caches that rebuild the `Response` do the same,
+   * e.g. Next.js `cacheComponents` prerender caches return `url: ""`.
    *
    * @default globalThis.fetch
    */

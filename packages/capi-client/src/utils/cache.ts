@@ -45,10 +45,9 @@ export interface CacheEntry<TValue = unknown> {
   storedAt: number;
   ttlMs: number;
   /**
-   * The `cv` the response body reported, else the `cv` in its final URL (`/cdn/links` reports
-   * none in the body), else the `cv` it was requested under. Unless the caller pinned the
-   * `cv`, the entry is served only while this matches the known `cv`. Absent means TTL-only
-   * invalidation, as for `/cdn/tags` fetched before any `cv` was known.
+   * The `cv` the response was served from, else the `cv` it was requested under. Unless the
+   * caller pinned the `cv`, the entry is served only while this matches the known `cv`.
+   * Absent means TTL-only invalidation, as for `/cdn/tags` fetched before any `cv` was known.
    */
   cv?: number;
 }

@@ -37,6 +37,45 @@ describe("links.list()", () => {
     expect(new URL(storyUrls[0] ?? "").searchParams.get("cv")).toBe(CURRENT_CV);
   });
 
+  it("should keep caching after a query parameter name smuggles in a cv", async () => {
+    const CURRENT_CV = "2000";
+    const storyUrls: string[] = [];
+    const currentCvRedirect = (request: Request) => {
+      const url = new URL(request.url);
+      // The edge serves the last cv and redirects one it does not hold to the current one.
+      const cvs = url.searchParams.getAll("cv");
+      if (cvs[cvs.length - 1] === CURRENT_CV) {
+        return undefined;
+      }
+      url.searchParams.set("cv", CURRENT_CV);
+      return HttpResponse.redirect(url.toString(), 301);
+    };
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/links", ({ request }) => {
+        return currentCvRedirect(request) ?? HttpResponse.json({ links: {} });
+      }),
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        storyUrls.push(request.url);
+        return (
+          currentCvRedirect(request) ?? HttpResponse.json({ stories: [], cv: Number(CURRENT_CV) })
+        );
+      }),
+    );
+    const client = createApiClient({ accessToken: "links-smuggled-cv-token" });
+
+    await client.stories.list();
+    await client.get("v2/cdn/links", {
+      query: { version: "published", "x&cv": String(Number.MAX_SAFE_INTEGER) },
+    });
+    storyUrls.length = 0;
+    await client.stories.list();
+    await client.stories.list({ query: { starts_with: "blog/" } });
+    await client.stories.list({ query: { starts_with: "blog/" } });
+
+    expect(storyUrls).toHaveLength(1);
+    expect(new URL(storyUrls[0] ?? "").searchParams.get("cv")).toBe(CURRENT_CV);
+  });
+
   describe("without a cv known beforehand", () => {
     const spaceHandler = (version: () => number) =>
       http.get("https://api.storyblok.com/v2/cdn/spaces/me", () => {

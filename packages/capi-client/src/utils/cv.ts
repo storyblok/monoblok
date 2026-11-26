@@ -19,24 +19,30 @@ export const extractCv = (maybeData: unknown) => {
   return typeof maybeData.cv === "number" && maybeData.cv > 0 ? maybeData.cv : undefined;
 };
 
+/**
+ * The CDN serves the last `cv` in the query. Query names aren't encoded, so a caller's
+ * `"x&cv"` parameter puts a raw `cv` before the client's own.
+ */
 const extractCvFromUrl = (url: string | undefined) => {
   if (!url) {
     return undefined;
   }
-  let cv: number;
+  let cvs: string[];
   try {
-    cv = Number(new URL(url).searchParams.get("cv"));
+    cvs = new URL(url).searchParams.getAll("cv");
   } catch {
     return undefined;
   }
+  const cv = Number(cvs[cvs.length - 1]);
   return Number.isSafeInteger(cv) && cv > 0 ? cv : undefined;
 };
 
 /**
  * Reads the `cv` of the snapshot a response was served from: the body's or else the final
- * URL's, which a redirect to the current snapshot rewrites (`/cdn/links` reports no body
- * `cv`). Only a cacheable published request's URL names the served snapshot; draft and
- * `/cdn/spaces/me` URLs keep whatever `cv` the caller sent.
+ * URL's. `/cdn/links` reports no body `cv`, so its URL is the only source: a request without
+ * a `cv`, or with one the edge doesn't hold, is redirected to the current one. Only a
+ * cacheable published request's URL names the served snapshot; draft and `/cdn/spaces/me`
+ * URLs keep whatever `cv` the caller sent.
  */
 export const extractServedCv = (
   result: { data?: unknown; response?: Pick<Response, "url"> },

@@ -31,6 +31,15 @@ describe("extractServedCv", () => {
     ).toBe(2000);
   });
 
+  it("should read the last cv of the final URL, which the CDN serves", () => {
+    expect(
+      extractServedCv(
+        respondedFrom("https://api.storyblok.com/v2/cdn/links?x&cv=9007199254740991&cv=2000"),
+        LINKS,
+      ),
+    ).toBe(2000);
+  });
+
   it("should prefer the cv the body reports", () => {
     const result = {
       data: { stories: [], cv: 3000 },

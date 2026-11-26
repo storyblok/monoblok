@@ -21,6 +21,9 @@ The API behavior these signals describe, verified against the live CDN:
   a caller who pinned that `cv` on purpose; only the caller's intent separates the two.
 - A response body's `cv` identifies the snapshot that was actually served.
 - Draft requests ignore `cv` entirely and are never redirected.
+- `/cdn/links` and `/cdn/tags` report no `cv` in the body. A redirected `/cdn/links` request's final
+  URL carries the `cv` it was redirected to. `/cdn/tags` is never redirected, whatever `cv` it is
+  sent with.
 - Without a Minimum Cache TTL, `space.version` and `cv` report the same raw version. With one, the
   `cv` is floored into TTL-sized buckets and lags permanently, so only same-signal comparisons carry
   information.
@@ -38,19 +41,21 @@ version watermarks in the cache provider. Invalidation is a mismatch, not a flus
 
 1. **Only a positive `cv` is a version.** The API redirects `0` like any `cv` the edge does not
    hold, so it is rejected where the body is read. No numeric sentinel ever reaches the wire.
-2. **Entries are tagged.** `CacheEntry.cv` records the `cv` the response reported or, for endpoints
-   that report none (`/cdn/tags`, `/cdn/links`), the `cv` the request was issued under. Every
-   response that isn't discarded teaches a `cv`, whether or not it is stored. A draft response is
-   never stored, but its `cv` is the same version a published one reports, so it invalidates
-   published entries too; an application that reads both but never polls `/cdn/spaces/me` has no
-   other signal.
-3. **One watermark per signal.** `knownCv` (highest `cv` seen in a body) and `knownSpaceVersion`
-   (highest version seen from `/cdn/spaces/me`) advance by monotonic max only, so a stale edge read
-   never moves them. They are compared to each other once: on the first sighting, a `space.version`
-   ahead of `knownCv` counts as a possible publish, because there is no earlier space version to
-   compare against. `highestCv` records the highest `cv` ever held and is never dropped. An
-   invalidation resets `knownCv`, and the response right after it is the one that teaches the next
-   `cv`, so the floor that recognizes a stale edge read has to outlive the reset.
+2. **Entries are tagged.** `CacheEntry.cv` records the `cv` the response was served from: the one
+   its body reports, else the one in its final URL, which a redirect rewrites (`/cdn/links`), else
+   the one the request was issued under (`/cdn/tags`). Only a cacheable published request's URL is
+   read; draft and `/cdn/spaces/me` URLs keep whatever `cv` the caller sent. Every response that
+   isn't discarded teaches a `cv`, whether or not it is stored. A draft response is never stored,
+   but its `cv` is the same version a published one reports, so it invalidates published entries
+   too; an application that reads both but never polls `/cdn/spaces/me` has no other signal.
+3. **One watermark per signal.** `knownCv` (highest served `cv` seen in a body or a redirect's final
+   URL) and `knownSpaceVersion` (highest version seen from `/cdn/spaces/me`) advance by monotonic
+   max only, so a stale edge read never moves them. They are compared to each other once: on the
+   first sighting, a `space.version` ahead of `knownCv` counts as a possible publish, because there
+   is no earlier space version to compare against. `highestCv` records the highest `cv` ever held
+   and is never dropped. An invalidation resets `knownCv`, and the response right after it is the
+   one that teaches the next `cv`, so the floor that recognizes a stale edge read has to outlive the
+   reset.
 4. **The watermarks live in the cache provider**, under the reserved key `sb:versions:v1:<tokenId>`,
    so they share fate with the entries they govern. Every client and process sharing a provider
    shares them, which is what makes the publish signal work for a per-request client in a serverless
@@ -66,21 +71,24 @@ version watermarks in the cache provider. Invalidation is a mismatch, not a flus
    flushed: unreachable entries expire by TTL or eviction, and flushing would also empty a provider
    other clients keep their own entries in.
 7. **A response is discarded when the `cv` it was issued under is no longer the known one**, unless
-   its own body reports the `cv` that superseded it. It was answered for a superseded version, so it
-   neither teaches a `cv` nor gets stored. This holds across clients and processes because the
-   comparison is against shared state, and it applies to draft responses too, which would otherwise
-   teach back the `cv` a publish dropped. The body alone can't replace the issue-time comparison:
-   under a Minimum Cache TTL a late pre-publish response and a fresh floored refetch report the same
-   `cv`. A request issued while no `cv` was known is compared by the space version instead: when it
-   moved since issue, a publish superseded the request. Neither comparison sees an explicit flush,
-   so the record also carries a `generation` that only `flushCache()` bumps; a response whose
-   generation no longer matches is discarded.
+   it was served from the `cv` that superseded it, as its body or final URL reports. It was answered
+   for a superseded version, so it neither teaches a `cv` nor gets stored. This holds across clients
+   and processes because the comparison is against shared state, and it applies to draft responses
+   too, which would otherwise teach back the `cv` a publish dropped. The served `cv` alone can't
+   replace the issue-time comparison: under a Minimum Cache TTL a late pre-publish response and a
+   fresh floored refetch report the same `cv`. A request issued while no `cv` was known is compared
+   by the space version instead: when it moved since issue, a publish superseded the request.
+   Neither comparison sees an explicit flush, so the record also carries a `generation` that only
+   `flushCache()` bumps; a response whose generation no longer matches is discarded.
 8. **A caller-pinned `cv` is honored literally.** The request is keyed by its own `cv`, is immune to
-   publishes, and expires by TTL alone. The response teaches no watermark when it reports the pinned
-   `cv` back, or no `cv` at all. The stale-read rule is gated on that, because the snapshot a pinned
-   request receives looks exactly like a stale edge read. A `cv` the edge doesn't hold, such as the
-   documented `cv: Date.now()` cache bust, is redirected to the current version, and that response
-   is tracked like any other.
+   publishes, and expires by TTL alone. The response teaches no watermark when it was served from
+   the pinned `cv`, or reports no `cv` at all. The stale-read rule is gated on that, because the
+   snapshot a pinned request receives looks exactly like a stale edge read. A `cv` the edge doesn't
+   hold, such as the documented `cv: Date.now()` cache bust, is redirected to the current version,
+   and that response is tracked like any other. With `cache.cv: 'auto'`, a pin equal to `knownCv`
+   asks for the snapshot an unpinned request gets, so it shares the unpinned entry while that
+   entry's tag matches the pin. Otherwise, for example once a publish moves `knownCv` past it, it is
+   keyed by its own `cv`.
 9. **`flushCache()` stays** for webhook-driven invalidation under `cache.flush: 'manual'`. It
    empties the provider and resets the record, keeping `highestCv`, `knownSpaceVersion`, and the
    bumped `generation`.
@@ -99,6 +107,8 @@ cache providers observe its key shapes. It adopts these rules:
 - The space-version signal is scoped to the provider object, so per-request clients sharing one
   provider share it. A handler that builds its provider inline per request gets a new identity each
   time, so every poll is a first sighting, judged against the highest `cv` the process has seen.
+
+It doesn't read a redirect's final URL, so a `/cdn/links` response there teaches no `cv`.
 
 ## Guarantees and Scope
 
@@ -145,8 +155,9 @@ directly and retire most of the inference.
 - In a space without publishes, the watermark record expires after seven days, and every tagged
   entry is refetched once.
 - Each cacheable request reads the watermark record next to its entry, in parallel, and again when
-  the response lands. That's free for the in-memory provider and a round trip for an external one,
-  still far cheaper than the origin fetch it prevents.
+  the response lands. A pinned request also reads the unpinned entry it may share, in the same round
+  trip. That's free for the in-memory provider and a round trip for an external one, still far
+  cheaper than the origin fetch it prevents.
 - Draft requests and polls read the record alongside the request, then update it before they
   resolve: one provider round trip after the response, or three when a version moved. Resolving
   first would let the next sequential read miss the invalidation. A provider failure on that path
@@ -156,10 +167,11 @@ directly and retire most of the inference.
 - Enabling a Minimum Cache TTL on a token already in use lowers the reported `cv` below the highest
   one seen, so in both clients every response reads as a stale edge read and nothing is cached until
   the floored `cv` catches up, at most one TTL bucket later.
-- Endpoints that report no `cv` are only invalidated when they were fetched while a `cv` was known.
-  A response fetched during an unknown-`cv` window falls back to TTL alone.
-- After a publish is noticed, a response in flight whose body already carries the new `cv` is still
-  discarded until another response re-teaches that `cv`, which costs one refetch of that key.
+- `/cdn/tags` entries are only invalidated when they were fetched while a `cv` was known; one
+  fetched before any `cv` was known falls back to TTL alone. `/cdn/links` entries do too when a
+  custom `fetch` rebuilds the `Response` and drops its final URL.
+- After a publish is noticed, a response in flight that was already served from the new `cv` is
+  still discarded until another response re-teaches that `cv`, which costs one refetch of that key.
 - A cached entry whose `cv` a publish invalidated is withheld from the cache strategy, so a
   `network-first` or `swr` read during an outage right after a publish returns the error instead of
   pre-publish content.

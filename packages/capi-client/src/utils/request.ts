@@ -26,6 +26,14 @@ const STORIES_PATH = /^\/v2\/cdn\/stories(\/|$)/;
 export const isStoriesRequest = (path: string) => STORIES_PATH.test(normalizePath(path));
 
 /**
+ * The API redirects `/cdn/stories` and `/cdn/links` in every space that redirects at all;
+ * other endpoints only in some spaces (`/cdn/datasource_entries`) or never (`/cdn/tags`).
+ */
+const CV_CHECK_PATH = /^\/v2\/cdn\/(stories|links)(\/|$)/;
+
+export const isCvCheckRequest = (path: string) => CV_CHECK_PATH.test(normalizePath(path));
+
+/**
  * Recursively normalizes query values by sorting object keys.
  * This makes JSON stringification deterministic for cache key generation.
  */

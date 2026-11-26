@@ -164,8 +164,8 @@ describe("spaces.get() as a cache invalidation signal", () => {
         store.clear();
       },
     };
-    /** Response entries, without the version watermark record. */
-    const responseKeys = () => [...store.keys()].filter((key) => !key.startsWith("sb:versions:"));
+    /** Response entries, without the client's reserved records. */
+    const responseKeys = () => [...store.keys()].filter((key) => !key.startsWith("sb:"));
     return { store, stats, provider, responseKeys };
   };
 

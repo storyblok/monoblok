@@ -36,89 +36,50 @@ const decodeIfEncoded = (value: string): string => {
 };
 
 /**
- * Levels of related stories below a requested story that `circularRelations: false`
- * inlines, matching `storyblok-js-client`: relations of the deepest level stay UUIDs.
+ * Related stories are inlined up to two levels below a requested story, as in
+ * `storyblok-js-client`. Relations below that stay UUID strings, so the result is never
+ * circular. The CDN only puts two levels into `rels`; going deeper would cost extra requests.
  */
-const MAX_ACYCLIC_RELATION_DEPTH = 2;
-
-export interface InlineRelationsOptions {
-  /** The client's `circularRelations` option; `undefined` is the deprecated default. */
-  circularRelations: boolean | undefined;
-}
+const MAX_RELATION_DEPTH = 2;
 
 interface InlineContext<TStory> {
   relationPaths: ReadonlySet<RelationPath>;
   relationMap: ReadonlyMap<string, TStory>;
-  allowCircular: boolean;
-  /** One copy per UUID when circular references are allowed, else one per level and UUID. */
+  /**
+   * One copy per level and UUID. A story only references copies one level deeper, so the
+   * result is never circular.
+   */
   copies: Map<string, TStory>;
-  /** Copies whose content is still being inlined; reaching one again closes a cycle. */
-  copiesInProgress: Set<string>;
-  isCircular: boolean;
 }
-
-let hasWarnedAboutCircularDefault = false;
-
-const warnAboutCircularDefault = () => {
-  if (hasWarnedAboutCircularDefault) {
-    return;
-  }
-  hasWarnedAboutCircularDefault = true;
-  console.warn(
-    "[storyblok/api-client] Inlined relations produced a circular result, so `JSON.stringify` throws on it. " +
-      "From 1.0.0, the `circularRelations` client option is removed and relations always behave like " +
-      "`circularRelations: false`: inlined two levels deep and never circular. " +
-      "Set `circularRelations: false` to switch now, or `true` to keep circular results until 1.0.0. " +
-      "Setting either value silences this warning.",
-  );
-};
 
 const createInlineContext = <TStory>(
   relationPaths: RelationPath[],
   relationMap: ReadonlyMap<string, TStory>,
-  { circularRelations }: InlineRelationsOptions,
 ): InlineContext<TStory> => ({
   relationPaths: new Set(relationPaths),
   relationMap,
-  allowCircular: circularRelations !== false,
   copies: new Map(),
-  copiesInProgress: new Set(),
-  isCircular: false,
 });
-
-const reportCircularDefault = (
-  context: InlineContext<unknown>,
-  { circularRelations }: InlineRelationsOptions,
-) => {
-  if (context.isCircular && circularRelations === undefined) {
-    warnAboutCircularDefault();
-  }
-};
 
 const inlineStory = <TStory extends Story | StoryWithInlinedRelations>(
   story: TStory,
   depth: number,
   context: InlineContext<TStory>,
 ): TStory => {
-  const copyKey = context.allowCircular ? story.uuid : `${depth}:${story.uuid}`;
+  const copyKey = `${depth}:${story.uuid}`;
   const existingCopy = context.copies.get(copyKey);
   if (existingCopy) {
-    if (context.copiesInProgress.has(copyKey)) {
-      context.isCircular = true;
-    }
     return existingCopy;
   }
 
   const clonedStory = structuredClone(story);
   context.copies.set(copyKey, clonedStory);
-  if (!context.allowCircular && depth >= MAX_ACYCLIC_RELATION_DEPTH) {
+  if (depth >= MAX_RELATION_DEPTH) {
     return clonedStory;
   }
 
-  context.copiesInProgress.add(copyKey);
   // resolveNode returns `unknown` to handle arbitrary JSON trees; shape is preserved at runtime.
   clonedStory.content = resolveNode(clonedStory.content, depth, context) as Story["content"];
-  context.copiesInProgress.delete(copyKey);
   return clonedStory;
 };
 
@@ -209,28 +170,13 @@ function resolveFieldValue<TStory extends Story | StoryWithInlinedRelations>(
   return resolveNode(value, depth, context);
 }
 
-export const inlineStoryContent = <TStory extends Story | StoryWithInlinedRelations>(
-  story: TStory,
-  relationPaths: RelationPath[],
-  relationMap: ReadonlyMap<string, TStory>,
-  options: InlineRelationsOptions,
-): TStory => {
-  const context = createInlineContext(relationPaths, relationMap, options);
-  const inlinedStory = inlineStory(story, 0, context);
-  reportCircularDefault(context, options);
-  return inlinedStory;
-};
-
 export const inlineStoriesContent = <TStory extends Story | StoryWithInlinedRelations>(
   stories: Array<TStory>,
   relationPaths: RelationPath[],
   relationMap: ReadonlyMap<string, TStory>,
-  options: InlineRelationsOptions,
 ): Array<TStory> => {
-  const context = createInlineContext(relationPaths, relationMap, options);
-  const inlinedStories = stories.map((story) => inlineStory(story, 0, context));
-  reportCircularDefault(context, options);
-  return inlinedStories;
+  const context = createInlineContext(relationPaths, relationMap);
+  return stories.map((story) => inlineStory(story, 0, context));
 };
 
 interface ResolveRelationMapOptions {

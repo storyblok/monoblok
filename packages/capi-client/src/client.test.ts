@@ -743,7 +743,6 @@ describe("createApiClient cv refresh window", () => {
     const client = createApiClient({
       accessToken: "cold-relations",
       inlineRelations: true,
-      circularRelations: false,
     });
 
     await client.stories.get("home", { query: { resolve_relations: "page.author" } });
@@ -757,7 +756,6 @@ describe("createApiClient cv refresh window", () => {
     const client = createApiClient({
       accessToken: "manual-relations",
       inlineRelations: true,
-      circularRelations: false,
       cache: { cv: "manual" },
     });
 
@@ -944,7 +942,6 @@ describe("createApiClient cv refresh window", () => {
     const client = createApiClient({
       accessToken: "check-relations",
       inlineRelations: true,
-      circularRelations: false,
       cache: { ttlMs: LONG_TTL_MS },
     });
     await client.stories.list();
@@ -1030,5 +1027,52 @@ describe("createApiClient cv refresh window", () => {
 
     expect(servedWhileChecking.data?.story.name).toBe(BEFORE_PUBLISH);
     expect(afterCheck.data?.story.name).toBe(AFTER_PUBLISH);
+  });
+});
+
+describe("createApiClient with the removed circularRelations option", () => {
+  /** A fresh module instance, so the once-per-process warning has not fired yet. */
+  const importFreshCreateApiClient = async () => {
+    vi.resetModules();
+    const { createApiClient: freshCreateApiClient } = await import("./client");
+    return freshCreateApiClient;
+  };
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("should warn once across clients that the option is ignored", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const freshCreateApiClient = await importFreshCreateApiClient();
+    const circularConfig = {
+      accessToken: "token-1",
+      inlineRelations: true,
+      circularRelations: true,
+    };
+    const acyclicConfig = {
+      accessToken: "token-2",
+      inlineRelations: true,
+      circularRelations: false,
+    };
+
+    freshCreateApiClient(circularConfig);
+    freshCreateApiClient(acyclicConfig);
+
+    expect(warn).toHaveBeenCalledOnce();
+    const message = warn.mock.calls[0]?.[0];
+    expect(message).toMatch(
+      /^\[storyblok\/api-client\] The `circularRelations` option was removed/,
+    );
+    expect(message).toContain("up to two levels deep");
+  });
+
+  it("should not warn when the config has no circularRelations key", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const freshCreateApiClient = await importFreshCreateApiClient();
+
+    freshCreateApiClient({ accessToken: "token-1", inlineRelations: true });
+
+    expect(warn).not.toHaveBeenCalled();
   });
 });

@@ -24,6 +24,9 @@ The API behavior these signals describe, verified against the live CDN:
 - `/cdn/links` and `/cdn/tags` report no `cv` in the body. A redirected `/cdn/links` request's final
   URL carries the `cv` it was redirected to. `/cdn/tags` is never redirected, whatever `cv` it is
   sent with.
+- Spaces with `cdn_cache_while_invalidate` enabled are never redirected, so the redirects above
+  don't happen there and a `/cdn/links` response never reports a `cv`.
+- With several `cv` parameters, the CDN serves the last one.
 - Without a Minimum Cache TTL, `space.version` and `cv` report the same raw version. With one, the
   `cv` is floored into TTL-sized buckets and lags permanently, so only same-signal comparisons carry
   information.
@@ -71,15 +74,15 @@ version watermarks in the cache provider. Invalidation is a mismatch, not a flus
    flushed: unreachable entries expire by TTL or eviction, and flushing would also empty a provider
    other clients keep their own entries in.
 7. **A response is discarded when the `cv` it was issued under is no longer the known one**, unless
-   it was served from the `cv` that superseded it, as its body or final URL reports. It was answered
-   for a superseded version, so it neither teaches a `cv` nor gets stored. This holds across clients
-   and processes because the comparison is against shared state, and it applies to draft responses
-   too, which would otherwise teach back the `cv` a publish dropped. The served `cv` alone can't
-   replace the issue-time comparison: under a Minimum Cache TTL a late pre-publish response and a
-   fresh floored refetch report the same `cv`. A request issued while no `cv` was known is compared
-   by the space version instead: when it moved since issue, a publish superseded the request.
-   Neither comparison sees an explicit flush, so the record also carries a `generation` that only
-   `flushCache()` bumps; a response whose generation no longer matches is discarded.
+   it was served from the `cv` that superseded it. It was answered for a superseded version, so it
+   neither teaches a `cv` nor gets stored. This holds across clients and processes because the
+   comparison is against shared state, and it applies to draft responses too, which would otherwise
+   teach back the `cv` a publish dropped. The served `cv` alone can't replace the issue-time
+   comparison: under a Minimum Cache TTL a late pre-publish response and a fresh floored refetch
+   report the same `cv`. A request issued while no `cv` was known is compared by the space version
+   instead: when it moved since issue, a publish superseded the request. Neither comparison sees an
+   explicit flush, so the record also carries a `generation` that only `flushCache()` bumps; a
+   response whose generation no longer matches is discarded.
 8. **A caller-pinned `cv` is honored literally.** The request is keyed by its own `cv`, is immune to
    publishes, and expires by TTL alone. The response teaches no watermark when it was served from
    the pinned `cv`, or reports no `cv` at all. The stale-read rule is gated on that, because the
@@ -87,8 +90,7 @@ version watermarks in the cache provider. Invalidation is a mismatch, not a flus
    hold, such as the documented `cv: Date.now()` cache bust, is redirected to the current version,
    and that response is tracked like any other. With `cache.cv: 'auto'`, a pin equal to `knownCv`
    asks for the snapshot an unpinned request gets, so it shares the unpinned entry while that
-   entry's tag matches the pin. Otherwise, for example once a publish moves `knownCv` past it, it is
-   keyed by its own `cv`.
+   entry's tag matches the pin.
 9. **`flushCache()` stays** for webhook-driven invalidation under `cache.flush: 'manual'`. It
    empties the provider and resets the record, keeping `highestCv`, `knownSpaceVersion`, and the
    bumped `generation`.
@@ -108,7 +110,8 @@ cache providers observe its key shapes. It adopts these rules:
   provider share it. A handler that builds its provider inline per request gets a new identity each
   time, so every poll is a first sighting, judged against the highest `cv` the process has seen.
 
-It doesn't read a redirect's final URL, so a `/cdn/links` response there teaches no `cv`.
+`storyblok-js-client` doesn't read a redirect's final URL, so its `/cdn/links` responses teach no
+`cv`.
 
 ## Guarantees and Scope
 
@@ -155,9 +158,11 @@ directly and retire most of the inference.
 - In a space without publishes, the watermark record expires after seven days, and every tagged
   entry is refetched once.
 - Each cacheable request reads the watermark record next to its entry, in parallel, and again when
-  the response lands. A pinned request also reads the unpinned entry it may share, in the same round
-  trip. That's free for the in-memory provider and a round trip for an external one, still far
-  cheaper than the origin fetch it prevents.
+  the response lands. Under `cache.cv: 'auto'`, a pinned request also reads the unpinned entry it
+  may share, in the same round trip. That's free for the in-memory provider and a round trip for an
+  external one, still far cheaper than the origin fetch it prevents. The read also keeps that entry
+  recently used in an LRU provider when it isn't shared, which is accepted; a failed read only
+  forgoes sharing.
 - Draft requests and polls read the record alongside the request, then update it before they
   resolve: one provider round trip after the response, or three when a version moved. Resolving
   first would let the next sequential read miss the invalidation. A provider failure on that path
@@ -168,8 +173,10 @@ directly and retire most of the inference.
   one seen, so in both clients every response reads as a stale edge read and nothing is cached until
   the floored `cv` catches up, at most one TTL bucket later.
 - `/cdn/tags` entries are only invalidated when they were fetched while a `cv` was known; one
-  fetched before any `cv` was known falls back to TTL alone. `/cdn/links` entries do too when a
-  custom `fetch` rebuilds the `Response` and drops its final URL.
+  fetched before any `cv` was known falls back to TTL alone. `/cdn/links` entries do too when the
+  `Response` reaching the client lost its final URL, as from a custom `fetch`, interceptor, or
+  framework cache that rebuilds it, and in spaces with `cdn_cache_while_invalidate`, which never
+  redirect. That is no worse than before links taught a `cv`.
 - After a publish is noticed, a response in flight that was already served from the new `cv` is
   still discarded until another response re-teaches that `cv`, which costs one refetch of that key.
 - A cached entry whose `cv` a publish invalidated is withheld from the cache strategy, so a

@@ -1113,6 +1113,134 @@ describe("spaces.get() as a cache invalidation signal", () => {
     expect(storyUrls).toHaveLength(2);
   });
 
+  it("should share the unpinned entry when the caller pins the known cv", async () => {
+    const storyUrls: string[] = [];
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        storyUrls.push(request.url);
+        return HttpResponse.json({ stories: [], cv: 2000 });
+      }),
+    );
+    const client = createApiClient({ accessToken: "pinned-known-cv-token" });
+
+    await client.get("v2/cdn/stories", { query: { version: "published", page: 2 } });
+    await client.get("v2/cdn/stories", { query: { version: "published", page: 2, cv: 2000 } });
+    await client.get("v2/cdn/stories", { query: { version: "published", page: 2 } });
+
+    expect(storyUrls).toHaveLength(1);
+  });
+
+  it("should keep a caller pin on the known cv after a publish moves past it", async () => {
+    let spaceVersion = 2000;
+    const storyUrls: string[] = [];
+    server.use(
+      spaceHandler(() => spaceVersion),
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        storyUrls.push(request.url);
+        const cv = new URL(request.url).searchParams.get("cv");
+        return HttpResponse.json({ stories: [], cv: cv ? Number(cv) : spaceVersion });
+      }),
+    );
+    const client = createApiClient({ accessToken: "pinned-known-cv-publish-token" });
+
+    await client.get("v2/cdn/stories", { query: { version: "published" } });
+    await client.get("v2/cdn/stories", { query: { version: "published", cv: 2000 } });
+    expect(storyUrls).toHaveLength(1);
+
+    spaceVersion = 3000; // content was published
+    await client.spaces.get();
+    await client.get("v2/cdn/stories", { query: { version: "published", cv: 2000 } });
+
+    expect(storyUrls).toHaveLength(2);
+    expect(new URL(storyUrls[1]).searchParams.get("cv")).toBe("2000");
+  });
+
+  it("should not keep an unpinned entry from eviction by pinning its cv when cv is manual", async () => {
+    const storyUrls: string[] = [];
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        storyUrls.push(request.url);
+        return HttpResponse.json({ stories: [], cv: 1000 });
+      }),
+    );
+    const client = createApiClient({
+      accessToken: "pinned-manual-cv-eviction-token",
+      // The version record takes one of the three slots.
+      cache: { cv: "manual", provider: createMemoryCacheProvider({ maxEntries: 3 }) },
+    });
+
+    await client.get("v2/cdn/stories", { query: { version: "published", page: 1 } });
+    await client.get("v2/cdn/stories", { query: { version: "published", page: 2 } });
+    // The pin can't share page 1's entry under `cv: 'manual'`, so page 1 stays the least
+    // recently used entry and is evicted instead of page 2.
+    await client.get("v2/cdn/stories", { query: { version: "published", page: 1, cv: 1000 } });
+    await client.get("v2/cdn/stories", { query: { version: "published", page: 2 } });
+
+    expect(storyUrls).toHaveLength(3);
+  });
+
+  it("should not serve an older snapshot to a caller pinning the known cv under manual flush", async () => {
+    let currentCv = 1000;
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        const url = new URL(request.url);
+        const isDraft = url.searchParams.get("version") === "draft";
+        const requestedCv = Number(url.searchParams.get("cv"));
+        // The edge still holds cv 1000 and redirects any other cv it doesn't hold.
+        if (!isDraft && requestedCv !== currentCv && requestedCv !== 1000) {
+          url.searchParams.set("cv", String(currentCv));
+          return HttpResponse.redirect(url.toString(), 301);
+        }
+        const cv = isDraft ? currentCv : requestedCv;
+        return HttpResponse.json({ stories: [{ name: `v${cv}` }], cv });
+      }),
+    );
+    const client = createApiClient({
+      accessToken: "pinned-known-cv-manual-token",
+      cache: { flush: "manual" },
+    });
+
+    await client.get("v2/cdn/stories", { query: { version: "published", page: 2 } });
+    currentCv = 2000; // content was published
+    await client.get("v2/cdn/stories", { query: { version: "draft" } });
+    const pinned = await client.get("v2/cdn/stories", {
+      query: { version: "published", page: 2, cv: 2000 },
+    });
+
+    expect(pinned.data).toMatchObject({ stories: [{ name: "v2000" }], cv: 2000 });
+  });
+
+  it("should not serve an entry of unknown version to a caller pinning the known cv", async () => {
+    let currentCv = 1000;
+    let tagName = "before-publish";
+    server.use(
+      // `/cdn/tags` is never redirected and reports no cv.
+      http.get("https://api.storyblok.com/v2/cdn/tags", () => {
+        return HttpResponse.json({ tags: [{ name: tagName, taggings_count: 1 }] });
+      }),
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        const url = new URL(request.url);
+        if (Number(url.searchParams.get("cv")) !== currentCv) {
+          url.searchParams.set("cv", String(currentCv));
+          return HttpResponse.redirect(url.toString(), 301);
+        }
+        return HttpResponse.json({ stories: [], cv: currentCv });
+      }),
+    );
+    const client = createApiClient({ accessToken: "pinned-known-cv-untagged-token" });
+
+    // Fetched before any cv is known, so the entry carries no cv.
+    await client.get("v2/cdn/tags", { query: { version: "published" } });
+    currentCv = 2000; // content was published
+    tagName = "after-publish";
+    await client.get("v2/cdn/stories", { query: { version: "published" } });
+    const pinned = await client.get("v2/cdn/tags", {
+      query: { version: "published", cv: 2000 },
+    });
+
+    expect(pinned.data).toMatchObject({ tags: [{ name: "after-publish" }] });
+  });
+
   it("should cache a caller-pinned cv that the space has already moved past", async () => {
     const storyUrls: string[] = [];
     server.use(

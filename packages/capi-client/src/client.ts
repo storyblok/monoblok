@@ -730,33 +730,53 @@ export const createApiClientBase = <
       return networkResult;
     }
 
-    // A pinned snapshot lives under its own key, is immune to publishes, and expires by TTL.
-    const isCvPinnedByCaller = isCvPinned(rawQuery.cv);
-    // A non-version `cv` would only cost a redirect and a duplicate cache entry.
-    const cacheableQuery =
-      isCvPinnedByCaller || rawQuery.cv === undefined
+    const keyFor = (query: Record<string, unknown>) => {
+      const baseKey = createCacheKey(method, path, query, tokenId);
+      return cacheOptions?.cacheKeyPrefix ? `${cacheOptions.cacheKeyPrefix}:${baseKey}` : baseKey;
+    };
+    const callerCv = isCvPinned(rawQuery.cv) ? Number(rawQuery.cv) : undefined;
+    // A non-version `cv` would only cost a redirect; the known one is sent anyway.
+    const unpinnedQuery =
+      rawQuery.cv === undefined
         ? rawQuery
         : Object.fromEntries(Object.entries(rawQuery).filter(([name]) => name !== "cv"));
+    const unpinnedKey = keyFor(unpinnedQuery);
+    const pinnedKey = callerCv === undefined ? undefined : keyFor(rawQuery);
 
-    const baseKey = createCacheKey(method, path, cacheableQuery, tokenId);
-    const key = cacheOptions?.cacheKeyPrefix
-      ? `${cacheOptions.cacheKeyPrefix}:${baseKey}`
-      : baseKey;
-
-    const [cachedEntry, versions] = await Promise.all([
-      cacheProvider.get<ApiResponse<TData, ThrowOnError>>(key),
+    // A pinned request reads the unpinned entry only to share it, which needs an automatic
+    // `cv`; reading it otherwise would keep it from eviction.
+    const readsUnpinnedEntry = pinnedKey === undefined || cvMode === "auto";
+    const [unpinnedEntry, pinnedEntry, versions] = await Promise.all([
+      readsUnpinnedEntry
+        ? cacheProvider.get<ApiResponse<TData, ThrowOnError>>(unpinnedKey)
+        : undefined,
+      pinnedKey === undefined
+        ? undefined
+        : cacheProvider.get<ApiResponse<TData, ThrowOnError>>(pinnedKey),
       readVersions(cacheProvider, watermarksKey),
     ]);
+    // Pinning the `cv` an unpinned request would send asks for the same snapshot, so it
+    // shares the unpinned entry while that entry holds this snapshot.
+    const sharesUnpinnedEntry =
+      cvMode === "auto" &&
+      callerCv !== undefined &&
+      callerCv === versions?.knownCv &&
+      unpinnedEntry?.cv === callerCv;
+    // A pinned snapshot lives under its own key, is immune to publishes, and expires by TTL.
+    const isPinnedRequest = pinnedKey !== undefined && !sharesUnpinnedEntry;
+    const key = isPinnedRequest ? pinnedKey : unpinnedKey;
+    const cacheableQuery = isPinnedRequest ? rawQuery : unpinnedQuery;
+    const cachedEntry = isPinnedRequest ? pinnedEntry : unpinnedEntry;
     // A missing record (e.g. evicted) makes tagged entries stale rather than TTL-only.
     const isStaleByCv =
       cacheFlush === "auto" &&
-      !isCvPinnedByCaller &&
+      !isPinnedRequest &&
       cachedEntry?.cv !== undefined &&
       cachedEntry.cv !== versions?.knownCv;
     const cachedResult = isStaleByCv ? undefined : cachedEntry?.value;
 
     const loadNetwork = async () => {
-      const discovery = isCvPinnedByCaller ? { versions } : await awaitCvDiscovery(versions);
+      const discovery = isPinnedRequest ? { versions } : await awaitCvDiscovery(versions);
       try {
         return await loadNetworkUnder(discovery.versions);
       } finally {
@@ -776,8 +796,7 @@ export const createApiClientBase = <
       // A pinned `cv` the edge doesn't hold (e.g. `cv: Date.now()`) is redirected to the
       // current one, so only a response reporting the pinned `cv` or none is that snapshot.
       const servedCv = extractServedCv(result, { method, path, query });
-      const isPinnedSnapshot =
-        isCvPinnedByCaller && (servedCv === undefined || servedCv === Number(rawQuery.cv));
+      const isPinnedSnapshot = isPinnedRequest && (servedCv === undefined || servedCv === callerCv);
       const issuedUnder = isPinnedSnapshot
         ? undefined
         : { knownCv: versions?.knownCv, knownSpaceVersion: versions?.knownSpaceVersion };

@@ -5,7 +5,6 @@
  * on request type (single story vs. listing) and the per_page query parameter,
  * mirroring the per-second tiers the Storyblok CDN enforces.
  */
-import { createThrottle } from "./throttle";
 import type { RateLimitContext, RateLimiter } from "./limiter";
 import {
   clampRequestsPerSecond,
@@ -13,8 +12,6 @@ import {
   createPassthroughRateLimiter,
 } from "./limiter";
 import type { AdaptiveConfig, RateLimitStatus } from "./limiter";
-
-export { createThrottle };
 
 const TIER_LIMITS = {
   SINGLE_OR_SMALL: 50, // single story fetch or per_page ≤ 25
@@ -177,7 +174,17 @@ const CONCURRENCY_POLICY_SUFFIX = "concurrent-requests";
 const POLICY_MEMBER = /"([^"]+)"((?:;[^,]*)*)/g;
 
 /**
- * Reads the per-second rate the API advertises in `X-RateLimit-Policy`.
+ * Longest window whose quota still describes a rate rather than a budget. A
+ * daily allowance spread evenly would pace far below the rate the same header
+ * advertises for the second, and exhausting an allowance surfaces as the
+ * throttled responses the back-off already answers.
+ */
+const MAX_POLICY_WINDOW_SECONDS = 60;
+
+/**
+ * Reads the per-second rate the API advertises in `X-RateLimit-Policy`. Pass it
+ * as `parseServerLimit` to `createDefaultRateLimiter` so a custom limiter paces
+ * at that rate, as the default one does.
  *
  * The header carries one or more comma-separated policies, each a quoted name
  * followed by its parameters: a quota (`q`) and the window in seconds it
@@ -188,14 +195,6 @@ const POLICY_MEMBER = /"([^"]+)"((?:;[^,]*)*)/g;
  * count, and adopting it as a rate would throttle far below what the API
  * allows.
  */
-/**
- * Longest window whose quota still describes a rate rather than a budget. A
- * daily allowance spread evenly would pace far below the rate the same header
- * advertises for the second, and exhausting an allowance surfaces as the
- * throttled responses the back-off already answers.
- */
-const MAX_POLICY_WINDOW_SECONDS = 60;
-
 export function parseRateLimitPolicyHeader(response: Response): number | undefined {
   const policy = response.headers.get("x-ratelimit-policy");
   if (!policy) {

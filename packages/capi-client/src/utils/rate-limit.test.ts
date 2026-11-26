@@ -6,6 +6,7 @@ import {
   parseRateLimitPolicyHeader,
 } from "./rate-limit";
 import type { RateLimitContext, RateLimiter, RateLimitStatus } from "./limiter";
+import * as publicApi from "../index";
 
 const BASE = "https://api.storyblok.com";
 
@@ -153,6 +154,8 @@ describe("determineTier()", () => {
 });
 
 describe("parseRateLimitPolicyHeader()", () => {
+  afterEach(() => vi.useRealTimers());
+
   const makeResponse = (headerValue: string | null) =>
     new Response(null, {
       headers: headerValue ? { "x-ratelimit-policy": headerValue } : {},
@@ -212,6 +215,31 @@ describe("parseRateLimitPolicyHeader()", () => {
 
   it("should return undefined when the header is absent", () => {
     expect(parseRateLimitPolicyHeader(makeResponse(null))).toBeUndefined();
+  });
+
+  it("should let a custom default limiter pace at the advertised rate", async () => {
+    vi.useFakeTimers();
+    const limiter = publicApi.createDefaultRateLimiter({
+      parseServerLimit: publicApi.parseRateLimitPolicyHeader,
+    });
+    const context: RateLimitContext = {
+      path: "/v2/cdn/stories",
+      query: {},
+      bucket: "SINGLE_OR_SMALL",
+      limit: 50,
+    };
+    await limiter.recordResponse?.(context, makeResponse('"rate-limit";q=5;w=1'));
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    let admitted = 0;
+    for (let i = 0; i < 20; i++) {
+      void limiter.acquire(context).then(() => {
+        admitted++;
+      });
+    }
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(admitted).toBe(5);
   });
 
   it("should return undefined when the header states no quota", () => {

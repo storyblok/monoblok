@@ -132,7 +132,7 @@ describe("defineStoryblokBlocks", () => {
         components: {
           page: {
             component: LazyPage,
-            fallback: <div data-testid="skeleton">loading</div>,
+            suspenseFallback: <div data-testid="skeleton">loading</div>,
             suspense: true,
           },
         },
@@ -154,7 +154,7 @@ describe("defineStoryblokBlocks", () => {
         components: {
           teaser: {
             component: LazyTeaser,
-            fallback: <div data-testid="skeleton">loading</div>,
+            suspenseFallback: <div data-testid="skeleton">loading</div>,
             // suspense omitted — auto-detected via isLazyComponent()
           },
         },
@@ -178,7 +178,7 @@ describe("defineStoryblokBlocks", () => {
         components: {
           teaser: {
             component: LazyTeaser,
-            fallback: <div data-testid="skeleton">loading</div>,
+            suspenseFallback: <div data-testid="skeleton">loading</div>,
             // suspense omitted — auto-detected via isLazyComponent() unwrapping memo()
           },
         },
@@ -202,7 +202,10 @@ describe("defineStoryblokBlocks", () => {
       );
       const { StoryblokBlock } = defineStoryblokBlocks(() => ({
         components: {
-          teaser: { component: LazyTeaser, fallback: <div data-testid="skeleton">loading</div> },
+          teaser: {
+            component: LazyTeaser,
+            suspenseFallback: <div data-testid="skeleton">loading</div>,
+          },
         },
       }));
 
@@ -211,7 +214,7 @@ describe("defineStoryblokBlocks", () => {
       await waitFor(() => expect(getByTestId("teaser")).toBeInTheDocument());
     });
 
-    it("should show nothing while loading for an entry with fallback: null, ignoring suspenseFallback", async () => {
+    it("should show nothing while loading for an entry with suspenseFallback: null, ignoring suspenseFallback", async () => {
       const LazyPage = lazy(
         () =>
           new Promise<{ default: typeof Page }>((resolve) =>
@@ -220,7 +223,7 @@ describe("defineStoryblokBlocks", () => {
       );
       const { StoryblokBlock } = defineStoryblokBlocks(() => ({
         components: {
-          page: { component: LazyPage, fallback: null },
+          page: { component: LazyPage, suspenseFallback: null },
         },
         suspenseFallback: <div data-testid="global-skeleton">global</div>,
       }));
@@ -854,24 +857,6 @@ describe("defineStoryblokBlocks", () => {
     };
   }
 
-  describe("next/dynamic — structural shape assertions", () => {
-    it("App Router dynamic returns a plain function (typeof === 'function', no $$typeof)", () => {
-      const { importFn } = makeDeferred(Page);
-      const DynamicPage = makeAppRouterDynamic(importFn);
-
-      expect(typeof DynamicPage).toBe("function");
-      expect((DynamicPage as any).$$typeof).toBeUndefined();
-    });
-
-    it("Pages Router dynamic returns a forwardRef object ($$typeof === Symbol(react.forward_ref))", () => {
-      const { importFn } = makeDeferred(Page);
-      const DynamicPage = makePagesRouterDynamic(importFn);
-
-      expect(typeof DynamicPage).toBe("object");
-      expect((DynamicPage as any).$$typeof?.toString()).toBe("Symbol(react.forward_ref)");
-    });
-  });
-
   describe("next/dynamic — App Router (plain function)", () => {
     it("isLazyComponent returns false → no auto-Suspense → fallback never renders without suspense:true", async () => {
       const { importFn, resolve } = makeDeferred(Page);
@@ -881,7 +866,7 @@ describe("defineStoryblokBlocks", () => {
         components: {
           page: {
             component: DynamicPage,
-            fallback: <div data-testid="skeleton">loading</div>,
+            suspenseFallback: <div data-testid="skeleton">loading</div>,
             // suspense: true intentionally omitted
           },
         },
@@ -910,7 +895,7 @@ describe("defineStoryblokBlocks", () => {
         components: {
           page: {
             component: DynamicPage,
-            fallback: <div data-testid="skeleton">loading</div>,
+            suspenseFallback: <div data-testid="skeleton">loading</div>,
             suspense: true,
           },
         },
@@ -934,7 +919,7 @@ describe("defineStoryblokBlocks", () => {
         components: {
           page: {
             component: DynamicPage,
-            fallback: <div data-testid="skeleton">loading</div>,
+            suspenseFallback: <div data-testid="skeleton">loading</div>,
             // suspense: true intentionally omitted
           },
         },
@@ -958,7 +943,7 @@ describe("defineStoryblokBlocks", () => {
         components: {
           page: {
             component: DynamicPage,
-            fallback: <div data-testid="skeleton">loading</div>,
+            suspenseFallback: <div data-testid="skeleton">loading</div>,
             suspense: true, // forced on — but forwardRef component never throws
           },
         },
@@ -1054,7 +1039,7 @@ describe("registry is pre-computed on first render, then cached", () => {
       components: {
         page: {
           component: LazyPage,
-          fallback: <div data-testid="skeleton">loading</div>,
+          suspenseFallback: <div data-testid="skeleton">loading</div>,
         },
       },
     }));
@@ -1086,7 +1071,7 @@ describe("registry is pre-computed on first render, then cached", () => {
 
     const { StoryblokBlock } = defineStoryblokBlocks(() => ({
       components: {
-        page: { component: LazyPage, fallback: makeFallback(), suspense: true },
+        page: { component: LazyPage, suspenseFallback: makeFallback(), suspense: true },
       },
     }));
 
@@ -1214,6 +1199,49 @@ describe("lazy factory resolution", () => {
   });
 });
 
+describe("warning cap", () => {
+  it("should stop warning after 100 distinct unknown block types", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    warnSpy.mockClear();
+    const { StoryblokBlock } = defineStoryblokBlocks(() => ({ components: { page: Page } }));
+
+    render(
+      <>
+        {Array.from({ length: 500 }, (_, index) => (
+          <StoryblokBlock
+            key={index}
+            block={makeBlockData({ component: `made_up_${index}`, _uid: `uid-${index}` })}
+          />
+        ))}
+      </>,
+    );
+
+    expect(warnSpy).toHaveBeenCalledTimes(100);
+    expect(warnSpy).toHaveBeenLastCalledWith(missingMessage("made_up_99"));
+    warnSpy.mockRestore();
+  });
+
+  it("should still render registered blocks once the cap is reached", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { StoryblokBlock } = defineStoryblokBlocks(() => ({ components: { page: Page } }));
+
+    const { getByTestId } = render(
+      <>
+        {Array.from({ length: 150 }, (_, index) => (
+          <StoryblokBlock
+            key={index}
+            block={makeBlockData({ component: `made_up_${index}`, _uid: `uid-${index}` })}
+          />
+        ))}
+        <StoryblokBlock block={pageBlock} />
+      </>,
+    );
+
+    expect(getByTestId("page")).toBeInTheDocument();
+    warnSpy.mockRestore();
+  });
+});
+
 // ─── editable injection ───────────────────────────────────────────────────────
 //
 // StoryblokBlock calls storyblokEditable(block) and passes the result as the
@@ -1295,7 +1323,7 @@ describe("StoryblokBlock — editable injection", () => {
     );
     const { StoryblokBlock } = defineStoryblokBlocks(() => ({
       components: {
-        widget: { component: LazyWidget, fallback: <div>loading</div>, suspense: true },
+        widget: { component: LazyWidget, suspenseFallback: <div>loading</div>, suspense: true },
       },
     }));
     const block = makeBlockData({

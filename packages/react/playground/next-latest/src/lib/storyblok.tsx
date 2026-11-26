@@ -21,7 +21,7 @@ export const { StoryblokBlock } = defineStoryblokBlocks(() => ({
     feature: Feature,
     weather_widget: {
       component: WeatherWidget,
-      fallback: <WeatherWidgetSkeleton />,
+      suspenseFallback: <WeatherWidgetSkeleton />,
       suspense: true,
     },
   },

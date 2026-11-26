@@ -83,6 +83,14 @@ const NOT_A_COMPONENT_HINT =
 
 const UNSET_HINT = "Check for a typo, or a circular import that hasn't finished initializing yet.";
 
+/**
+ * Most distinct warnings a registry prints. Block types come from content,
+ * and `renderContent` in `@storyblok/react/rsc` is a public Server Action that
+ * renders any story it receives, so without a cap made-up block types would
+ * grow the set of printed warnings, and the log, for the life of the server.
+ */
+const MAX_WARNINGS = 100;
+
 /** Pre-computed, render-ready descriptor for a single registered block type. */
 type ResolvedEntry = {
   // `any` so the registry doesn't care which extra props the components take:
@@ -155,12 +163,13 @@ function resolveEntry(
     return {
       Component: entry.component,
       needsSuspense: entry.suspense ?? isLazyComponent(entry.component),
-      // Not `??`: an explicit `fallback: null` means "show nothing while
-      // loading", and must not inherit `suspenseFallback`.
-      fallbackNode: entry.fallback === undefined ? defaultSuspenseFallback : entry.fallback,
+      // Not `??`: an explicit `suspenseFallback: null` means "show nothing
+      // while loading", and must not inherit the registry's.
+      fallbackNode:
+        entry.suspenseFallback === undefined ? defaultSuspenseFallback : entry.suspenseFallback,
     };
   }
-  if (typeof entry === "object" && ("fallback" in entry || "suspense" in entry)) {
+  if (typeof entry === "object" && ("suspenseFallback" in entry || "suspense" in entry)) {
     return `${prefix} is missing "component".`;
   }
   if (!isValidReactComponent(entry)) {
@@ -203,7 +212,7 @@ function resolveEntry(
  *     teaser: Teaser,
  *     weather_widget: {
  *       component: WeatherWidget,
- *       fallback: <WeatherWidgetSkeleton />,
+ *       suspenseFallback: <WeatherWidgetSkeleton />,
  *       suspense: true,
  *     },
  *   },
@@ -273,9 +282,12 @@ export function defineStoryblokBlocks<TExtraProps extends StoryblokExtraProps = 
     return registry;
   }
 
-  /** Logs `message` once per `key`, unless the registry was defined with `warnings: false`. */
+  /**
+   * Logs `message` once per `key`, unless the registry was defined with
+   * `warnings: false`. Stops after {@link MAX_WARNINGS} distinct warnings.
+   */
   function warn(key: string, message: string, warnings: boolean): void {
-    if (!warnings || warned.has(key)) {
+    if (!warnings || warned.has(key) || warned.size >= MAX_WARNINGS) {
       return;
     }
     warned.add(key);

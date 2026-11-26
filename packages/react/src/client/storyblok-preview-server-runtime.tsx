@@ -96,19 +96,29 @@ const reactUse = Reflect.get(React, "use") as (<T>(p: Promise<T>) => T) | undefi
  */
 function LiveContent({
   promise,
+  onCommit,
   children,
 }: {
   promise: Promise<ReactNode> | null;
+  /** Called with a live render once it's on screen, i.e. rendered without throwing. */
+  onCommit: (node: ReactNode) => void;
   children: ReactNode;
 }) {
-  if (!promise) {
-    return <>{children}</>;
-  }
-
   // reactUse is guaranteed to be defined here: StoryblokPreviewServerRuntime
   // throws before rendering LiveContent when React <19 is detected.
-  const content = reactUse!(promise);
-  return <>{content}</>;
+  const content = promise ? reactUse!(promise) : null;
+
+  // Only an effect knows the render succeeded: a Server Action result can
+  // resolve and still hold a nested server component that throws once it
+  // renders. Saving it on resolve would make it the error boundary's
+  // fallback, which would throw again outside the boundary.
+  useEffect(() => {
+    if (promise) {
+      onCommit(content);
+    }
+  }, [promise]);
+
+  return <>{promise ? content : children}</>;
 }
 
 // ── Error boundary ────────────────────────────────────────────────────────────
@@ -173,9 +183,10 @@ class LiveContentBoundary extends Component<LiveContentBoundaryProps, LiveConten
  * while the action is in flight instead of showing a Suspense fallback, which
  * eliminates the duplicate-DOM window that confuses the bridge.
  *
- * If `renderContent` rejects, the error boundary catches it, logs it, and keeps
- * the last successfully resolved render visible (the initial `children` until
- * the first live update settles). The boundary resets on the next editor event.
+ * If `renderContent` rejects, or its result throws while rendering, the error
+ * boundary catches it, logs it, and keeps the last successfully rendered
+ * content visible (the initial `children` until the first live update
+ * renders). The boundary resets on the next editor event.
  */
 export function StoryblokPreviewServerRuntime({
   renderContent,
@@ -190,13 +201,14 @@ export function StoryblokPreviewServerRuntime({
   // namespace is sealed in the test environment. It is verified manually.
   if (typeof reactUse !== "function") {
     throw new Error(
-      "[storyblok] StoryblokPreview (server mode, from @storyblok/react/rsc) requires React 19 " +
-        "(React.use is not available). Use StoryblokPreview from @storyblok/react for React 18.",
+      "[storyblok] The Server Component StoryblokPreview requires React.use, which React 19 and " +
+        "the Next.js App Router 14 or later provide. On React 18, render StoryblokPreview " +
+        "from a Client Component instead.",
     );
   }
 
   const [livePromise, setLivePromise] = useState<Promise<ReactNode> | null>(null);
-  // The most recent successfully resolved render. Falls back to `children`
+  // The most recent live render that made it on screen. Falls back to `children`
   // (the initial render) until the first live update settles. Starts at
   // `null` rather than `children` — initializing useState with `children`
   // would reintroduce the forced-await problem described above; setting it
@@ -238,25 +250,15 @@ export function StoryblokPreviewServerRuntime({
     // Call renderContent eagerly (outside the transition) so the Server Action
     // starts streaming its RSC response immediately.
     const promise = renderContent(story)
-      .then(
-        (node) => {
-          // A failed action later must fall back to this render, not the one
-          // from page load.
-          if (mounted.current) {
-            setLastGoodContent({ node });
-          }
-          return node;
-        },
-        (error: unknown) => {
-          // With a newer story queued, the `finally` below swaps in its
-          // promise before React reads this rejection, so the error boundary
-          // never sees it. Log here instead; otherwise the boundary logs it.
-          if (mounted.current && queued.current) {
-            console.error(RENDER_FAILED_MESSAGE, error);
-          }
-          throw error;
-        },
-      )
+      .catch((error: unknown) => {
+        // With a newer story queued, the `finally` below swaps in its
+        // promise before React reads this rejection, so the error boundary
+        // never sees it. Log here instead; otherwise the boundary logs it.
+        if (mounted.current && queued.current) {
+          console.error(RENDER_FAILED_MESSAGE, error);
+        }
+        throw error;
+      })
       .finally(() => {
         inFlight.current = false;
 
@@ -292,6 +294,14 @@ export function StoryblokPreviewServerRuntime({
   // also log the undefined-block warning: the server has no editor URL to
   // suppress it with. Dropped before the debounce, so it never cancels a
   // pending edit.
+  // A failed action later must fall back to the last render that made it on
+  // screen, not the one from page load.
+  function handleCommit(node: ReactNode) {
+    if (mounted.current) {
+      setLastGoodContent({ node });
+    }
+  }
+
   useEditorEvent(
     (updatedStory) => {
       if (inFlight.current) {
@@ -308,7 +318,9 @@ export function StoryblokPreviewServerRuntime({
   return (
     <LiveContentBoundary promise={livePromise} fallback={fallback}>
       <Suspense fallback={fallback}>
-        <LiveContent promise={livePromise}>{children}</LiveContent>
+        <LiveContent promise={livePromise} onCommit={handleCommit}>
+          {children}
+        </LiveContent>
       </Suspense>
     </LiveContentBoundary>
   );

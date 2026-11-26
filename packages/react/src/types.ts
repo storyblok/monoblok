@@ -1,6 +1,6 @@
 import type { ComponentType, ReactNode } from "react";
 import type { storyblokEditable } from "@storyblok/live-preview";
-import type { BlockContent, BlockContentInput } from "./generated/types/field";
+import type { BlockContent } from "./generated/types/field";
 import type { Story } from "./generated/types/story";
 
 /**
@@ -76,8 +76,11 @@ export type StoryblokBlockEntry<TExtraProps extends StoryblokExtraProps = {}> =
   | StoryblokBlockComponent<TExtraProps>
   | {
       component: StoryblokBlockComponent<TExtraProps>;
-      /** Custom fallback for this component's Suspense boundary (`<Skeleton />`). */
-      fallback?: ReactNode;
+      /**
+       * Shown while this component loads (`<Skeleton />`). Overrides the
+       * registry's `suspenseFallback`.
+       */
+      suspenseFallback?: ReactNode;
       /** Whether to wrap in Suspense (auto-detected for lazy components, can be forced). */
       suspense?: boolean;
     };
@@ -149,7 +152,7 @@ export interface DefineStoryblokBlocksResult<TExtraProps extends StoryblokExtraP
   StoryblokBlock: (props: { block?: StoryblokBlockData } & TExtraProps) => ReactNode;
 }
 
-export type { BlockContent, BlockContentInput, Story };
+export type { BlockContent, Story };
 
 /**
  * The loosely-typed shape of a block's content: only `_uid`, `component`, and

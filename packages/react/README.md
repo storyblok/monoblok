@@ -38,7 +38,7 @@
 ## Documentation
 
 For complete documentation, please visit the
-[package reference](https://www.storyblok.com/docs/packages/storyblok-react).
+[package reference](https://www.storyblok.com/docs/libraries/js/react-sdk).
 
 ## Contributing
 

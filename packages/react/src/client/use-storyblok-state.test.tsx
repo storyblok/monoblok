@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { describe, it, expect, expectTypeOf, beforeEach, afterEach, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { onStoryblokEditorEvent } from "@storyblok/live-preview";
 import type { Story } from "../types";
@@ -209,6 +209,65 @@ describe("useStoryblokState", () => {
     });
 
     expect(result.current.slug).toBe("editor-updated");
+  });
+
+  // `@storyblok/api-client` with `inlineRelations` returns related stories
+  // that reference each other as the same objects.
+  function makeCircularStory(slug: string): Story {
+    const article: Record<string, unknown> = { uuid: "a", name: "Article" };
+    const author: Record<string, unknown> = { uuid: "b", name: "Author", articles: [article] };
+    article.author = author;
+    return makeStory({
+      id: 1,
+      slug,
+      content: { component: "page", _uid: "p1", featured: [article] },
+    });
+  }
+
+  it("does not reset a live edit when a parent re-renders with an equal circular story", async () => {
+    const { result, rerender } = renderHook(({ s }) => useStoryblokState(s), {
+      initialProps: { s: makeCircularStory("home") },
+    });
+
+    await vi.waitFor(() => expect(editorCallback).toBeDefined());
+
+    act(() => editorCallback!(makeStory({ id: 1, slug: "editor-updated" })));
+    expect(result.current.slug).toBe("editor-updated");
+
+    await act(async () => {
+      rerender({ s: makeCircularStory("home") });
+    });
+
+    expect(result.current.slug).toBe("editor-updated");
+  });
+
+  it("resets a live edit when a circular story arrives with changed data", async () => {
+    const { result, rerender } = renderHook(({ s }) => useStoryblokState(s), {
+      initialProps: { s: makeCircularStory("home") },
+    });
+
+    await vi.waitFor(() => expect(editorCallback).toBeDefined());
+
+    act(() => editorCallback!(makeStory({ id: 1, slug: "editor-updated" })));
+
+    const refreshed = makeCircularStory("home");
+    const content = refreshed.content as unknown as { featured: Record<string, any>[] };
+    content.featured[0].author.name = "Renamed author";
+    await act(async () => {
+      rerender({ s: refreshed });
+    });
+
+    expect(result.current.slug).toBe("home");
+  });
+
+  it("should type the returned story as the story passed in", () => {
+    type NamedStory = Story & { name: string };
+    const story = makeStory({ name: "Home" }) as NamedStory;
+    const { result } = renderHook(() => useStoryblokState(story));
+
+    expectTypeOf(result.current).toEqualTypeOf<NamedStory>();
+    const name: string = result.current.name;
+    expect(name).toBe("Home");
   });
 
   it("resets a live edit when the same story id arrives with changed nested content", async () => {

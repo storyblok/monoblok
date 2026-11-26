@@ -16,8 +16,14 @@ export interface StoryblokPreviewProps<
   /**
    * Render function that receives the latest story on every Visual Editor
    * update and returns the UI for it.
+   *
+   * The `Promise` return type is for React Server Components: there, the
+   * root `@storyblok/react` import resolves to the Server Component
+   * `StoryblokPreview` (the `react-server` export condition), where
+   * `renderContent` is an async Server Action. TypeScript resolves the root
+   * types without that condition, so these props accept both.
    */
-  renderContent: (story: LivePreviewStory<TStory>) => ReactNode;
+  renderContent: (story: LivePreviewStory<TStory>) => ReactNode | Promise<ReactNode>;
 }
 
 /**
@@ -29,10 +35,10 @@ export interface StoryblokPreviewProps<
  * on every editor update, so your UI stays in sync with the Visual Editor
  * without a full page reload.
  *
- * For RSC routes driven by a Server Action, use `StoryblokPreview` from
- * `@storyblok/react/rsc` instead — same props shape (`story` +
- * `renderContent`), but `renderContent` there is `async` and reruns on the
- * server.
+ * In a React Server Component, the same import resolves to the Server
+ * Component `StoryblokPreview` (also exported from `@storyblok/react/rsc`):
+ * same props shape (`story` + `renderContent`), but `renderContent` there is
+ * an async Server Action and reruns on the server.
  *
  * @example
  * ```tsx

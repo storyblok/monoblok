@@ -22,6 +22,10 @@
   "types": "./dist/index.d.mts",
   "exports": {
     ".": {
+      "react-server": {
+        "types": "./dist/server.d.mts",
+        "import": "./dist/server.mjs"
+      },
       "types": "./dist/index.d.mts",
       "import": "./dist/index.mjs"
     },

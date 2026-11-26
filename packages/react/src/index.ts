@@ -1,6 +1,5 @@
 export type {
   BlockContent,
-  BlockContentInput,
   DefineStoryblokBlocksOptions,
   DefineStoryblokBlocksResult,
   Story,

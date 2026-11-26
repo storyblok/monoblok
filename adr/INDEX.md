@@ -61,3 +61,5 @@ without a conflict, which is why ADR-0017 and ADR-0022 each exist twice.
   option opts into the two-level behavior of `storyblok-js-client`.
 - `adr-0031.md`: Framework SDKs render blocks through scoped `defineStoryblokBlocks()` registries,
   and rich text stays a standalone component.
+- `adr-0032.md`: `@storyblok/react` has one `StoryblokPreview` API with a client and a Server
+  Component implementation, and the root import resolves to the Server Component one in RSC.

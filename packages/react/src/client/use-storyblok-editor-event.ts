@@ -1,9 +1,9 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { onStoryblokEditorEvent } from "@storyblok/live-preview";
 import type { LivePreviewOptions, LivePreviewStory } from "@storyblok/live-preview";
 import type { Story } from "../types";
-import { useEffect, useRef } from "react";
 
 /** Options for {@link useStoryblokEditorEvent}. */
 export interface UseStoryblokEditorEventOptions {

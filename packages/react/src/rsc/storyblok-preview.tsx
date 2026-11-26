@@ -1,5 +1,5 @@
-import type { BridgeParams, LivePreviewStory } from "@storyblok/live-preview";
 import type { ReactNode } from "react";
+import type { BridgeParams, LivePreviewStory } from "@storyblok/live-preview";
 import type { Story } from "../types";
 import { StoryblokPreviewServerRuntime } from "../client/storyblok-preview-server-runtime";
 
@@ -15,10 +15,16 @@ export interface StoryblokPreviewProps<TStory extends Story = Story> {
    * update.
    *
    * This is a public Server Action: it is reachable in production and
-   * renders whatever story the caller sends. Treat `story` as untrusted
-   * input, or gate access behind draft mode, if a registered component uses
-   * block fields for privileged fetches (a preview token, or a URL taken
-   * from the block).
+   * renders whatever story the caller sends. It also renders the initial
+   * content, for every visitor that gets `StoryblokPreview`. To limit it to
+   * the Visual Editor, render `StoryblokPreview` only in draft mode (plain
+   * `StoryblokBlock` otherwise), and reject calls outside draft mode in the
+   * action. Rejecting them in the action alone fails every page render
+   * outside draft mode.
+   *
+   * Receives only the story. Pass extra props by binding them:
+   * `renderContent.bind(null, locale)`. Bound arguments travel through the
+   * browser, so treat them as untrusted input too.
    */
   renderContent: (story: LivePreviewStory<TStory>) => Promise<ReactNode>;
   /**
@@ -46,9 +52,13 @@ export interface StoryblokPreviewProps<TStory extends Story = Story> {
  *
  * Same props shape as `StoryblokPreview` from `@storyblok/react`
  * (`story` + `renderContent`) — the only difference is that `renderContent`
- * here is `async` and reruns on the server. Requires React 19 (`React.use`)
- * and Server Actions; use `@storyblok/react` on React 18 or with
- * `output: 'export'`.
+ * here is `async` and reruns on the server. Requires `React.use` and Server
+ * Actions: React 19, or the Next.js App Router 14 or later, which bundles a
+ * React version with both. Use the client `StoryblokPreview` elsewhere, such
+ * as with `output: 'export'`.
+ *
+ * In React Server Components, the root `@storyblok/react` import resolves
+ * to this component too, through the `react-server` export condition.
  *
  * Saving or publishing in the Visual Editor reloads the page. A server render
  * of a newer version of the same story that arrives without a reload (a

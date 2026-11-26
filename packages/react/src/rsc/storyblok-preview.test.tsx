@@ -474,6 +474,57 @@ describe("StoryblokPreview (server mode)", () => {
     consoleSpy.mockRestore();
   });
 
+  it("should keep the previous content when a resolved update throws while rendering", async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    // A Server Action result resolves even when a nested server component in
+    // it failed: the error only throws once that part renders.
+    function BrokenServerComponent(): ReactNode {
+      throw new Error("nested server component failed");
+    }
+    const renderContent = vi
+      .fn()
+      .mockResolvedValueOnce(<div data-testid="initial">initial</div>)
+      .mockResolvedValueOnce(<BrokenServerComponent />)
+      .mockResolvedValueOnce(<div data-testid="recovered">recovered</div>);
+
+    const element = await StoryblokPreview({ story: makeStory(), renderContent, debounceMs: 0 });
+    const { getByTestId } = render(element);
+
+    await vi.waitFor(() => expect(editorCallback).toBeDefined());
+
+    await fireEditorEvent(editorCallback!, makeStory({ slug: "broken" }));
+    expect(getByTestId("initial")).toBeInTheDocument();
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "[storyblok] StoryblokPreview: renderContent failed.",
+      expect.objectContaining({ message: "nested server component failed" }),
+    );
+
+    // The broken render never became the fallback, so the next update recovers.
+    await fireEditorEvent(editorCallback!, makeStory({ slug: "fixed" }));
+    expect(getByTestId("recovered")).toBeInTheDocument();
+
+    consoleSpy.mockRestore();
+  });
+
+  it("should let an error in the initial content reach the app's error handling", async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    function BrokenInitialContent(): ReactNode {
+      throw new Error("initial content failed");
+    }
+    const renderContent = vi.fn().mockResolvedValueOnce(<BrokenInitialContent />);
+
+    const element = await StoryblokPreview({ story: makeStory(), renderContent, debounceMs: 0 });
+
+    // The error reaches the app's own error handling.
+    expect(() => render(element)).toThrow("initial content failed");
+    expect(consoleSpy).not.toHaveBeenCalledWith(
+      "[storyblok] StoryblokPreview: renderContent failed.",
+      expect.anything(),
+    );
+
+    consoleSpy.mockRestore();
+  });
+
   it("ignores editor events for a different story id", async () => {
     const pageStory = makeStory({ id: 1, slug: "page" });
     const navStory = makeStory({ id: 2, slug: "nav" });

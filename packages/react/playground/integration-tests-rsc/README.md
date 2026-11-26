@@ -2,9 +2,10 @@
 
 The RSC counterpart to `../integration-tests`: same schema (`src/schema/blocks.ts`), same components
 and `data-test` attributes, same seeded fixture — but served through Next.js App Router with
-`StoryblokPreview` from `@storyblok/react/rsc` (Server Actions, not the client `useStoryblokState`
-hook), so the Visual Editor QA suite can exercise the RSC live-preview path too, not just the
-client-side one.
+`StoryblokPreview` imported from the root `@storyblok/react`, which resolves to the Server Component
+from `@storyblok/react/rsc` through the `react-server` export condition (Server Actions, not the
+client `useStoryblokState` hook), so the Visual Editor QA suite can exercise the RSC live-preview
+path too, not just the client-side one.
 
 It depends on `@storyblok/react` as a normal workspace package (its built `dist`), not an alias to
 `src`, so QA exercises what a real consumer imports — matching `../integration-tests`.
@@ -13,8 +14,8 @@ It depends on `@storyblok/react` as a normal workspace package (its built `dist`
 
 The catch-all route renders the same story two ways, same as `../integration-tests`:
 
-- **Live** — through `StoryblokPreview` (`@storyblok/react/rsc`), which re-invokes the
-  `renderContent` Server Action (`src/lib/actions.tsx`) on every bridge `input` event.
+- **Live** — through the Server Component `StoryblokPreview`, which re-invokes the `renderContent`
+  Server Action (`src/lib/actions.tsx`) on every bridge `input` event.
 - **Static** (`data-test="static-teaser-headline"`) — the story fetched on request, rendered
   directly. It never goes through `StoryblokPreview`, so it never subscribes to editor events and
   never changes. This proves the bridge is opt-in per call, not a page-wide default.

@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { StoryblokPreview } from "@storyblok/react/rsc";
+import { StoryblokPreview } from "@storyblok/react";
 import { apiClient } from "@/lib/storyblok";
 import { renderContent } from "@/lib/actions";
 import SlowWidget from "@/components/slow-widget";

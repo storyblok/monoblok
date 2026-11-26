@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import type { LivePreviewStory } from "@storyblok/live-preview";
 import type { Story } from "../types";
 import { useEditorEvent, type UseStoryblokEditorEventOptions } from "./use-storyblok-editor-event";
 
@@ -11,40 +10,58 @@ export interface UseStoryblokStateOptions extends UseStoryblokEditorEventOptions
 interface StoryblokStateSnapshot<TStory extends Story> {
   /** The prop value this snapshot was derived from — used to detect a real prop change. */
   story: TStory;
-  /** The value returned to the caller: the prop, or a live-edited version of it. */
-  current: LivePreviewStory<TStory>;
+  /**
+   * The value returned to the caller: the prop, or a live-edited version of
+   * it. Editor updates are merged over the prop, so every field the prop has
+   * is still there.
+   */
+  current: TStory;
 }
 
 /**
  * Structural equality for JSON-shaped values (primitives, arrays, plain
  * objects). Ignores object key order, unlike comparing `JSON.stringify`
  * output, and stops at the first difference.
+ *
+ * Handles circular values: `@storyblok/api-client` with `inlineRelations`
+ * returns stories whose related stories can reference each other. A pair
+ * already being compared counts as equal, since any difference inside it is
+ * found where its comparison started.
  */
-function isDeepEqual(a: unknown, b: unknown): boolean {
+function isDeepEqual(a: unknown, b: unknown, seen = new WeakMap<object, Set<object>>()): boolean {
   if (a === b) {
     return true;
+  }
+  if (!isRecord(a) || !isRecord(b)) {
+    return false;
+  }
+  const seenWithA = seen.get(a);
+  if (seenWithA?.has(b)) {
+    return true;
+  }
+  if (seenWithA) {
+    seenWithA.add(b);
+  } else {
+    seen.set(a, new Set([b]));
   }
   if (Array.isArray(a) || Array.isArray(b)) {
     return (
       Array.isArray(a) &&
       Array.isArray(b) &&
       a.length === b.length &&
-      a.every((item, index) => isDeepEqual(item, b[index]))
+      a.every((item, index) => isDeepEqual(item, b[index], seen))
     );
-  }
-  if (!isRecord(a) || !isRecord(b)) {
-    return false;
   }
   const aKeys = Object.keys(a);
   return (
     aKeys.length === Object.keys(b).length &&
     aKeys.every(
-      (key) => Object.prototype.hasOwnProperty.call(b, key) && isDeepEqual(a[key], b[key]),
+      (key) => Object.prototype.hasOwnProperty.call(b, key) && isDeepEqual(a[key], b[key], seen),
     )
   );
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: unknown): value is Record<string | number, unknown> {
   return typeof value === "object" && value !== null;
 }
 
@@ -77,7 +94,7 @@ function isSameStory(a: Story, b: Story): boolean {
 export function useStoryblokState<TStory extends Story = Story>(
   story: TStory,
   options: UseStoryblokStateOptions = {},
-): LivePreviewStory<TStory> {
+): TStory {
   const [snapshot, setSnapshot] = useState<StoryblokStateSnapshot<TStory>>(() => ({
     story,
     current: story,

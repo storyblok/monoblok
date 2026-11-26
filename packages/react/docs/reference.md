@@ -16,7 +16,7 @@ follow the
 
 ## Requirements
 
-- **React** version 18 or 19 (version 19 for React Server Components)
+- **React** version 18 or 19 (for React Server Components, version 19 or Next.js 14 or later)
 - **Node.js** LTS (version 22.x recommended)
 - **Evergreen web browser** (for example, Chrome, Firefox, Safari, or Edge)
 
@@ -35,10 +35,10 @@ npm install @storyblok/react @storyblok/api-client
 How to configure the SDK, register components, and render stories. The SDK provides two entry points
 for different rendering modes:
 
-| Export                 | When to use                                                                                               | How to use                                                                                                                                                                |
-| ---------------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@storyblok/react`     | All environments: client-rendered and single-page apps, static export, and Server Components.             | Use **`defineStoryblokBlocks`** to render content. Use **`StoryblokPreview`** or **`useStoryblokState`** for live editing in client-rendered apps.                        |
-| `@storyblok/react/rsc` | Next.js App Router and other React Server Components (RSC) setups that support Server Actions (React 19). | Use **`StoryblokPreview`** for live editing. Its `renderContent` prop is a Server Action, so the content re-renders on the server with every change in the Visual Editor. |
+| Export                 | When to use                                                                                                               | How to use                                                                                                                                                                |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@storyblok/react`     | All environments: client-rendered and single-page apps, static export, and Server Components.                             | Use **`defineStoryblokBlocks`** to render content. Use **`StoryblokPreview`** or **`useStoryblokState`** for live editing in client-rendered apps.                        |
+| `@storyblok/react/rsc` | Next.js App Router (version 14 or later) and other React Server Components (RSC) setups with React 19 and Server Actions. | Use **`StoryblokPreview`** for live editing. Its `renderContent` prop is a Server Action, so the content re-renders on the server with every change in the Visual Editor. |
 
 ### Configuration
 
@@ -120,17 +120,23 @@ import { notFound } from "next/navigation";
 import { apiClient, StoryblokBlock } from "@/lib/storyblok";
 
 export default async function Home() {
-  const { data } = await apiClient.stories.get("home", {
+  const { data, error } = await apiClient.stories.get("home", {
     query: { version: "draft" },
   });
 
-  if (!data?.story) {
+  if (error?.response.status === 404) {
     notFound();
+  }
+  if (error) {
+    throw error;
   }
 
   return <StoryblokBlock block={data.story.content} />;
 }
 ```
+
+The API client returns a missing story as a `404` error. Rethrow every other error, such as an
+invalid access token, so it doesn’t show as a missing page.
 
 In a client-rendered application, use a data-fetching library such as
 [SWR](https://swr.vercel.app/docs/getting-started) or
@@ -143,10 +149,10 @@ import useSWR from "swr";
 import { apiClient, StoryblokBlock } from "@/lib/storyblok";
 
 async function fetchStory(slug) {
-  const { data } = await apiClient.stories.get(slug, {
+  const { data, error } = await apiClient.stories.get(slug, {
     query: { version: "draft" },
   });
-  if (!data) throw new Error(`Story not found: ${slug}`);
+  if (error) throw error;
   return data.story;
 }
 
@@ -209,7 +215,7 @@ export const { StoryblokBlock } = defineStoryblokBlocks(() => ({
   components: {
     hero: {
       component: Hero,
-      fallback: <HeroSkeleton />,
+      suspenseFallback: <HeroSkeleton />,
       suspense: true,
     },
     article: Article,
@@ -218,11 +224,14 @@ export const { StoryblokBlock } = defineStoryblokBlocks(() => ({
 }));
 ```
 
-| Key         | Description                                                                                                                      | Type            |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------- | --------------- |
-| `component` | The React component that renders the block. Required.                                                                            | React component |
-| `fallback`  | The element to show while this component loads. Overrides `suspenseFallback`.                                                    | React element   |
-| `suspense`  | Whether to wrap the component in a Suspense boundary. `StoryblokBlock` wraps components created with `React.lazy` automatically. | `boolean`       |
+| Key                | Description                                                                                                                      | Type            |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| `component`        | The React component that renders the block. Required.                                                                            | React component |
+| `suspenseFallback` | The element to show while this component loads. Overrides the `suspenseFallback` of the options.                                 | React element   |
+| `suspense`         | Whether to wrap the component in a Suspense boundary. `StoryblokBlock` wraps components created with `React.lazy` automatically. | `boolean`       |
+
+`StoryblokBlock` can’t detect components created with `dynamic()` in the Next.js App Router. Set
+`suspense: true` for these components to show the `suspenseFallback` while they load.
 
 ### `StoryblokBlock`
 
@@ -272,7 +281,11 @@ The `renderContent` function receives the live story and returns the React conte
 
 For applications that use React Server Components, import `StoryblokPreview` from
 `@storyblok/react/rsc`. In this entry point, `StoryblokPreview` is an asynchronous Server Component,
-and `renderContent` must be a Server Action. This entry point requires React 19.
+and `renderContent` must be a Server Action. This entry point requires React 19 or the Next.js App
+Router version 14 or later, which includes a compatible React version.
+
+In a Server Component, `StoryblokPreview` from `@storyblok/react` resolves to the same Server
+Component, so both imports work there.
 
 Define the Server Action in a separate file:
 
@@ -297,12 +310,15 @@ import { renderContent } from "@/lib/actions";
 import { apiClient } from "@/lib/storyblok";
 
 export default async function Home() {
-  const { data } = await apiClient.stories.get("home", {
+  const { data, error } = await apiClient.stories.get("home", {
     query: { version: "draft" },
   });
 
-  if (!data?.story) {
+  if (error?.response.status === 404) {
     notFound();
+  }
+  if (error) {
+    throw error;
   }
 
   return <StoryblokPreview story={data.story} renderContent={renderContent} />;
@@ -320,10 +336,82 @@ While the Visual Editor shows a previous version of the story, it sends the stor
 changes to a different story, for example, in a shared layout, the live preview starts over with the
 new story.
 
+Each change sends the whole story to the Server Action. Next.js limits the request body of a Server
+Action to 1 MB by default. For larger stories, raise
+[`serverActions.bodySizeLimit`](https://nextjs.org/docs/app/api-reference/config/next-config-js/serverActions#bodysizelimit)
+in the Next.js configuration.
+
+Live editing relies on the URL parameters that the Visual Editor adds to the preview URL. A
+client-side navigation inside the preview, for example, through a Next.js `<Link>`, drops these
+parameters, and live editing stops until the Visual Editor reloads the preview.
+
+##### Draft mode
+
 `renderContent` is a public Server Action: it’s reachable in production and renders any story it
-receives. If a registered component uses block fields for privileged requests, such as a preview
-token or a URL taken from the block, treat the story as untrusted input, or check that draft mode is
-enabled.
+receives. `StoryblokPreview` also calls `renderContent` for the initial render, for every visitor.
+To limit live editing to the Visual Editor, render `StoryblokPreview` only in
+[draft mode](https://nextjs.org/docs/app/guides/draft-mode), and reject other calls in the Server
+Action:
+
+```jsx
+// src/lib/actions.js
+"use server";
+
+import { draftMode } from "next/headers";
+import { StoryblokBlock } from "@/lib/storyblok";
+
+export async function renderContent(story) {
+  const { isEnabled } = await draftMode();
+  if (!isEnabled) {
+    throw new Error("Live editing requires draft mode.");
+  }
+  return <StoryblokBlock block={story.content} />;
+}
+```
+
+```jsx
+// src/app/page.js
+import { draftMode } from "next/headers";
+import { StoryblokPreview } from "@storyblok/react/rsc";
+import { renderContent } from "@/lib/actions";
+import { StoryblokBlock } from "@/lib/storyblok";
+
+// ...
+
+const { isEnabled } = await draftMode();
+
+return isEnabled ? (
+  <StoryblokPreview story={data.story} renderContent={renderContent} />
+) : (
+  <StoryblokBlock block={data.story.content} />
+);
+```
+
+Check draft mode in the page as well: a Server Action that rejects calls outside draft mode also
+fails the initial render of `StoryblokPreview`.
+
+##### Extra props
+
+`renderContent` receives only the story. To pass extra props, such as the locale, to the blocks,
+bind them to the Server Action:
+
+```jsx
+// src/lib/actions.js
+"use server";
+
+import { StoryblokBlock } from "@/lib/storyblok";
+
+export async function renderContent(locale, story) {
+  return <StoryblokBlock block={story.content} locale={locale} />;
+}
+```
+
+```jsx
+<StoryblokPreview story={story} renderContent={renderContent.bind(null, locale)} />
+```
+
+Next.js sends the bound arguments to the browser and back with every call, so treat them as public
+input, like the story.
 
 #### Props
 

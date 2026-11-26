@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { StoryblokBlock } from "@/lib/storyblok";
 
 /**
- * Server Action passed to `StoryblokPreview` (`@storyblok/react/rsc`). Called
+ * Server Action passed to the Server Component `StoryblokPreview`. Called
  * once for the initial paint and again on every Visual Editor update, so it
  * must stay a plain server-side render — no client-only hooks here.
  *

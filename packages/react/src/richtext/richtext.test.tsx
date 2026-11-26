@@ -159,6 +159,37 @@ describe("react StoryblokRichText component", () => {
       });
     });
   });
+  describe("nesting", () => {
+    it("should render each node once, however deeply it's nested", () => {
+      // Every rendered node looks up its custom component, so counting the
+      // lookups counts the renders.
+      let paragraphRenders = 0;
+      const components = new Proxy({} as StoryblokReactRichTextComponentMap, {
+        get(target, key, receiver) {
+          if (key === "paragraph") {
+            paragraphRenders += 1;
+          }
+          return Reflect.get(target, key, receiver);
+        },
+      });
+      let node: Record<string, unknown> = {
+        type: "paragraph",
+        content: [{ type: "text", text: "deep" }],
+      };
+      for (let depth = 0; depth < 16; depth += 1) {
+        node = { type: "blockquote", content: [node] };
+      }
+      const document = { type: "doc", content: [node] } as unknown as StoryblokRichTextInput;
+
+      const { container } = render(
+        <StoryblokRichText document={document} components={components} />,
+      );
+
+      expect(container.textContent).toBe("deep");
+      // Rendering children twice per level would render it 2^16 times.
+      expect(paragraphRenders).toBe(1);
+    });
+  });
   describe("custom components", () => {
     const node_and_mark = customRendererFixture.node_and_mark;
     it(node_and_mark.title, () => {

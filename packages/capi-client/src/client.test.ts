@@ -178,3 +178,40 @@ describe("createApiClient get()", () => {
     void client.get<Links>("/v2/cdn/links", { responseStyle: "data" });
   });
 });
+
+describe("createApiClient query serialization", () => {
+  const requestUrlOf = async (query: Record<string, unknown>) => {
+    let requestUrl = "";
+    const client = createApiClient({
+      accessToken: "token",
+      fetch: async (input) => {
+        requestUrl = input instanceof Request ? input.url : String(input);
+        return storyResponse();
+      },
+    });
+    await client.get("/v2/cdn/stories", { query: { version: "draft", ...query } });
+    return new URL(requestUrl);
+  };
+
+  it.each(["x&cv", "a=b", "a#b", "a b"])(
+    "should send a parameter named %j as one parameter",
+    async (name) => {
+      const url = await requestUrlOf({ [name]: "1" });
+
+      expect([...url.searchParams].filter(([key]) => key !== "token")).toEqual([
+        ["version", "draft"],
+        [name, "1"],
+      ]);
+    },
+  );
+
+  it("should send nested filters in raw bracket notation", async () => {
+    const url = await requestUrlOf({
+      filter_query: { component: { in: "hero" }, __or: [{ a: { is: "true" } }] },
+    });
+
+    expect(url.search).toContain(
+      "filter_query[component][in]=hero&filter_query[__or][][a][is]=true",
+    );
+  });
+});

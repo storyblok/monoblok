@@ -19,10 +19,7 @@ export const extractCv = (maybeData: unknown) => {
   return typeof maybeData.cv === "number" && maybeData.cv > 0 ? maybeData.cv : undefined;
 };
 
-/**
- * The CDN serves the last `cv` in the query. Query names aren't encoded, so a caller's
- * `"x&cv"` parameter puts a raw `cv` before the client's own.
- */
+/** The CDN serves the last of several `cv` parameters, so that one names the snapshot. */
 const extractCvFromUrl = (url: string | undefined) => {
   if (!url) {
     return undefined;

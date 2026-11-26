@@ -1113,7 +1113,7 @@ describe("spaces.get() as a cache invalidation signal", () => {
     expect(storyUrls).toHaveLength(2);
   });
 
-  it("should share the unpinned entry when the caller pins the known cv", async () => {
+  it("should not refetch when the caller pins the known cv", async () => {
     const storyUrls: string[] = [];
     server.use(
       http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
@@ -1188,7 +1188,7 @@ describe("spaces.get() as a cache invalidation signal", () => {
     expect(new URL(storyUrls[1]).searchParams.get("cv")).toBe("2000");
   });
 
-  it("should not keep an unpinned entry from eviction by pinning its cv when cv is manual", async () => {
+  it("should evict an entry that only pinned requests read under manual cv", async () => {
     const storyUrls: string[] = [];
     server.use(
       http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {

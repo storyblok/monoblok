@@ -10,7 +10,7 @@ afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
 describe("links.list()", () => {
-  it("should track the current cv a cache-busting cv was redirected to", async () => {
+  it("should send later requests with the cv a cache-busting links request was redirected to", async () => {
     const CURRENT_CV = "2000";
     const storyUrls: string[] = [];
     server.use(
@@ -151,7 +151,7 @@ describe("links.list()", () => {
     });
   });
 
-  it("should not track a cv a draft request was sent with", async () => {
+  it("should not send a draft request's cv on later published requests", async () => {
     const CURRENT_CV = "2000";
     const storyUrls: string[] = [];
     server.use(

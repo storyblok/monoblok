@@ -45,6 +45,7 @@ export function createLinksResource<DefaultThrowOnError extends boolean = false>
   type ListOptions = Omit<NonNullable<Parameters<typeof resource.list>[0]>, "throwOnError">;
 
   const paginationMethods = createPaginationMethods(deps, {
+    path: "/v2/cdn/links",
     fetchPage: (options: ListOptions | undefined, pageQuery, signal) =>
       resource.list({
         ...options,

@@ -84,6 +84,7 @@ export function createDatasourcesResource<DefaultThrowOnError extends boolean = 
   type ListOptions = Omit<NonNullable<Parameters<typeof resource.list>[0]>, "throwOnError">;
 
   const paginationMethods = createPaginationMethods(deps, {
+    path: "/v2/cdn/datasources",
     fetchPage: (options: ListOptions | undefined, pageQuery, signal) =>
       resource.list({
         ...options,

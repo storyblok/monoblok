@@ -36,6 +36,8 @@ type WalkQuery = { page?: unknown; per_page?: unknown; cv?: unknown; version?: u
 export type PageQuery = { page: number; per_page: number; cv?: number };
 
 export type PaginateConfig<TData, TItem> = {
+  /** The list endpoint, e.g. `/v2/cdn/links`. */
+  path: string;
   query: WalkQuery | undefined;
   signal: AbortSignal | undefined;
   /** Pins published pages to the `cv` of the first page. Draft queries are never pinned. */
@@ -93,7 +95,7 @@ async function* walkPages<TData, TItem>(
   config: PaginateConfig<TData, TItem>,
   throwOnFailure: boolean,
 ): AsyncGenerator<WalkedPage<TData, TItem>, void, undefined> {
-  const { query = {}, signal, pinCv, fetchPage, getItems } = config;
+  const { path, query = {}, signal, pinCv, fetchPage, getItems } = config;
   // Sent explicitly: some endpoints ignore `page` unless `per_page` is set too.
   const requestedPerPage = readPositiveInteger(query.per_page) ?? DEFAULT_PER_PAGE;
   const firstPage = readPositiveInteger(query.page) ?? 1;
@@ -191,7 +193,7 @@ async function* walkPages<TData, TItem>(
       };
     }
 
-    const servedCv = extractServedCv({ data, response });
+    const servedCv = extractServedCv({ data, response }, { method: "GET", path, query });
     const expectedCv = page === firstPage ? resumedCv : pinnedCv;
     if (expectedCv !== undefined && servedCv !== undefined && servedCv !== expectedCv) {
       // Pages before a resumed walk's first one came from the old snapshot too.
@@ -248,7 +250,7 @@ async function* walkPages<TData, TItem>(
 
     if (page === firstPage) {
       // The served `cv`, not a requested one: the API redirects a `cv` it doesn't serve.
-      pinnedCv = isPinnable ? extractServedCv(current) : undefined;
+      pinnedCv = isPinnable ? extractServedCv(current, { method: "GET", path, query }) : undefined;
       // Pages before the first one were read by an earlier walk.
       itemsThroughPage = (firstPage - 1) * perPage;
     }
@@ -317,9 +319,11 @@ export const createPaginationMethods = <
 >(
   deps: ResourceDeps<DefaultThrowOnError>,
   {
+    path,
     fetchPage,
     getItems,
   }: {
+    path: string;
     /**
      * Calls `list()` with `throwOnError: false`, merging `pageQuery` into the caller's query
      * and replacing the caller's `signal`.
@@ -333,6 +337,7 @@ export const createPaginationMethods = <
   },
 ) => {
   const toConfig = (options: TOptions | undefined): PaginateConfig<TData, TItem> => ({
+    path,
     query: options?.query,
     signal: options?.signal,
     pinCv: deps.cvMode !== "manual",

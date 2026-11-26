@@ -958,6 +958,7 @@ export function createStoriesResource<
     PageData<ResolveRelationsStr, ResolveLinksStr>,
     PageData<ResolveRelationsStr, ResolveLinksStr>["stories"][number]
   > => ({
+    path: "/v2/cdn/stories",
     query: options.query,
     signal: options.signal,
     pinCv: cvMode !== "manual",

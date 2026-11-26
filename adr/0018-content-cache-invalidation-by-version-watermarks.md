@@ -1,6 +1,6 @@
 # ADR-0018: Content Cache Invalidation by Version Watermarks
 
-**Status:** Accepted  
+**Status:** Accepted, amended by ADR-0035  
 **Date:** 2026-09-29
 
 ## Context
@@ -136,7 +136,8 @@ concurrent requests is therefore not a goal. The guarantees are:
 
 - Without concurrent requests, and with automatic invalidation enabled (`cache.flush: 'auto'` or
   `cache.clear: 'auto'`) and no Minimum Cache TTL, a publish is visible after the next poll of
-  `/cdn/spaces/me` or the next draft read.
+  `/cdn/spaces/me` or the next draft read. For `@storyblok/api-client`, ADR-0035 adds the first
+  published read once a 60-second window has elapsed since the known `cv` was last checked.
 - With concurrent requests, a publish can be noticed one poll late, and a response racing a
   `flushCache()` can restore what the flush emptied. Once requests settle, the next poll and read
   within one client are current.

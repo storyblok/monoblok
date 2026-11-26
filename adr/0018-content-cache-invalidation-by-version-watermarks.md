@@ -28,8 +28,8 @@ The API behavior these signals describe, verified against the live CDN:
 - `/cdn/links` and `/cdn/tags` report no `cv` in the body. A redirected `/cdn/links` request's final
   URL carries the `cv` it was redirected to. `/cdn/tags` is never redirected, whatever `cv` it is
   sent with.
-- Spaces with `cdn_cache_while_invalidate` enabled are never redirected, so the redirects above
-  don't happen there and a `/cdn/links` response never reports a `cv`.
+- In some spaces the API doesn't redirect at all, so the redirects above don't happen there and a
+  `/cdn/links` response never reports a `cv`.
 - With several `cv` parameters, the CDN serves the last one.
 - Without a Minimum Cache TTL, `space.version` and `cv` report the same raw version. With one, the
   `cv` is floored into TTL-sized buckets and lags permanently, so only same-signal comparisons carry

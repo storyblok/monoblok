@@ -26,7 +26,6 @@ export type {
   FetchOptions,
   HttpRequestMethod,
   HttpRequestOptions,
-  RequestFetchContext,
   RequestWithCacheOptions,
   ResourceDeps,
 } from "./client";

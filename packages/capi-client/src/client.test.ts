@@ -309,6 +309,8 @@ describe("createApiClient cv refresh window", () => {
       snapshotsHeld: undefined as Promise<void> | undefined,
       /** Called after a story is served, before any follow-up request. */
       onStoryServed: undefined as (() => void) | undefined,
+      /** Answers a request without a `cv` from this older snapshot, as a space that doesn't redirect. */
+      staleEdgeCv: undefined as number | undefined,
       publish: (name = AFTER_PUBLISH) => {
         cdn.cv += 1000;
         snapshots.set(cdn.cv, name);
@@ -317,9 +319,13 @@ describe("createApiClient cv refresh window", () => {
 
     const serve = async (request: Request, body: (cv: number, name: string) => object) => {
       const url = new URL(request.url);
-      cdn.requests.push(url);
+      cdn.requests.push(new URL(request.url));
       if (url.searchParams.get("version") === "draft") {
         return HttpResponse.json(body(cdn.cv, snapshots.get(cdn.cv) ?? ""));
+      }
+      if (!url.searchParams.has("cv") && cdn.staleEdgeCv !== undefined) {
+        cdn.bareRequests++;
+        return HttpResponse.json(body(cdn.staleEdgeCv, snapshots.get(cdn.staleEdgeCv) ?? ""));
       }
       const name = snapshots.get(Number(url.searchParams.get("cv")));
       if (name === undefined) {
@@ -375,7 +381,7 @@ describe("createApiClient cv refresh window", () => {
     return cdn;
   };
 
-  const elapse = (ms: number) => vi.setSystemTime(Date.now() + ms);
+  const elapse = (ms: number) => vi.advanceTimersByTime(ms);
 
   /** Redirects like any story, then answers 404: the slug doesn't exist in any snapshot. */
   const missingStoryHandler = (cdn: ReturnType<typeof createCdn>) =>
@@ -411,9 +417,11 @@ describe("createApiClient cv refresh window", () => {
     });
   };
   const LONG_TTL_MS = 3_600_000;
+  /** The clock the check times are written with. */
+  const now = () => performance.timeOrigin + performance.now();
 
   beforeEach(() => {
-    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.useFakeTimers({ toFake: ["Date", "performance"] });
   });
 
   afterEach(() => {
@@ -498,30 +506,26 @@ describe("createApiClient cv refresh window", () => {
     expect(story.data?.story.name).toBe(BEFORE_PUBLISH);
   });
 
-  it("should keep serving cached entries under flush: 'manual' while the check learns the cv", async () => {
+  it("should send no request without a cv under flush: 'manual'", async () => {
     const cdn = createCdn();
     const client = createApiClient({
       accessToken: "flush-manual-check",
       cache: { flush: "manual", ttlMs: LONG_TTL_MS },
     });
     await client.stories.get("home");
-    await client.stories.list();
     const bareRequestsBefore = cdn.bareRequests;
 
     cdn.publish();
     elapse(CV_REFRESH_WINDOW_MS);
-    const checkingRead = await client.stories.get("home");
-    await vi.waitFor(() => expect(cdn.bareRequests - bareRequestsBefore).toBe(1));
-    const [story, stories, cacheMiss] = await Promise.all([
-      client.stories.get("home"),
-      client.stories.list(),
-      client.stories.list({ query: { page: 2 } }),
-    ]);
+    const cached = await client.stories.get("home");
+    const cacheMiss = await client.stories.list();
+    expect(cdn.bareRequests - bareRequestsBefore).toBe(0);
+    await client.flushCache();
+    const afterFlush = await client.stories.get("home");
 
-    expect(checkingRead.data?.story.name).toBe(BEFORE_PUBLISH);
-    expect(story.data?.story.name).toBe(BEFORE_PUBLISH);
-    expect(stories.data?.stories[0]?.name).toBe(BEFORE_PUBLISH);
-    expect(cacheMiss.data?.stories[0]?.name).toBe(AFTER_PUBLISH);
+    expect(cached.data?.story.name).toBe(BEFORE_PUBLISH);
+    expect(cacheMiss.data?.stories[0]?.name).toBe(BEFORE_PUBLISH);
+    expect(afterFlush.data?.story.name).toBe(AFTER_PUBLISH);
   });
 
   it("should keep sending no cv and serving the cache when cv is manual", async () => {
@@ -565,28 +569,22 @@ describe("createApiClient cv refresh window", () => {
     expect(cdn.bareRequests - bareRequestsBefore).toBe(1);
   });
 
-  it("should share the window between clients sharing a provider", async () => {
+  it("should send one check from clients sharing a provider while it is in flight", async () => {
     const cdn = createCdn();
-    const providerOverStore = createStore();
+    const provider = createMemoryCacheProvider();
     const newClient = () =>
-      createApiClient({
-        accessToken: "shared-window",
-        cache: { provider: providerOverStore(), ttlMs: LONG_TTL_MS },
-      });
+      createApiClient({ accessToken: "shared-window", cache: { provider, ttlMs: LONG_TTL_MS } });
     await newClient().stories.list();
     const bareRequestsBefore = cdn.bareRequests;
 
     cdn.publish();
     elapse(CV_REFRESH_WINDOW_MS);
-    let releaseRedirects = () => {};
-    cdn.redirectsHeld = new Promise((resolve) => {
-      releaseRedirects = resolve;
-    });
+    const redirects = held();
+    cdn.redirectsHeld = redirects.promise;
     const checking = newClient().stories.get("home");
-    // Another client reads while the first one's check is still in flight.
     await vi.waitFor(() => expect(cdn.bareRequests - bareRequestsBefore).toBe(1));
     const readingDuringCheck = newClient().stories.list();
-    releaseRedirects();
+    redirects.release();
     const [story] = await Promise.all([checking, readingDuringCheck]);
     const stories = await newClient().stories.list();
 
@@ -595,7 +593,166 @@ describe("createApiClient cv refresh window", () => {
     expect(cdn.bareRequests - bareRequestsBefore).toBe(1);
   });
 
-  it("should check a known cv without a check time once", async () => {
+  it("should not check again from another process once a check was answered", async () => {
+    const cdn = createCdn();
+    const providerOverStore = createStore();
+    const newClient = () =>
+      createApiClient({
+        accessToken: "shared-store",
+        cache: { provider: providerOverStore(), ttlMs: LONG_TTL_MS },
+      });
+    await newClient().stories.list();
+    const bareRequestsBefore = cdn.bareRequests;
+
+    cdn.publish();
+    elapse(CV_REFRESH_WINDOW_MS);
+    await newClient().stories.get("home");
+    const stories = await newClient().stories.list();
+
+    expect(stories.data?.stories[0]?.name).toBe(AFTER_PUBLISH);
+    expect(cdn.bareRequests - bareRequestsBefore).toBe(1);
+  });
+
+  it("should not write to the provider before a check is answered", async () => {
+    const cdn = createCdn();
+    const provider = createMemoryCacheProvider();
+    let writesWhileInFlight = 0;
+    let isCheckInFlight = false;
+    const watchedProvider: CacheProvider = {
+      ...provider,
+      set: (key, entry) => {
+        writesWhileInFlight += isCheckInFlight ? 1 : 0;
+        return provider.set(key, entry);
+      },
+    };
+    const client = createApiClient({
+      accessToken: "write-after-check",
+      cache: { provider: watchedProvider, ttlMs: LONG_TTL_MS },
+    });
+    await client.stories.get("home");
+    const bareRequestsBefore = cdn.bareRequests;
+
+    cdn.publish();
+    elapse(CV_REFRESH_WINDOW_MS);
+    const redirects = held();
+    cdn.redirectsHeld = redirects.promise;
+    isCheckInFlight = true;
+    const checking = client.stories.get("home");
+    await vi.waitFor(() => expect(cdn.bareRequests - bareRequestsBefore).toBe(1));
+    isCheckInFlight = false;
+    redirects.release();
+    const story = await checking;
+
+    expect(writesWhileInFlight).toBe(0);
+    expect(story.data?.story.name).toBe(AFTER_PUBLISH);
+  });
+
+  it("should answer a check when the provider fails to record it", async () => {
+    const cdn = createCdn();
+    const provider = createMemoryCacheProvider();
+    const accessToken = "failing-check-record";
+    const checkKey = cvCheckedKey(createTokenId(accessToken));
+    const client = createApiClient({
+      accessToken,
+      cache: {
+        ttlMs: LONG_TTL_MS,
+        provider: {
+          ...provider,
+          set: (key, entry) =>
+            key === checkKey ? Promise.reject(new Error("unavailable")) : provider.set(key, entry),
+        },
+      },
+    });
+    await client.stories.get("home");
+
+    cdn.publish();
+    elapse(CV_REFRESH_WINDOW_MS);
+    const story = await client.stories.get("home");
+
+    expect(story.data?.story.name).toBe(AFTER_PUBLISH);
+  });
+
+  it("should read the provider twice per cached read between checks", async () => {
+    createCdn();
+    const provider = createMemoryCacheProvider();
+    let reads = 0;
+    const client = createApiClient({
+      accessToken: "provider-reads",
+      cache: {
+        ttlMs: LONG_TTL_MS,
+        provider: {
+          ...provider,
+          get: (key) => {
+            reads++;
+            return provider.get(key);
+          },
+        },
+      },
+    });
+    await client.stories.get("home");
+
+    reads = 0;
+    for (let i = 0; i < 5; i++) {
+      await client.stories.get("home");
+    }
+
+    // The entry and the version watermarks.
+    expect(reads).toBe(10);
+  });
+
+  it("should keep the cached entry when a check is answered by an older snapshot", async () => {
+    const cdn = createCdn();
+    const client = createApiClient({ accessToken: "stale-check", cache: { ttlMs: LONG_TTL_MS } });
+    await client.stories.get("home");
+    cdn.publish();
+    // The draft read teaches the new cv, so the next read fetches the published snapshot.
+    await client.stories.get("home", { query: { version: "draft" } });
+    await client.stories.get("home");
+
+    cdn.staleEdgeCv = 1000;
+    elapse(CV_REFRESH_WINDOW_MS);
+    const checked = await client.stories.get("home");
+
+    expect(checked.data?.story.name).toBe(AFTER_PUBLISH);
+  });
+
+  it("should keep links on the known cv's snapshot when a check loses the response URL", async () => {
+    const cdn = createCdn();
+    const client = createApiClient({
+      accessToken: "links-check-url-loss",
+      cache: { ttlMs: LONG_TTL_MS },
+      fetch: async (input, init) => {
+        const response = await fetch(input, init);
+        return new Response(response.body, response);
+      },
+    });
+    await client.stories.list();
+    await client.links.list();
+
+    cdn.publish();
+    elapse(CV_REFRESH_WINDOW_MS);
+    await client.links.list();
+    const [links, stories] = await Promise.all([client.links.list(), client.stories.list()]);
+
+    expect(links.data?.links?.home?.name).toBe(BEFORE_PUBLISH);
+    expect(stories.data?.stories[0]?.name).toBe(BEFORE_PUBLISH);
+  });
+
+  it("should read the relations of a story read without a known cv from its snapshot", async () => {
+    const cdn = createCdn();
+    const client = createApiClient({
+      accessToken: "cold-relations",
+      inlineRelations: true,
+      circularRelations: false,
+    });
+
+    await client.stories.get("home", { query: { resolve_relations: "page.author" } });
+
+    const relationRequest = cdn.requests.find((url) => url.searchParams.has("by_uuids"));
+    expect(relationRequest?.searchParams.get("cv")).toBe("1000");
+  });
+
+  it("should send one read without a cv when a shared provider already knows the cv", async () => {
     const cdn = createCdn();
     const provider = createMemoryCacheProvider();
     const accessToken = "record-without-check-time";
@@ -611,7 +768,7 @@ describe("createApiClient cv refresh window", () => {
     expect(cdn.bareRequests).toBe(1);
   });
 
-  it("should check a cv whose check time lies in the future", async () => {
+  it("should show a publish when another instance's clock runs far ahead", async () => {
     const cdn = createCdn();
     const provider = createMemoryCacheProvider();
     const accessToken = "check-time-ahead";
@@ -619,7 +776,7 @@ describe("createApiClient cv refresh window", () => {
     await client.stories.list();
     // Written by an instance whose clock runs ahead.
     await provider.set(cvCheckedKey(createTokenId(accessToken)), {
-      value: Date.now() + 10 * CV_REFRESH_WINDOW_MS,
+      value: now() + 10 * CV_REFRESH_WINDOW_MS,
       ttlMs: CV_REFRESH_WINDOW_MS,
     });
 
@@ -633,7 +790,7 @@ describe("createApiClient cv refresh window", () => {
     expect(stories.data?.stories[0]?.name).toBe(AFTER_PUBLISH);
   });
 
-  it("should not spend the check on a tags read", async () => {
+  it("should show a publish on the first stories read after a tags read", async () => {
     const cdn = createCdn();
     const client = createApiClient({ accessToken: "tags-read", cache: { ttlMs: LONG_TTL_MS } });
     await client.stories.list();
@@ -646,7 +803,7 @@ describe("createApiClient cv refresh window", () => {
     expect(stories.data?.stories[0]?.name).toBe(AFTER_PUBLISH);
   });
 
-  it("should not spend the check on an endpoint the API doesn't redirect", async () => {
+  it("should show a publish on the first stories read after a datasources read", async () => {
     const cdn = createCdn();
     // Served from the edge cache without a cv like any other URL.
     server.use(
@@ -757,7 +914,7 @@ describe("createApiClient cv refresh window", () => {
     await newClient().stories.list();
     const bareRequestsBefore = cdn.bareRequests;
     await providerOverStore().set(cvCheckedKey(createTokenId(accessToken)), {
-      value: Date.now() + 5,
+      value: now() + 5,
       ttlMs: CV_REFRESH_WINDOW_MS,
     });
 

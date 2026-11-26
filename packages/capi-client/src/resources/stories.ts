@@ -27,8 +27,8 @@ import type {
   StoryLinkData,
 } from "../utils/inline-links";
 import { inlineStoriesContent, resolveRelationMap } from "../utils/inline-relations";
-import type { ApiResponse, FetchOptions, RequestFetchContext, ResourceDeps } from "../client";
-import { extractCv } from "../utils/cv";
+import type { ApiResponse, FetchOptions, ResourceDeps } from "../client";
+import { applyCvToQuery, extractCv } from "../utils/cv";
 import { ClientError } from "../error";
 import type {
   BlockFields,
@@ -695,16 +695,15 @@ export function createStoriesResource<
   };
 
   /**
-   * The query follow-up requests send. A check of the `cv` goes out without one, so its
-   * follow-ups send the `cv` its response reported, to read the same snapshot.
+   * The query follow-up requests send: a read that went out without a `cv`, cold or checking
+   * the known one, passes on the `cv` its response reported, so they read the same snapshot.
    */
   const snapshotQuery = (
     requestQuery: Record<string, unknown>,
     data: unknown,
-    isCvCheck: boolean,
   ): Record<string, unknown> => {
-    const servedCv = isCvCheck ? extractCv(data) : undefined;
-    return servedCv === undefined ? requestQuery : { ...requestQuery, cv: servedCv };
+    const servedCv = extractCv(data);
+    return servedCv === undefined ? requestQuery : applyCvToQuery(requestQuery, servedCv);
   };
 
   /**
@@ -764,7 +763,7 @@ export function createStoriesResource<
         "GET",
         requestPath,
         resolvedQuery,
-        async (requestQuery: Record<string, unknown>, { isCvCheck }: RequestFetchContext) => {
+        async (requestQuery: Record<string, unknown>) => {
           const response = (await throttleManager.execute(requestPath, requestQuery, () =>
             asApiResponse(
               getStoryById({
@@ -801,7 +800,7 @@ export function createStoriesResource<
             const [story] = await inlineStories(
               [storyData.story],
               storyData,
-              snapshotQuery(requestQuery, storyData, isCvCheck),
+              snapshotQuery(requestQuery, storyData),
               signal,
             );
             return { ...response, data: { ...response.data, story } };
@@ -861,7 +860,7 @@ export function createStoriesResource<
         "GET",
         requestPath,
         typedQuery,
-        async (requestQuery: Record<string, unknown>, { isCvCheck }: RequestFetchContext) => {
+        async (requestQuery: Record<string, unknown>) => {
           const response = (await throttleManager.execute(requestPath, requestQuery, () =>
             asApiResponse(
               listStories({
@@ -897,7 +896,7 @@ export function createStoriesResource<
             const stories = await inlineStories(
               storiesData.stories,
               storiesData,
-              snapshotQuery(requestQuery, storiesData, isCvCheck),
+              snapshotQuery(requestQuery, storiesData),
               signal,
             );
             return { ...response, data: { ...response.data, stories } };

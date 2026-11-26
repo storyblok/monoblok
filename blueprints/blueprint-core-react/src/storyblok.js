@@ -8,7 +8,7 @@ import Grid from './storyblok/Grid';
 
 export const apiClient = createApiClient({
 	accessToken: import.meta.env.STORYBLOK_DELIVERY_API_TOKEN,
-	/** Set the correct region for your space. Learn more: https://www.storyblok.com/docs/packages/storyblok-react */
+	/** Set the correct region for your space. Learn more: https://www.storyblok.com/docs/libraries/js/content-delivery-api-client */
 	region: import.meta.env.STORYBLOK_REGION || 'eu',
 	/** The following code is only required when creating a Storyblok space directly via the Blueprints feature. */
 	baseUrl: import.meta.env.STORYBLOK_API_BASE_URL

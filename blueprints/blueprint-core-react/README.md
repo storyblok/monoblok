@@ -10,7 +10,7 @@ This blueprint is ideal for kickstarting new Storyblok and React projects. What'
 - Minimal styling.
 
 > [!TIP]
-> Follow our [React guide](https://storyblok.com/docs/guides/react) for a step-by-step walkthrough and learn more about Storyblok's range of features, including rich text rendering, custom content modeling, and internationalization. See the [@storyblok/react package reference](https://storyblok.com/docs/packages/storyblok-react) for further information.
+> Follow our [React guide](https://storyblok.com/docs/guides/react) for a step-by-step walkthrough and learn more about Storyblok's range of features, including rich text rendering, custom content modeling, and internationalization. See the [@storyblok/react package reference](https://www.storyblok.com/docs/libraries/js/react-sdk) for further information.
 
 ---
 

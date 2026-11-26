@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { StoryblokPreview } from '@storyblok/react/rsc';
-import { getApiClient } from '@/lib/storyblok';
+import { apiClient } from '@/lib/storyblok';
 import { renderContent } from '@/lib/actions';
 
 export default async function Page({ params }) {
@@ -8,7 +8,7 @@ export default async function Page({ params }) {
 
 	const fullSlug = slug ? slug.join('/') : 'home';
 
-	const result = await getApiClient().stories.get(fullSlug, {
+	const result = await apiClient.stories.get(fullSlug, {
 		query: { version: 'draft' },
 	});
 

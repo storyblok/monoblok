@@ -11,7 +11,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 ## Project
 
 A Next.js App Router site that renders Storyblok stories with `@storyblok/react`
-(https://www.storyblok.com/docs/packages/storyblok-react). `src/app/[[...slug]]/page.js` fetches the
+(https://www.storyblok.com/docs/libraries/js/react-sdk). `src/app/[[...slug]]/page.js` fetches the
 story for the path, `home` for `/`. Register every new block in `src/lib/storyblok.js`.
 
 `npm run dev` serves https://localhost:3000. The Visual Editor needs HTTPS.

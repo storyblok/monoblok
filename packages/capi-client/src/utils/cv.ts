@@ -1,4 +1,4 @@
-import { isDraftRequest, shouldUseCache } from "./request";
+import { isDraftRequest, isStoriesRequest, shouldUseCache } from "./request";
 
 /**
  * Whether the caller pinned a `cv`. Only a positive `cv` is a version: `storyblok-js-client`
@@ -40,6 +40,8 @@ const extractCvFromUrl = (url: string | undefined) => {
  * a `cv`, or with one the edge doesn't hold, is redirected to the current one. Only a
  * cacheable published request's URL names the served snapshot; draft and `/cdn/spaces/me`
  * URLs keep whatever `cv` the caller sent.
+ *
+ * The served snapshot isn't necessarily the current one, see `extractCurrentCv`.
  */
 export const extractServedCv = (
   result: { data?: unknown; response?: Pick<Response, "url"> },
@@ -50,6 +52,31 @@ export const extractServedCv = (
     return bodyCv;
   }
   return extractCvFromUrl(result.response?.url);
+};
+
+/**
+ * Reads the `cv` a cacheable published response proves current: the one its final URL carries
+ * when that differs from the `cv` sent, which only an origin redirect to the current `cv` does.
+ *
+ * Not every endpoint is redirected in every space (`/cdn/tags` never is), and the edge answers
+ * a request it doesn't redirect from whatever it cached for that URL, up to a week ago. So a
+ * body `cv`, or a URL `cv` equal to the one sent, proves nothing. A `Response` rebuilt on its
+ * way to the client has no URL; then a stories body `cv` counts, which is old only in a space
+ * whose API doesn't redirect.
+ */
+export const extractCurrentCv = (
+  result: { data?: unknown; response?: Pick<Response, "url"> },
+  request: { method: string; path: string; query: Record<string, unknown> },
+) => {
+  if (!shouldUseCache(request.method, request.path, request.query)) {
+    return undefined;
+  }
+  const url = result.response?.url;
+  if (!url) {
+    return isStoriesRequest(request.path) ? extractCv(result.data) : undefined;
+  }
+  const urlCv = extractCvFromUrl(url);
+  return urlCv !== Number(request.query.cv) ? urlCv : undefined;
 };
 
 /**

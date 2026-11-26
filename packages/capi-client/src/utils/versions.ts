@@ -3,9 +3,9 @@ import type { CacheProvider } from "./cache";
 /** Version state for published-content invalidation. See ADR-0018. */
 export interface VersionWatermarks {
   /**
-   * Highest served `cv` seen (see `extractServedCv`). `undefined` means unknown or
-   * invalidated, so requests go out without a `cv` and the origin redirects them to the
-   * current one.
+   * Highest current `cv` seen (see `extractCurrentCv`) or reported by a draft. `undefined`
+   * means unknown or invalidated, so requests go out without a `cv` and the origin redirects
+   * them to the current one.
    */
   knownCv?: number;
   /** Highest `space.version` seen from `/cdn/spaces/me`. Never sent as a `cv`. */

@@ -19,7 +19,11 @@ The API behavior these signals describe, verified against the live CDN:
 - A published request with an **old `cv` the edge still holds** is served that old snapshot for up
   to a week. This is the only path to stale content. On the wire it looks exactly like a response to
   a caller who pinned that `cv` on purpose; only the caller's intent separates the two.
-- A response body's `cv` identifies the snapshot that was actually served.
+- A response body's `cv` identifies the snapshot that was actually served. Only a redirect proves
+  that snapshot current. Not every endpoint is redirected in every space: `/cdn/tags` never is, and
+  `/cdn/datasource_entries` only in spaces created since May 2025. The edge answers a request it
+  doesn't redirect from whatever it cached for that URL, so a request without a `cv` can get a body
+  `cv` from when the edge cached that URL, up to a week ago.
 - Draft requests ignore `cv` entirely and are never redirected.
 - `/cdn/links` and `/cdn/tags` report no `cv` in the body. A redirected `/cdn/links` request's final
   URL carries the `cv` it was redirected to. `/cdn/tags` is never redirected, whatever `cv` it is
@@ -44,21 +48,28 @@ version watermarks in the cache provider. Invalidation is a mismatch, not a flus
 
 1. **Only a positive `cv` is a version.** The API redirects `0` like any `cv` the edge does not
    hold, so it is rejected where the body is read. No numeric sentinel ever reaches the wire.
-2. **Entries are tagged.** `CacheEntry.cv` records the `cv` the response was served from: the one
-   its body reports, else the one in its final URL, which a redirect rewrites (`/cdn/links`), else
-   the one the request was issued under (`/cdn/tags`). Only a cacheable published request's URL is
-   read; draft and `/cdn/spaces/me` URLs keep whatever `cv` the caller sent. Every response that
-   isn't discarded teaches a `cv`, whether or not it is stored. A draft response is never stored,
-   but its `cv` is the same version a published one reports, so it invalidates published entries
-   too; an application that reads both but never polls `/cdn/spaces/me` has no other signal.
-3. **One watermark per signal.** `knownCv` (highest served `cv` seen in a body or a redirect's final
-   URL) and `knownSpaceVersion` (highest version seen from `/cdn/spaces/me`) advance by monotonic
-   max only, so a stale edge read never moves them. They are compared to each other once: on the
-   first sighting, a `space.version` ahead of `knownCv` counts as a possible publish, because there
-   is no earlier space version to compare against. `highestCv` records the highest `cv` ever held
-   and is never dropped. An invalidation resets `knownCv`, and the response right after it is the
-   one that teaches the next `cv`, so the floor that recognizes a stale edge read has to outlive the
-   reset.
+2. **Only a proven-current `cv` is learned; entries are tagged.** A cacheable published response
+   teaches the `cv` in its final URL when that differs from the `cv` it was sent with, which only an
+   origin redirect to the current `cv` produces. A body `cv`, or a URL `cv` equal to the one sent,
+   only names the snapshot served: it still exposes a stale edge read, but teaches nothing. When the
+   `Response` reaching the client lost its final URL, as from a custom `fetch`, interceptor, or
+   framework cache that rebuilds it, a `/cdn/stories` body `cv` is learned instead, which is old
+   only in a space whose API doesn't redirect. A draft response teaches its body `cv`: the origin
+   answers drafts, so it is current. Only a cacheable published request's URL is read; draft and
+   `/cdn/spaces/me` URLs keep whatever `cv` the caller sent. A response that isn't discarded teaches
+   its `cv` whether or not it is stored. A draft response is never stored, but it invalidates
+   published entries too; an application that reads both but never polls `/cdn/spaces/me` has no
+   other signal. `CacheEntry.cv` records the `cv` the response taught, else the one the request was
+   issued under; a caller-pinned snapshot records the `cv` it reports. A read issued before any `cv`
+   was known that taught none is stored untagged and expires by TTL alone: it holds whatever the
+   edge cached for that URL, which no `cv` describes.
+3. **One watermark per signal.** `knownCv` (highest `cv` learned, see item 2) and
+   `knownSpaceVersion` (highest version seen from `/cdn/spaces/me`) advance by monotonic max only,
+   so a stale edge read never moves them. They are compared to each other once: on the first
+   sighting, a `space.version` ahead of `knownCv` counts as a possible publish, because there is no
+   earlier space version to compare against. `highestCv` records the highest `cv` ever held and is
+   never dropped. An invalidation resets `knownCv`, and the response right after it is the one that
+   teaches the next `cv`, so the floor that recognizes a stale edge read has to outlive the reset.
 4. **The watermarks live in the cache provider**, under the reserved key `sb:versions:v1:<tokenId>`,
    so they share fate with the entries they govern. Every client and process sharing a provider
    shares them, which is what makes the publish signal work for a per-request client in a serverless
@@ -172,11 +183,11 @@ directly and retire most of the inference.
 - Enabling a Minimum Cache TTL on a token already in use lowers the reported `cv` below the highest
   one seen, so in both clients every response reads as a stale edge read and nothing is cached until
   the floored `cv` catches up, at most one TTL bucket later.
-- `/cdn/tags` entries are only invalidated when they were fetched while a `cv` was known; one
-  fetched before any `cv` was known falls back to TTL alone. `/cdn/links` entries do too when the
-  `Response` reaching the client lost its final URL, as from a custom `fetch`, interceptor, or
-  framework cache that rebuilds it, and in spaces with `cdn_cache_while_invalidate`, which never
-  redirect. That is no worse than before links taught a `cv`.
+- An entry read before any `cv` was known and not redirected, such as `/cdn/tags`, expires by TTL
+  alone; a publish doesn't invalidate it. An app that reads only such endpoints caches as it did
+  before watermarks. A space whose API doesn't redirect teaches no `cv` except through a draft read,
+  so there every entry falls back to TTL alone. So does every entry but a story's when the
+  `Response` reaching the client lost its final URL.
 - After a publish is noticed, a response in flight that was already served from the new `cv` is
   still discarded until another response re-teaches that `cv`, which costs one refetch of that key.
 - A cached entry whose `cv` a publish invalidated is withheld from the cache strategy, so a

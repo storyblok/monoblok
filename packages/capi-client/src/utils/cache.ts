@@ -45,9 +45,10 @@ export interface CacheEntry<TValue = unknown> {
   storedAt: number;
   ttlMs: number;
   /**
-   * The `cv` the response was served from, else the `cv` it was requested under. Unless the
-   * caller pinned the `cv`, the entry is served only while this matches the known `cv`.
-   * Absent means TTL-only invalidation, as for `/cdn/tags` fetched before any `cv` was known.
+   * The current `cv` the response was redirected to, else the `cv` it was requested under; for
+   * a caller-pinned snapshot, the `cv` it reports. Unless the caller pinned the `cv`, the entry
+   * is served only while this matches the known `cv`. Absent means TTL-only invalidation, as
+   * for a read that went out before any `cv` was known and wasn't redirected.
    */
   cv?: number;
 }

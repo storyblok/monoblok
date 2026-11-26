@@ -21,6 +21,10 @@ export const normalizePath = (path: string) => {
 
 export const isSpacesMeRequest = (path: string) => normalizePath(path) === SPACES_ME_PATH;
 
+const STORIES_PATH = /^\/v2\/cdn\/stories(\/|$)/;
+
+export const isStoriesRequest = (path: string) => STORIES_PATH.test(normalizePath(path));
+
 /**
  * Recursively normalizes query values by sorting object keys.
  * This makes JSON stringification deterministic for cache key generation.

@@ -655,9 +655,16 @@ describe("links.iterate()", () => {
           { headers: { total: "2", "per-page": "1" } },
         );
       }),
-      http.get(`${STORIES_URL}/:slug`, ({ params }) =>
-        HttpResponse.json({ story: makeStory(99), cv: params.slug === "before" ? 100 : 200 }),
-      ),
+      // Redirects to the cv current when each story is read.
+      http.get(`${STORIES_URL}/:slug`, ({ request, params }) => {
+        const cv = params.slug === "before" ? 100 : 200;
+        const url = new URL(request.url);
+        if (url.searchParams.get("cv") !== String(cv)) {
+          url.searchParams.set("cv", String(cv));
+          return HttpResponse.redirect(url.toString(), 301);
+        }
+        return HttpResponse.json({ story: makeStory(99), cv });
+      }),
     );
     const client = createClient();
     await client.stories.get("before");

@@ -4,6 +4,9 @@ import {
   serializePrimitiveParam,
 } from "../generated/mapi/core/pathSerializer.gen";
 
+const encodeName = (name: string) =>
+  encodeURIComponent(name).replace(/%5B/g, "[").replace(/%5D/g, "]");
+
 /**
  * Query serializer for the Management API client.
  *
@@ -15,6 +18,11 @@ import {
  * arrays/objects aren't supported. Provide your own `querySerializer()`"), yet
  * MAPI requires `filter_query` as a nested hash and rejects flat strings. This
  * mirrors the bracket serialization used by `storyblok-js-client`.
+ *
+ * Names are percent-encoded, so a name such as `x&cv` stays one parameter instead of
+ * adding a `cv`. Brackets stay raw, both the ones added here and any in a flat name
+ * like `filter_query[component][in]`, so existing URLs stay byte-identical.
+ * `name` arrives encoded.
  */
 function serialize(name: string, value: unknown, parts: string[]): void {
   if (value === undefined || value === null) {
@@ -45,7 +53,7 @@ function serialize(name: string, value: unknown, parts: string[]): void {
 
   if (typeof value === "object") {
     for (const [key, child] of Object.entries(value)) {
-      serialize(`${name}[${key}]`, child, parts);
+      serialize(`${name}[${encodeName(key)}]`, child, parts);
     }
     return;
   }
@@ -59,7 +67,7 @@ function serialize(name: string, value: unknown, parts: string[]): void {
 export const querySerializer: QuerySerializer = (query) => {
   const parts: string[] = [];
   for (const [name, value] of Object.entries(query)) {
-    serialize(name, value, parts);
+    serialize(encodeName(name), value, parts);
   }
   return parts.join("&");
 };

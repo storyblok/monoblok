@@ -1130,6 +1130,39 @@ describe("spaces.get() as a cache invalidation signal", () => {
     expect(storyUrls).toHaveLength(1);
   });
 
+  it("should serve a caller-pinned cv when the provider can't read the unpinned entry", async () => {
+    const provider = createMemoryCacheProvider();
+    const unreadableKeys = new Set<string>();
+    const corruptingProvider: CacheProvider = {
+      ...provider,
+      get: (key) =>
+        unreadableKeys.has(key) ? Promise.reject(new Error("corrupt entry")) : provider.get(key),
+      set: async (key, entry) => {
+        await provider.set(key, entry);
+        if (!key.startsWith("sb:versions:")) {
+          unreadableKeys.add(key);
+        }
+      },
+    };
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        const cv = new URL(request.url).searchParams.get("cv");
+        return HttpResponse.json({ stories: [], cv: cv ? Number(cv) : 2000 });
+      }),
+    );
+    const client = createApiClient({
+      accessToken: "pinned-unreadable-unpinned-token",
+      cache: { provider: corruptingProvider },
+    });
+
+    await client.get("v2/cdn/stories", { query: { version: "published" } });
+    const pinned = await client.get("v2/cdn/stories", {
+      query: { version: "published", cv: 900 },
+    });
+
+    expect(pinned.data).toMatchObject({ cv: 900 });
+  });
+
   it("should keep a caller pin on the known cv after a publish moves past it", async () => {
     let spaceVersion = 2000;
     const storyUrls: string[] = [];

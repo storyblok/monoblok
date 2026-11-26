@@ -744,12 +744,16 @@ export const createApiClientBase = <
     const pinnedKey = callerCv === undefined ? undefined : keyFor(rawQuery);
 
     // A pinned request reads the unpinned entry only to share it, which needs an automatic
-    // `cv`; reading it otherwise would keep it from eviction.
-    const readsUnpinnedEntry = pinnedKey === undefined || cvMode === "auto";
+    // `cv`. The read keeps that entry recently used in an LRU provider even when it isn't
+    // shared, so it is skipped otherwise. A failed read only forgoes sharing.
+    const readUnpinnedEntry = () =>
+      cacheProvider.get<ApiResponse<TData, ThrowOnError>>(unpinnedKey);
     const [unpinnedEntry, pinnedEntry, versions] = await Promise.all([
-      readsUnpinnedEntry
-        ? cacheProvider.get<ApiResponse<TData, ThrowOnError>>(unpinnedKey)
-        : undefined,
+      pinnedKey === undefined
+        ? readUnpinnedEntry()
+        : cvMode === "auto"
+          ? readUnpinnedEntry().catch(() => undefined)
+          : undefined,
       pinnedKey === undefined
         ? undefined
         : cacheProvider.get<ApiResponse<TData, ThrowOnError>>(pinnedKey),

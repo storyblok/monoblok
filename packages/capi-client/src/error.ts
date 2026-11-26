@@ -54,28 +54,31 @@ export class ClientError extends Error {
 
 /**
  * Why a page of a pagination walk failed:
- * - `request`: the request failed. `response` and `cause` hold the HTTP or transport error.
+ * - `request`: the request failed or was aborted. `response` and `cause` hold the HTTP or
+ *   transport error.
  * - `invalid-response`: the API answered, but not with a page of items.
- * - `snapshot-changed`: content changed after the walk started, so the page came from a
- *   different `cv` and its offsets no longer line up with the earlier pages.
+ * - `snapshot-changed`: the page came from a different `cv`, so its offsets don't line up with
+ *   the walk's earlier pages.
  */
 export type PaginationFailureReason = "request" | "invalid-response" | "snapshot-changed";
 
 /**
- * Thrown when a page fails: by `iterate()` always, and by `pages()` with `throwOnError` on the
- * call or the client. Unlike `list()`, transport failures (timeouts, network errors) are
- * wrapped too, with `response.status` 0 and the original error in `cause.cause`, so they keep
- * the resume point: `iterate({ query: { ...query, page: error.page, cv: error.cv } })`.
- * Aborting the walk's `signal` throws the abort reason instead.
+ * A failed page of a pagination walk. `iterate()` throws it, and `pages()` yields it as `error`
+ * or, with `throwOnError`, throws it. Unlike `list()`, transport failures (timeouts, network
+ * errors) are wrapped too, with `response.status` 0 and the original error in `cause.cause`, so
+ * they keep the resume point: `iterate({ query: { ...query, page: error.resumePage, cv:
+ * error.cv } })`. Aborting the walk's `signal` makes `iterate()` throw the abort reason instead.
  */
 export class PaginationError extends ClientError {
   readonly reason: PaginationFailureReason;
-  /** The page a new walk resumes from. */
+  /** The page that failed. */
   readonly page: number;
   /**
-   * The snapshot a new walk resumes in, if any. Unset after `snapshot-changed`, whose `page`
-   * restarts the walk.
+   * The page a new walk resumes from: the failed page, or after `snapshot-changed` the page
+   * that restarts the walk.
    */
+  readonly resumePage: number;
+  /** The snapshot a new walk resumes in, if any. Unset after `snapshot-changed`. */
   readonly cv?: number;
 
   constructor(
@@ -83,6 +86,7 @@ export class PaginationError extends ClientError {
     options: {
       reason: PaginationFailureReason;
       page: number;
+      resumePage: number;
       cv?: number;
       response: ClientError["response"];
       cause?: unknown;
@@ -92,6 +96,7 @@ export class PaginationError extends ClientError {
     this.name = "PaginationError";
     this.reason = options.reason;
     this.page = options.page;
+    this.resumePage = options.resumePage;
     this.cv = options.cv;
   }
 }

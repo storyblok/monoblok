@@ -1115,6 +1115,20 @@ describe("stories pagination", () => {
     client.stories.iterate({ query: { resolve_relations: "page.author" } });
   });
 
+  it("should accept resolve_links in stories.iterate() with inlineLinks", () => {
+    const client = createApiClient({ accessToken: "test-token", inlineLinks: true });
+    client.stories.iterate({ query: { resolve_links: "story" } });
+  });
+
+  it("should type a stories.pages() error as a PaginationError", async () => {
+    const client = createApiClient({ accessToken: "test-token" });
+    for await (const page of client.stories.pages()) {
+      if (page.error) {
+        expectTypeOf(page.error.resumePage).toEqualTypeOf<number>();
+      }
+    }
+  });
+
   it("should yield envelopes with optional data from stories.pages()", async () => {
     const client = createApiClient({ accessToken: "test-token" });
     for await (const page of client.stories.pages()) {

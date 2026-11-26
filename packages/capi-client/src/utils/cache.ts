@@ -68,6 +68,10 @@ export interface CacheEntryInput<TValue = unknown> {
  * invalidation to TTL alone. The keys `sb:versions:v1:<tokenId>` and `sb:cv-checked:v1:<tokenId>`
  * are reserved for the client's version watermarks and `cv` check.
  *
+ * A provider that serializes entries loses the `Response` in `value.response`: its headers and
+ * URL. Pagination walks then report no `total`, and walks over `/cdn/links`, whose `cv` is only
+ * in the URL, can't notice a publish mid-walk.
+ *
  * Providers must expire entries after `ttlMs`; the client doesn't check it and leaves
  * invalidated entries in place.
  */

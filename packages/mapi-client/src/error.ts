@@ -53,21 +53,22 @@ export class ClientError extends Error {
 
 /**
  * Why a page of a pagination walk failed:
- * - `request`: the request failed. `response` and `cause` hold the HTTP or transport error.
+ * - `request`: the request failed or was aborted. `response` and `cause` hold the HTTP or
+ *   transport error.
  * - `invalid-response`: the API answered, but not with a page of items.
  */
 export type PaginationFailureReason = "request" | "invalid-response";
 
 /**
- * Thrown when a page fails: by `iterate()` always, and by `pages()` with `throwOnError` on the
- * call or the client. Unlike `list()`, transport failures (timeouts, network errors) are
- * wrapped too, with `response.status` 0 and the original error in `cause.cause`, so they keep
- * the resume point: `iterate({ query: { ...query, page: error.page } })`. Aborting the walk's
- * `signal` throws the abort reason instead.
+ * A failed page of a pagination walk. `iterate()` throws it, and `pages()` yields it as `error`
+ * or, with `throwOnError`, throws it. Unlike `list()`, transport failures (timeouts, network
+ * errors) are wrapped too, with `response.status` 0 and the original error in `cause.cause`, so
+ * they keep the resume point: `iterate({ query: { ...query, page: error.page } })`. Aborting the
+ * walk's `signal` makes `iterate()` throw the abort reason instead.
  */
 export class PaginationError extends ClientError {
   readonly reason: PaginationFailureReason;
-  /** The page a new walk resumes from. */
+  /** The page that failed, and the page a new walk resumes from. */
   readonly page: number;
 
   constructor(

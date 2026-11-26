@@ -992,14 +992,14 @@ export function createStoriesResource<
     ...resource,
 
     /**
-     * Walks every page of stories, yielding one `list()` response per page. A failed page
-     * is the last value yielded, so check `error` on each one. With `throwOnError`, it
-     * throws a `PaginationError` instead.
+     * Walks every page of stories, yielding one `list()` response per page. A failed page is
+     * the last value yielded, so check `error` on each one. With `throwOnError`, it throws a
+     * `PaginationError` instead.
      *
-     * Published pages are pinned to the `cv` of the first page, so the walk reads one
-     * consistent snapshot. If content changes mid-walk, the walk fails with a
-     * `PaginationError` whose `page` restarts it. Draft pages, and pages under
-     * `cache.cv: 'manual'`, are not pinned, so concurrent edits can shift offsets.
+     * Published walks fail with a `snapshot-changed` `PaginationError` when content is
+     * published mid-walk: later pages are pinned to the first page's `cv`, which the CDN serves
+     * only for pages it still caches. Draft walks, and walks under `cache.cv: 'manual'`, aren't
+     * pinned, so concurrent edits can skip or repeat items.
      */
     pages: <
       ThrowOnError extends boolean = DefaultThrowOnError,
@@ -1019,18 +1019,12 @@ export function createStoriesResource<
       ),
 
     /**
-     * Walks every story across all pages, fetching the next page while the current one is
-     * consumed. A failed page throws a `PaginationError`.
+     * Walks every story across all pages, the replacement for `getAll()` in
+     * `storyblok-js-client`. A failed page throws a `PaginationError`. Pinned like `pages()`.
      *
-     * Published pages are pinned to the `cv` of the first page, so the walk reads one
-     * consistent snapshot. If content changes mid-walk, the walk fails with a
-     * `PaginationError` whose `page` restarts it. Draft pages, and pages under
-     * `cache.cv: 'manual'`, are not pinned, so concurrent edits can shift offsets.
-     *
-     * Relations and links resolved via `resolve_relations` and `resolve_links` arrive in each
-     * page's `rels` and `links`, which only `pages()` exposes. So `iterate()` takes
-     * `resolve_relations` only with `inlineRelations`, and never `resolve_links`, and throws a
-     * `TypeError` otherwise.
+     * Takes `resolve_relations` only with `inlineRelations`, and `resolve_links` only with
+     * `inlineLinks`: otherwise the resolved entries reach only each page's `rels` and `links`,
+     * which `pages()` exposes. Throws a `TypeError` otherwise.
      */
     iterate: <
       const ResolveRelationsStr extends string | undefined = undefined,

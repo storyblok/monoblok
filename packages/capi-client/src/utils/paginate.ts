@@ -9,7 +9,7 @@ const DEFAULT_PER_PAGE = 25;
 
 type PageEnvelope<TData, ThrowOnError extends boolean> = ThrowOnError extends true
   ? { data: TData; error?: never }
-  : { data: TData; error?: undefined } | { data: undefined; error: ClientError };
+  : { data: TData; error?: undefined } | { data: undefined; error: PaginationError };
 
 /**
  * One page of a `pages()` walk: the envelope `list()` returns for that page, plus where it
@@ -40,19 +40,13 @@ export type PaginateConfig<TData, TItem> = {
   signal: AbortSignal | undefined;
   /** Pins published pages to the `cv` of the first page. Draft queries are never pinned. */
   pinCv: boolean;
-  /** Fetches one page. A failed request must resolve with `error` set, not reject. */
-  fetchPage: (pageQuery: PageQuery, signal: AbortSignal) => Promise<ApiResponse<TData>>;
+  /** A failed request must resolve with `error` set, not reject. */
+  fetchPage: (pageQuery: PageQuery, signal: AbortSignal | undefined) => Promise<ApiResponse<TData>>;
   /** Returns `undefined` when the response holds no list of items. */
   getItems: (data: TData) => TItem[] | undefined;
 };
 
 type WalkedPage<TData, TItem> = { result: PageResult<TData>; items: TItem[] };
-
-type PendingPage<TData> = {
-  result: Promise<ApiResponse<TData>>;
-  /** Aborts the request unless it already settled; a settled page may still revalidate. */
-  cancel: () => void;
-};
 
 const readPositiveInteger = (value: unknown): number | undefined => {
   if (value === null || value === undefined || value === "") {
@@ -62,8 +56,12 @@ const readPositiveInteger = (value: unknown): number | undefined => {
   return Number.isInteger(number) && number > 0 ? number : undefined;
 };
 
-const readCountHeader = (response: Response | undefined, name: string): number | undefined => {
-  const value = response?.headers?.get?.(name);
+/** A cache provider that serializes entries returns a plain object instead of a `Response`. */
+const readHeader = (response: Response, name: string): string | null | undefined =>
+  response.headers?.get?.(name);
+
+const readCountHeader = (response: Response, name: string): number | undefined => {
+  const value = readHeader(response, name);
   if (value === null || value === undefined || value === "") {
     return undefined;
   }
@@ -71,16 +69,15 @@ const readCountHeader = (response: Response | undefined, name: string): number |
   return Number.isInteger(number) && number >= 0 ? number : undefined;
 };
 
-/** Mirrors the error `list()` resolves with for an aborted request. */
-const abortError = (reason: unknown): ClientError =>
-  new ClientError("API request failed", {
-    status: 0,
-    statusText: "",
-    data: undefined,
-    cause: reason,
-  });
-
 const isSuccessStatus = (status: number) => status >= 200 && status < 300;
+
+const describeRequestError = (error: ClientError): string => {
+  const { status, statusText } = error.response;
+  if (status > 0) {
+    return statusText ? `HTTP ${status} ${statusText}` : `HTTP ${status}`;
+  }
+  return error.cause instanceof Error ? error.cause.message : error.message;
+};
 
 /** Identifies a page by its first item, to notice an endpoint that ignores `page`. */
 const fingerprintPage = (items: unknown[]): string | undefined => {
@@ -94,100 +91,82 @@ const fingerprintPage = (items: unknown[]): string | undefined => {
 // Duplicated in the other API client; change both (ADR-0033).
 async function* walkPages<TData, TItem>(
   config: PaginateConfig<TData, TItem>,
-  { prefetch, throwOnFailure }: { prefetch: boolean; throwOnFailure: boolean },
+  throwOnFailure: boolean,
 ): AsyncGenerator<WalkedPage<TData, TItem>, void, undefined> {
   const { query = {}, signal, pinCv, fetchPage, getItems } = config;
   // Sent explicitly: some endpoints ignore `page` unless `per_page` is set too.
   const requestedPerPage = readPositiveInteger(query.per_page) ?? DEFAULT_PER_PAGE;
-
-  const fetchAt = (page: number, cv: number | undefined): PendingPage<TData> => {
-    // One controller per page: aborting a finished page would also cancel its cache's
-    // background revalidation.
-    const controller = new AbortController();
-    const abort = () => controller.abort(signal?.reason);
-    if (signal?.aborted) {
-      abort();
-    } else {
-      signal?.addEventListener("abort", abort, { once: true });
-    }
-    let isSettled = false;
-    const settle = () => {
-      isSettled = true;
-      signal?.removeEventListener("abort", abort);
-    };
-
-    const pageQuery: PageQuery =
-      cv === undefined
-        ? { page, per_page: requestedPerPage }
-        : { page, per_page: requestedPerPage, cv };
-    const result = fetchPage(pageQuery, controller.signal);
-    result.then(settle, settle);
-    // A prefetched page is awaited only once the walk reaches it, so its failure
-    // surfaces in stream order rather than as an unhandled rejection.
-    result.catch(() => undefined);
-
-    return {
-      result,
-      cancel: () => {
-        // A cache hit settles a few microtasks after it starts, but keeps revalidating on
-        // this signal, so it gets a macrotask to settle before the abort.
-        setTimeout(() => {
-          if (!isSettled) {
-            controller.abort();
-          }
-          settle();
-        }, 0);
-      },
-    };
-  };
-
   const firstPage = readPositiveInteger(query.page) ?? 1;
   const isPinnable = pinCv && !isDraftRequest(query);
-  const requestedCv = isPinnable && isCvPinned(query.cv) ? Number(query.cv) : undefined;
+  const callerCv = isCvPinned(query.cv) ? Number(query.cv) : undefined;
   // Offsets past page 1 only hold in the snapshot the earlier walk read. A walk from page 1
-  // just pins whatever `cv` the API serves, so a stale or made-up `cv` doesn't fail it.
-  const resumedCv = firstPage > 1 ? requestedCv : undefined;
+  // pins whatever `cv` the API serves, so a stale or made-up `cv` doesn't fail it.
+  const resumedCv = isPinnable && firstPage > 1 ? callerCv : undefined;
   let pinnedCv: number | undefined;
   let itemsThroughPage = 0;
   let previousFingerprint: string | undefined;
-  let next = fetchAt(firstPage, undefined);
 
   const fail = (
     reason: PaginationFailureReason,
     message: string,
-    options: { page: number; cv?: number; response: Response | undefined; cause?: unknown },
+    options: {
+      page: number;
+      resumePage?: number;
+      cv?: number;
+      response: ClientError["response"];
+      cause?: unknown;
+    },
   ) =>
     new PaginationError(message, {
       reason,
       page: options.page,
+      resumePage: options.resumePage ?? options.page,
       cv: options.cv,
-      response: {
-        status: options.response?.status ?? 0,
-        statusText: options.response?.statusText ?? "",
-        data: undefined,
-      },
+      response: options.response,
       cause: options.cause,
     });
+
+  const responseOf = ({ status, statusText }: Response): ClientError["response"] => ({
+    status: status ?? 0,
+    statusText: statusText ?? "",
+    data: undefined,
+  });
 
   const checkPage = (
     page: number,
     { data, error, response }: ApiResponse<TData>,
   ): { failure: PaginationError } | { data: TData; items: TItem[] } => {
-    const cv = pinnedCv ?? requestedCv;
+    const cv = pinnedCv ?? callerCv;
+    if (signal?.aborted) {
+      return {
+        failure: fail("request", `Page ${page} failed: the walk was aborted.`, {
+          page,
+          cv,
+          response: { status: 0, statusText: "", data: undefined },
+          cause:
+            error ??
+            new ClientError("API request failed", {
+              status: 0,
+              statusText: "",
+              data: undefined,
+              cause: signal.reason,
+            }),
+        }),
+      };
+    }
     if (error !== undefined) {
       if (isSuccessStatus(error.response.status)) {
         return {
           failure: fail("invalid-response", `Page ${page} failed: the response isn't valid JSON.`, {
             page,
             cv,
-            response,
+            response: responseOf(response),
             cause: error,
           }),
         };
       }
       return {
-        failure: new PaginationError(`Page ${page} failed: ${error.message}`, {
-          reason: "request",
+        failure: fail("request", `Page ${page} failed: ${describeRequestError(error)}`, {
           page,
           cv,
           response: error.response,
@@ -207,7 +186,7 @@ async function* walkPages<TData, TItem>(
         failure: fail("invalid-response", `Page ${page} failed: the response has no items.`, {
           page,
           cv,
-          response,
+          response: responseOf(response),
         }),
       };
     }
@@ -215,14 +194,15 @@ async function* walkPages<TData, TItem>(
     const servedCv = extractServedCv({ data, response });
     const expectedCv = page === firstPage ? resumedCv : pinnedCv;
     if (expectedCv !== undefined && servedCv !== undefined && servedCv !== expectedCv) {
-      const restartPage = resumedCv === undefined ? firstPage : 1;
+      // Pages before a resumed walk's first one came from the old snapshot too.
+      const resumePage = resumedCv === undefined ? firstPage : 1;
       return {
         failure: fail(
           "snapshot-changed",
-          `Page ${page} failed: it was served from cv ${servedCv}, not cv ${expectedCv}, ` +
-            `because content changed after the walk started. ` +
-            `Restart the walk from page ${restartPage}.`,
-          { page: restartPage, response },
+          `Page ${page} failed: content changed since cv ${expectedCv} (now cv ${servedCv}). ` +
+            `Restart from page ${resumePage} (with \`cache.flush: 'manual'\`, call ` +
+            `\`flushCache()\` first).`,
+          { page, resumePage, response: responseOf(response) },
         ),
       };
     }
@@ -232,8 +212,8 @@ async function* walkPages<TData, TItem>(
       return {
         failure: fail(
           "invalid-response",
-          `Page ${page} failed: it repeats page ${page - 1}, so the endpoint ignores \`page\`.`,
-          { page, cv, response },
+          `Page ${page} failed: it repeats page ${page - 1}; the endpoint may ignore \`page\`.`,
+          { page, cv, response: responseOf(response) },
         ),
       };
     }
@@ -242,67 +222,48 @@ async function* walkPages<TData, TItem>(
     return { data, items };
   };
 
-  try {
-    for (let page = firstPage; ; page++) {
-      const current = await next.result;
-      const perPage =
-        readPositiveInteger(current.response?.headers?.get?.("per-page")) ?? requestedPerPage;
-      const total = readCountHeader(current.response, "total");
-      const meta = { page, perPage, total };
+  for (let page = firstPage; ; page++) {
+    const pageQuery: PageQuery =
+      pinnedCv === undefined
+        ? { page, per_page: requestedPerPage }
+        : { page, per_page: requestedPerPage, cv: pinnedCv };
+    const current = await fetchPage(pageQuery, signal);
+    const perPage =
+      readPositiveInteger(readHeader(current.response, "per-page")) ?? requestedPerPage;
+    const total = readCountHeader(current.response, "total");
+    const meta = { page, perPage, total };
 
-      // A page served from the cache never sees the signal, so check it here.
-      if (signal?.aborted) {
-        if (throwOnFailure) {
-          throw signal.reason;
-        }
-        yield {
-          result: { ...current, ...meta, data: undefined, error: abortError(signal.reason) },
-          items: [],
-        };
-        return;
+    const checked = checkPage(page, current);
+    if ("failure" in checked) {
+      if (throwOnFailure) {
+        throw checked.failure;
       }
-
-      const checked = checkPage(page, current);
-      if ("failure" in checked) {
-        if (throwOnFailure) {
-          throw checked.failure;
-        }
-        yield {
-          result: { ...current, ...meta, data: undefined, error: checked.failure },
-          items: [],
-        };
-        return;
-      }
-      const { data, items } = checked;
-
-      if (page === firstPage) {
-        // The served `cv`, not a requested one: the API redirects a `cv` it doesn't serve.
-        pinnedCv = isPinnable ? extractServedCv(current) : undefined;
-        // Pages before the first one were read by an earlier walk.
-        itemsThroughPage = (firstPage - 1) * perPage;
-      }
-      itemsThroughPage += items.length;
-
-      // Counting received items rather than `page * perPage` keeps a page the API capped
-      // below the requested `per_page` from ending the walk early.
-      const isLastPage =
-        items.length === 0 ||
-        (total === undefined ? items.length < perPage : itemsThroughPage >= total);
-      if (!isLastPage && prefetch) {
-        next = fetchAt(page + 1, pinnedCv);
-      }
-
-      yield { result: { ...current, ...meta, data, error: undefined }, items };
-
-      if (isLastPage) {
-        return;
-      }
-      if (!prefetch) {
-        next = fetchAt(page + 1, pinnedCv);
-      }
+      yield {
+        result: { ...current, ...meta, data: undefined, error: checked.failure },
+        items: [],
+      };
+      return;
     }
-  } finally {
-    next.cancel();
+    const { data, items } = checked;
+
+    if (page === firstPage) {
+      // The served `cv`, not a requested one: the API redirects a `cv` it doesn't serve.
+      pinnedCv = isPinnable ? extractServedCv(current) : undefined;
+      // Pages before the first one were read by an earlier walk.
+      itemsThroughPage = (firstPage - 1) * perPage;
+    }
+    itemsThroughPage += items.length;
+
+    yield { result: { ...current, ...meta, data, error: undefined }, items };
+
+    // Counting received items rather than `page * perPage` keeps a page the API capped
+    // below the requested `per_page` from ending the walk early.
+    const isLastPage =
+      items.length === 0 ||
+      (total === undefined ? items.length < perPage : itemsThroughPage >= total);
+    if (isLastPage) {
+      return;
+    }
   }
 }
 
@@ -316,36 +277,38 @@ export async function* paginatePages<TData, TItem, ThrowOnError extends boolean>
   defaultThrowOnError: boolean,
 ): AsyncGenerator<PageResult<TData, ThrowOnError>, void, undefined> {
   const throwOnFailure = throwOnError ?? defaultThrowOnError;
-  for await (const { result } of walkPages(config, { prefetch: false, throwOnFailure })) {
+  for await (const { result } of walkPages(config, throwOnFailure)) {
     // With `throwOnError`, a failed page throws instead of being yielded, and every other
     // page has `data`, as `PageResult<TData, true>` declares.
     yield result as PageResult<TData, ThrowOnError>;
   }
 }
 
-/**
- * Walks a paginated list item by item, fetching the next page while the current one is
- * consumed. A failed page throws a `PaginationError`.
- */
+/** Walks a paginated list item by item. A failed page throws a `PaginationError`. */
 export async function* paginateItems<TData, TItem>(
   config: PaginateConfig<TData, TItem>,
 ): AsyncGenerator<TItem, void, undefined> {
-  for await (const { items } of walkPages(config, { prefetch: true, throwOnFailure: true })) {
-    for (const item of items) {
-      if (config.signal?.aborted) {
-        throw config.signal.reason;
+  try {
+    for await (const { items } of walkPages(config, true)) {
+      for (const item of items) {
+        if (config.signal?.aborted) {
+          throw config.signal.reason;
+        }
+        yield item;
       }
-      yield item;
     }
+  } catch (error) {
+    // Aborting rejects with the abort reason, as `list()` does, so `AbortError` checks work.
+    if (config.signal?.aborted && error instanceof PaginationError) {
+      throw config.signal.reason;
+    }
+    throw error;
   }
 }
 
 type WalkOptions = { query?: WalkQuery; signal?: AbortSignal };
 
-/**
- * Builds a resource's `pages()` and `iterate()` on top of its `list()`. Both take the
- * options `list()` takes; `iterate()` takes no `throwOnError`.
- */
+/** Builds a resource's `pages()` and `iterate()` on top of its `list()`. */
 export const createPaginationMethods = <
   DefaultThrowOnError extends boolean,
   TOptions extends WalkOptions,
@@ -364,7 +327,7 @@ export const createPaginationMethods = <
     fetchPage: (
       options: TOptions | undefined,
       pageQuery: PageQuery,
-      signal: AbortSignal,
+      signal: AbortSignal | undefined,
     ) => Promise<ApiResponse<TData>>;
     getItems: (data: TData) => TItem[] | undefined;
   },
@@ -378,6 +341,16 @@ export const createPaginationMethods = <
   });
 
   return {
+    /**
+     * Walks every page, yielding one `list()` response per page. A failed page is the last
+     * value yielded, so check `error` on each one. With `throwOnError`, it throws a
+     * `PaginationError` instead.
+     *
+     * Published walks fail with a `snapshot-changed` `PaginationError` when content is
+     * published mid-walk: later pages are pinned to the first page's `cv`, which the CDN serves
+     * only for pages it still caches. Draft walks, and walks under `cache.cv: 'manual'`, aren't
+     * pinned, so concurrent edits can skip or repeat items.
+     */
     pages: <ThrowOnError extends boolean = DefaultThrowOnError>(
       options?: TOptions & { throwOnError?: ThrowOnError },
     ): AsyncGenerator<PageResult<TData, ThrowOnError>, void, undefined> =>
@@ -386,6 +359,16 @@ export const createPaginationMethods = <
         options?.throwOnError,
         deps.client.getConfig().throwOnError ?? false,
       ),
+
+    /**
+     * Walks every item across all pages, the replacement for `getAll()` in
+     * `storyblok-js-client`. A failed page throws a `PaginationError`.
+     *
+     * Published walks fail with a `snapshot-changed` `PaginationError` when content is
+     * published mid-walk: later pages are pinned to the first page's `cv`, which the CDN serves
+     * only for pages it still caches. Draft walks, and walks under `cache.cv: 'manual'`, aren't
+     * pinned, so concurrent edits can skip or repeat items.
+     */
     iterate: (options?: TOptions): AsyncGenerator<TItem, void, undefined> =>
       paginateItems(toConfig(options)),
   };

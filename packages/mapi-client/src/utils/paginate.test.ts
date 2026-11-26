@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { setupServer } from "msw/node";
-import { http, HttpResponse } from "msw";
+import { delay, http, HttpResponse } from "msw";
 import { ClientError, createManagementApiClient, PaginationError } from "../index";
 
 const SPACE_URL = "https://mapi.storyblok.com/v1/spaces/:space_id";
@@ -15,11 +15,13 @@ type MockListOptions = {
   path: string;
   key: string;
   itemCount: number;
+  /** Omits the `Total` header, as some proxies strip it. */
+  omitTotal?: boolean;
   failPage?: { page: number; status: number };
 };
 
 /** Serves `itemCount` items, paginated like the Management API. */
-const mockList = ({ path, key, itemCount, failPage }: MockListOptions) => {
+const mockList = ({ path, key, itemCount, omitTotal = false, failPage }: MockListOptions) => {
   const requests: { spaceId: string; params: URLSearchParams }[] = [];
   server.use(
     http.get(`${SPACE_URL}/${path}`, ({ request, params: pathParams }) => {
@@ -36,10 +38,11 @@ const mockList = ({ path, key, itemCount, failPage }: MockListOptions) => {
         id: index + 1,
         name: `Item ${index + 1}`,
       })).slice((page - 1) * perPage, page * perPage);
-      return HttpResponse.json(
-        { [key]: items },
-        { headers: { total: String(itemCount), "per-page": String(perPage) } },
-      );
+      const headers: Record<string, string> = { "per-page": String(perPage) };
+      if (!omitTotal) {
+        headers.total = String(itemCount);
+      }
+      return HttpResponse.json({ [key]: items }, { headers });
     }),
   );
   return requests;
@@ -102,7 +105,7 @@ describe("stories.iterate()", () => {
     expect(error).toBeInstanceOf(PaginationError);
     expect(error).toBeInstanceOf(ClientError);
     expect(error).toMatchObject({ reason: "request", page: 2, response: { status: 401 } });
-    expect((error as PaginationError).message).toMatch(/^Page 2 failed: /);
+    expect((error as PaginationError).message).toMatch(/^Page 2 failed: HTTP 401/);
     expect((error as PaginationError).cause).toBeInstanceOf(ClientError);
 
     mockList({ path: "stories", key: "stories", itemCount: 6 });
@@ -200,34 +203,80 @@ describe("stories.iterate()", () => {
     expect(requests).toHaveLength(2);
   });
 
-  it("should abort the prefetched request when the loop breaks", async () => {
-    let prefetchStarted = false;
-    let prefetchAborted: Promise<void> | undefined;
+  it("should not request another page when the loop breaks", async () => {
+    const requests = mockList({ path: "stories", key: "stories", itemCount: 4 });
+    const client = createClient();
+
+    for await (const _story of client.stories.iterate({ query: { per_page: 1 } })) {
+      break;
+    }
+    await delay(20);
+
+    expect(requests).toHaveLength(1);
+  });
+
+  it("should stop at a short page when the API reports no total", async () => {
+    const requests = mockList({ path: "stories", key: "stories", itemCount: 5, omitTotal: true });
+    const client = createClient();
+
+    const stories = await collect(client.stories.iterate({ query: { per_page: 2 } }));
+
+    expect(stories).toHaveLength(5);
+    expect(requests).toHaveLength(3);
+  });
+
+  it("should request one extra empty page when the last page is full and no total is reported", async () => {
+    const requests = mockList({ path: "stories", key: "stories", itemCount: 4, omitTotal: true });
+    const client = createClient();
+
+    const stories = await collect(client.stories.iterate({ query: { per_page: 2 } }));
+
+    expect(stories).toHaveLength(4);
+    expect(requests).toHaveLength(3);
+  });
+
+  it("should start at the page given in the query", async () => {
+    mockList({ path: "stories", key: "stories", itemCount: 5 });
+    const client = createClient();
+
+    const stories = await collect(client.stories.iterate({ query: { per_page: 2, page: 2 } }));
+
+    expect(stories.map((story) => story.id)).toEqual([3, 4, 5]);
+  });
+
+  it("should yield nothing for an empty space", async () => {
+    const requests = mockList({ path: "stories", key: "stories", itemCount: 0 });
+    const client = createClient();
+
+    const stories = await collect(client.stories.iterate());
+
+    expect(stories).toEqual([]);
+    expect(requests).toHaveLength(1);
+  });
+
+  it("should send the default page size when the query sets none", async () => {
+    const requests = mockList({ path: "stories", key: "stories", itemCount: 3 });
+    const client = createClient();
+
+    await collect(client.stories.iterate());
+
+    expect(requests[0]?.params.get("per_page")).toBe("25");
+  });
+
+  it("should fail with a PaginationError when a page isn't valid JSON", async () => {
     server.use(
-      http.get(`${SPACE_URL}/stories`, ({ request }) => {
-        const page = new URL(request.url).searchParams.get("page");
-        if (page === "1") {
-          return HttpResponse.json(
-            { stories: [{ id: 1, name: "Item 1" }] },
-            { headers: { total: "2", "per-page": "1" } },
-          );
-        }
-        prefetchStarted = true;
-        prefetchAborted = new Promise((resolve) => {
-          request.signal.addEventListener("abort", () => resolve());
-        });
-        return new Promise(() => {});
-      }),
+      http.get(
+        `${SPACE_URL}/stories`,
+        () =>
+          new HttpResponse("<html></html>", { headers: { "content-type": "application/json" } }),
+      ),
     );
     const client = createClient();
 
-    for await (const story of client.stories.iterate({ query: { per_page: 1 } })) {
-      expect(story.id).toBe(1);
-      await expect.poll(() => prefetchStarted).toBe(true);
-      break;
-    }
+    const error = await collect(client.stories.iterate()).catch((error: unknown) => error);
 
-    await expect(prefetchAborted).resolves.toBeUndefined();
+    expect(error).toBeInstanceOf(PaginationError);
+    expect(error).toMatchObject({ reason: "invalid-response", page: 1 });
   });
 });
 
@@ -258,7 +307,35 @@ describe("stories.pages()", () => {
     expect(pages).toHaveLength(2);
     expect(pages[1]?.page).toBe(2);
     expect(pages[1]?.data).toBeUndefined();
-    expect(pages[1]?.error).toBeInstanceOf(ClientError);
+    expect(pages[1]?.error).toBeInstanceOf(PaginationError);
+  });
+
+  it("should not fetch a page before it is requested", async () => {
+    const requests = mockList({ path: "stories", key: "stories", itemCount: 4 });
+    const client = createClient();
+
+    const walk = client.stories.pages({ query: { per_page: 2 } });
+    await walk.next();
+    await delay(20);
+
+    expect(requests).toHaveLength(1);
+    await walk.return();
+  });
+
+  it("should stop when the caller's signal aborts", async () => {
+    mockList({ path: "stories", key: "stories", itemCount: 4 });
+    const client = createClient();
+    const controller = new AbortController();
+
+    const walk = client.stories.pages({ query: { per_page: 2 }, signal: controller.signal });
+    const first = await walk.next();
+    controller.abort();
+    const pages = await collect(walk);
+
+    expect(first.value?.error).toBeUndefined();
+    expect(pages).toHaveLength(1);
+    expect(pages[0]?.error).toBeInstanceOf(PaginationError);
+    expect(pages[0]?.error).toMatchObject({ reason: "request", page: 2 });
   });
 
   it("should throw a PaginationError for a failed page with throwOnError", async () => {

@@ -164,10 +164,7 @@ export function createSharedInternalTagsResource<DefaultThrowOnError extends boo
         client.getConfig().throwOnError ?? false,
       ),
 
-    /**
-     * Walks every shared internal tag across all pages, fetching the next page while the
-     * current one is consumed. A failed page throws a `PaginationError`.
-     */
+    /** Walks every shared internal tag across all pages. A failed page throws a `PaginationError`. */
     iterate: (
       options: ListOptions,
     ): AsyncGenerator<

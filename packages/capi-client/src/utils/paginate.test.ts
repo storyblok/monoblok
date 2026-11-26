@@ -169,15 +169,18 @@ describe("stories.iterate()", () => {
     expect(error).toMatchObject({
       reason: "request",
       page: 2,
+      resumePage: 2,
       cv: 100,
       response: { status: 401 },
     });
-    expect((error as PaginationError).message).toMatch(/^Page 2 failed: /);
+    expect((error as PaginationError).message).toMatch(/^Page 2 failed: HTTP 401/);
     expect((error as PaginationError).cause).toBeInstanceOf(ClientError);
 
     mockStories({ storyCount: 6, cv: 100 });
-    const { page, cv } = error as PaginationError;
-    const resumed = await collect(client.stories.iterate({ query: { per_page: 2, page, cv } }));
+    const { resumePage, cv } = error as PaginationError;
+    const resumed = await collect(
+      client.stories.iterate({ query: { per_page: 2, page: resumePage, cv } }),
+    );
     expect(resumed.map((story) => story.id)).toEqual([3, 4, 5, 6]);
   });
 
@@ -212,8 +215,12 @@ describe("stories.iterate()", () => {
 
     expect(received).toEqual([1]);
     expect(error).toBeInstanceOf(PaginationError);
-    expect(error).toMatchObject({ reason: "snapshot-changed", page: 1, cv: undefined });
-    expect((error as PaginationError).message).toMatch(/^Page 2 failed: /);
+    expect(error).toMatchObject({
+      reason: "snapshot-changed",
+      page: 2,
+      resumePage: 1,
+      cv: undefined,
+    });
   });
 
   it("should throw the original error when the caller's signal aborts", async () => {
@@ -297,7 +304,18 @@ describe("stories.iterate()", () => {
     ).catch((error: unknown) => error);
 
     expect(error).toBeInstanceOf(PaginationError);
-    expect(error).toMatchObject({ page: 1, cv: undefined });
+    expect(error).toMatchObject({ page: 3, resumePage: 1, cv: undefined });
+  });
+
+  it("should report the caller's cv for resuming when cv handling is manual", async () => {
+    mockStories({ storyCount: 6, failPage: { page: 2, status: 500 } });
+    const client = createClient({ accessToken: "token", cache: { cv: "manual" } });
+
+    const error = await collect(client.stories.iterate({ query: { per_page: 2, cv: 100 } })).catch(
+      (error: unknown) => error,
+    );
+
+    expect(error).toMatchObject({ reason: "request", resumePage: 2, cv: 100 });
   });
 
   it("should let a stale-while-revalidate cache refresh the pages it walked", async () => {
@@ -325,44 +343,16 @@ describe("stories.iterate()", () => {
     expect(onRevalidationError).not.toHaveBeenCalled();
   });
 
-  it("should fetch the next page while the current one is consumed", async () => {
+  it("should not request another page when the loop breaks", async () => {
     const requests = mockStories({ storyCount: 4 });
     const client = createClient();
 
-    const walk = client.stories.iterate({ query: { per_page: 2 } });
-    await walk.next();
-    await expect.poll(() => requests.length).toBe(2);
-    await walk.return();
-  });
-
-  it("should abort the prefetched request when the loop breaks", async () => {
-    let prefetchStarted = false;
-    let prefetchAborted: Promise<void> | undefined;
-    server.use(
-      http.get(STORIES_URL, ({ request }) => {
-        const page = new URL(request.url).searchParams.get("page");
-        if (page === "1") {
-          return HttpResponse.json(
-            { stories: [makeStory(1)], cv: 100 },
-            { headers: { total: "2", "per-page": "1" } },
-          );
-        }
-        prefetchStarted = true;
-        prefetchAborted = new Promise((resolve) => {
-          request.signal.addEventListener("abort", () => resolve());
-        });
-        return new Promise(() => {});
-      }),
-    );
-    const client = createClient();
-
-    for await (const story of client.stories.iterate({ query: { per_page: 1 } })) {
-      expect(story.id).toBe(1);
-      await expect.poll(() => prefetchStarted).toBe(true);
+    for await (const _story of client.stories.iterate({ query: { per_page: 1 } })) {
       break;
     }
+    await delay(20);
 
-    await expect(prefetchAborted).resolves.toBeUndefined();
+    expect(requests).toHaveLength(1);
   });
 
   it("should keep the resumed cv when the resumed walk's first page fails", async () => {
@@ -465,13 +455,28 @@ describe("stories.iterate()", () => {
     expect(requests).toHaveLength(2);
   });
 
-  it("should throw a TypeError for resolve_links, which only pages() exposes", () => {
+  it("should throw a TypeError for resolve_links without inlineLinks", () => {
     const client = createClient();
 
     expect(() =>
-      // @ts-expect-error `resolve_links` is excluded from `iterate()`.
+      // @ts-expect-error `resolve_links` needs `inlineLinks`.
       client.stories.iterate({ query: { resolve_links: "url" } }),
     ).toThrow(TypeError);
+  });
+
+  it("should accept resolve_links with inlineLinks", () => {
+    const client = createApiClient({ accessToken: "token", inlineLinks: true });
+
+    expect(() => client.stories.iterate({ query: { resolve_links: "url" } })).not.toThrow();
+  });
+
+  it("should treat an empty resolve_relations as unset", () => {
+    const client = createClient();
+
+    expect(() =>
+      // @ts-expect-error `resolve_relations` needs `inlineRelations`.
+      client.stories.iterate({ query: { resolve_relations: "" } }),
+    ).not.toThrow();
   });
 
   it("should throw a TypeError for resolve_relations without inlineRelations", () => {
@@ -504,7 +509,7 @@ describe("stories.iterate()", () => {
       break;
     }
 
-    await vi.waitFor(() => expect(requests).toHaveLength(4));
+    await vi.waitFor(() => expect(requests).toHaveLength(3));
     await delay(50);
     expect(onRevalidationError).not.toHaveBeenCalled();
   });
@@ -534,7 +539,7 @@ describe("stories.pages()", () => {
     expect(pages).toHaveLength(2);
     expect(pages[1]).toMatchObject({ page: 2, response: { status: 401 } });
     expect(pages[1]?.data).toBeUndefined();
-    expect(pages[1]?.error).toBeInstanceOf(ClientError);
+    expect(pages[1]?.error).toBeInstanceOf(PaginationError);
   });
 
   it("should throw a PaginationError for a failed page with throwOnError", async () => {
@@ -577,7 +582,8 @@ describe("stories.pages()", () => {
 
     expect(first.value?.error).toBeUndefined();
     expect(pages).toHaveLength(1);
-    expect(pages[0]?.error).toBeInstanceOf(ClientError);
+    expect(pages[0]?.error).toBeInstanceOf(PaginationError);
+    expect(pages[0]?.error).toMatchObject({ reason: "request", resumePage: 2 });
   });
 });
 

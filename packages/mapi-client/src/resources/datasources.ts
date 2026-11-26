@@ -181,7 +181,7 @@ export function createDatasourcesResource<DefaultThrowOnError extends boolean = 
 
   type ListOptions = Omit<NonNullable<Parameters<typeof resource.list>[0]>, "throwOnError">;
 
-  const { pages, iterate } = createPaginationMethods(deps, {
+  const paginationMethods = createPaginationMethods(deps, {
     fetchPage: (options: ListOptions | undefined, pageQuery, signal) =>
       resource.list({
         ...options,
@@ -192,20 +192,5 @@ export function createDatasourcesResource<DefaultThrowOnError extends boolean = 
     getItems: (data) => data.datasources,
   });
 
-  return {
-    ...resource,
-
-    /**
-     * Walks every page of data sources, yielding one `list()` response per page. A failed page is
-     * the last value yielded, so check `error` on each one. With `throwOnError`, it throws a
-     * `PaginationError` instead.
-     */
-    pages,
-
-    /**
-     * Walks every data source across all pages, fetching the next page while the current one is
-     * consumed. A failed page throws a `PaginationError`.
-     */
-    iterate,
-  };
+  return { ...resource, ...paginationMethods };
 }

@@ -16,6 +16,7 @@ import { resolve } from "pathe";
 import { ALIAS_BY_EMIT_NAME, ALIASES, type SpecSource } from "./aliases.ts";
 import type { KnownType } from "./known-types.ts";
 import { hashCache, readLock } from "./lock.ts";
+import { clearGeneratedOutput } from "./output-dir.ts";
 import { SPEC_PATHS, TEMPLATES_DIR } from "./paths.ts";
 import { SPEC_PARSERS } from "./patches.ts";
 import { templateFor, TEMPLATES, type WrapperFile } from "./templates.ts";
@@ -66,9 +67,7 @@ export async function generate(config: GenerateConfig): Promise<void> {
   const { wrappers, publicPerSpec, leafPerSpec, leafLocation } = resolveInclude(config.include);
   const renameMaps = buildRenameMaps();
 
-  // Wipe existing output so removed types don't linger.
-  rmSync(config.outDir, { recursive: true, force: true });
-  mkdirSync(config.outDir, { recursive: true });
+  clearGeneratedOutput(config.outDir);
 
   if (config.sdk) {
     await emitFullSdk(config.sdk, config.outDir, config.verbose === true);

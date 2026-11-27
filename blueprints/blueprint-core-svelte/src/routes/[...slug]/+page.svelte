@@ -1,6 +1,6 @@
 <script>
 	import { onStoryblokEditorEvent } from '@storyblok/svelte';
-	import { StoryblokBlock } from '$lib/storyblok';
+	import { StoryblokBlock } from '#lib/storyblok.js';
 
 	let { data } = $props();
 	// Resets to the loaded story on navigation, and takes Visual Editor updates in between.

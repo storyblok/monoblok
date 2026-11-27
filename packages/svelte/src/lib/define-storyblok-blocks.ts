@@ -29,9 +29,9 @@ import type {
  * ```svelte
  * <script lang="ts">
  *   import { defineStoryblokBlocks } from '@storyblok/svelte';
- *   import Page from '$lib/blocks/Page.svelte';
- *   import Teaser from '$lib/blocks/Teaser.svelte';
- *   import Fallback from '$lib/blocks/Fallback.svelte';
+ *   import Page from '#lib/blocks/Page.svelte';
+ *   import Teaser from '#lib/blocks/Teaser.svelte';
+ *   import Fallback from '#lib/blocks/Fallback.svelte';
  *
  *   const { StoryblokBlock } = defineStoryblokBlocks(() => ({
  *     components: { page: Page, teaser: Teaser },
@@ -46,8 +46,8 @@ import type {
  * ```svelte
  * <script lang="ts">
  *   import { defineStoryblokBlocks } from '@storyblok/svelte';
- *   import Branch from '$lib/blocks/Branch.svelte';
- *   import Leaf from '$lib/blocks/Leaf.svelte';
+ *   import Branch from '#lib/blocks/Branch.svelte';
+ *   import Leaf from '#lib/blocks/Leaf.svelte';
  *
  *   type ExtraComponentProps = { locale: string };
  *

@@ -1,13 +1,17 @@
+import adapter from "@sveltejs/adapter-auto";
 import { sveltekit } from "@sveltejs/kit/vite";
-import { defineConfig, type PluginOption } from "vite";
+import { defineConfig } from "vite";
 import { resolve } from "pathe";
 import basicSsl from "@vitejs/plugin-basic-ssl";
 
 export default defineConfig({
+  // Kit 3 looks for a legacy `svelte.config.js` in the root, which defaults to the cwd. Tools that load
+  // this config from the package directory would find the package's own `svelte.config.js`.
+  root: import.meta.dirname,
   define: {
     "import.meta.env.STORYBLOK_PREVIEW_TOKEN": JSON.stringify(process.env.STORYBLOK_PREVIEW_TOKEN),
   },
-  plugins: [sveltekit(), basicSsl()] as PluginOption[],
+  plugins: [sveltekit({ adapter: adapter() }), basicSsl()],
   resolve: {
     alias: {
       "@storyblok/svelte": resolve(import.meta.dirname, "../../src/lib/index.ts"),

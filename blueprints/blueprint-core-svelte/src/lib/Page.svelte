@@ -1,5 +1,5 @@
 <script>
-	import { StoryblokBlock } from '$lib/storyblok';
+	import { StoryblokBlock } from '#lib/storyblok.js';
 
 	let { block, editable } = $props();
 </script>

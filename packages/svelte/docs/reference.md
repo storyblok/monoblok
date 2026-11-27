@@ -23,7 +23,7 @@ To upgrade from version 7.x, follow the
 ## Requirements
 
 - **Svelte** version 5.25 or later
-- **Node.js** LTS (version 22.x recommended)
+- **Node.js** version 22.17 or later (required by SvelteKit 3)
 - **Modern web browser** (for example, Chrome, Firefox, Safari, Edge—latest versions)
 
 ## Installation
@@ -36,9 +36,7 @@ npm install @storyblok/svelte@latest @storyblok/api-client@latest
 
 ## Usage
 
-The examples below use SvelteKit 2. The SDK itself has no SvelteKit dependency. SvelteKit 3 removed
-the `$lib` alias: replace `$lib/...` with `#lib/...` in the imports, or add
-`alias: { $lib: 'src/lib' }` to `svelte.config.js`.
+The examples below use SvelteKit 3. The SDK itself has no SvelteKit dependency.
 
 ### Configuration
 
@@ -61,8 +59,8 @@ Register the Svelte components that render your Storyblok blocks:
 ```ts
 // src/lib/storyblok.ts
 import { defineStoryblokBlocks } from "@storyblok/svelte";
-import Page from "$lib/blocks/Page.svelte";
-import Feature from "$lib/blocks/Feature.svelte";
+import Page from "#lib/blocks/Page.svelte";
+import Feature from "#lib/blocks/Feature.svelte";
 
 export const { StoryblokBlock } = defineStoryblokBlocks(() => ({
   components: { page: Page, feature: Feature },
@@ -99,7 +97,7 @@ To render nested blocks, import `StoryblokBlock` from the module that calls `def
 <!-- src/lib/blocks/Page.svelte -->
 <script lang="ts">
   import type { StoryblokBlockComponentProps, StoryblokBlockData } from '@storyblok/svelte';
-  import { StoryblokBlock } from '$lib/storyblok';
+  import { StoryblokBlock } from '#lib/storyblok.js';
 
   const { block, editable }: StoryblokBlockComponentProps<{ body: StoryblokBlockData[] }> =
     $props();
@@ -120,7 +118,7 @@ to the browser along with the HTML, so the browser doesn’t fetch the story aga
 ```ts
 // src/routes/[...slug]/+page.server.ts
 import { error } from "@sveltejs/kit";
-import { apiClient } from "$lib/server/storyblok";
+import { apiClient } from "#lib/server/storyblok.js";
 import type { PageServerLoad } from "./$types";
 
 export const load: PageServerLoad = async ({ params }) => {
@@ -141,10 +139,10 @@ Render the story’s content with `StoryblokBlock`, and subscribe to Visual Edit
 ```svelte
 <!-- src/routes/[...slug]/+page.svelte -->
 <script lang="ts">
-  import { invalidateAll } from '$app/navigation';
+  import { refreshAll } from '$app/navigation';
   import { onStoryblokEditorEvent } from '@storyblok/svelte';
   import type { LivePreviewStory } from '@storyblok/svelte';
-  import { StoryblokBlock } from '$lib/storyblok';
+  import { StoryblokBlock } from '#lib/storyblok.js';
 
   let { data } = $props();
   // Resets to the loaded story on navigation, and takes Visual Editor updates in between.
@@ -158,7 +156,7 @@ Render the story’s content with `StoryblokBlock`, and subscribe to Visual Edit
         if (newStory.id === data.story.id) story = newStory;
       },
       {
-        onChange: () => invalidateAll(),
+        onChange: () => refreshAll(),
       },
     ),
   );
@@ -284,10 +282,10 @@ available, such as `resolveRelations` and `resolveLinks`. Pass the same values y
 story, so updated content keeps its resolved relations and links. The following additional options
 are available:
 
-| Key        | Description                                                                                                                                          | Type       |
-| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| `onChange` | Called when the story is saved or published, instead of reloading the page. In SvelteKit, pass `() => invalidateAll()` to rerun the `load` function. | `function` |
-| `onError`  | Called if the Storyblok Bridge fails to load. Without it, the error is logged.                                                                       | `function` |
+| Key        | Description                                                                                                                                       | Type       |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| `onChange` | Called when the story is saved or published, instead of reloading the page. In SvelteKit, pass `() => refreshAll()` to rerun the `load` function. | `function` |
+| `onError`  | Called if the Storyblok Bridge fails to load. Without it, the error is logged.                                                                    | `function` |
 
 The callback receives every story the Visual Editor sends, not only the story of the current page.
 Compare the story’s `id` with the page’s story before you apply it, as in
@@ -312,7 +310,7 @@ bridge.on("enterEditmode", () => {
 when it opens a page. Pass a `spaceId` option to also check that the request belongs to that space.
 
 ```ts
-import { browser } from "$app/environment";
+import { browser } from "$app/env";
 
 const inEditor = browser && isInEditor(new URL(window.location.href));
 ```
@@ -447,7 +445,7 @@ each block with your `StoryblokBlock`:
 <!-- src/lib/RichTextBlok.svelte -->
 <script lang="ts">
   import type { StoryblokBlockData, StoryblokSvelteRichTextProps } from '@storyblok/svelte';
-  import { StoryblokBlock } from '$lib/storyblok';
+  import { StoryblokBlock } from '#lib/storyblok.js';
 
   const { attrs }: StoryblokSvelteRichTextProps<'blok'> = $props();
   const blocks: StoryblokBlockData[] = $derived(Array.isArray(attrs?.body) ? attrs.body : []);
@@ -463,7 +461,7 @@ Then pass it as `components.blok`:
 ```svelte
 <script lang="ts">
   import { StoryblokRichText } from '@storyblok/svelte';
-  import RichTextBlok from '$lib/RichTextBlok.svelte';
+  import RichTextBlok from '#lib/RichTextBlok.svelte';
 </script>
 
 <StoryblokRichText document={block.text} components={{ blok: RichTextBlok }} />
@@ -479,7 +477,7 @@ registry that requires a `locale` prop:
 <!-- src/lib/RichTextBlok.svelte -->
 <script lang="ts">
   import type { StoryblokSvelteRichTextProps } from '@storyblok/svelte';
-  import { StoryblokBlock } from '$lib/storyblok';
+  import { StoryblokBlock } from '#lib/storyblok.js';
 
   const { attrs, context }: StoryblokSvelteRichTextProps<'blok', { locale: string }> = $props();
   const blocks = $derived(Array.isArray(attrs?.body) ? attrs.body : []);

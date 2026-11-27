@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { apiClient } from '$lib/server/storyblok';
+import { apiClient } from '#lib/server/storyblok.js';
 
 /** @type {import('./$types').PageServerLoad} */
 export async function load({ params }) {

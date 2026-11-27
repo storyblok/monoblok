@@ -25,7 +25,7 @@ This blueprint is ideal for kickstarting new Storyblok and Svelte projects. What
 1. Create an empty new Storyblok space
 2. Create a new repository based on this template
 3. Open the project on your device
-4. Install dependencies
+4. Install dependencies (requires Node.js 22.17 or later)
 
 ```sh
 npm install

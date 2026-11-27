@@ -1,4 +1,4 @@
-// Server-only (`$lib/server`), so the access token never reaches the browser.
+// Server-only (`src/lib/server`), so the access token never reaches the browser.
 import { createApiClient } from '@storyblok/api-client';
 
 export const apiClient = createApiClient({

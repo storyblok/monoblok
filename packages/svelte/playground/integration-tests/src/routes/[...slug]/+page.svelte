@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { invalidateAll } from '$app/navigation';
+  import { refreshAll } from '$app/navigation';
   import { onStoryblokEditorEvent } from '@storyblok/svelte';
   import type { LivePreviewStory } from '@storyblok/svelte';
   import type { PageData } from './$types';
@@ -20,7 +20,7 @@
         preventClicks: true,
         resolveLinks: 'url',
         // Refetch the story on save and publish instead of reloading the page.
-        onChange: () => invalidateAll(),
+        onChange: () => refreshAll(),
         resolveRelations: ['featured-articles.posts'],
       },
     ),

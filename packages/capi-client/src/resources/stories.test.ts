@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 import { setupServer } from "msw/node";
 import { http, HttpResponse } from "msw";
 import { createApiClient } from "../index";
-import type { CacheEntry, CacheProvider } from "../index";
+import type { CacheEntry, CacheProvider, ContentApiClient } from "../index";
 import { ClientError } from "../error";
 import { createMemoryCacheProvider } from "../utils/cache";
 
@@ -426,6 +426,23 @@ describe("stories.list()", () => {
     });
 
     expect(new URL(capturedUrl!).searchParams.has("excluding_story_fields")).toBe(false);
+  });
+
+  it("should only accept a comma-separated string for multi-value filter_query operators", () => {
+    type ListQuery = NonNullable<
+      NonNullable<Parameters<ContentApiClient["stories"]["list"]>[0]>["query"]
+    >;
+
+    const commaSeparated: ListQuery = {
+      filter_query: {
+        colors: { in_array: "red,blue", any_in_array: "red,blue", all_in_array: "red,blue" },
+      },
+    };
+    // The API keeps only the last of repeated keys, so an array would filter on its last value.
+    // @ts-expect-error An array is not a comma-separated string.
+    const array: ListQuery = { filter_query: { colors: { any_in_array: ["red", "blue"] } } };
+
+    expect([commaSeparated, array]).toHaveLength(2);
   });
 });
 

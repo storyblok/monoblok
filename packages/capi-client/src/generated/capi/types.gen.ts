@@ -1447,9 +1447,18 @@ export type ListStoriesData = {
                 like?: string;
                 not_like?: string;
                 exists?: string;
-                in_array?: Array<string> | string;
-                any_in_array?: Array<string> | string;
-                all_in_array?: Array<string> | string;
+                /**
+                 * CSV, e.g. 'a,b,c'
+                 */
+                in_array?: string;
+                /**
+                 * CSV, e.g. 'a,b,c'
+                 */
+                any_in_array?: string;
+                /**
+                 * CSV, e.g. 'a,b,c'
+                 */
+                all_in_array?: string;
                 gt_date?: string;
                 lt_date?: string;
                 gt_int?: number;

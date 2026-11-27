@@ -752,6 +752,22 @@ describe("createApiClient cv refresh window", () => {
     expect(relationRequest?.searchParams.get("cv")).toBe("1000");
   });
 
+  it("should read the relations of a story without a cv under cv: 'manual'", async () => {
+    const cdn = createCdn();
+    const client = createApiClient({
+      accessToken: "manual-relations",
+      inlineRelations: true,
+      circularRelations: false,
+      cache: { cv: "manual" },
+    });
+
+    await client.stories.get("home", { query: { resolve_relations: "page.author" } });
+
+    const relationRequest = cdn.requests.find((url) => url.searchParams.has("by_uuids"));
+    expect(relationRequest).toBeDefined();
+    expect(relationRequest?.searchParams.has("cv")).toBe(false);
+  });
+
   it("should send one read without a cv when a shared provider already knows the cv", async () => {
     const cdn = createCdn();
     const provider = createMemoryCacheProvider();

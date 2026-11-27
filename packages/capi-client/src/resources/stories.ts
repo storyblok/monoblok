@@ -638,6 +638,7 @@ export function createStoriesResource<
     inlineLinks: shouldInlineLinks = false,
     circularRelations,
     throttleManager,
+    cvMode = "auto",
   } = deps;
 
   /**
@@ -695,14 +696,15 @@ export function createStoriesResource<
   };
 
   /**
-   * The query follow-up requests send: a read that went out without a `cv`, cold or checking
-   * the known one, passes on the `cv` its response reported, so they read the same snapshot.
+   * The query follow-up requests send: under `cv: 'auto'`, a read that went out without a `cv`,
+   * cold or checking the known one, passes on the `cv` its response reported, so they read the
+   * same snapshot.
    */
   const snapshotQuery = (
     requestQuery: Record<string, unknown>,
     data: unknown,
   ): Record<string, unknown> => {
-    const servedCv = extractCv(data);
+    const servedCv = cvMode === "auto" ? extractCv(data) : undefined;
     return servedCv === undefined ? requestQuery : applyCvToQuery(requestQuery, servedCv);
   };
 

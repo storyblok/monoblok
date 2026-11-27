@@ -1,0 +1,23 @@
+---
+import type { Block } from '../../schema/schema';
+import { linkHref } from '../../lib/links';
+import Richtext from './richtext.astro';
+import Translations from './translations.astro';
+
+interface Props {
+  block: Block<'content_board_list_item'>;
+}
+
+const { block } = Astro.props;
+const href = linkHref(block.link);
+---
+
+<li class="rounded-lg border border-gray-200 bg-white p-4" data-block="content_board_list_item">
+  {href
+    ? <a href={href} class="font-medium text-indigo-600 hover:underline">{block.title}</a>
+    : <span class="font-medium text-gray-900">{block.title}</span>}
+  <div class="text-sm text-gray-600">
+    <Richtext document={block.description} />
+  </div>
+  <Translations block={block} />
+</li>

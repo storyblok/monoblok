@@ -1,0 +1,136 @@
+{
+  "boards": {
+    "_uid": "66666666-0000-4000-8000-000000000001",
+    "component": "page",
+    "seo_title": "Boards",
+    "seo_description": "Link boards, as they were named before the content board rename.",
+    "og_image_asset": {
+      "name": "",
+      "focus": "",
+      "source": "",
+      "filename": "https://images.example.com/og/boards.png",
+      "copyright": "",
+      "fieldtype": "asset",
+      "meta_data": {},
+      "is_external_url": true
+    },
+    "body": [
+      {
+        "_uid": "66666666-0000-4000-8000-000000000002",
+        "component": "link_boards",
+        "headline": "Developer resources",
+        "links": [
+          {
+            "_uid": "66666666-0000-4000-8000-000000000003",
+            "component": "link_board_link",
+            "title": "Changelog",
+            "link": {
+              "id": "",
+              "url": "https://www.storyblok.com/changelog",
+              "linktype": "url",
+              "fieldtype": "multilink",
+              "cached_url": "https://www.storyblok.com/changelog"
+            },
+            "teaser": "What shipped, newest first."
+          },
+          {
+            "_uid": "66666666-0000-4000-8000-000000000004",
+            "component": "link_board_link",
+            "title": "Status",
+            "link": {
+              "id": "",
+              "url": "https://status.storyblok.com",
+              "linktype": "url",
+              "fieldtype": "multilink",
+              "cached_url": "https://status.storyblok.com"
+            },
+            "teaser": ""
+          }
+        ],
+        "boards": [
+          {
+            "_uid": "66666666-0000-4000-8000-000000000005",
+            "component": "link_board",
+            "headline": "Getting started",
+            "links": [
+              {
+                "_uid": "66666666-0000-4000-8000-000000000006",
+                "component": "link_board_link",
+                "title": "Quickstart",
+                "link": {
+                  "id": "",
+                  "url": "https://www.storyblok.com/docs",
+                  "linktype": "url",
+                  "fieldtype": "multilink",
+                  "cached_url": "https://www.storyblok.com/docs"
+                },
+                "teaser": "Fifteen minutes to a rendered story."
+              },
+              {
+                "_uid": "66666666-0000-4000-8000-000000000007",
+                "component": "link_board_link",
+                "title": "CLI",
+                "link": {
+                  "id": "",
+                  "url": "https://www.storyblok.com/docs/packages/storyblok-cli",
+                  "linktype": "url",
+                  "fieldtype": "multilink",
+                  "cached_url": "https://www.storyblok.com/docs/packages/storyblok-cli"
+                },
+                "teaser": "Pull a space, push it back."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "social": {
+    "_uid": "77777777-0000-4000-8000-000000000001",
+    "component": "page",
+    "seo_title": "Social",
+    "seo_description": "The social image is still a URL in a text field.",
+    "og_image_asset": {
+      "id": 223407129003101,
+      "alt": "Storyblok social card",
+      "name": "",
+      "focus": "",
+      "title": "Social card",
+      "source": "",
+      "filename": "https://a.storyblok.com/f/290020686946333/1200x630/3f1b9c0d21/social-card.png",
+      "copyright": "",
+      "fieldtype": "asset",
+      "meta_data": {},
+      "is_private": false,
+      "is_external_url": false
+    },
+    "og_image_asset__i18n__de": {
+      "id": 223407129003102,
+      "alt": "Storyblok social card, German",
+      "name": "",
+      "focus": "",
+      "title": "Social card (de)",
+      "source": "",
+      "filename": "https://a.storyblok.com/f/290020686946333/1200x630/7ad4e51b88/social-card-de.png",
+      "copyright": "",
+      "fieldtype": "asset",
+      "meta_data": {},
+      "is_private": false,
+      "is_external_url": false
+    },
+    "body": [
+      {
+        "_uid": "77777777-0000-4000-8000-000000000002",
+        "component": "media",
+        "image": {
+          "id": 223407129002961,
+          "alt": "About image",
+          "filename": "https://a.storyblok.com/f/290020686946333/d8afd26e2f/media-image.png",
+          "fieldtype": "asset"
+        },
+        "caption": "The page above it carries the social image.",
+        "credit": "Playground"
+      }
+    ]
+  }
+}

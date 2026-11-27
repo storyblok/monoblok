@@ -1,10 +1,11 @@
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 
+import { componentVarName, resolveVarNames } from "@storyblok/schema/internal/codegen";
+
 import { mapFieldToWire } from "../map-to-wire";
 import {
   componentFileName,
-  componentVarName,
   datasourceVarName,
   generateComponentFile,
   generateDatasourceFile,
@@ -14,7 +15,6 @@ import {
   resolveDatasources,
   resolveFileNames,
   resolveFolders,
-  resolveVarNames,
 } from "./generate-code";
 
 /** Compiles and runs a generated block file, returning the block it defines. */

@@ -183,5 +183,10 @@ They are still applied, and the command names them so you can regenerate them.
 - A content migration run is recorded as block patches in
   `.storyblok/migrations/{spaceId}/rollbacks`, so `migrations rollback` can restore the changed
   blocks only
+- Every run reruns every content migration. The command first checks each op against the space's
+  blocks and skips, with a warning, an op a later schema push superseded
+- A content migration stays pending until a run covers every story it matches. A run scoped with
+  `--starts-with` or `--query`, or one that left stories refused, unread, or unwritten, is recorded
+  as partial
 - The command refuses to run while a release is pending, since deploying the release overwrites the
   migrated stories

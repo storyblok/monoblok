@@ -20,7 +20,8 @@ storyblok migrations rollback RUN --space YOUR_SPACE_ID
 
 A content migration run is rolled back block by block: blocks with fields changed since the run are
 left as they are unless you pass `--force`. A rollback file of migration functions restores whole
-stories.
+stories. A content migration run that changed no stories has nothing to roll back: the command
+passes over it by default and says so when you name it.
 
 Before it writes, a content migration rollback warns about restored blocks and fields the space's
 schema no longer defines, such as a block a later schema push renamed, and restores the stories

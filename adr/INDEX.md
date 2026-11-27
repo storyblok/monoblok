@@ -61,3 +61,5 @@ without a conflict, which is why ADR-0017 and ADR-0022 each exist twice.
   option opts into the two-level behavior of `storyblok-js-client`.
 - `adr-0036.md`: `migrations run` and `rollback` handle both migration functions and content
   migrations.
+- `adr-0037.md`: `schema push --migration-format typed` generates typed content migrations against
+  committed schema snapshots; `.js` migrations are deprecated.

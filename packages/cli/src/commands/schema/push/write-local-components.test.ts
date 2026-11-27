@@ -306,6 +306,29 @@ describe("writeLocalComponents", () => {
     expect(files.some((f) => f.endsWith(join(componentsDir, "hero.json")))).toBe(true);
   });
 
+  it("removes the local file of a block the space renamed, without deleteRemoved", async () => {
+    vol.fromJSON({
+      [join(componentsDir, "banner.json")]: JSON.stringify({ name: "banner", schema: {} }),
+    });
+
+    await writeLocalComponents({
+      space: SPACE,
+      basePath: undefined,
+      resolved: makeSchema({
+        components: [{ name: "hero", schema: {}, component_group_uuid: null } as any],
+      }),
+      diffResult: makeDiff([]),
+      deleteRemoved: false,
+      renamedBlocks: ["banner"],
+      ui,
+      logger,
+    });
+
+    const files = Object.keys(vol.toJSON()).map(stripDriveLetter);
+    expect(files.some((f) => f.endsWith(join(componentsDir, "banner.json")))).toBe(false);
+    expect(files.some((f) => f.endsWith(join(componentsDir, "hero.json")))).toBe(true);
+  });
+
   it("does not delete local files when deleteRemoved is false", async () => {
     vol.fromJSON({
       [join(componentsDir, "footer.json")]: JSON.stringify({ name: "footer", schema: {} }),

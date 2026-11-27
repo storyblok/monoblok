@@ -49,6 +49,8 @@ export type PaginateConfig<TData, TItem> = {
   fetchPage: (pageQuery: PageQuery, signal: AbortSignal | undefined) => Promise<ApiResponse<TData>>;
   /** Returns `undefined` when the response holds no list of items. */
   getItems: (data: TData) => TItem[] | undefined;
+  /** See `ResourceDeps.readCachedServedCv`. */
+  readCachedServedCv?: (result: ApiResponse<TData>) => number | undefined;
 };
 
 type WalkedPage<TData, TItem> = { result: PageResult<TData>; items: TItem[] };
@@ -114,7 +116,7 @@ async function* walkPages<TData, TItem>(
   config: PaginateConfig<TData, TItem>,
   throwOnFailure: boolean,
 ): AsyncGenerator<WalkedPage<TData, TItem>, void, undefined> {
-  const { path, query = {}, signal, pinCv, fetchPage, getItems } = config;
+  const { path, query = {}, signal, pinCv, fetchPage, getItems, readCachedServedCv } = config;
   // Sent explicitly: some endpoints ignore `page` unless `per_page` is set too.
   const requestedPerPage = readPositiveInteger(query.per_page) ?? DEFAULT_PER_PAGE;
   const firstPage = readPositiveInteger(query.page) ?? 1;
@@ -147,6 +149,9 @@ async function* walkPages<TData, TItem>(
       cause: options.cause,
     });
 
+  const readServedCv = (result: ApiResponse<TData>) =>
+    extractServedCv(result, { method: "GET", path, query }) ?? readCachedServedCv?.(result);
+
   const responseOf = ({ status, statusText }: Response): ClientError["response"] => ({
     status: status ?? 0,
     statusText: statusText ?? "",
@@ -155,8 +160,9 @@ async function* walkPages<TData, TItem>(
 
   const checkPage = (
     page: number,
-    { data, error, response }: ApiResponse<TData>,
+    result: ApiResponse<TData>,
   ): { failure: PaginationError } | { data: TData; items: TItem[] } => {
+    const { data, error, response } = result;
     const cv = pinnedCv ?? callerCv;
     if (signal?.aborted) {
       return {
@@ -212,7 +218,7 @@ async function* walkPages<TData, TItem>(
       };
     }
 
-    const servedCv = extractServedCv({ data, response }, { method: "GET", path, query });
+    const servedCv = readServedCv(result);
     const expectedCv = page === firstPage ? resumedCv : pinnedCv;
     if (expectedCv !== undefined && servedCv !== undefined && servedCv !== expectedCv) {
       // Pages before a resumed walk's first one came from the old snapshot too.
@@ -274,7 +280,7 @@ async function* walkPages<TData, TItem>(
 
     if (page === firstPage) {
       // The served `cv`, not a requested one: the API redirects a `cv` it doesn't serve.
-      pinnedCv = isPinnable ? extractServedCv(current, { method: "GET", path, query }) : undefined;
+      pinnedCv = isPinnable ? readServedCv(current) : undefined;
       // Pages before the first one were read by an earlier walk.
       itemsThroughPage = (firstPage - 1) * perPage;
     }
@@ -376,6 +382,7 @@ export const createPaginationMethods = <
       pinCv: deps.cvMode !== "manual",
       fetchPage: (pageQuery, signal) => fetchPage(walkOptions, pageQuery, signal),
       getItems,
+      readCachedServedCv: deps.readCachedServedCv,
     };
   };
 

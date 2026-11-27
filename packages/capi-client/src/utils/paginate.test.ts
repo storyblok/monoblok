@@ -3,6 +3,7 @@ import { setupServer } from "msw/node";
 import { delay, http, HttpResponse } from "msw";
 import type { CacheProvider } from "../index";
 import { ClientError, createApiClient, PaginationError } from "../index";
+import { createMemoryCacheProvider } from "./cache";
 
 const STORIES_URL = "https://api.storyblok.com/v2/cdn/stories";
 
@@ -802,6 +803,44 @@ describe("links.iterate()", () => {
 
     const links = await collect(client.links.iterate({ query: { per_page: 1 } }));
     expect(links.map((link) => link.uuid)).toEqual(["link-1", "link-2"]);
+  });
+
+  it("should notice a publish mid-walk when a serializing cache provider serves the first page", async () => {
+    let currentCv = 100;
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/links", ({ request }) => {
+        const url = new URL(request.url);
+        // The edge redirects any `cv` but the current one.
+        if (url.searchParams.get("cv") !== String(currentCv)) {
+          url.searchParams.set("cv", String(currentCv));
+          return HttpResponse.redirect(url.toString(), 301);
+        }
+        const uuid = `link-${url.searchParams.get("page")}@${currentCv}`;
+        return HttpResponse.json(
+          { links: { [uuid]: { id: 1, uuid } } },
+          { headers: { total: "2", "per-page": "1" } },
+        );
+      }),
+    );
+    const memory = createMemoryCacheProvider();
+    const roundTrip = <T>(value: T): T => value && JSON.parse(JSON.stringify(value));
+    const serializingProvider: CacheProvider = {
+      get: async (key) => roundTrip(await memory.get(key)),
+      set: (key, entry) => memory.set(key, roundTrip(entry)),
+      flush: () => memory.flush(),
+    };
+    const client = createClient({ accessToken: "token", cache: { provider: serializingProvider } });
+    for await (const _page of client.links.pages({ query: { per_page: 1 } })) {
+      break;
+    }
+
+    const walk = client.links.pages({ query: { per_page: 1 } });
+    const first = await walk.next();
+    currentCv = 200;
+    const [second] = await collect(walk);
+
+    expect(first.value?.data?.links).toHaveProperty(["link-1@100"]);
+    expect(second?.error).toMatchObject({ reason: "snapshot-changed", resumePage: 1 });
   });
 
   it("should pin later pages to the cv in the first page's URL", async () => {

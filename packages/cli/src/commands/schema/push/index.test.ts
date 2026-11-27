@@ -1677,6 +1677,7 @@ describe("schema push command", () => {
       expect(confirm).toHaveBeenCalledWith(
         expect.objectContaining({
           message: expect.stringContaining("Rename block banner → hero (3 stories)?"),
+          default: false,
         }),
         expect.anything(),
       );
@@ -2012,6 +2013,23 @@ describe("schema push command", () => {
         expect.stringContaining(
           "Deleting banner removes it from the content types of 1 folder: banners. A folder left without content types accepts every content type.",
         ),
+      );
+    });
+
+    it("should not check folders for a deleted nestable block", async () => {
+      const remoteCard = makeMockComponent({ name: "card", is_root: false });
+      preconditions.hasLocalSchema({ components: [hero()] as any, datasources: [] });
+      preconditions.hasRemoteComponents([remoteCard]);
+      preconditions.hasStories({}, [
+        { id: 7, full_slug: "cards", default_root: "card", content_types: ["card"] },
+      ]);
+      componentWrites();
+      vi.mocked(confirm).mockResolvedValue(false);
+
+      await push("--no-migrations", "--delete");
+
+      expect(console.warn).not.toHaveBeenCalledWith(
+        expect.stringContaining("from the content types of"),
       );
     });
 

@@ -19,9 +19,18 @@ export type WireComponent = {
   internal_tag_ids?: readonly (string | number)[] | null;
 };
 
+/** A block folder as the Management API returns it; only the keys a snapshot reads. */
+export type WireFolder = { uuid: string; parent_uuid?: string | null };
+
 export type GenerateSnapshotOptions = {
   /** Every component in the space, as it stands before the migration. */
   components: readonly WireComponent[];
+  /**
+   * Every block folder in the space, so a folder restriction covers its
+   * subfolders as the editor does. Without them, a folder restriction admits
+   * every block.
+   */
+  folders?: readonly WireFolder[];
   /** The blocks the migration reads, emitted with their fields. Unknown names are skipped. */
   blocks: readonly string[];
   /** Named in the header comment. */
@@ -57,7 +66,30 @@ type RestrictionLookup = {
   components: readonly WireComponent[];
   groupUuids: Map<string, string>;
   tagIds: Map<string, string>;
+  /** Subfolder uuids by parent uuid, or `undefined` when the folders are unknown. */
+  subfolders: Map<string, string[]> | undefined;
 };
+
+function subfoldersByParent(folders: readonly WireFolder[]): Map<string, string[]> {
+  const byParent = new Map<string, string[]>();
+  for (const { uuid, parent_uuid } of folders) {
+    if (!parent_uuid) continue;
+    byParent.set(parent_uuid, [...(byParent.get(parent_uuid) ?? []), uuid]);
+  }
+  return byParent;
+}
+
+/** `uuids` and every folder nested in them, at any depth. */
+function withSubfolders(uuids: Iterable<string>, subfolders: Map<string, string[]>): Set<string> {
+  const all = new Set<string>();
+  const queue = [...uuids];
+  for (let uuid = queue.shift(); uuid !== undefined; uuid = queue.shift()) {
+    if (all.has(uuid)) continue;
+    all.add(uuid);
+    queue.push(...(subfolders.get(uuid) ?? []));
+  }
+  return all;
+}
 
 const GROUP_LIST_KEYS = ["component_group_whitelist", "component_group_denylist"];
 const TAG_LIST_KEYS = ["component_tag_whitelist", "component_tag_denylist"];
@@ -75,7 +107,10 @@ function listEntries(field: FieldRecord, keys: readonly string[]): string[] {
  * fields name, so a folder or tag no block belongs to resolves to no blocks
  * rather than to no restriction.
  */
-function restrictionLookup(components: readonly WireComponent[]): RestrictionLookup {
+function restrictionLookup(
+  components: readonly WireComponent[],
+  folders: readonly WireFolder[] | undefined,
+): RestrictionLookup {
   const groupUuids = new Map<string, string>();
   const tagIds = new Map<string, string>();
   for (const component of components) {
@@ -95,23 +130,30 @@ function restrictionLookup(components: readonly WireComponent[]): RestrictionLoo
       tagIds.set(id, id);
     }
   }
-  return { components, groupUuids, tagIds };
+  return {
+    components,
+    groupUuids,
+    tagIds,
+    subfolders: folders ? subfoldersByParent(folders) : undefined,
+  };
 }
 
 /**
  * The block names a nesting field's allow list resolves to, or `undefined` when
  * no allow list is in force. Folder and tag restrictions are resolved to the
- * blocks currently in that folder or carrying that tag. A denylist resolves to
- * `undefined` too: it admits every block it does not name.
+ * blocks currently in that folder or its subfolders, or carrying that tag. A
+ * denylist resolves to `undefined` too: it admits every block it does not name.
  */
 function allowedBlockNames(field: FieldRecord, lookup: RestrictionLookup): string[] | undefined {
-  const { components, groupUuids, tagIds } = lookup;
+  const { components, groupUuids, tagIds, subfolders } = lookup;
   const restriction = resolveFieldRestriction(field, groupUuids, tagIds);
   switch (restriction.kind) {
     case "names":
       return Array.isArray(restriction.allow) ? restriction.allow.map(String) : undefined;
     case "folders": {
-      const uuids = new Set(restriction.allow?.map((ref) => ref.code));
+      if (!subfolders) return undefined;
+      const allowed = restriction.allow?.map((ref) => ref.code) ?? [];
+      const uuids = withSubfolders(allowed, subfolders);
       return uuids.size === 0
         ? undefined
         : components
@@ -237,7 +279,7 @@ export function generateSnapshot(options: GenerateSnapshotOptions): string {
   const { components, migrationId } = options;
   const byName = new Map(components.map((c) => [c.name, c]));
   const blocks = [...new Set(options.blocks)].filter((name) => byName.has(name)).sort();
-  const lookup = restrictionLookup(components);
+  const lookup = restrictionLookup(components, options.folders);
 
   const allowedByField = new Map<FieldRecord, string[] | undefined>();
   const stubNames = new Set<string>();

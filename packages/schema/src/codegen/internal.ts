@@ -24,4 +24,4 @@ export { generateMigrationSource } from "./migration-source";
 export type { GenerateMigrationSourceOptions, MigrationOpSource } from "./migration-source";
 export { componentVarName, resolveVarNames, toCamelCaseIdentifier } from "./names";
 export { generateSnapshot } from "./snapshot";
-export type { GenerateSnapshotOptions, WireComponent } from "./snapshot";
+export type { GenerateSnapshotOptions, WireComponent, WireFolder } from "./snapshot";

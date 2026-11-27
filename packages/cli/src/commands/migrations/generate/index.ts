@@ -5,7 +5,11 @@ import { type MigrationsGenerateOptions, SNAPSHOT_SOURCES } from "./constants";
 import { colorPalette, commands } from "../../../constants";
 import { CommandError, handleError, requireAuthentication } from "../../../utils";
 import { session } from "../../../session";
-import { fetchComponent, fetchComponents } from "../../../commands/components";
+import {
+  fetchComponent,
+  fetchComponentGroups,
+  fetchComponents,
+} from "../../../commands/components";
 import { migrationsCommand } from "../command";
 import { generateMigration, hasMigrationSince, latestPushChanging } from "./actions";
 import {
@@ -195,6 +199,11 @@ generateCmd.action(
         : beforePush && push
           ? push.components
           : await fetchComponents(space);
+      const folders = !snapshotted
+        ? undefined
+        : beforePush && push
+          ? push.folders
+          : await fetchComponentGroups(space);
       const nameInComponents = beforePush && push ? push.block : componentName;
       const component = components
         ? components.find((candidate) => candidate.name === nameInComponents)
@@ -215,7 +224,7 @@ generateCmd.action(
             name: suffix ? `${component.name}-${suffix}` : component.name,
             schemaEntry,
             ops: [],
-            before: components ? { components, blocks: [component.name] } : undefined,
+            before: components ? { components, folders, blocks: [component.name] } : undefined,
           })
         : { migrationPath: await generateMigration(space, path, component, suffix) };
       const [migrationPath, ...snapshotPaths] = [written.migrationPath, written.beforePath]

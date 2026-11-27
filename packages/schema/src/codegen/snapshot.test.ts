@@ -8,7 +8,7 @@ import { validateMigration } from "../migrations/validate-migration";
 import { writeModules } from "./__tests__/generated-modules";
 import { generateMigrationSource } from "./migration-source";
 import { generateSnapshot } from "./snapshot";
-import type { WireComponent } from "./snapshot";
+import type { WireComponent, WireFolder } from "./snapshot";
 
 const GROUP_SEO = "8f2b5d0e-seo";
 const TAG_PROMO = 42;
@@ -53,6 +53,7 @@ const seo: WireComponent = {
 const footer: WireComponent = { name: "footer", schema: { note: { pos: 0, type: "text" } } };
 
 const components = [article, card, badge, seo, footer];
+const folders: WireFolder[] = [{ uuid: GROUP_SEO, parent_uuid: null }];
 
 function blockNames(source: string): string[] {
   return [...source.matchAll(/defineBlock\(\{\s+name: '([^']+)'/g)].map((m) => m[1]);
@@ -60,7 +61,7 @@ function blockNames(source: string): string[] {
 
 describe("generateSnapshot", () => {
   it("should emit the block with its fields and the blocks its fields allow as stubs", () => {
-    const source = generateSnapshot({ components, blocks: ["article"] });
+    const source = generateSnapshot({ components, folders, blocks: ["article"] });
 
     // `badge` is allowed only by the `card` stub, whose fields are not emitted.
     expect(blockNames(source)).toEqual(["article", "card", "seo"]);
@@ -72,7 +73,7 @@ describe("generateSnapshot", () => {
   });
 
   it("should flatten folder and name restrictions to block-name allow lists", () => {
-    const source = generateSnapshot({ components, blocks: ["article"] });
+    const source = generateSnapshot({ components, folders, blocks: ["article"] });
 
     expect(source).toContain("allow: [\n        'card',\n      ]");
     expect(source).toContain("allow: [\n        'seo',\n      ]");
@@ -106,9 +107,54 @@ describe("generateSnapshot", () => {
       },
     };
 
-    const source = generateSnapshot({ components: [page, ...components], blocks: ["page"] });
+    const source = generateSnapshot({
+      components: [page, ...components],
+      folders,
+      blocks: ["page"],
+    });
 
     expect(blockNames(source)).toEqual(["page"]);
+  });
+
+  it("should count blocks in a subfolder of an allowed folder, as the editor does", () => {
+    const LAYOUT = "layout-uuid";
+    const HEROES = "heroes-uuid";
+    const hero: WireComponent = {
+      name: "hero",
+      component_group_uuid: HEROES,
+      schema: { headline: { type: "text" } },
+    };
+    const page: WireComponent = {
+      name: "page",
+      schema: {
+        body: { type: "bloks", restrict_components: true, component_group_whitelist: [LAYOUT] },
+      },
+    };
+
+    const source = generateSnapshot({
+      components: [hero, page],
+      folders: [
+        { uuid: LAYOUT, parent_uuid: null },
+        { uuid: HEROES, parent_uuid: LAYOUT },
+      ],
+      blocks: ["hero"],
+    });
+
+    expect(blockNames(source)).toEqual(["hero", "page"]);
+  });
+
+  it("should treat a folder restriction as admitting every block without the space's folders", () => {
+    const hero: WireComponent = { name: "hero", schema: { headline: { type: "text" } } };
+    const page: WireComponent = {
+      name: "page",
+      schema: {
+        body: { type: "bloks", restrict_components: true, component_group_whitelist: [GROUP_SEO] },
+      },
+    };
+
+    const source = generateSnapshot({ components: [hero, page], blocks: ["hero"] });
+
+    expect(blockNames(source)).toEqual(["hero", "page"]);
   });
 
   it("should terminate on blocks that whitelist each other", () => {
@@ -179,6 +225,7 @@ describe("generateSnapshot", () => {
 
     const source = generateSnapshot({
       components: [hero, emptyFolder, unusedTag, mixedFolders],
+      folders: [...folders, { uuid: "empty-uuid", parent_uuid: null }],
       blocks: ["hero"],
     });
 

@@ -458,14 +458,18 @@ function partialReason({
   scoped,
   allRead,
   refusals,
+  skippedOps,
 }: {
   scoped: boolean;
   allRead: boolean;
   refusals: number;
+  skippedOps: number;
 }): string | undefined {
   if (scoped) return "it ran only on the stories --starts-with or --query selected";
   if (!allRead) return "some stories it matched couldn't be read";
   if (refusals > 0) return "it refused some stories";
+  // A skipped op may wait for the schema push it was written for, which only a later run can apply.
+  if (skippedOps > 0) return "it skipped ops the space's blocks don't match";
   return undefined;
 }
 
@@ -600,7 +604,12 @@ export async function applyContentMigrations({
       continue;
     }
 
-    const partial = partialReason({ scoped, allRead, refusals: outcome.refusals.length });
+    const partial = partialReason({
+      scoped,
+      allRead,
+      refusals: outcome.refusals.length,
+      skippedOps: stale.length,
+    });
     if (outcome.writes.length === 0) {
       // A run with nothing to change is recorded, so a complete one takes the
       // migration off the pending list; an empty run is never the one rolled

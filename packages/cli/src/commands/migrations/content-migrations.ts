@@ -9,6 +9,7 @@ import {
   type MigrationOpSource,
   nextMigrationId,
   type WireComponent,
+  type WireFolder,
 } from "@storyblok/schema/internal/codegen";
 import {
   checkPendingReleases,
@@ -76,7 +77,11 @@ export type WriteContentMigrationOptions = {
    * The space's components before the migration and the blocks it reads, for
    * the `.before.ts` snapshot; omit to skip the snapshot.
    */
-  before?: { components: readonly WireComponent[]; blocks: readonly string[] };
+  before?: {
+    components: readonly WireComponent[];
+    folders: readonly WireFolder[] | undefined;
+    blocks: readonly string[];
+  };
 };
 
 export type WrittenContentMigration = { migrationPath: string; beforePath?: string };

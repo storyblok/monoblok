@@ -92,6 +92,8 @@ export interface WriteLocalComponentsParams {
   resolved: SchemaData;
   diffResult: DiffResult;
   deleteRemoved: boolean;
+  /** The old names of blocks the space renamed, whose files go regardless of `deleteRemoved`. */
+  renamedBlocks?: readonly string[];
   ui: UI;
   logger: Logger;
 }
@@ -102,6 +104,7 @@ export async function writeLocalComponents({
   resolved,
   diffResult,
   deleteRemoved,
+  renamedBlocks = [],
   ui,
   logger,
 }: WriteLocalComponentsParams): Promise<void> {
@@ -136,21 +139,21 @@ export async function writeLocalComponents({
     }
   }
 
-  if (deleteRemoved) {
-    const staleComponents = diffResult.diffs.filter(
-      (d) => d.type === "component" && d.action === "stale",
-    );
-    for (const stale of staleComponents) {
-      const filePath = join(componentsDir, `${sanitizeFilename(stale.name)}.json`);
-      try {
-        await unlink(filePath);
-        logger.info("Removed stale local component file", {
-          path: displayPath(filePath, basePath),
-        });
-      } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-          throw error;
-        }
+  const staleNames = deleteRemoved
+    ? diffResult.diffs
+        .filter((d) => d.type === "component" && d.action === "stale")
+        .map((d) => d.name)
+    : [];
+  for (const name of [...staleNames, ...renamedBlocks]) {
+    const filePath = join(componentsDir, `${sanitizeFilename(name)}.json`);
+    try {
+      await unlink(filePath);
+      logger.info("Removed stale local component file", {
+        path: displayPath(filePath, basePath),
+      });
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+        throw error;
       }
     }
   }

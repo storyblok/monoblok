@@ -45,21 +45,18 @@ export async function foldersNaming(
       }),
     (data) => data.stories ?? [],
   );
-  const restrictions: FolderRestriction[] = [];
-  for (const { id } of folders) {
-    const story = await fetchStory(space, id);
-    if (!story) continue;
-    const restriction = {
+  // The client's rate limiter paces the parallel reads.
+  const stories = await Promise.all(folders.map(({ id }) => fetchStory(space, id)));
+  return stories
+    .filter((story) => story !== undefined)
+    .map((story) => ({
       story,
       defaultRoot: story.default_root ?? undefined,
       contentTypes: contentTypesOf(story),
-    };
-    const named = [restriction.defaultRoot, ...restriction.contentTypes];
-    if (named.some((name) => name !== undefined && blocks.has(name))) {
-      restrictions.push(restriction);
-    }
-  }
-  return restrictions;
+    }))
+    .filter(({ defaultRoot, contentTypes }) =>
+      [defaultRoot, ...contentTypes].some((name) => name !== undefined && blocks.has(name)),
+    );
 }
 
 /** A folder's full slug, or its slug or ID when it has none, for messages. */

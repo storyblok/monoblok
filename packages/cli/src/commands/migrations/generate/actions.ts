@@ -1,7 +1,7 @@
 import { resolvePath, saveToFile } from "../../../utils/filesystem";
 import type { Component } from "../../components/constants";
 import { join } from "pathe";
-import type { WireComponent } from "@storyblok/schema/internal/codegen";
+import type { WireComponent, WireFolder } from "@storyblok/schema/internal/codegen";
 import { handleFileSystemError } from "../../../utils";
 import { discoverMigrations } from "@storyblok/schema";
 import { buildMigrationFilename } from "../migration-filename";
@@ -48,6 +48,8 @@ export type PushChangingBlock = {
   timestamp: string;
   /** The space's components before the push, with the blocks it renamed under their new names. */
   components: WireComponent[];
+  /** The space's block folders before the push; changesets from older CLI versions lack them. */
+  folders: WireFolder[] | undefined;
   /** The name the push gave the block. */
   block: string;
   /** The push created the block, so there is no earlier state of it. */
@@ -83,6 +85,7 @@ export async function latestPushChanging(
     return {
       timestamp: changeset.timestamp,
       components: withRenamedBlocks(changeset.remote.components, renames),
+      folders: changeset.remote.componentFolders,
       block: match.name,
       created: match.action === "create",
       migrations: changeset.migrations ?? [],

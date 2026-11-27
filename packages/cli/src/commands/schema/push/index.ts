@@ -231,7 +231,11 @@ schemaCommand
           // The space renames a block in its stories along with the block, so
           // the migration reads it under its new name.
           before: options.migrationSnapshot
-            ? { components: withRenamedBlocks(rawComponents, blockRenames), blocks }
+            ? {
+                components: withRenamedBlocks(rawComponents, blockRenames),
+                folders: rawComponentFolders,
+                blocks,
+              }
             : undefined,
         });
         const files = [written.migrationPath, written.beforePath].filter(
@@ -365,7 +369,8 @@ schemaCommand
         const confirmed = await confirm(
           {
             message: `Rename block ${rename.from} → ${rename.to}${stories}? Otherwise ${rename.to} is created as a new block.`,
-            default: true,
+            // A wrong rename changes every story using the block, so it takes a yes.
+            default: false,
           },
           stderrPromptContext,
         );
@@ -560,7 +565,12 @@ schemaCommand
             `Component '${comp.name}' will be deleted. Stories using it will have out-of-schema content.`,
           );
         }
-        await warnAboutFoldersNaming(deletedComponents.map((comp) => comp.name));
+        // Only a content type can be a folder's content type.
+        await warnAboutFoldersNaming(
+          deletedComponents
+            .filter((comp) => remote.components.get(comp.name)?.is_root)
+            .map((comp) => comp.name),
+        );
 
         // Warn per stale folder that still holds remote components (they will be
         // ungrouped, not deleted, when the group is removed).
@@ -734,6 +744,7 @@ schemaCommand
             resolved: local,
             diffResult,
             deleteRemoved: options.delete,
+            renamedBlocks: blockRenames.map(({ from }) => from),
             ui,
             logger,
           });

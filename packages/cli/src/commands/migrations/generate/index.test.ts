@@ -4,13 +4,18 @@ import { generateMigration } from "./actions";
 // Import the main module first to ensure proper initialization
 import "../index";
 import { migrationsCommand } from "../command";
-import { fetchComponent, fetchComponents } from "../../../commands/components";
+import {
+  fetchComponent,
+  fetchComponentGroups,
+  fetchComponents,
+} from "../../../commands/components";
 import { getLogFileContents } from "../../__tests__/helpers";
 import { getProgram } from "../../../program";
 import type { Component } from "../../components";
 
 vi.mock("../../../commands/components", () => ({
   fetchComponent: vi.fn(),
+  fetchComponentGroups: vi.fn(),
   fetchComponents: vi.fn(),
 }));
 
@@ -70,6 +75,42 @@ const preconditions = {
       childComponent,
       unrelatedComponent,
     ]);
+  },
+  blockSitsInSubfolderOfAllowedFolder() {
+    vi.mocked(fetchComponent).mockResolvedValue(mockComponent);
+    vi.mocked(fetchComponents).mockResolvedValue([
+      { ...mockComponent, component_group_uuid: "heroes-uuid" },
+      {
+        ...unrelatedComponent,
+        name: "page",
+        schema: {
+          body: {
+            type: "bloks",
+            pos: 0,
+            restrict_components: true,
+            component_group_whitelist: ["layout-uuid"],
+          },
+        },
+      },
+      {
+        ...unrelatedComponent,
+        id: 4,
+        name: "sidebar",
+        schema: {
+          widgets: {
+            type: "bloks",
+            pos: 0,
+            restrict_components: true,
+            component_group_whitelist: ["widgets-uuid"],
+          },
+        },
+      },
+    ]);
+    vi.mocked(fetchComponentGroups).mockResolvedValue([
+      { name: "Layout", uuid: "layout-uuid", parent_uuid: null },
+      { name: "Heroes", uuid: "heroes-uuid", parent_uuid: "layout-uuid" },
+      { name: "Widgets", uuid: "widgets-uuid", parent_uuid: null },
+    ] as any);
   },
   hasSchemaEntry() {
     vol.fromJSON({ "src/schema.ts": "export type Schema = {};" });
@@ -292,6 +333,17 @@ describe("migrations generate command", () => {
           expect.stringContaining(`.storyblok/migrations/12345/${file}`),
         );
       }
+    });
+
+    it("should stub a block whose allowed folder holds the block in a subfolder", async () => {
+      preconditions.blockSitsInSubfolderOfAllowedFolder();
+      preconditions.hasSchemaEntry();
+
+      await generate("component-name", "--format", "typed", "--schema", "src/schema.ts");
+
+      const snapshot = writtenFile(`${ID}.before.ts`);
+      expect(snapshot).toContain("defineBlock({ name: 'page', fields: [] })");
+      expect(snapshot).not.toContain("name: 'sidebar'");
     });
 
     it("should name the migration after its creation time and sort it after the existing ones", async () => {

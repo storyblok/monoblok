@@ -144,10 +144,11 @@ when it changes nothing, so the content migration no longer shows as
 [pending](/docs/tooling/cli/migrations/list).
 
 A run is partial when it leaves stories the content migration matches unmigrated: when you pass
-`--starts-with` or `--query`, when the content migration refuses stories, or when a story can’t be
-read or written. The command records a partial run, but the content migration stays pending, and the
-command names the reason, for example `It stays pending, since it refused some stories.` A run that
-stops partway also leaves the content migration pending.
+`--starts-with` or `--query`, when the content migration refuses stories, when a story can’t be read
+or written, or when the command skips some of its ops (see below). The command records a partial
+run, but the content migration stays pending, and the command names the reason, for example
+`It stays pending, since it refused some stories.` A run that stops partway also leaves the content
+migration pending.
 
 Because every run reruns every content migration, `alterField()` and `alterBlock()` callbacks must
 change nothing on a second pass, across content migrations too. A content migration that uppercases
@@ -653,11 +654,12 @@ content migration.
 
 When the local schema drops a block and adds a new one, the command asks whether the block was
 renamed if the two share at least half the fields of the smaller one by name and type, and both or
-neither can be a story. The prompt shows how many stories use the old block. On confirmation, the
-space renames the block in place, so it keeps its ID. The space also renames the block wherever the
-space names it, such as in the drafts and published versions of the stories that use it, experiment
-variants, the content types of folders, other blocks’ block restrictions, workflows, and presets.
-Otherwise, the command creates the new block next to the old one.
+neither can be a story. The prompt shows how many stories use the old block and defaults to no. On
+confirmation, the space renames the block in place, so it keeps its ID, and the command deletes the
+old block’s local component file. The space also renames the block wherever the space names it, such
+as in the drafts and published versions of the stories that use it, experiment variants, the content
+types of folders, other blocks’ block restrictions, workflows, and presets. Otherwise, the command
+creates the new block next to the old one.
 
 The command renames blocks after it updates the other blocks. In a space with many stories, the
 space renames a block in its stories in the background, and the command waits until no story uses

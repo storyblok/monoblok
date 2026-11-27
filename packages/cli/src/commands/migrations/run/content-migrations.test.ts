@@ -183,6 +183,31 @@ describe("migrations run command for content migrations", () => {
     expect(process.exitCode).toBeUndefined();
   });
 
+  it("should keep a migration pending when it skipped some of its ops", async () => {
+    space.hasMigrations([
+      "0001-card-headline",
+      defineMigration([
+        renameField({ block: "card", field: "title", to: "headline" }),
+        alterField({ block: "card", field: "title" }, (title) => String(title).toUpperCase()),
+      ]),
+    ]);
+    space.hasBlocks({ card: ["title"], page: { body: "bloks" } });
+    space.hasStories(storyWithCard());
+    space.canUpdateStories();
+
+    await apply();
+
+    expect(space.writes).toEqual([
+      expect.objectContaining({
+        content: expect.objectContaining({
+          body: [{ _uid: "card-1", component: "card", title: "HI" }],
+        }),
+      }),
+    ]);
+    expect(journalEntries()).toEqual([expect.objectContaining({ partial: true })]);
+    expect(await pending()).toBe("0001-card-headline\n");
+  });
+
   it("should skip moving fields into a block while the space holds the fields again", async () => {
     space.hasMigrations([
       "0001-card-meta",

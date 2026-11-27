@@ -267,6 +267,11 @@ export interface ContentApiClientConfig<
   headers?: Record<string, string>;
   throwOnError?: ThrowOnError;
   cache?: CacheConfig;
+  /**
+   * Inlines the related stories a request resolves with `resolve_relations` in place of their
+   * UUIDs, up to two levels deep.
+   * @default false
+   */
   inlineRelations?: InlineRelations;
   /**
    * Sets `story` on each story link (a multilink field or a rich text link mark) to its entry
@@ -277,22 +282,6 @@ export interface ContentApiClientConfig<
    * @default false
    */
   inlineLinks?: InlineLinks;
-  /**
-   * Controls whether `inlineRelations` may return a circular result.
-   *
-   * - `true`: every related story is inlined at any depth, and each one is a single
-   *   shared object. Stories that reference each other (e.g. A → B → A) make the result
-   *   circular, so `JSON.stringify` throws on it, as does anything that serializes it,
-   *   such as Astro island props or Next.js Pages Router props.
-   * - `false`: matches `storyblok-js-client`. Related stories of a requested story have
-   *   their relations inlined, and relations below that stay UUID strings. The result is
-   *   never circular.
-   *
-   * Leaving it unset behaves like `true` and logs a warning the first time a result is
-   * circular. That default is deprecated. The option is removed in 1.0; relations then
-   * always behave like `false`.
-   */
-  circularRelations?: boolean;
   retry?: RetryOptions;
   /**
    * Request timeout in milliseconds.
@@ -420,6 +409,51 @@ export type ContentApiClient<
 // Client factory
 // ---------------------------------------------------------------------------
 
+const warnedRemovedOptions = new Set<string>();
+
+/**
+ * TypeScript only rejects a removed 0.x option in an object literal, and JavaScript not at
+ * all, so it would otherwise be ignored without a trace. Warns once per process and option.
+ * @todo(next-major): Remove these warnings.
+ */
+const warnIfRemovedOptionIsSet = (
+  options: unknown,
+  { key, name, advice }: { key: string; name: string; advice: string },
+) => {
+  if (
+    warnedRemovedOptions.has(name) ||
+    typeof options !== "object" ||
+    options === null ||
+    !(key in options)
+  ) {
+    return;
+  }
+  warnedRemovedOptions.add(name);
+  console.warn(
+    `[storyblok/api-client] The \`${name}\` option was removed in 1.0.0 and is ignored. ${advice}`,
+  );
+};
+
+const warnAboutRemovedOptions = (
+  config: ContentApiClientConfig<boolean, boolean, boolean>,
+): void => {
+  warnIfRemovedOptionIsSet(config, {
+    key: "circularRelations",
+    name: "circularRelations",
+    advice:
+      "Inlined relations go up to two levels deep and are never circular; relations below " +
+      "stay UUID strings. Look them up in the response's `rels`, or fetch them by UUID if the " +
+      "response lists them in `rel_uuids`.",
+  });
+  warnIfRemovedOptionIsSet(config.rateLimit, {
+    key: "maxConcurrency",
+    name: "rateLimit.maxConcurrency",
+    advice:
+      "It was a per-second rate, not a cap on requests in flight; set " +
+      "`rateLimit.requestsPerSecond` instead.",
+  });
+};
+
 export const createApiClientBase = <
   ThrowOnError extends boolean = false,
   InlineRelations extends boolean = false,
@@ -427,6 +461,7 @@ export const createApiClientBase = <
 >(
   config: ContentApiClientConfig<ThrowOnError, InlineRelations, InlineLinks>,
 ): ApiClientBaseResult<ThrowOnError, InlineRelations, InlineLinks> => {
+  warnAboutRemovedOptions(config);
   const {
     accessToken,
     region = "eu",
@@ -436,7 +471,6 @@ export const createApiClientBase = <
     cache = {},
     inlineRelations = false,
     inlineLinks = false,
-    circularRelations,
     retry,
     timeout = 30_000,
     rateLimit,
@@ -1033,7 +1067,6 @@ export const createApiClientBase = <
     ...resourceDeps,
     inlineRelations,
     inlineLinks,
-    circularRelations,
   });
 
   return {

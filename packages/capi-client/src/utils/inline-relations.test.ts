@@ -7,7 +7,6 @@ import { createThrottleManager } from "./rate-limit";
 import {
   buildRelationMap,
   inlineStoriesContent,
-  inlineStoryContent,
   parseResolveRelations,
   resolveRelationMap,
 } from "./inline-relations";
@@ -86,7 +85,7 @@ describe("parseResolveRelations", () => {
   });
 });
 
-describe("inlineStoryContent", () => {
+describe("inlineStoriesContent", () => {
   it("should inline nested relations and prevent cycles", () => {
     const storyA = makeStory("story-a", {
       _uid: "a",
@@ -99,11 +98,10 @@ describe("inlineStoryContent", () => {
       relation: "story-a",
     });
 
-    const inlined = inlineStoryContent(
-      storyA,
+    const [inlined] = inlineStoriesContent(
+      [storyA],
       ["page.relation"],
       buildRelationMap([storyB, storyA]),
-      { circularRelations: true },
     );
     const content = inlined.content;
     const inlinedB = content.relation;
@@ -113,10 +111,9 @@ describe("inlineStoryContent", () => {
     // @ts-expect-error dynamic typing
     expect(inlinedB?.uuid).toBe("story-b");
     expect(bContent.relation?.uuid).toBe("story-a");
+    expect(bContent.relation).not.toBe(inlined);
   });
-});
 
-describe("inlineStoryContent editor markup", () => {
   it("should keep _editable a string when a relation path names it", () => {
     const related = makeStory("story-b", { _uid: "b", component: "page" });
     const story = makeStory("story-a", {
@@ -125,15 +122,15 @@ describe("inlineStoryContent editor markup", () => {
       _editable: "story-b",
     });
 
-    const inlined = inlineStoryContent(story, ["page._editable"], buildRelationMap([related]), {
-      circularRelations: true,
-    });
+    const [inlined] = inlineStoriesContent(
+      [story],
+      ["page._editable"],
+      buildRelationMap([related]),
+    );
 
     expect(inlined.content._editable).toBe("story-b");
   });
-});
 
-describe("inlineStoriesContent", () => {
   it("should replace UUID arrays in target fields", () => {
     const tag1 = makeStory("tag-1", { _uid: "tag-1", component: "tag" });
     const tag2 = makeStory("tag-2", { _uid: "tag-2", component: "tag" });
@@ -147,7 +144,6 @@ describe("inlineStoriesContent", () => {
       [page],
       ["page.related"],
       buildRelationMap([tag1, tag2]),
-      { circularRelations: true },
     );
     const content = inlinedPage.content;
     const related = content.related;

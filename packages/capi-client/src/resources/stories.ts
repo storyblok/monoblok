@@ -26,7 +26,11 @@ import type {
   ResolveLinks,
   StoryLinkData,
 } from "../utils/inline-links";
-import { inlineStoriesContent, resolveRelationMap } from "../utils/inline-relations";
+import {
+  inlineStoriesContent,
+  MAX_RELATION_DEPTH,
+  resolveRelationMap,
+} from "../utils/inline-relations";
 import type { ApiResponse, FetchOptions, ResourceDeps } from "../client";
 import { applyCvToQuery, extractCv } from "../utils/cv";
 import { ClientError } from "../error";
@@ -316,7 +320,7 @@ type InlinedBlockContent<
  * format, e.g. `"featured-articles.posts,article.author"`) becomes the related story,
  * or an array of them, at any nesting depth and inside related stories. A relation the
  * API returns no story for (e.g. unpublished or deleted) stays a UUID string, as does
- * one below the inlined levels (see below), so each value is `string | story`.
+ * one below the levels `inlineRelations` inlines, so each value is `string | story`.
  *
  * `TBlock` is the block definition and `TBlocks` the union of all blocks in the space;
  * related stories are typed from its root blocks. Pass the same `TResolveRelations` as
@@ -327,11 +331,6 @@ type InlinedBlockContent<
  * runtime can match them (`_table_col.value`), but they keep their string type.
  * `TFieldPlugins` types `custom` fields, as in {@link Story}. With `inlineLinks: true`
  * too, use {@link WithInlinedContent}.
- *
- * With `circularRelations: false`, related stories are inlined two levels deep and
- * relations below that stay UUID strings, so the result is never circular. Otherwise,
- * related stories that reference each other resolve to the same object, so the result
- * can be circular and `JSON.stringify` throws on it.
  *
  * @example
  * // `featuredArticles` is a `defineBlock` result, `Blocks` the union of all blocks.
@@ -618,12 +617,10 @@ export interface StoriesResourceDeps<
 > extends ResourceDeps<DefaultThrowOnError> {
   inlineRelations: boolean;
   inlineLinks?: boolean;
-  circularRelations: boolean | undefined;
 }
 
-/** Acyclic results must not be served to clients that expect circular ones, or vice versa. */
-const getInlineCacheKeyPrefix = (circularRelations: boolean | undefined) =>
-  circularRelations === false ? "inline-acyclic" : "inline";
+/** Entries under the plain `inline` prefix can hold circular results from 0.x clients. */
+const INLINE_RELATIONS_CACHE_KEY_PREFIX = "inline-acyclic";
 
 export function createStoriesResource<
   TComponents extends Component = Component,
@@ -638,19 +635,26 @@ export function createStoriesResource<
     asApiResponse,
     inlineRelations,
     inlineLinks: shouldInlineLinks = false,
-    circularRelations,
     throttleManager,
     cvMode = "auto",
   } = deps;
 
   /**
-   * Inlined responses are cached apart from raw ones. Relations keep their `inline` prefix, so
-   * entries cached before link inlining existed stay valid.
+   * Above its resolve limit, the CDN lists only the first level of relations in `rel_uuids`
+   * unless the request asks for the second, which would then stay UUIDs.
    */
+  const withInlinedRelationLevels = <TQuery extends { resolve_level?: 2 }>(
+    query: TQuery & { resolve_relations?: unknown },
+  ): TQuery =>
+    inlineRelations && query.resolve_relations && query.resolve_level === undefined
+      ? { ...query, resolve_level: MAX_RELATION_DEPTH }
+      : query;
+
+  /** Inlined responses are cached apart from raw ones. */
   const getCacheOptions = (query: { resolve_links?: unknown }) => {
     const cacheKeyPrefix =
       [
-        inlineRelations && getInlineCacheKeyPrefix(circularRelations),
+        inlineRelations && INLINE_RELATIONS_CACHE_KEY_PREFIX,
         shouldInlineLinks && query.resolve_links && "links",
       ]
         .filter(Boolean)
@@ -691,9 +695,7 @@ export function createStoriesResource<
     }
 
     return resolvedRelations && relationMap
-      ? inlineStoriesContent(stories, resolvedRelations.relationPaths, relationMap, {
-          circularRelations,
-        })
+      ? inlineStoriesContent(stories, resolvedRelations.relationPaths, relationMap)
       : stories;
   };
 
@@ -756,7 +758,9 @@ export function createStoriesResource<
         ...restQuery,
         ...excludingStoryFieldsParam(excluding_story_fields),
       };
-      const typedQuery = normalizedQuery as NonNullable<GetStoryByIdData["query"]>;
+      const typedQuery = withInlinedRelationLevels(
+        normalizedQuery as NonNullable<GetStoryByIdData["query"]>,
+      );
       const resolvedQuery =
         typeof identifier === "string" && UUID_RE.test(identifier) && !typedQuery.find_by
           ? { ...typedQuery, find_by: "uuid" }
@@ -857,7 +861,9 @@ export function createStoriesResource<
         ...restQuery,
         ...excludingStoryFieldsParam(excluding_story_fields),
       };
-      const typedQuery = normalizedQuery as NonNullable<ListStoriesData["query"]>;
+      const typedQuery = withInlinedRelationLevels(
+        normalizedQuery as NonNullable<ListStoriesData["query"]>,
+      );
       const requestPath = "/v2/cdn/stories";
       const cacheOptions = getCacheOptions(typedQuery);
       return requestWithCache(

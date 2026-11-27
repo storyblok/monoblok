@@ -7,16 +7,6 @@
  */
 
 // Client
-// Rate limiting (deprecated)
-// Kept for backwards compatibility with `0.x`. Rate limiting is configured via
-// the `rateLimit` option on `createApiClient`; these standalone helpers are
-// internal and will be removed in a future release. Declared as local aliases
-// (not re-export specifiers) so the `@deprecated` JSDoc survives DTS bundling.
-import {
-  createThrottle as createThrottleInternal,
-  parseRateLimitPolicyHeader as parseRateLimitPolicyHeaderInternal,
-} from "./utils/rate-limit";
-
 export { createApiClient } from "./client";
 export type {
   ApiResponse,
@@ -85,12 +75,7 @@ export type {
   RateLimiter,
   RateLimitStatus,
 } from "./utils/limiter";
-// The stock `CacheAwareConfig.detectCacheHit`, so a caller assembling its own
-// cache-aware configuration does not have to reimplement it.
-export { parseCacheStatusHeader } from "./utils/rate-limit";
+// The stock `CacheAwareConfig.detectCacheHit` and `DefaultRateLimiterOptions.parseServerLimit`,
+// so a caller assembling its own limiter does not have to reimplement them.
+export { parseCacheStatusHeader, parseRateLimitPolicyHeader } from "./utils/rate-limit";
 export type { RateLimitConfig } from "./utils/rate-limit";
-
-/** @deprecated Configure rate limiting via `createApiClient({ rateLimit })`. Will be removed in a future release. */
-export const createThrottle = createThrottleInternal;
-/** @deprecated Configure rate limiting via `createApiClient({ rateLimit })`. Will be removed in a future release. */
-export const parseRateLimitPolicyHeader = parseRateLimitPolicyHeaderInternal;

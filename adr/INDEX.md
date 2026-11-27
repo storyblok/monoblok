@@ -57,8 +57,8 @@ without a conflict, which is why ADR-0017 and ADR-0022 each exist twice.
   is a terminal and stdout is not a pipe.
 - `adr-0028.md`: New ADRs are named by number only, so a reused number causes a merge conflict.
 - `adr-0029.md`: Inlined links only go as deep as the API resolves them and are never circular.
-- `adr-0030.md`: Inlined relations are never circular from 1.0; until then, a `circularRelations`
-  option opts into the two-level behavior of `storyblok-js-client`.
+- `adr-0030.md`: Inlined relations are never circular and go up to two levels deep, as in
+  `storyblok-js-client`; the 0.x `circularRelations` option is removed in 1.0.
 - `adr-0033.md`: Paginated resources get `pages()` and `iterate()`, both built on `list()`.
 - `adr-0035.md`: `@storyblok/api-client` sends the known `cv` and, under `flush: 'auto'`, checks it
   against the origin at most once per 60-second window.

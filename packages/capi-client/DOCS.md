@@ -26,6 +26,9 @@ Ships in 1.0.0. Per the docs platform versioning rule, the current page may need
 
 - Related stories are inlined up to two levels deep, and the result is never circular. Refer to
   [relation depth](#relation-depth).
+- Unless the request sets `resolve_level`, the client sends `resolve_level: 2`. With more related
+  stories than the API resolves in one response, the API then lists the second level in `rel_uuids`
+  too, and the client inlines it.
 
 <!-- target: src/content/docs/docs/libraries/js/content-delivery-api-client/index.mdx#inline-relations -->
 <!-- Removes the caution aside about cyclic object references, including both `devalue` examples. -->

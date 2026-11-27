@@ -2172,6 +2172,89 @@ describe("inlineRelations depth", () => {
     expect(() => JSON.stringify(result.data?.stories)).not.toThrow();
   });
 
+  describe("beyond the API's resolve limit", () => {
+    const companies = Array.from({ length: 5 }, (_, index) =>
+      makeStory(`company-${index}`, { _uid: `company-${index}-content`, component: "company" }),
+    );
+    // 25 articles with 3 authors each: 75 first-level relations.
+    const authors = Array.from({ length: 75 }, (_, index) =>
+      makeStory(`author-${index}`, {
+        _uid: `author-${index}-content`,
+        component: "author",
+        company: `company-${index % companies.length}`,
+      }),
+    );
+    const articles = Array.from({ length: 25 }, (_, index) =>
+      makeStory(`article-${index}`, {
+        _uid: `article-${index}-content`,
+        component: "article",
+        authors: authors.slice(index * 3, index * 3 + 3).map(({ uuid }) => uuid),
+      }),
+    );
+    const storiesByUuid = new Map([...companies, ...authors].map((story) => [story.uuid, story]));
+    const resolveAuthorsQuery = {
+      version: "published",
+      resolve_relations: "article.authors,author.company",
+    } as const;
+
+    /**
+     * Serves the listing like the CDN above its resolve limit of 50: it lists the relation UUIDs
+     * in `rel_uuids` instead of `rels`, and the second level only with `resolve_level=2`.
+     */
+    const serveArticles = () => {
+      const listingQueries: URLSearchParams[] = [];
+      server.use(
+        http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+          const params = new URL(request.url).searchParams;
+          const byUuids = params.get("by_uuids");
+          if (byUuids) {
+            const stories = byUuids.split(",").map((uuid) => storiesByUuid.get(uuid));
+            return HttpResponse.json({ stories, cv: 1 });
+          }
+          listingQueries.push(params);
+          const firstLevel = articles.flatMap(({ content }) => content.authors as string[]);
+          const secondLevel = companies.map(({ uuid }) => uuid);
+          const relUuids =
+            params.get("resolve_level") === "2" ? [...firstLevel, ...secondLevel] : firstLevel;
+          return HttpResponse.json({ stories: articles, rel_uuids: relUuids, cv: 1 });
+        }),
+      );
+      return listingQueries;
+    };
+
+    const authorsOf = (articles: unknown[] = []) =>
+      articles.flatMap(
+        (article) => (article as { content: { authors: unknown[] } }).content.authors,
+      );
+
+    it("should inline the second level of relations", async () => {
+      const listingQueries = serveArticles();
+      const client = createApiClient({ accessToken: "test-token", inlineRelations: true });
+
+      const result = await client.stories.list({
+        query: { ...resolveAuthorsQuery, per_page: 25 },
+      });
+
+      expect(listingQueries[0]?.get("resolve_level")).toBe("2");
+      const inlinedAuthors = authorsOf(result.data?.stories);
+      expect(inlinedAuthors).toHaveLength(75);
+      for (const author of inlinedAuthors) {
+        expect(author).toMatchObject({
+          content: { company: { content: { component: "company" } } },
+        });
+      }
+    });
+
+    it("should leave resolve_level to the caller without inlineRelations", async () => {
+      const listingQueries = serveArticles();
+      const client = createApiClient({ accessToken: "test-token" });
+
+      await client.stories.list({ query: { ...resolveAuthorsQuery, per_page: 25 } });
+
+      expect(listingQueries[0]?.has("resolve_level")).toBe(false);
+    });
+  });
+
   it("should not serve a circular result a 0.x client cached in a shared provider", async () => {
     const accessToken = "shared-cache-token";
     const cv = 1;

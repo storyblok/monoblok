@@ -40,7 +40,7 @@ const decodeIfEncoded = (value: string): string => {
  * `storyblok-js-client`. Relations below that stay UUID strings, so the result is never
  * circular. The CDN only puts two levels into `rels`; going deeper would cost extra requests.
  */
-const MAX_RELATION_DEPTH = 2;
+export const MAX_RELATION_DEPTH = 2;
 
 interface InlineContext<TStory> {
   relationPaths: ReadonlySet<RelationPath>;

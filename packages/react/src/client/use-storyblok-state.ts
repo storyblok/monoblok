@@ -5,9 +5,9 @@ import type { Story } from "../types";
 import { useEditorEvent, type UseStoryblokEditorEventOptions } from "./use-storyblok-editor-event";
 
 /** Options for {@link useStoryblokState}. */
-export interface UseStoryblokStateOptions extends UseStoryblokEditorEventOptions {}
+export type UseStoryblokStateOptions = UseStoryblokEditorEventOptions;
 
-interface StoryblokStateSnapshot<TStory extends Story> {
+type StoryblokStateSnapshot<TStory extends Story> = {
   /** The prop value this snapshot was derived from — used to detect a real prop change. */
   story: TStory;
   /**
@@ -16,7 +16,7 @@ interface StoryblokStateSnapshot<TStory extends Story> {
    * is still there.
    */
   current: TStory;
-}
+};
 
 /**
  * Structural equality for JSON-shaped values (primitives, arrays, plain

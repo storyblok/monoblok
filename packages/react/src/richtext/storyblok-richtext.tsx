@@ -6,7 +6,7 @@ import type { StoryblokReactRichTextComponentProps } from "./renderer";
  * Renders a Storyblok rich text field.
  *
  * Standalone: it isn't bound to a block registry, so apps that don't render
- * rich text don't bundle the renderer. Embedded bloks render only through
+ * rich text don't bundle the renderer. Embedded blocks render only through
  * `components.blok`, which receives the node's `attrs`; render `attrs.body`
  * with your registry's `StoryblokBlock` to give them the app's components,
  * `editable` attributes and `fallback`. A document with a `blok` node and no

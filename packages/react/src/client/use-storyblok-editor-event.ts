@@ -6,7 +6,7 @@ import type { LivePreviewOptions, LivePreviewStory } from "@storyblok/live-previ
 import type { Story } from "../types";
 
 /** Options for {@link useStoryblokEditorEvent}. */
-export interface UseStoryblokEditorEventOptions {
+export type UseStoryblokEditorEventOptions = {
   /**
    * Milliseconds to wait after the last editor event before invoking the
    * callback. When omitted the callback is invoked immediately on every event.
@@ -21,7 +21,7 @@ export interface UseStoryblokEditorEventOptions {
    * Captured at mount time — changes after mount have no effect.
    */
   bridgeOptions?: LivePreviewOptions;
-}
+};
 
 /**
  * Subscribes to Storyblok Visual Editor events and calls `callback` with the
@@ -58,7 +58,7 @@ export function useStoryblokEditorEvent<TStory extends Story = Story>(
 }
 
 /** Options for {@link useEditorEvent}. Internal: not exported from the package. */
-export interface EditorEventOptions extends UseStoryblokEditorEventOptions {
+export type EditorEventOptions = UseStoryblokEditorEventOptions & {
   /**
    * Only handle editor events for the story with this id. Editor events
    * aren't scoped to one story, so a page preview and a nav preview on the
@@ -75,7 +75,7 @@ export interface EditorEventOptions extends UseStoryblokEditorEventOptions {
    * mount time.
    */
   skipWithoutContent?: boolean;
-}
+};
 
 /**
  * Implementation of {@link useStoryblokEditorEvent}, plus the internal

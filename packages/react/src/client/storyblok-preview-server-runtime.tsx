@@ -26,7 +26,7 @@ import { useEditorEvent } from "./use-storyblok-editor-event";
  * `StoryblokPreview` in `@storyblok/react/rsc`, after that component has
  * already awaited `renderContent` once for the initial paint.
  */
-export interface StoryblokPreviewServerRuntimeProps {
+export type StoryblokPreviewServerRuntimeProps = {
   /**
    * Server Action responsible for rendering updated content on every editor
    * event. Already called once by the caller to produce `children` — this
@@ -70,7 +70,7 @@ export interface StoryblokPreviewServerRuntimeProps {
    * Server Component, which can't pass `onChange`/`onError` functions.
    */
   bridgeOptions?: BridgeParams;
-}
+};
 
 // ── reactUse ──────────────────────────────────────────────────────────────────
 
@@ -123,16 +123,16 @@ function LiveContent({
 
 // ── Error boundary ────────────────────────────────────────────────────────────
 
-interface LiveContentBoundaryProps {
+type LiveContentBoundaryProps = {
   promise: Promise<ReactNode> | null;
   fallback: ReactNode;
   children: ReactNode;
-}
-interface LiveContentBoundaryState {
+};
+type LiveContentBoundaryState = {
   hasError: boolean;
   /** The promise that triggered the current error, used to self-reset on the next attempt. */
   capturedPromise: Promise<ReactNode> | null;
-}
+};
 
 /**
  * Catches rejections thrown by React.use() inside LiveContent (e.g. a failed

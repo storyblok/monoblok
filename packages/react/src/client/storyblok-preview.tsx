@@ -6,9 +6,7 @@ import type { Story } from "../types";
 import { useStoryblokState, type UseStoryblokStateOptions } from "./use-storyblok-state";
 
 /** Props for the {@link StoryblokPreview} component. */
-export interface StoryblokPreviewProps<
-  TStory extends Story = Story,
-> extends UseStoryblokStateOptions {
+export type StoryblokPreviewProps<TStory extends Story = Story> = UseStoryblokStateOptions & {
   /**
    * Initial story fetched by the application.
    */
@@ -24,7 +22,7 @@ export interface StoryblokPreviewProps<
    * types without that condition, so these props accept both.
    */
   renderContent: (story: LivePreviewStory<TStory>) => ReactNode | Promise<ReactNode>;
-}
+};
 
 /**
  * Client component that subscribes to Storyblok Visual Editor events and

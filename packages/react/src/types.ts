@@ -105,7 +105,7 @@ export type StoryblokBlockProps<TExtraProps extends StoryblokExtraProps = {}> = 
 } & TExtraProps;
 
 /** Options returned by the factory passed to `defineStoryblokBlocks`. */
-export interface DefineStoryblokBlocksOptions<TExtraProps extends StoryblokExtraProps = {}> {
+export type DefineStoryblokBlocksOptions<TExtraProps extends StoryblokExtraProps = {}> = {
   /**
    * Map of Storyblok technical block names to the components rendering them.
    *
@@ -135,10 +135,10 @@ export interface DefineStoryblokBlocksOptions<TExtraProps extends StoryblokExtra
    * @default true
    */
   warnings?: boolean;
-}
+};
 
 /** Return value of `defineStoryblokBlocks()`. */
-export interface DefineStoryblokBlocksResult<TExtraProps extends StoryblokExtraProps = {}> {
+export type DefineStoryblokBlocksResult<TExtraProps extends StoryblokExtraProps = {}> = {
   /**
    * Renders a block using the components registered in this
    * `defineStoryblokBlocks()` call. Extra props are checked against
@@ -150,7 +150,7 @@ export interface DefineStoryblokBlocksResult<TExtraProps extends StoryblokExtraP
    */
   // Inlined (not aliased to `StoryblokBlockProps`) so hovers show the real props.
   StoryblokBlock: (props: { block?: StoryblokBlockData } & TExtraProps) => ReactNode;
-}
+};
 
 export type { BlockContent, Story };
 

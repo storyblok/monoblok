@@ -4,7 +4,7 @@ import type { Story } from "../types";
 import { StoryblokPreviewServerRuntime } from "../client/storyblok-preview-server-runtime";
 
 /** Props for the {@link StoryblokPreview} component. */
-export interface StoryblokPreviewProps<TStory extends Story = Story> {
+export type StoryblokPreviewProps<TStory extends Story = Story> = {
   /**
    * Initial story fetched by the application.
    */
@@ -39,7 +39,7 @@ export interface StoryblokPreviewProps<TStory extends Story = Story> {
    * Captured at mount time — changes after mount have no effect.
    */
   bridgeOptions?: BridgeParams;
-}
+};
 
 /**
  * Server Component that enables live preview for RSC routes.

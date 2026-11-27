@@ -27,5 +27,5 @@
   "$schema": "https://json.schemastore.org/tsconfig",
   "display": "Recommended",
   "include": ["./src/**/*"],
-  "exclude": ["node_modules", "./src/**/fixtures/**/*", "./e2e/**/*"]
+  "exclude": ["node_modules", "./e2e/**/*"]
 }

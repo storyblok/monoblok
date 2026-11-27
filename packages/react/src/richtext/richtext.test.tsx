@@ -20,10 +20,10 @@ import CustomBoldWithRichText from "./fixtures/custom-bold-with-rich-text";
 import { StoryblokRichText } from "./storyblok-richtext";
 import { createRichTextRenderer } from "./renderer";
 
-interface AttributePositionRule {
+type AttributePositionRule = {
   key: string;
   position: number;
-}
+};
 /**
  * Utility function to move an attribute in img tags to a consistent position for testing purposes.
  * This is necessary because the order of attributes in HTML can be non-deterministic, which can cause snapshot tests to fail even if the rendered output is functionally correct.

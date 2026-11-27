@@ -141,6 +141,28 @@ describe("useStoryblokEditorEvent", () => {
       expect(callback).toHaveBeenCalledWith(page);
     });
 
+    it("drops a pending update after the storyId changes during the debounce window", async () => {
+      const callback = vi.fn();
+
+      // A client-side navigation re-renders the same mounted hook with another story id.
+      const { rerender } = renderHook(
+        ({ storyId }) => useEditorEvent(callback, { debounceMs: 100, storyId }),
+        { initialProps: { storyId: 1 } },
+      );
+      await vi.waitFor(() => expect(editorCallback).toBeDefined());
+
+      act(() => editorCallback!(makeStory({ id: 1, slug: "a-edited" })));
+      await act(async () => {
+        rerender({ storyId: 2 });
+      });
+      await act(async () => {
+        vi.advanceTimersByTime(100);
+        await vi.runAllTimersAsync();
+      });
+
+      expect(callback).not.toHaveBeenCalled();
+    });
+
     it("delays invocation until debounce settles", async () => {
       const callback = vi.fn();
       const story = makeStory({ slug: "updated" });

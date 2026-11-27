@@ -273,9 +273,9 @@ describe("defineStoryblokBlocks", () => {
     });
   });
 
-  // ─── Embedded bloks via `components.blok` ────────────────────────────────
+  // ─── Embedded blocks via `components.blok` ────────────────────────────────
   //
-  // Rich text is standalone: embedded bloks render only through a
+  // Rich text is standalone: embedded blocks render only through a
   // `components.blok` renderer, which renders `attrs.body` with the app's
   // registry `StoryblokBlock`.
 
@@ -487,8 +487,8 @@ describe("defineStoryblokBlocks", () => {
   //
   // A block component can receive extra props from `StoryblokBlock` (e.g.
   // `locale` via TExtraProps) and separately render a `StoryblokRichText` for
-  // one of its own richtext fields. Those two data paths are NOT connected:
-  // extra props land on the block component's own props, not in the richtext
+  // one of its own rich text fields. Those two data paths are NOT connected:
+  // extra props land on the block component's own props, not in the rich text
   // context, unless the component explicitly re-passes them as `data`.
 
   describe("StoryblokBlock extra props vs. a nested StoryblokRichText's data", () => {
@@ -1356,6 +1356,7 @@ describe("StoryblokBlockComponentProps — type", () => {
   });
 
   it("accepts a field type declared with `interface` (not just `type`)", () => {
+    // An `interface` on purpose: it is the subject of this test.
     interface Hero {
       title: string;
     }

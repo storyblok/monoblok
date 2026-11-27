@@ -409,24 +409,49 @@ export type ContentApiClient<
 // Client factory
 // ---------------------------------------------------------------------------
 
-let hasWarnedAboutCircularRelations = false;
+const warnedRemovedOptions = new Set<string>();
 
 /**
- * TypeScript only rejects the removed 0.x `circularRelations` option in an object literal,
- * and JavaScript not at all, so it would otherwise be ignored without a trace.
- * @todo(next-major): Remove this warning.
+ * TypeScript only rejects a removed 0.x option in an object literal, and JavaScript not at
+ * all, so it would otherwise be ignored without a trace. Warns once per process and option.
+ * @todo(next-major): Remove these warnings.
  */
-const warnAboutRemovedCircularRelations = (config: object) => {
-  if (hasWarnedAboutCircularRelations || !("circularRelations" in config)) {
+const warnIfRemovedOptionIsSet = (
+  options: unknown,
+  { key, name, advice }: { key: string; name: string; advice: string },
+) => {
+  if (
+    warnedRemovedOptions.has(name) ||
+    typeof options !== "object" ||
+    options === null ||
+    !(key in options)
+  ) {
     return;
   }
-  hasWarnedAboutCircularRelations = true;
+  warnedRemovedOptions.add(name);
   console.warn(
-    "[storyblok/api-client] The `circularRelations` option was removed in 1.0.0 and is ignored. " +
-      "Inlined relations go up to two levels deep and are never circular; relations below stay " +
-      "UUID strings. Look them up in the response's `rels`, or fetch them by UUID if the response " +
-      "lists them in `rel_uuids`.",
+    `[storyblok/api-client] The \`${name}\` option was removed in 1.0.0 and is ignored. ${advice}`,
   );
+};
+
+const warnAboutRemovedOptions = (
+  config: ContentApiClientConfig<boolean, boolean, boolean>,
+): void => {
+  warnIfRemovedOptionIsSet(config, {
+    key: "circularRelations",
+    name: "circularRelations",
+    advice:
+      "Inlined relations go up to two levels deep and are never circular; relations below " +
+      "stay UUID strings. Look them up in the response's `rels`, or fetch them by UUID if the " +
+      "response lists them in `rel_uuids`.",
+  });
+  warnIfRemovedOptionIsSet(config.rateLimit, {
+    key: "maxConcurrency",
+    name: "rateLimit.maxConcurrency",
+    advice:
+      "It was a per-second rate, not a cap on requests in flight; set " +
+      "`rateLimit.requestsPerSecond` instead.",
+  });
 };
 
 export const createApiClientBase = <
@@ -436,7 +461,7 @@ export const createApiClientBase = <
 >(
   config: ContentApiClientConfig<ThrowOnError, InlineRelations, InlineLinks>,
 ): ApiClientBaseResult<ThrowOnError, InlineRelations, InlineLinks> => {
-  warnAboutRemovedCircularRelations(config);
+  warnAboutRemovedOptions(config);
   const {
     accessToken,
     region = "eu",

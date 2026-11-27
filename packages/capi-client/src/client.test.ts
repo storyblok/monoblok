@@ -17,6 +17,7 @@ import type { CacheEntry, CacheEntryInput, CacheProvider } from "./utils/cache";
 import { createMemoryCacheProvider } from "./utils/cache";
 import { CV_REFRESH_WINDOW_MS, cvCheckedKey } from "./utils/cv-refresh";
 import type { RateLimitContext, RateLimiter } from "./utils/limiter";
+import type { RateLimitConfig } from "./utils/rate-limit";
 import { createTokenId } from "./utils/token-id";
 import { versionsKey } from "./utils/versions";
 
@@ -1072,6 +1073,70 @@ describe("createApiClient with the removed circularRelations option", () => {
     const freshCreateApiClient = await importFreshCreateApiClient();
 
     freshCreateApiClient({ accessToken: "token-1", inlineRelations: true });
+
+    expect(warn).not.toHaveBeenCalled();
+  });
+});
+
+describe("createApiClient with the removed rateLimit.maxConcurrency option", () => {
+  /** A fresh module instance, so the once-per-process warning has not fired yet. */
+  const importFreshCreateApiClient = async () => {
+    vi.resetModules();
+    const { createApiClient: freshCreateApiClient } = await import("./client");
+    return freshCreateApiClient;
+  };
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("should warn once across clients that the option is ignored", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const freshCreateApiClient = await importFreshCreateApiClient();
+    const firstConfig = {
+      accessToken: "token-1",
+      rateLimit: { maxConcurrency: 5, adaptive: false },
+    };
+    const secondConfig = {
+      accessToken: "token-2",
+      rateLimit: { maxConcurrency: 10, adaptive: false },
+    };
+
+    freshCreateApiClient(firstConfig);
+    freshCreateApiClient(secondConfig);
+
+    expect(warn).toHaveBeenCalledOnce();
+    const message = warn.mock.calls[0]?.[0];
+    expect(message).toMatch(
+      /^\[storyblok\/api-client\] The `rateLimit.maxConcurrency` option was removed/,
+    );
+    expect(message).toContain("`rateLimit.requestsPerSecond`");
+  });
+
+  it("should warn about each removed option a config still sets", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const freshCreateApiClient = await importFreshCreateApiClient();
+    const config = {
+      accessToken: "token-1",
+      circularRelations: true,
+      rateLimit: { maxConcurrency: 5, adaptive: false },
+    };
+
+    freshCreateApiClient(config);
+
+    expect(warn).toHaveBeenCalledTimes(2);
+  });
+
+  it.each<RateLimitConfig | number | false | undefined>([
+    { requestsPerSecond: 5 },
+    5,
+    false,
+    undefined,
+  ])("should not warn when rateLimit is %j", async (rateLimit) => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const freshCreateApiClient = await importFreshCreateApiClient();
+
+    freshCreateApiClient({ accessToken: "token-1", rateLimit });
 
     expect(warn).not.toHaveBeenCalled();
   });

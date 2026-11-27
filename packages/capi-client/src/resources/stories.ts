@@ -36,6 +36,7 @@ import type {
 } from "../generated/types/block";
 import type { Prettify } from "../generated/types/_utils";
 import type { Story } from "../generated/types/story";
+import { buildCallOptions } from "../utils/call-options";
 
 /**
  * Top-level story fields that can be excluded from CDN API responses via
@@ -758,10 +759,7 @@ export function createStoriesResource<
                 path: { id: identifier },
                 query: requestQuery,
                 signal,
-                ...(throwOnError === undefined ? {} : { throwOnError }),
-                ...(fetchOptions
-                  ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-                  : {}),
+                ...buildCallOptions(client, throwOnError, fetchOptions),
               }),
             ),
           )) satisfies ApiResponse<
@@ -849,10 +847,7 @@ export function createStoriesResource<
                 client,
                 query: requestQuery,
                 signal,
-                ...(throwOnError === undefined ? {} : { throwOnError }),
-                ...(fetchOptions
-                  ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-                  : {}),
+                ...buildCallOptions(client, throwOnError, fetchOptions),
               }),
             ),
           )) satisfies ApiResponse<

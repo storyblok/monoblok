@@ -26,6 +26,7 @@ import type {
 } from "../generated/mapi/types.gen";
 import type { ApiResponse, FetchOptions, MapiResourceDeps } from "../client";
 import { resolveSpaceId, type SpaceIdPathOverride } from "./shared";
+import { buildCallOptions } from "../utils/call-options";
 
 export function createExperimentsResource(deps: MapiResourceDeps) {
   const { client, spaceId, wrapRequest } = deps;
@@ -49,10 +50,7 @@ export function createExperimentsResource(deps: MapiResourceDeps) {
             path: { space_id: resolvedSpaceId },
             query,
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -73,10 +71,7 @@ export function createExperimentsResource(deps: MapiResourceDeps) {
             client,
             path: { space_id: resolvedSpaceId, id: Number(experimentId) },
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -98,10 +93,7 @@ export function createExperimentsResource(deps: MapiResourceDeps) {
             path: { space_id: resolvedSpaceId },
             body,
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -124,10 +116,7 @@ export function createExperimentsResource(deps: MapiResourceDeps) {
             path: { space_id: resolvedSpaceId, id: Number(experimentId) },
             body,
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -148,10 +137,7 @@ export function createExperimentsResource(deps: MapiResourceDeps) {
             client,
             path: { space_id: resolvedSpaceId, id: Number(experimentId) },
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -174,10 +160,7 @@ export function createExperimentsResource(deps: MapiResourceDeps) {
             path: { space_id: resolvedSpaceId, id: Number(experimentId) },
             query,
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -198,10 +181,7 @@ export function createExperimentsResource(deps: MapiResourceDeps) {
             client,
             path: { space_id: resolvedSpaceId, id: Number(experimentId) },
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -222,10 +202,7 @@ export function createExperimentsResource(deps: MapiResourceDeps) {
             client,
             path: { space_id: resolvedSpaceId, id: Number(experimentId) },
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -248,10 +225,7 @@ export function createExperimentsResource(deps: MapiResourceDeps) {
             path: { space_id: resolvedSpaceId, id: Number(experimentId) },
             query: { variant_id: variantId },
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -274,10 +248,7 @@ export function createExperimentsResource(deps: MapiResourceDeps) {
             path: { space_id: resolvedSpaceId, id: Number(experimentId) },
             query: { variant_id: variantId },
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -301,10 +272,7 @@ export function createExperimentsResource(deps: MapiResourceDeps) {
               path: { space_id: resolvedSpaceId, experiment_id: Number(experimentId) },
               body,
               signal,
-              ...(throwOnError === undefined ? {} : { throwOnError }),
-              ...(fetchOptions
-                ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-                : {}),
+              ...buildCallOptions(client, throwOnError, fetchOptions),
             }),
           throwOnError,
         );
@@ -330,10 +298,7 @@ export function createExperimentsResource(deps: MapiResourceDeps) {
                 story_id: Number(storyId),
               },
               signal,
-              ...(throwOnError === undefined ? {} : { throwOnError }),
-              ...(fetchOptions
-                ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-                : {}),
+              ...buildCallOptions(client, throwOnError, fetchOptions),
             }),
           throwOnError,
         );
@@ -363,10 +328,7 @@ export function createExperimentsResource(deps: MapiResourceDeps) {
               },
               body,
               signal,
-              ...(throwOnError === undefined ? {} : { throwOnError }),
-              ...(fetchOptions
-                ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-                : {}),
+              ...buildCallOptions(client, throwOnError, fetchOptions),
             }),
           throwOnError,
         );
@@ -394,10 +356,7 @@ export function createExperimentsResource(deps: MapiResourceDeps) {
                 original_story_id: Number(originalStoryId),
               },
               signal,
-              ...(throwOnError === undefined ? {} : { throwOnError }),
-              ...(fetchOptions
-                ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-                : {}),
+              ...buildCallOptions(client, throwOnError, fetchOptions),
             }),
           throwOnError,
         );
@@ -420,10 +379,7 @@ export function createExperimentsResource(deps: MapiResourceDeps) {
               client,
               path: { space_id: resolvedSpaceId, experiment_id: Number(experimentId) },
               signal,
-              ...(throwOnError === undefined ? {} : { throwOnError }),
-              ...(fetchOptions
-                ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-                : {}),
+              ...buildCallOptions(client, throwOnError, fetchOptions),
             }),
           throwOnError,
         );
@@ -446,10 +402,7 @@ export function createExperimentsResource(deps: MapiResourceDeps) {
               path: { space_id: resolvedSpaceId, experiment_id: Number(experimentId) },
               body,
               signal,
-              ...(throwOnError === undefined ? {} : { throwOnError }),
-              ...(fetchOptions
-                ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-                : {}),
+              ...buildCallOptions(client, throwOnError, fetchOptions),
             }),
           throwOnError,
         );

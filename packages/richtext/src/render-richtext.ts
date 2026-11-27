@@ -2,14 +2,13 @@ import { optimizeImage } from "./images-optimization";
 import {
   areLinkMarksEqual,
   attrsToHtmlString,
+  buildRenderAttrs,
   getStaticChildren,
   getTextNodeLinkMark,
   isSelfClosing,
   isTableHeaderRow,
   normalizeNodes,
-  processAttrs,
   resolveTag,
-  styleToString,
 } from "./core";
 import type {
   StoryblokRichTextElement,
@@ -354,17 +353,5 @@ export function buildHtmlAttrs(
   type: StoryblokRichTextElement,
   attrs: Record<string, unknown> | undefined,
 ): string {
-  const processed = processAttrs(type, attrs, {
-    colspan: "colspan",
-    rowspan: "rowspan",
-  });
-
-  const styleObj = processed.style as Record<string, unknown> | undefined;
-  const finalAttrs: Record<string, unknown> = { ...processed };
-
-  if (styleObj) {
-    finalAttrs.style = styleToString(styleObj);
-  }
-
-  return attrsToHtmlString(finalAttrs);
+  return attrsToHtmlString(buildRenderAttrs(type, attrs));
 }

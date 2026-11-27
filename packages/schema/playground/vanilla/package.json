@@ -16,7 +16,7 @@
     "@hono/standard-validator": "^0.2.2",
     "@storyblok/api-client": "workspace:*",
     "@storyblok/schema": "workspace:*",
-    "hono": "^4.13.7",
+    "hono": "^4.13.16",
     "zod": "catalog:"
   },
   "devDependencies": {

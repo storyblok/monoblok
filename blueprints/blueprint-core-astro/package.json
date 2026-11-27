@@ -26,7 +26,7 @@
 		"@astrojs/vercel": "^11.0.10",
 		"@storyblok/api-client": "workspace:^",
 		"@storyblok/astro": "workspace:^",
-		"astro": "^7.3.3"
+		"astro": "^7.4.7"
 	},
 	"overrides": {
 		"sharp": "^0.35.4",

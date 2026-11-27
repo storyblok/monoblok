@@ -34,6 +34,9 @@
     "test:types": {
       "dependsOn": ["^build", "build"]
     },
+    "test:unit": {
+      "dependsOn": ["^build"]
+    },
     "lint": {
       "dependsOn": ["^build"],
       "cache": true

@@ -1,15 +1,19 @@
-import { type SbBlokData, StoryblokServerComponent, storyblokEditable } from "@storyblok/react/rsc";
+import type { StoryblokBlockComponentProps } from "@storyblok/react";
+import { StoryblokBlock } from "@/lib/storyblok";
+import type { Block } from "@/schema/blocks";
 
-const Grid = ({ blok }: { blok: SbBlokData & { columns?: SbBlokData[] } }) => {
-  if (!blok.columns) {
+type GridProps = StoryblokBlockComponentProps<Block<"grid">>;
+
+const Grid = ({ block, editable }: GridProps) => {
+  if (!block.columns) {
     return null;
   }
 
   return (
-    <ul {...storyblokEditable(blok)} data-test="grid">
-      {blok.columns.map((nestedBlok) => (
-        <li key={nestedBlok._uid}>
-          <StoryblokServerComponent blok={nestedBlok} />
+    <ul {...editable} data-test="grid">
+      {block.columns.map((nestedBlock) => (
+        <li key={nestedBlock._uid}>
+          <StoryblokBlock block={nestedBlock} />
         </li>
       ))}
     </ul>

@@ -1,9 +1,7 @@
-import { storyblokEditable } from '@storyblok/react';
-
-export default function Feature({ blok }) {
+export default function Feature({ block, editable }) {
 	return (
-		<div {...storyblokEditable(blok)} className="feature">
-			<span>{blok.name}</span>
+		<div {...editable} className="feature">
+			<span>{block.name}</span>
 		</div>
 	);
 }

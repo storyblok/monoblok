@@ -6,6 +6,8 @@ cypress/screenshots/
 cypress/videos
 cypress/downloads
 .next
+test-results
+playwright-report
 
 
 

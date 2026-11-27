@@ -1,0 +1,350 @@
+"use client";
+import type { BridgeParams, LivePreviewStory } from "@storyblok/live-preview";
+// `React` namespace is imported so `Reflect.get(React, "use")` can be used to
+// resolve React.use at runtime without a static named import. Static named
+// imports (and even `React["use"]` string-key lookups) are folded by Webpack
+// into module-graph edges that fail on React <19, even when the import is never
+// executed. Reflect.get is opaque to bundler static analysis.
+import * as React from "react";
+import {
+  Component,
+  type ReactNode,
+  startTransition,
+  Suspense,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import type { Story } from "../types";
+import { useEditorEvent } from "./use-storyblok-editor-event";
+
+/**
+ * Props for {@link StoryblokPreviewServerRuntime}.
+ *
+ * This component is an internal implementation detail. It is not exported
+ * from `@storyblok/react/rsc` — it is only ever rendered by the `async`
+ * `StoryblokPreview` in `@storyblok/react/rsc`, after that component has
+ * already awaited `renderContent` once for the initial paint.
+ */
+export type StoryblokPreviewServerRuntimeProps = {
+  /**
+   * Server Action responsible for rendering updated content on every editor
+   * event. Already called once by the caller to produce `children` — this
+   * component only calls it again on subsequent editor events.
+   */
+  renderContent: (story: LivePreviewStory) => Promise<ReactNode>;
+  /**
+   * Initial server-rendered content (the result of the caller's first call
+   * to `renderContent`).
+   *
+   * Returned directly on first render with no state involvement, so Suspense
+   * boundaries inside the tree (e.g. WeatherWidget) stream normally.
+   *
+   * IMPORTANT: never store this in useState. Storing a ReactNode that contains
+   * async server components in useState forces the RSC serialiser to fully
+   * await every async component in the tree before it can send the initial
+   * HTML, bypassing Suspense streaming and causing a blank page for the full
+   * duration of the slowest component. This component never does that —
+   * `children` is only ever returned directly, both here and in
+   * `LiveContentBoundary`'s fallback.
+   */
+  children: ReactNode;
+  /**
+   * Id of the story this runtime is rendering. Editor `input` events for a
+   * different story id (e.g. a nav preview mounted alongside a page preview)
+   * are ignored.
+   */
+  storyId: Story["id"];
+  /**
+   * Milliseconds to wait after the last editor event before triggering a
+   * re-render. Prevents a Server Action call on every individual keystroke.
+   *
+   * Defaults to 200 ms.
+   */
+  debounceMs?: number;
+  /**
+   * Configuration forwarded to the Preview Bridge constructor.
+   * Captured at mount time — changes after mount have no effect.
+   *
+   * Plain `BridgeParams`, not `LivePreviewOptions`: these props come from a
+   * Server Component, which can't pass `onChange`/`onError` functions.
+   */
+  bridgeOptions?: BridgeParams;
+};
+
+// ── reactUse ──────────────────────────────────────────────────────────────────
+
+// Resolved at module-evaluation time via Reflect.get so that no bundler
+// (Webpack, Rollup, esbuild) can statically rewrite this into a named import
+// of `use` from `react`. A named import would cause a hard error on React <19
+// even when this module is loaded on a page that never renders
+// StoryblokPreviewServerRuntime, because the bundler validates all named
+// exports at module-graph construction time.
+//
+// `React["use"]` with a string-literal key is NOT sufficient — Webpack folds
+// that into a named import too. `Reflect.get` is opaque to static analysis.
+const reactUse = Reflect.get(React, "use") as (<T>(p: Promise<T>) => T) | undefined;
+
+// ── LiveContent ───────────────────────────────────────────────────────────────
+
+/**
+ * Inner component that calls React.use() inside its own Suspense boundary.
+ * Keeping it separate means use() only suspends this subtree, not the whole page.
+ *
+ * `reactUse` is resolved via Reflect.get (not a static named import) so that
+ * the module can be loaded on React <19 without a module-graph error.
+ */
+function LiveContent({
+  promise,
+  onCommit,
+  children,
+}: {
+  promise: Promise<ReactNode> | null;
+  /** Called with a live render once it's on screen, i.e. rendered without throwing. */
+  onCommit: (node: ReactNode, promise: Promise<ReactNode>) => void;
+  children: ReactNode;
+}) {
+  // reactUse is guaranteed to be defined here: StoryblokPreviewServerRuntime
+  // throws before rendering LiveContent when React <19 is detected.
+  const content = promise ? reactUse!(promise) : null;
+
+  // Only an effect knows the render succeeded: a Server Action result can
+  // resolve and still hold a nested server component that throws once it
+  // renders. Saving it on resolve would make it the error boundary's
+  // fallback, which would throw again outside the boundary.
+  useEffect(() => {
+    if (promise) {
+      onCommit(content, promise);
+    }
+  }, [promise]);
+
+  return <>{promise ? content : children}</>;
+}
+
+// ── Error boundary ────────────────────────────────────────────────────────────
+
+type LiveContentBoundaryProps = {
+  promise: Promise<ReactNode> | null;
+  /**
+   * Whether `promise` is a live update that hasn't rendered on screen yet.
+   * Only its errors are the boundary's to handle.
+   */
+  pending: boolean;
+  fallback: ReactNode;
+  children: ReactNode;
+};
+type LiveContentBoundaryState = {
+  hasError: boolean;
+  error: unknown;
+  /** The promise that triggered the current error, used to self-reset on the next attempt. */
+  capturedPromise: Promise<ReactNode> | null;
+};
+
+/**
+ * Catches the errors of a live update that hasn't rendered yet: a failed
+ * Server Action, or a result that throws while rendering. Shows the provided
+ * fallback (the last content that rendered) instead of crashing the page, and
+ * resets when a new promise arrives from the next editor event. Any other
+ * error, such as a Client Component in content already on screen throwing
+ * after a click, is thrown again for the app's own error handling.
+ */
+const RENDER_FAILED_MESSAGE = "[storyblok] StoryblokPreview: renderContent failed.";
+
+class LiveContentBoundary extends Component<LiveContentBoundaryProps, LiveContentBoundaryState> {
+  state: LiveContentBoundaryState = { hasError: false, error: undefined, capturedPromise: null };
+
+  static getDerivedStateFromError(error: unknown): Partial<LiveContentBoundaryState> {
+    return { hasError: true, error };
+  }
+
+  // Reset when a new promise arrives — each editor event is a fresh retry opportunity.
+  static getDerivedStateFromProps(
+    { promise }: LiveContentBoundaryProps,
+    { hasError, capturedPromise }: LiveContentBoundaryState,
+  ): Partial<LiveContentBoundaryState> | null {
+    if (hasError && capturedPromise !== null && capturedPromise !== promise) {
+      return { hasError: false, error: undefined, capturedPromise: null };
+    }
+    // Latch the promise that caused the error so the next comparison works.
+    if (hasError && capturedPromise === null) {
+      return { capturedPromise: promise };
+    }
+    return null;
+  }
+
+  componentDidCatch(error: unknown) {
+    console.error(RENDER_FAILED_MESSAGE, error);
+  }
+
+  render() {
+    if (!this.state.hasError) {
+      return this.props.children;
+    }
+    if (!this.props.pending) {
+      // Thrown from render, so `componentDidCatch` doesn't run and doesn't
+      // blame `renderContent`.
+      throw this.state.error;
+    }
+    return this.props.fallback;
+  }
+}
+
+// ── StoryblokPreviewServerRuntime ────────────────────────────────────────────
+
+/**
+ * Client-side runtime for RSC live preview. Listens for Storyblok Visual
+ * Editor events and invokes `renderContent` — a Server Action — with the
+ * updated story to produce fresh server-rendered output. The promise update
+ * is wrapped in `startTransition` so React keeps the current tree on screen
+ * while the action is in flight instead of showing a Suspense fallback, which
+ * eliminates the duplicate-DOM window that confuses the bridge.
+ *
+ * If `renderContent` rejects, or its result throws while rendering, the error
+ * boundary catches it, logs it, and keeps the last successfully rendered
+ * content visible (the initial `children` until the first live update
+ * renders). The boundary resets on the next editor event.
+ */
+export function StoryblokPreviewServerRuntime({
+  renderContent,
+  children,
+  storyId,
+  debounceMs = 200,
+  bridgeOptions,
+}: StoryblokPreviewServerRuntimeProps): ReactNode {
+  // Runtime guard for React <19. React.use is not available before React 19,
+  // which is required for the Suspense-based live preview to work.
+  // Note: this guard cannot be covered by unit tests because the React module
+  // namespace is sealed in the test environment. It is verified manually.
+  if (typeof reactUse !== "function") {
+    throw new Error(
+      "[storyblok] The Server Component StoryblokPreview requires React.use, which React 19 and " +
+        "the Next.js App Router 14 or later provide. On React 18, render StoryblokPreview " +
+        "from a Client Component instead.",
+    );
+  }
+
+  const [livePromise, setLivePromise] = useState<Promise<ReactNode> | null>(null);
+  // The most recent live render that made it on screen. Falls back to `children`
+  // (the initial render) until the first live update settles. Starts at
+  // `null` rather than `children` — initializing useState with `children`
+  // would reintroduce the forced-await problem described above; setting it
+  // later, from a client-only event handler, has no such effect because it
+  // never runs during the initial server render.
+  // Wrapped in an object so a render that resolved to `null` (an empty
+  // story) still counts as a render, distinct from "none yet".
+  const [lastGoodContent, setLastGoodContent] = useState<{
+    node: ReactNode;
+    promise: Promise<ReactNode>;
+  } | null>(null);
+  const fallback = <>{lastGoodContent ? lastGoodContent.node : children}</>;
+
+  // One server action at a time. A story arriving while an action is in-flight
+  // is held in `queued` (replacing any earlier queued story) and dispatched once
+  // the current action settles. This bounds concurrent server work to one action
+  // instead of one per debounce window, preventing redundant re-fetches in every
+  // async Server Component in the subtree.
+  const inFlight = useRef(false);
+  const queued = useRef<LivePreviewStory | null>(null);
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    // Strict Mode (React 18+ dev) mounts, cleans up, then remounts the same
+    // component instance to surface missing cleanup handling. The cleanup
+    // below flips `mounted` to false; reset it here so the simulated
+    // remount — and every real mount — starts with `mounted` true again.
+    mounted.current = true;
+
+    return () => {
+      mounted.current = false;
+      queued.current = null;
+    };
+  }, []);
+
+  function run(story: LivePreviewStory) {
+    if (!mounted.current) {
+      return;
+    }
+
+    inFlight.current = true;
+    // Call renderContent eagerly (outside the transition) so the Server Action
+    // starts streaming its RSC response immediately.
+    const promise = renderContent(story)
+      .catch((error: unknown) => {
+        // With a newer story queued, the `finally` below swaps in its
+        // promise before React reads this rejection, so the error boundary
+        // never sees it. Log here instead; otherwise the boundary logs it.
+        if (mounted.current && queued.current) {
+          console.error(RENDER_FAILED_MESSAGE, error);
+        }
+        throw error;
+      })
+      .finally(() => {
+        inFlight.current = false;
+
+        if (!mounted.current) {
+          return;
+        }
+
+        const next = queued.current;
+        queued.current = null;
+        if (next) {
+          run(next);
+        }
+      });
+    // Suppress the unhandled-rejection warning that fires in the window between
+    // setLivePromise and React's use() subscribing to the promise. React.use()
+    // handles the rejection by throwing to the error boundary; this no-op catch
+    // exists only to satisfy the JS engine's "unhandled rejection" detector.
+    promise.catch(() => {});
+    // Wrap setLivePromise in startTransition so React keeps the current tree on
+    // screen while LiveContent re-suspends, preventing the duplicate-DOM window
+    // that confuses the bridge.
+    if (mounted.current) {
+      startTransition(() => setLivePromise(promise));
+    }
+  }
+
+  // `storyId` scopes editor events to this story: without it, a page preview
+  // and a nav preview mounted on the same layout would both re-render on the
+  // server with whichever story is being edited.
+  // `skipWithoutContent`: while the editor shows a previous version (visual
+  // history), the bridge sends the story without `content`. Keep the current
+  // render instead of asking the server to render an empty story, which would
+  // also log the undefined-block warning: the server has no editor URL to
+  // suppress it with. Dropped before the debounce, so it never cancels a
+  // pending edit.
+  // A failed action later must fall back to the last render that made it on
+  // screen, not the one from page load.
+  function handleCommit(node: ReactNode, promise: Promise<ReactNode>) {
+    if (mounted.current) {
+      setLastGoodContent({ node, promise });
+    }
+  }
+
+  useEditorEvent(
+    (updatedStory) => {
+      if (inFlight.current) {
+        // Replace any previously queued story with the latest — intermediate
+        // stories are intentionally discarded.
+        queued.current = updatedStory;
+        return;
+      }
+      run(updatedStory);
+    },
+    { debounceMs, storyId, skipWithoutContent: true, bridgeOptions },
+  );
+
+  return (
+    <LiveContentBoundary
+      promise={livePromise}
+      pending={livePromise !== null && livePromise !== lastGoodContent?.promise}
+      fallback={fallback}
+    >
+      <Suspense fallback={fallback}>
+        <LiveContent promise={livePromise} onCommit={handleCommit}>
+          {children}
+        </LiveContent>
+      </Suspense>
+    </LiveContentBoundary>
+  );
+}

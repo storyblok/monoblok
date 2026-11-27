@@ -1,18 +1,15 @@
-import { type ISbStoryData, type SbBlokData, storyblokEditable } from "@storyblok/react/rsc";
+import type { StoryblokBlockComponentProps } from "@storyblok/react";
+import { isResolvedRelation, type BlockWithRelations } from "@/schema/blocks";
 
-type Post = ISbStoryData | string;
+type FeaturedArticlesProps = StoryblokBlockComponentProps<
+  BlockWithRelations<"featured-articles", "featured-articles.posts">
+>;
 
-const isResolved = (post: Post): post is ISbStoryData => typeof post === "object" && post !== null;
-
-const FeaturedArticles = ({
-  blok,
-}: {
-  blok: SbBlokData & { heading?: string; posts?: Post[] };
-}) => (
-  <div {...storyblokEditable(blok)} data-test="featured-articles">
-    <h2>{blok.heading}</h2>
+const FeaturedArticles = ({ block, editable }: FeaturedArticlesProps) => (
+  <div {...editable} data-test="featured-articles">
+    <h2>{block.heading}</h2>
     <div className="posts">
-      {(blok.posts ?? []).filter(isResolved).map((post) => (
+      {(block.posts ?? []).filter(isResolvedRelation).map((post) => (
         <div className="post" data-test="featured-article-post" key={post.full_slug}>
           <p className="post-title">{post.name}</p>
           <a className="post-link" href={`/${post.full_slug}`}>

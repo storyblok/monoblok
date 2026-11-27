@@ -1,47 +1,29 @@
-import React from "react";
-import type { GetStaticProps, InferGetStaticPropsType } from "next";
-import Teaser from "../components/teaser";
-import Grid from "../components/grid";
-import Page from "../components/page";
-import Feature from "../components/feature";
+import type { GetStaticProps } from "next";
+import { StoryblokPreview, type Story } from "@storyblok/react";
+import { apiClient, StoryblokBlock } from "../lib/storyblok";
 
-import {
-  getStoryblokApi,
-  setComponents,
-  StoryblokComponent,
-  useStoryblokState,
-} from "@storyblok/react";
-
-export default function Home({
-  story: initialStory,
-}: InferGetStaticPropsType<typeof getStaticProps>) {
-  setComponents({
-    teaser: Teaser,
-    grid: Grid,
-    feature: Feature,
-    page: Page,
-  });
-
-  const story = useStoryblokState(initialStory) as typeof initialStory;
-
-  if (!story.content) {
-    return <div>Loading...</div>;
-  }
-
-  return <StoryblokComponent blok={story.content} />;
+interface Props {
+  story: Story;
 }
 
-export const getStaticProps: GetStaticProps = async () => {
-  const storyblokApi = getStoryblokApi();
+export default function Home({ story }: Props) {
+  return (
+    <StoryblokPreview
+      story={story}
+      renderContent={(live) => <StoryblokBlock block={live.content} />}
+    />
+  );
+}
 
-  const { data } = await storyblokApi.get(`cdn/stories/home`, {
-    version: "draft",
-  });
+export const getStaticProps: GetStaticProps<Props> = async () => {
+  const result = await apiClient.stories.get("react", { query: { version: "draft" } });
+  // Only a 404 means the story is missing. Rethrow any other failure so a
+  // transient CMS error keeps the last good page instead of caching a 404.
+  if (result.error?.response.status === 404) return { notFound: true };
+  if (result.error) throw result.error;
 
   return {
-    props: {
-      story: data ? data.story : false,
-    },
+    props: { story: result.data.story },
     revalidate: 3600,
   };
 };

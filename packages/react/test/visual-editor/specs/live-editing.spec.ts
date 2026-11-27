@@ -5,7 +5,7 @@ import { QA_CONFIG } from "../qa.config";
 const SEEDED_HEADLINE = "QA teaser headline";
 
 // Only what the real editor can exercise. The story under test is `home`,
-// served by the catch-all route through `StoryblokStory` (`@storyblok/react/rsc`).
+// served by the catch-all route.
 test.describe("the Visual Editor live-updates the playground", () => {
   test("the story renders inside the preview frame", async ({ page, request }) => {
     const editor = new StoryblokEditor(page, QA_CONFIG);
@@ -30,7 +30,16 @@ test.describe("the Visual Editor live-updates the playground", () => {
     await expect(editor.block("teaser-home-1")).toContainText(edited, { timeout: 30_000 });
   });
 
+  // Guards against the hole fixed in #956: the live-editing Server Action is a
+  // public endpoint, so it must render the posted story for its caller only and
+  // never keep it in shared server state (a cache, `revalidatePath`) that other
+  // visitors could be served. Only the RSC target server-renders the story; the
+  // client (CSR) playground serves an HTML shell, so there is nothing to check.
   test("a live edit reaches only the editor, never other visitors", async ({ page, request }) => {
+    test.skip(
+      process.env.QA_TARGET !== "rsc",
+      "Server-side live edits only apply to the RSC target",
+    );
     const editor = new StoryblokEditor(page, QA_CONFIG);
     await editor.openStory(await resolveStoryId(QA_CONFIG, request, "home"));
     await expect(editor.block("teaser-home-1")).toContainText(SEEDED_HEADLINE, { timeout: 60_000 });
@@ -46,7 +55,15 @@ test.describe("the Visual Editor live-updates the playground", () => {
     for (const path of [QA_CONFIG.previewPath, `${QA_CONFIG.previewPath}?_storyblok=1`]) {
       const html = await (await request.get(`${QA_CONFIG.previewBaseUrl}${path}`)).text();
       expect(html, `${path} served the unsaved live edit to another visitor`).not.toContain(edited);
-      expect(html).toContain(SEEDED_HEADLINE);
+      // Scoped to `StoryblokPreview`'s output (`data-test="live"`), which the
+      // page renders before its static headline: that one would match alone.
+      const live = html.slice(
+        html.indexOf('data-test="live"'),
+        html.indexOf('data-test="static-teaser-headline"'),
+      );
+      expect(live, `${path} did not render StoryblokPreview's output`).toContain(
+        `<h2>${SEEDED_HEADLINE}</h2>`,
+      );
     }
   });
 
@@ -76,33 +93,46 @@ test.describe("the Visual Editor live-updates the playground", () => {
     await expect(editor.block("teaser-home-1")).toContainText(edited, { timeout: 30_000 });
 
     // The bridge replaces the whole story, so a resolved relation surviving
-    // proves the server render got it resolved rather than as a bare uuid.
+    // proves the replacement kept it resolved rather than falling back to a
+    // bare uuid.
     await expect(posts).toHaveCount(2);
     await expect(posts.first()).toContainText("First Article");
   });
 
+  // Only the RSC playground renders a component that suspends during SSR
+  // (`../../playground/integration-tests-rsc/src/components/slow-widget.tsx`);
+  // the client (CSR) playground has nothing to stream, so this proves
+  // something new only against that target.
   test("a slow Suspense boundary streams in without blocking the bridge", async ({
     page,
     request,
   }) => {
+    test.skip(process.env.QA_TARGET !== "rsc", "Suspense streaming only applies to the RSC target");
     const editor = new StoryblokEditor(page, QA_CONFIG);
     await editor.openStory(await resolveStoryId(QA_CONFIG, request, "home"));
     const slowWidgetFallback = editor.preview.locator('[data-test="slow-widget-fallback"]');
     const slowWidget = editor.preview.locator('[data-test="slow-widget"]');
 
+    // The initial paint streams the fallback in immediately: it must not wait
+    // on the slow component, which resolves 2s after the page starts.
     await expect(slowWidgetFallback).toBeVisible({ timeout: 10_000 });
 
+    // While the fallback is still showing, editing an unrelated block must
+    // still live-update — a broken bridge would be indistinguishable from a
+    // page still blocked on the slow component.
     await editor.selectBlock("teaser-home-1", "headline");
     const edited = "QA teaser suspense check";
     await editor.textField("headline").fill(edited);
     await expect(editor.block("teaser-home-1")).toContainText(edited, { timeout: 30_000 });
 
+    // The slow component eventually resolves and replaces its own fallback,
+    // leaving the rest of the tree — including the edit above — untouched.
     await expect(slowWidget).toBeVisible({ timeout: 10_000 });
     await expect(slowWidgetFallback).toHaveCount(0);
     await expect(editor.block("teaser-home-1")).toContainText(edited);
   });
 
-  test("a render outside StoryblokStory never updates", async ({ page, request }) => {
+  test("a page not wired through the bridge never updates", async ({ page, request }) => {
     const editor = new StoryblokEditor(page, QA_CONFIG);
     await editor.openStory(await resolveStoryId(QA_CONFIG, request, "home"));
     const staticHeadline = editor.preview.locator('[data-test="static-teaser-headline"]');
@@ -112,8 +142,9 @@ test.describe("the Visual Editor live-updates the playground", () => {
     const edited = "QA teaser opt-out check";
     await editor.textField("headline").fill(edited);
 
-    // The bridge-enabled render proves the edit arrived at all; without it, a
-    // render that never updates is indistinguishable from a dead bridge.
+    // The bridge-enabled render proves the edit reached the bridge at all;
+    // without it, a page that never updates is indistinguishable from a dead
+    // bridge, not evidence that this render is genuinely bridge-disabled.
     await expect(editor.block("teaser-home-1")).toContainText(edited, { timeout: 30_000 });
     await expect(staticHeadline).toContainText(SEEDED_HEADLINE);
     await expect(staticHeadline).not.toContainText(edited);
@@ -138,6 +169,7 @@ test.describe("saving and publishing re-render the preview", () => {
 
     await expect(editor.block("teaser-home-1")).toContainText(saved, { timeout: 60_000 });
     await expect(editor.block("teaser-home-1")).not.toContainText(SEEDED_HEADLINE);
+    // The reload refetches through the same static, non-bridge path too.
     await expect(editor.preview.locator('[data-test="static-teaser-headline"]')).toContainText(
       saved,
     );
@@ -155,6 +187,7 @@ test.describe("saving and publishing re-render the preview", () => {
     await editor.publish();
 
     await expect(editor.block("teaser-home-1")).toContainText(published, { timeout: 60_000 });
+    // A reload proves nothing if the confirmation modal swallowed the publish.
     const response = await request.get(
       `${QA_CONFIG.mapiBaseUrl}/spaces/${QA_CONFIG.spaceId}/stories/${storyId}`,
       { headers: { Authorization: QA_CONFIG.managementToken } },

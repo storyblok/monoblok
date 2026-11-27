@@ -1,17 +1,26 @@
-import { StoryblokStory } from '@storyblok/react/rsc';
-import { getStoryblokApi } from '@/lib/storyblok';
+import { notFound } from 'next/navigation';
+import { StoryblokPreview } from '@storyblok/react/rsc';
+import { apiClient } from '@/lib/storyblok';
+import { renderContent } from '@/lib/actions';
 
 export default async function Page({ params }) {
 	const { slug } = await params;
 
-	let fullSlug = slug ? slug.join('/') : 'home';
+	const fullSlug = slug ? slug.join('/') : 'home';
 
-	let sbParams = {
-		version: 'draft',
-	};
+	const result = await apiClient.stories.get(fullSlug, {
+		query: { version: 'draft' },
+	});
 
-	const storyblokApi = getStoryblokApi();
-	let { data } = await storyblokApi.get(`cdn/stories/${fullSlug}`, sbParams);
+	// A missing story comes back as a 404 error, so check for it before
+	// rethrowing every other failure.
+	if (result.error?.response.status === 404) {
+		notFound();
+	}
 
-	return <StoryblokStory story={data.story} />;
+	if (result.error) {
+		throw result.error;
+	}
+
+	return <StoryblokPreview story={result.data.story} renderContent={renderContent} />;
 }

@@ -20,9 +20,18 @@ export interface QaRelation {
 
 /** What a package supplies. Everything else is the same for every framework. */
 export interface QaHarnessOptions {
-  /** The package under test, e.g. `@storyblok/astro`. Only used in error messages. */
+  /**
+   * The package under test, e.g. `@storyblok/astro`. Used as the `pnpm --filter`
+   * target for the dev server command as well as in error messages.
+   */
   packageName: string;
-  /** Where the package's `qa:dev` script serves its playground over https. */
+  /**
+   * The `pnpm --filter <packageName> <devScript>` script that serves the
+   * playground for `webServer.command` and the "did not respond" hints.
+   * Defaults to `"qa:dev"`.
+   */
+  devScript?: string;
+  /** Where the package's dev script serves its playground over https. */
   previewBaseUrl: string;
   /** Path of a seeded story, e.g. `/home`. The preflight and the health check use it. */
   previewPath: string;

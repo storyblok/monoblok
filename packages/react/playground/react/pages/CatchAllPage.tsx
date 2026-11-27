@@ -1,19 +1,22 @@
-import { StoryblokComponent, useStoryblok } from "@storyblok/react";
 import { useParams } from "react-router";
+import { StoryblokPreview } from "@storyblok/react";
+import { useStoryblokStory } from "../hooks/use-story";
+import { StoryblokBlock } from "../storyblok";
 
 function CatchAllPage() {
   const params = useParams();
-  const slug = params["*"];
-  const story = useStoryblok(slug || "react", { version: "draft" });
-  if (!story?.content) {
-    return <div>Loading...</div>;
-  }
+  const slug = params["*"] || "react";
+  const { data: story, error } = useStoryblokStory(slug);
+  if (error) return <div>Failed to load story.</div>;
+  if (!story) return <div>Loading...</div>;
 
   return (
-    <div>
-      <h1>Catch All Page</h1>
-      <StoryblokComponent blok={story.content} />
-    </div>
+    <StoryblokPreview
+      story={story}
+      renderContent={(live) => (
+        <div>{live.content ? <StoryblokBlock block={live.content} /> : null}</div>
+      )}
+    />
   );
 }
 

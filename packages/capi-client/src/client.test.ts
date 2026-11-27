@@ -1,6 +1,7 @@
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { createApiClient, type HttpRequestOptions } from "./client";
 import { ClientError } from "./error";
+import { createMemoryCacheProvider } from "./utils/cache";
 import type { RateLimitContext, RateLimiter } from "./utils/limiter";
 
 const storyResponse = () =>
@@ -171,10 +172,94 @@ describe("createApiClient get()", () => {
     expect(result.data?.links).toEqual({ a: {} });
   });
 
+  it("should leave the caller's query untouched and serve a reused one from the cache", async () => {
+    let requests = 0;
+    const client = createApiClient({
+      accessToken: "token",
+      fetch: async () => {
+        requests++;
+        return linksResponse();
+      },
+    });
+    const query = { starts_with: "blog/" };
+
+    await client.get<Links>("/v2/cdn/links", { query });
+    await client.get<Links>("/v2/cdn/links", { query });
+
+    expect(query).toEqual({ starts_with: "blog/" });
+    expect(requests).toBe(1);
+  });
+
+  it("should keep the access token out of cache keys when a query is reused", async () => {
+    const provider = createMemoryCacheProvider();
+    const keys: string[] = [];
+    const client = createApiClient({
+      accessToken: "secret-access-token",
+      cache: {
+        provider: {
+          ...provider,
+          get: (key) => {
+            keys.push(key);
+            return provider.get(key);
+          },
+          set: (key, entry) => {
+            keys.push(key);
+            return provider.set(key, entry);
+          },
+        },
+      },
+      fetch: async () => linksResponse(),
+    });
+    const query = { starts_with: "blog/" };
+
+    await client.get<Links>("/v2/cdn/links", { query });
+    await client.get<Links>("/v2/cdn/links", { query });
+
+    expect(keys.length).toBeGreaterThan(0);
+    expect(keys.filter((key) => key.includes("secret-access-token"))).toEqual([]);
+  });
+
   it("should not accept responseStyle", () => {
     const client = createApiClient({ accessToken: "token", fetch: async () => linksResponse() });
 
     // @ts-expect-error `responseStyle: "data"` would return the unwrapped body
     void client.get<Links>("/v2/cdn/links", { responseStyle: "data" });
+  });
+});
+
+describe("createApiClient query serialization", () => {
+  const requestUrlOf = async (query: Record<string, unknown>) => {
+    let requestUrl = "";
+    const client = createApiClient({
+      accessToken: "token",
+      fetch: async (input) => {
+        requestUrl = input instanceof Request ? input.url : String(input);
+        return storyResponse();
+      },
+    });
+    await client.get("/v2/cdn/stories", { query: { version: "draft", ...query } });
+    return new URL(requestUrl);
+  };
+
+  it.each(["x&cv", "a=b", "a#b", "a b"])(
+    "should send a parameter named %j as one parameter",
+    async (name) => {
+      const url = await requestUrlOf({ [name]: "1" });
+
+      expect([...url.searchParams].filter(([key]) => key !== "token")).toEqual([
+        ["version", "draft"],
+        [name, "1"],
+      ]);
+    },
+  );
+
+  it("should send nested filters in raw bracket notation", async () => {
+    const url = await requestUrlOf({
+      filter_query: { component: { in: "hero" }, __or: [{ a: { is: "true" } }] },
+    });
+
+    expect(url.search).toContain(
+      "filter_query[component][in]=hero&filter_query[__or][][a][is]=true",
+    );
   });
 });

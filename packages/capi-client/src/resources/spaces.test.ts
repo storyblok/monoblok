@@ -4,6 +4,7 @@ import { http, HttpResponse } from "msw";
 import { createApiClient } from "../index";
 import { createMemoryCacheProvider } from "../utils/cache";
 import type { CacheEntry, CacheEntryInput, CacheProvider } from "../utils/cache";
+import { redirectToCurrentCv } from "../../test/origin";
 
 const server = setupServer();
 
@@ -182,7 +183,11 @@ describe("spaces.get() as a cache invalidation signal", () => {
     let storyRequests = 0;
     server.use(
       spaceHandler(() => spaceVersion),
-      http.get("https://api.storyblok.com/v2/cdn/stories", () => {
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        const redirect = redirectToCurrentCv(request, 1000);
+        if (redirect) {
+          return redirect;
+        }
         storyRequests++;
         return HttpResponse.json({ stories: [], cv: 1000 });
       }),
@@ -211,7 +216,11 @@ describe("spaces.get() as a cache invalidation signal", () => {
     let storyRequests = 0;
     server.use(
       spaceHandler(() => spaceVersion),
-      http.get("https://api.storyblok.com/v2/cdn/stories", () => {
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        const redirect = redirectToCurrentCv(request, 1000);
+        if (redirect) {
+          return redirect;
+        }
         storyRequests++;
         return HttpResponse.json({ stories: [], cv: 1000 });
       }),
@@ -316,7 +325,11 @@ describe("spaces.get() as a cache invalidation signal", () => {
       http.get("https://api.storyblok.com/v2/cdn/spaces/me/", () =>
         HttpResponse.json({ space: { id: 1, name: "Test Space", version: spaceVersion } }),
       ),
-      http.get("https://api.storyblok.com/v2/cdn/stories", () => {
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        const redirect = redirectToCurrentCv(request, 1000);
+        if (redirect) {
+          return redirect;
+        }
         storyRequests++;
         return HttpResponse.json({ stories: [], cv: 1000 });
       }),
@@ -339,7 +352,11 @@ describe("spaces.get() as a cache invalidation signal", () => {
     let storyRequests = 0;
     server.use(
       spaceHandler(() => 2000),
-      http.get("https://api.storyblok.com/v2/cdn/stories", () => {
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        const redirect = redirectToCurrentCv(request, 1000);
+        if (redirect) {
+          return redirect;
+        }
         storyRequests++;
         return HttpResponse.json({ stories: [], cv: 1000 });
       }),
@@ -413,8 +430,10 @@ describe("spaces.get() as a cache invalidation signal", () => {
     let tagRequests = 0;
     server.use(
       spaceHandler(() => spaceVersion),
-      http.get("https://api.storyblok.com/v2/cdn/stories", () =>
-        HttpResponse.json({ stories: [], cv: 1000 }),
+      http.get(
+        "https://api.storyblok.com/v2/cdn/stories",
+        ({ request }) =>
+          redirectToCurrentCv(request, 1000) ?? HttpResponse.json({ stories: [], cv: 1000 }),
       ),
       http.get("https://api.storyblok.com/v2/cdn/tags", () => {
         tagRequests++;
@@ -440,6 +459,10 @@ describe("spaces.get() as a cache invalidation signal", () => {
     const storyUrls: string[] = [];
     server.use(
       http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        const redirect = redirectToCurrentCv(request, storyCv);
+        if (redirect) {
+          return redirect;
+        }
         storyUrls.push(request.url);
         return HttpResponse.json({ stories: [], cv: storyCv });
       }),
@@ -460,11 +483,15 @@ describe("spaces.get() as a cache invalidation signal", () => {
   it("should ignore a lower cv reported by a stale edge node after a publish", async () => {
     let spaceVersion = 1000;
     let storyCv = 1000;
-    const storyUrls: string[] = [];
+    const requestedCvs: Array<string | null> = [];
     server.use(
       spaceHandler(() => spaceVersion),
       http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
-        storyUrls.push(request.url);
+        requestedCvs.push(new URL(request.url).searchParams.get("cv"));
+        const redirect = redirectToCurrentCv(request, storyCv);
+        if (redirect) {
+          return redirect;
+        }
         return HttpResponse.json({ stories: [], cv: storyCv });
       }),
     );
@@ -480,8 +507,8 @@ describe("spaces.get() as a cache invalidation signal", () => {
     await client.get("v2/cdn/stories", { query: { version: "published" } });
     await client.get("v2/cdn/stories", { query: { version: "published" } });
 
-    expect(storyUrls).toHaveLength(3);
-    expect(new URL(storyUrls[storyUrls.length - 1]).searchParams.get("cv")).toBeNull();
+    // Each read after the publish goes out without a cv and is redirected.
+    expect(requestedCvs).toEqual([null, "1000", null, "900", null, "900"]);
   });
 
   it("should invalidate published entries when a draft response reports a new cv", async () => {
@@ -490,6 +517,10 @@ describe("spaces.get() as a cache invalidation signal", () => {
     let publishedRequests = 0;
     server.use(
       http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        const redirect = redirectToCurrentCv(request, cv);
+        if (redirect) {
+          return redirect;
+        }
         const version = new URL(request.url).searchParams.get("version");
         if (version !== "draft") {
           publishedRequests++;
@@ -582,9 +613,12 @@ describe("spaces.get() as a cache invalidation signal", () => {
     server.use(
       spaceHandler(() => spaceVersion),
       http.get("https://api.storyblok.com/v2/cdn/stories/:slug", async ({ request, params }) => {
-        // The edge serves a held `cv` from that snapshot and redirects a missing one to the
-        // current version.
-        const requested = Number(new URL(request.url).searchParams.get("cv")) || currentCv;
+        // The edge serves a held `cv` from that snapshot.
+        const redirect = redirectToCurrentCv(request, currentCv);
+        if (redirect) {
+          return redirect;
+        }
+        const requested = Number(new URL(request.url).searchParams.get("cv"));
         if (params.slug === "about") {
           await gate.promise;
         }
@@ -675,27 +709,25 @@ describe("spaces.get() as a cache invalidation signal", () => {
   it("should not treat a zero cv as pinned by the caller", async () => {
     // `storyblok-js-client` sends `cv: 0` for "no version known".
     let cv = 1000;
-    const storyUrls: string[] = [];
+    const requestedCvs: Array<string | null> = [];
     server.use(
       spaceHandler(() => cv),
       http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
-        storyUrls.push(request.url);
-        return HttpResponse.json({ stories: [], cv });
+        requestedCvs.push(new URL(request.url).searchParams.get("cv"));
+        return redirectToCurrentCv(request, cv) ?? HttpResponse.json({ stories: [], cv });
       }),
     );
     const client = createApiClient({ accessToken: "zero-cv-token" });
 
     await client.get("v2/cdn/stories", { query: { version: "published", cv: 0 } });
-    expect(new URL(storyUrls[0]).searchParams.get("cv")).toBeNull();
-
     await client.get("v2/cdn/stories", { query: { version: "published", cv: 0 } });
-    expect(storyUrls).toHaveLength(1);
+    expect(requestedCvs).toEqual([null, "1000"]);
 
     cv = 2000; // content was published
     await client.spaces.get();
     await client.get("v2/cdn/stories", { query: { version: "published", cv: 0 } });
 
-    expect(storyUrls).toHaveLength(2);
+    expect(requestedCvs).toEqual([null, "1000", null, "2000"]);
   });
 
   it("should not write away a flushCache it did not see", async () => {
@@ -847,9 +879,15 @@ describe("spaces.get() as a cache invalidation signal", () => {
         }
         return HttpResponse.json({ links: { a: { id: 1, slug: "post-publish" } } });
       }),
-      http.get("https://api.storyblok.com/v2/cdn/stories", () =>
-        HttpResponse.json({ stories: [], cv: storyCv }),
-      ),
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        // The edge holds only the current cv and redirects any other.
+        const url = new URL(request.url);
+        if (url.searchParams.get("cv") !== String(storyCv)) {
+          url.searchParams.set("cv", String(storyCv));
+          return HttpResponse.redirect(url.toString(), 301);
+        }
+        return HttpResponse.json({ stories: [], cv: storyCv });
+      }),
     );
     const client = createApiClient({ accessToken: "inflight-cv-flush-token" });
 
@@ -915,12 +953,12 @@ describe("spaces.get() as a cache invalidation signal", () => {
   it("should still invalidate on a space version change when cv is manual", async () => {
     // Without a cv on the request, an edge cache can keep reporting a stale cv.
     let spaceVersion = 1000;
-    const storyUrls: string[] = [];
+    const requestedCvs: Array<string | null> = [];
     server.use(
       spaceHandler(() => spaceVersion),
       http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
-        storyUrls.push(request.url);
-        return HttpResponse.json({ stories: [], cv: 1000 });
+        requestedCvs.push(new URL(request.url).searchParams.get("cv"));
+        return redirectToCurrentCv(request, 1000) ?? HttpResponse.json({ stories: [], cv: 1000 });
       }),
     );
     const client = createApiClient({
@@ -931,22 +969,23 @@ describe("spaces.get() as a cache invalidation signal", () => {
     await client.get("v2/cdn/stories", { query: { version: "published" } });
     await client.spaces.get();
     await client.get("v2/cdn/stories", { query: { version: "published" } });
-    expect(storyUrls).toHaveLength(1);
+    expect(requestedCvs).toEqual([null, "1000"]);
 
     spaceVersion = 2000; // content was published
     await client.spaces.get();
     await client.get("v2/cdn/stories", { query: { version: "published" } });
-    expect(storyUrls).toHaveLength(2);
-
-    expect(storyUrls.every((url) => !url.includes("cv="))).toBe(true);
+    // Only the origin's redirects add the cv.
+    expect(requestedCvs).toEqual([null, "1000", null, "1000"]);
   });
 
   it("should invalidate an ambiguous first sighting when cv is manual", async () => {
     let tagRequests = 0;
     server.use(
       spaceHandler(() => 2000),
-      http.get("https://api.storyblok.com/v2/cdn/stories", () =>
-        HttpResponse.json({ stories: [], cv: 1000 }),
+      http.get(
+        "https://api.storyblok.com/v2/cdn/stories",
+        ({ request }) =>
+          redirectToCurrentCv(request, 1000) ?? HttpResponse.json({ stories: [], cv: 1000 }),
       ),
       http.get("https://api.storyblok.com/v2/cdn/tags", () => {
         tagRequests++;
@@ -1063,11 +1102,11 @@ describe("spaces.get() as a cache invalidation signal", () => {
   });
 
   it("should reset the tracked versions on an explicit flushCache", async () => {
-    const storyUrls: string[] = [];
+    const requestedCvs: Array<string | null> = [];
     server.use(
       http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
-        storyUrls.push(request.url);
-        return HttpResponse.json({ stories: [], cv: 1000 });
+        requestedCvs.push(new URL(request.url).searchParams.get("cv"));
+        return redirectToCurrentCv(request, 1000) ?? HttpResponse.json({ stories: [], cv: 1000 });
       }),
     );
     const client = createApiClient({
@@ -1077,13 +1116,12 @@ describe("spaces.get() as a cache invalidation signal", () => {
 
     await client.get("v2/cdn/stories", { query: { version: "published" } });
     await client.get("v2/cdn/stories", { query: { version: "published", page: "2" } });
-    expect(new URL(storyUrls[1]).searchParams.get("cv")).toBe("1000");
+    expect(requestedCvs).toEqual([null, "1000", "1000"]);
 
     await client.flushCache();
     await client.get("v2/cdn/stories", { query: { version: "published", page: "2" } });
 
-    const lastUrl = storyUrls[storyUrls.length - 1];
-    expect(new URL(lastUrl).searchParams.get("cv")).toBeNull();
+    expect(requestedCvs).toEqual([null, "1000", "1000", null, "1000"]);
   });
 
   it("should serve a caller-pinned cv from its own entry and never track it", async () => {
@@ -1111,6 +1149,175 @@ describe("spaces.get() as a cache invalidation signal", () => {
     await client.get("v2/cdn/stories", { query: { version: "published", cv: 900 } });
 
     expect(storyUrls).toHaveLength(2);
+  });
+
+  it("should not refetch when the caller pins the known cv", async () => {
+    const storyUrls: string[] = [];
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        const redirect = redirectToCurrentCv(request, 2000);
+        if (redirect) {
+          return redirect;
+        }
+        storyUrls.push(request.url);
+        return HttpResponse.json({ stories: [], cv: 2000 });
+      }),
+    );
+    const client = createApiClient({ accessToken: "pinned-known-cv-token" });
+
+    await client.get("v2/cdn/stories", { query: { version: "published", page: 2 } });
+    await client.get("v2/cdn/stories", { query: { version: "published", page: 2, cv: 2000 } });
+    await client.get("v2/cdn/stories", { query: { version: "published", page: 2 } });
+
+    expect(storyUrls).toHaveLength(1);
+  });
+
+  it("should serve a caller-pinned cv when the provider can't read the unpinned entry", async () => {
+    const provider = createMemoryCacheProvider();
+    const unreadableKeys = new Set<string>();
+    const corruptingProvider: CacheProvider = {
+      ...provider,
+      get: (key) =>
+        unreadableKeys.has(key) ? Promise.reject(new Error("corrupt entry")) : provider.get(key),
+      set: async (key, entry) => {
+        await provider.set(key, entry);
+        if (!key.startsWith("sb:versions:")) {
+          unreadableKeys.add(key);
+        }
+      },
+    };
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        const cv = new URL(request.url).searchParams.get("cv");
+        return HttpResponse.json({ stories: [], cv: cv ? Number(cv) : 2000 });
+      }),
+    );
+    const client = createApiClient({
+      accessToken: "pinned-unreadable-unpinned-token",
+      cache: { provider: corruptingProvider },
+    });
+
+    await client.get("v2/cdn/stories", { query: { version: "published" } });
+    const pinned = await client.get("v2/cdn/stories", {
+      query: { version: "published", cv: 900 },
+    });
+
+    expect(pinned.data).toMatchObject({ cv: 900 });
+  });
+
+  it("should keep a caller pin on the known cv after a publish moves past it", async () => {
+    let spaceVersion = 2000;
+    const storyUrls: string[] = [];
+    server.use(
+      spaceHandler(() => spaceVersion),
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        const redirect = redirectToCurrentCv(request, spaceVersion);
+        if (redirect) {
+          return redirect;
+        }
+        storyUrls.push(request.url);
+        const cv = new URL(request.url).searchParams.get("cv");
+        return HttpResponse.json({ stories: [], cv: cv ? Number(cv) : spaceVersion });
+      }),
+    );
+    const client = createApiClient({ accessToken: "pinned-known-cv-publish-token" });
+
+    await client.get("v2/cdn/stories", { query: { version: "published" } });
+    await client.get("v2/cdn/stories", { query: { version: "published", cv: 2000 } });
+    expect(storyUrls).toHaveLength(1);
+
+    spaceVersion = 3000; // content was published
+    await client.spaces.get();
+    await client.get("v2/cdn/stories", { query: { version: "published", cv: 2000 } });
+
+    expect(storyUrls).toHaveLength(2);
+    expect(new URL(storyUrls[1]).searchParams.get("cv")).toBe("2000");
+  });
+
+  it("should evict an entry that only pinned requests read under manual cv", async () => {
+    const storyUrls: string[] = [];
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        storyUrls.push(request.url);
+        return HttpResponse.json({ stories: [], cv: 1000 });
+      }),
+    );
+    const client = createApiClient({
+      accessToken: "pinned-manual-cv-eviction-token",
+      // The version record takes one of the three slots.
+      cache: { cv: "manual", provider: createMemoryCacheProvider({ maxEntries: 3 }) },
+    });
+
+    await client.get("v2/cdn/stories", { query: { version: "published", page: 1 } });
+    await client.get("v2/cdn/stories", { query: { version: "published", page: 2 } });
+    // The pin can't share page 1's entry under `cv: 'manual'`, so page 1 stays the least
+    // recently used entry and is evicted instead of page 2.
+    await client.get("v2/cdn/stories", { query: { version: "published", page: 1, cv: 1000 } });
+    await client.get("v2/cdn/stories", { query: { version: "published", page: 2 } });
+
+    expect(storyUrls).toHaveLength(3);
+  });
+
+  it("should not serve an older snapshot to a caller pinning the known cv under manual flush", async () => {
+    let currentCv = 1000;
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        const url = new URL(request.url);
+        const isDraft = url.searchParams.get("version") === "draft";
+        const requestedCv = Number(url.searchParams.get("cv"));
+        // The edge still holds cv 1000 and redirects any other cv it doesn't hold.
+        if (!isDraft && requestedCv !== currentCv && requestedCv !== 1000) {
+          url.searchParams.set("cv", String(currentCv));
+          return HttpResponse.redirect(url.toString(), 301);
+        }
+        const cv = isDraft ? currentCv : requestedCv;
+        return HttpResponse.json({ stories: [{ name: `v${cv}` }], cv });
+      }),
+    );
+    const client = createApiClient({
+      accessToken: "pinned-known-cv-manual-token",
+      cache: { flush: "manual" },
+    });
+
+    await client.get("v2/cdn/stories", { query: { version: "published", page: 2 } });
+    currentCv = 2000; // content was published
+    await client.get("v2/cdn/stories", { query: { version: "draft" } });
+    const pinned = await client.get("v2/cdn/stories", {
+      query: { version: "published", page: 2, cv: 2000 },
+    });
+
+    expect(pinned.data).toMatchObject({ stories: [{ name: "v2000" }], cv: 2000 });
+  });
+
+  it("should not serve an entry of unknown version to a caller pinning the known cv", async () => {
+    let currentCv = 1000;
+    let tagName = "before-publish";
+    server.use(
+      // `/cdn/tags` is never redirected and reports no cv.
+      http.get("https://api.storyblok.com/v2/cdn/tags", () => {
+        return HttpResponse.json({ tags: [{ name: tagName, taggings_count: 1 }] });
+      }),
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        const url = new URL(request.url);
+        if (Number(url.searchParams.get("cv")) !== currentCv) {
+          url.searchParams.set("cv", String(currentCv));
+          return HttpResponse.redirect(url.toString(), 301);
+        }
+        return HttpResponse.json({ stories: [], cv: currentCv });
+      }),
+    );
+    const client = createApiClient({ accessToken: "pinned-known-cv-untagged-token" });
+
+    // Fetched before any cv is known, so the entry carries no cv.
+    await client.get("v2/cdn/tags", { query: { version: "published" } });
+    currentCv = 2000; // content was published
+    tagName = "after-publish";
+    await client.get("v2/cdn/stories", { query: { version: "published" } });
+    const pinned = await client.get("v2/cdn/tags", {
+      query: { version: "published", cv: 2000 },
+    });
+
+    expect(pinned.data).toMatchObject({ tags: [{ name: "after-publish" }] });
   });
 
   it("should cache a caller-pinned cv that the space has already moved past", async () => {
@@ -1143,9 +1350,14 @@ describe("spaces.get() as a cache invalidation signal", () => {
     const storyUrls: string[] = [];
     server.use(
       http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        const url = new URL(request.url);
+        const cv = Number(url.searchParams.get("cv"));
+        // The edge still holds cv 1000.
+        if (cv !== 1000 && cv !== currentCv) {
+          url.searchParams.set("cv", String(currentCv));
+          return HttpResponse.redirect(url.toString(), 301);
+        }
         storyUrls.push(request.url);
-        const requestedCv = Number(new URL(request.url).searchParams.get("cv"));
-        const cv = requestedCv === 1000 ? 1000 : currentCv;
         return HttpResponse.json({ stories: [{ name: `v${cv}` }], cv });
       }),
     );
@@ -1161,6 +1373,37 @@ describe("spaces.get() as a cache invalidation signal", () => {
     expect(busted.data).toMatchObject({ cv: 2000 });
     expect(next.data).toMatchObject({ cv: 2000 });
     expect(new URL(storyUrls[storyUrls.length - 1]).searchParams.get("cv")).toBe("2000");
+  });
+
+  it("should refetch a pin that was redirected once a publish supersedes the cv it got", async () => {
+    let currentCv = 2000;
+    const storyUrls: string[] = [];
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        const url = new URL(request.url);
+        const isDraft = url.searchParams.get("version") === "draft";
+        // The edge holds only the current cv and redirects any other.
+        if (!isDraft && Number(url.searchParams.get("cv")) !== currentCv) {
+          url.searchParams.set("cv", String(currentCv));
+          return HttpResponse.redirect(url.toString(), 301);
+        }
+        storyUrls.push(request.url);
+        return HttpResponse.json({ stories: [{ name: `v${currentCv}` }], cv: currentCv });
+      }),
+    );
+    const client = createApiClient({ accessToken: "redirected-pin-publish-token" });
+
+    const first = await client.get("v2/cdn/stories", {
+      query: { version: "published", cv: 5000 },
+    });
+    currentCv = 3000; // content was published
+    await client.get("v2/cdn/stories", { query: { version: "draft" } });
+    const second = await client.get("v2/cdn/stories", {
+      query: { version: "published", cv: 5000 },
+    });
+
+    expect(first.data).toMatchObject({ stories: [{ name: "v2000" }], cv: 2000 });
+    expect(second.data).toMatchObject({ stories: [{ name: "v3000" }], cv: 3000 });
   });
 
   it("should keep a response that reports the cv which superseded it", async () => {
@@ -1217,7 +1460,11 @@ describe("spaces.get() as a cache invalidation signal", () => {
     let storyRequests = 0;
     server.use(
       spaceHandler(() => spaceVersion),
-      http.get("https://api.storyblok.com/v2/cdn/stories", () => {
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        const redirect = redirectToCurrentCv(request, spaceVersion);
+        if (redirect) {
+          return redirect;
+        }
         storyRequests++;
         return storiesFail
           ? HttpResponse.json({ error: "Server error" }, { status: 500 })
@@ -1273,7 +1520,11 @@ describe("spaces.get() as a cache invalidation signal", () => {
     let storyRequests = 0;
     server.use(
       spaceHandler(() => 1786950860),
-      http.get("https://api.storyblok.com/v2/cdn/stories", () => {
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        const redirect = redirectToCurrentCv(request, 1786950000);
+        if (redirect) {
+          return redirect;
+        }
         storyRequests++;
         return HttpResponse.json({ stories: [], cv: 1786950000 });
       }),
@@ -1301,7 +1552,11 @@ describe("spaces.get() as a cache invalidation signal", () => {
     let storyRequests = 0;
     server.use(
       spaceHandler(() => spaceVersion),
-      http.get("https://api.storyblok.com/v2/cdn/stories", () => {
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        const redirect = redirectToCurrentCv(request, 1000);
+        if (redirect) {
+          return redirect;
+        }
         storyRequests++;
         return HttpResponse.json({ stories: [], cv: 1000 });
       }),
@@ -1329,7 +1584,11 @@ describe("spaces.get() as a cache invalidation signal", () => {
     // Simulates a provider evicting the watermark record but not the entry.
     let storyRequests = 0;
     server.use(
-      http.get("https://api.storyblok.com/v2/cdn/stories", () => {
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        const redirect = redirectToCurrentCv(request, 1000);
+        if (redirect) {
+          return redirect;
+        }
         storyRequests++;
         return HttpResponse.json({ stories: [], cv: 1000 });
       }),

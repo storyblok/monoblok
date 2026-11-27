@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { applyCvToQuery, extractCv, extractSpaceVersion } from "./cv";
+import {
+  applyCvToQuery,
+  extractCurrentCv,
+  extractCv,
+  extractServedCv,
+  extractSpaceVersion,
+} from "./cv";
 
 describe("extractCv", () => {
   it("should extract numeric cv from valid response", () => {
@@ -18,6 +24,119 @@ describe("extractCv", () => {
     expect(extractCv(null)).toBeUndefined();
     expect(extractCv(undefined)).toBeUndefined();
     expect(extractCv(42)).toBeUndefined();
+  });
+});
+
+describe("extractServedCv", () => {
+  const LINKS = { method: "GET", path: "/v2/cdn/links", query: {} };
+  const respondedFrom = (url: string) => ({ data: { links: {} }, response: { url } });
+
+  it("should read the cv of a published request's final URL", () => {
+    expect(
+      extractServedCv(respondedFrom("https://api.storyblok.com/v2/cdn/links?cv=2000"), LINKS),
+    ).toBe(2000);
+  });
+
+  it("should read the last cv of the final URL, which the CDN serves", () => {
+    expect(
+      extractServedCv(
+        respondedFrom("https://api.storyblok.com/v2/cdn/links?x&cv=9007199254740991&cv=2000"),
+        LINKS,
+      ),
+    ).toBe(2000);
+  });
+
+  it("should prefer the cv the body reports", () => {
+    const result = {
+      data: { stories: [], cv: 3000 },
+      response: { url: "https://api.storyblok.com/v2/cdn/stories?cv=2000" },
+    };
+
+    expect(extractServedCv(result, { ...LINKS, path: "/v2/cdn/stories" })).toBe(3000);
+  });
+
+  it("should ignore the URL of a draft request", () => {
+    const result = respondedFrom("https://api.storyblok.com/v2/cdn/links?version=draft&cv=2000");
+
+    expect(extractServedCv(result, { ...LINKS, query: { version: "draft" } })).toBeUndefined();
+  });
+
+  it("should ignore the URL of a space request", () => {
+    const result = {
+      data: { space: { version: 2000 } },
+      response: { url: "https://api.storyblok.com/v2/cdn/spaces/me?cv=2000" },
+    };
+
+    expect(extractServedCv(result, { ...LINKS, path: "/v2/cdn/spaces/me" })).toBeUndefined();
+  });
+
+  it.each(["0", "-5", "1000.5", "1e20", "Infinity", "abc", ""])(
+    "should ignore a URL cv of %j",
+    (cv) => {
+      const result = respondedFrom(`https://api.storyblok.com/v2/cdn/links?cv=${cv}`);
+
+      expect(extractServedCv(result, LINKS)).toBeUndefined();
+    },
+  );
+
+  it("should read the body cv of an endpoint the edge answers without a redirect", () => {
+    const result = {
+      data: { datasources: [], cv: 1000 },
+      response: { url: "https://api.storyblok.com/v2/cdn/datasources" },
+    };
+
+    expect(extractServedCv(result, { ...LINKS, path: "/v2/cdn/datasources" })).toBe(1000);
+  });
+
+  it("should return undefined without a response URL", () => {
+    expect(extractServedCv(respondedFrom(""), LINKS)).toBeUndefined();
+    expect(extractServedCv({ data: { links: {} } }, LINKS)).toBeUndefined();
+  });
+});
+
+describe("extractCurrentCv", () => {
+  const DATASOURCES = { method: "GET", path: "/v2/cdn/datasources", query: {} };
+  const STORIES = { method: "GET", path: "/v2/cdn/stories", query: {} };
+  const respond = (url: string) => ({ data: { cv: 1000 }, response: { url } });
+
+  it("should read the cv a request without one was redirected to", () => {
+    const result = respond("https://api.storyblok.com/v2/cdn/datasources?cv=2000");
+
+    expect(extractCurrentCv(result, DATASOURCES)).toBe(2000);
+  });
+
+  it("should read the cv a request with another one was redirected to", () => {
+    const result = respond("https://api.storyblok.com/v2/cdn/stories?cv=3000");
+
+    expect(extractCurrentCv(result, { ...STORIES, query: { cv: 2000 } })).toBe(3000);
+  });
+
+  it("should ignore a URL cv equal to the one sent", () => {
+    const result = respond("https://api.storyblok.com/v2/cdn/stories?cv=2000");
+
+    expect(extractCurrentCv(result, { ...STORIES, query: { cv: 2000 } })).toBeUndefined();
+  });
+
+  it("should ignore the body cv of a response that wasn't redirected", () => {
+    const result = respond("https://api.storyblok.com/v2/cdn/stories");
+
+    expect(extractCurrentCv(result, STORIES)).toBeUndefined();
+  });
+
+  it("should read only a stories body cv when the response URL is lost", () => {
+    expect(extractCurrentCv(respond(""), STORIES)).toBe(1000);
+    expect(extractCurrentCv(respond(""), { ...STORIES, path: "/v2/cdn/stories/home" })).toBe(1000);
+    expect(extractCurrentCv(respond(""), DATASOURCES)).toBeUndefined();
+    expect(
+      extractCurrentCv(respond(""), { ...DATASOURCES, path: "/v2/cdn/links" }),
+    ).toBeUndefined();
+  });
+
+  it("should ignore draft and space requests", () => {
+    const result = respond("https://api.storyblok.com/v2/cdn/stories?cv=2000");
+
+    expect(extractCurrentCv(result, { ...STORIES, query: { version: "draft" } })).toBeUndefined();
+    expect(extractCurrentCv(result, { ...STORIES, path: "/v2/cdn/spaces/me" })).toBeUndefined();
   });
 });
 

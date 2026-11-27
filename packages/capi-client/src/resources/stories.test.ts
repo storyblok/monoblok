@@ -5,6 +5,7 @@ import { createApiClient } from "../index";
 import type { CacheEntry, CacheProvider } from "../index";
 import { ClientError } from "../error";
 import { createMemoryCacheProvider } from "../utils/cache";
+import { redirectToCurrentCv } from "../../test/origin";
 
 const server = setupServer();
 
@@ -1005,19 +1006,19 @@ describe("cache and cv", () => {
     expect(requestCount).toBe(2);
   });
 
-  it("should flush cache when cv changes", async () => {
+  it("should refetch cached entries once a redirect reveals a newer cv", async () => {
+    let currentCv = 1;
     let requestCount = 0;
     server.use(
-      http.get("https://api.storyblok.com/v2/cdn/links", ({ request }: { request: Request }) => {
-        requestCount++;
+      http.get("https://api.storyblok.com/v2/cdn/links", ({ request }) => {
+        // The edge holds only the current cv and redirects any other.
         const url = new URL(request.url);
-        const page = url.searchParams.get("page");
-
-        if (page === "2") {
-          return HttpResponse.json({ links: {}, cv: 2 });
+        if (url.searchParams.get("cv") !== String(currentCv)) {
+          url.searchParams.set("cv", String(currentCv));
+          return HttpResponse.redirect(url.toString(), 301);
         }
-
-        return HttpResponse.json({ links: {}, cv: 1 });
+        requestCount++;
+        return HttpResponse.json({ links: {} });
       }),
     );
     const client = createApiClient({
@@ -1030,6 +1031,7 @@ describe("cache and cv", () => {
     await client.get("v2/cdn/links", {
       query: { version: "published", page: 1 },
     });
+    currentCv = 2; // content was published
     await client.get("v2/cdn/links", {
       query: { version: "published", page: 2 },
     });
@@ -1460,7 +1462,11 @@ describe("cache provider compatibility", () => {
       http.get("https://api.storyblok.com/v2/cdn/spaces/me", () =>
         HttpResponse.json({ space: { id: 1, name: "Test", version: cv } }),
       ),
-      http.get("https://api.storyblok.com/v2/cdn/stories", () => {
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        const redirect = redirectToCurrentCv(request, cv);
+        if (redirect) {
+          return redirect;
+        }
         storyRequests++;
         return HttpResponse.json({ stories: [], cv });
       }),
@@ -1508,11 +1514,40 @@ describe("cache.cv: manual", () => {
 });
 
 describe("cv pinning while the cv is unknown", () => {
+  it("should learn the cv a story reports when a custom fetch drops the response URL", async () => {
+    const cvs: (string | null)[] = [];
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories/*", ({ request }) => {
+        cvs.push(new URL(request.url).searchParams.get("cv"));
+        return (
+          redirectToCurrentCv(request, 42) ??
+          HttpResponse.json({ story: makeStory("s1", { component: "page", _uid: "u1" }), cv: 42 })
+        );
+      }),
+    );
+    const client = createApiClient({
+      accessToken: "rebuilt-response-token",
+      fetch: async (input, init) => {
+        const response = await fetch(input, init);
+        return new Response(response.body, response);
+      },
+    });
+
+    await client.stories.get("a");
+    await client.stories.get("b");
+
+    expect(cvs).toEqual([null, "42", "42"]);
+  });
+
   it("should send only one unpinned request while the cv is unknown", async () => {
     const cvs: (string | null)[] = [];
     server.use(
       http.get("https://api.storyblok.com/v2/cdn/stories/*", async ({ request }) => {
         cvs.push(new URL(request.url).searchParams.get("cv"));
+        const redirect = redirectToCurrentCv(request, 42);
+        if (redirect) {
+          return redirect;
+        }
         await new Promise((resolve) => setTimeout(resolve, 10));
         return HttpResponse.json({
           story: makeStory("s1", { component: "page", _uid: "u1" }),
@@ -1524,7 +1559,7 @@ describe("cv pinning while the cv is unknown", () => {
 
     await Promise.all(["a", "b", "c", "d"].map((slug) => client.stories.get(slug)));
 
-    expect(cvs).toEqual([null, "42", "42", "42"]);
+    expect(cvs).toEqual([null, "42", "42", "42", "42"]);
   });
 
   it("should release waiting requests when the first response carries no cv", async () => {
@@ -1602,6 +1637,10 @@ describe("cv pinning while the cv is unknown", () => {
       ),
       http.get("https://api.storyblok.com/v2/cdn/stories/*", async ({ request }) => {
         cvs.push(new URL(request.url).searchParams.get("cv"));
+        const redirect = redirectToCurrentCv(request, cv);
+        if (redirect) {
+          return redirect;
+        }
         await new Promise((resolve) => setTimeout(resolve, 10));
         return HttpResponse.json({
           story: makeStory("s1", { component: "page", _uid: "u1" }),
@@ -1616,7 +1655,7 @@ describe("cv pinning while the cv is unknown", () => {
     await client.spaces.get();
     await Promise.all(["a", "b", "c", "d"].map((slug) => client.stories.get(slug)));
 
-    expect(cvs).toEqual([null, null, "2000", "2000", "2000"]);
+    expect(cvs).toEqual([null, "1000", null, "2000", "2000", "2000", "2000"]);
   });
 
   it("should stop waiting for a discovering request that is slow to respond", async () => {

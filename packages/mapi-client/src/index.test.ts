@@ -333,6 +333,45 @@ describe("createManagementApiClient - HTTP method helpers", () => {
     expect(capturedUrl).toContain("page=2");
   });
 
+  describe("query parameter names", () => {
+    const requestUrlOf = async (query: Record<string, unknown>) => {
+      let capturedUrl = "";
+      server.use(
+        http.get("https://mapi.storyblok.com/v1/spaces/123/custom", ({ request }) => {
+          capturedUrl = request.url;
+          return HttpResponse.json({});
+        }),
+      );
+      const client = createManagementApiClient({
+        personalAccessToken: "test-token",
+        spaceId: 123,
+        region: "eu",
+        rateLimit: false,
+      });
+
+      await client.get("/v1/spaces/123/custom", { query });
+
+      return new URL(capturedUrl);
+    };
+
+    it.each(["x&page", "a=b", "a#b", "a b"])(
+      "should send a parameter named %j as one parameter",
+      async (name) => {
+        const url = await requestUrlOf({ [name]: "1" });
+
+        expect([...url.searchParams]).toEqual([[name, "1"]]);
+      },
+    );
+
+    it("should send nested filters in raw bracket notation", async () => {
+      const url = await requestUrlOf({
+        filter_query: { component: { in: "hero" }, __or: [{ a: { is: "true" } }] },
+      });
+
+      expect(url.search).toBe("?filter_query[component][in]=hero&filter_query[__or][][a][is]=true");
+    });
+  });
+
   it("should send a POST request with body", async () => {
     let capturedBody: unknown;
     server.use(

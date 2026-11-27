@@ -40,12 +40,6 @@ export interface RateLimitConfig {
    */
   requestsPerSecond?: number;
   /**
-   * @deprecated Use `requestsPerSecond` instead. This never capped simultaneous
-   * in-flight requests despite its name; it is a per-second rate.
-   * @todo(next-major): Remove this field.
-   */
-  maxConcurrency?: number;
-  /**
    * Dynamically adjust the rate limit based on the `X-RateLimit-Policy`
    * response header returned by the Storyblok API.
    * @default true
@@ -332,16 +326,13 @@ export function createThrottleManager(config: RateLimitConfig | number | false):
   const resolvedConfig: RateLimitConfig =
     typeof config === "number" ? { requestsPerSecond: config } : config;
   const {
-    requestsPerSecond,
-    maxConcurrency,
+    requestsPerSecond: fixedLimit,
     adaptToServerHeaders = true,
     adaptive = true,
     cacheAware = true,
     onRateLimitChange,
     limiter,
   } = resolvedConfig;
-  // `maxConcurrency` is the deprecated alias for `requestsPerSecond`.
-  const fixedLimit = requestsPerSecond ?? maxConcurrency;
 
   const toContext =
     fixedLimit !== undefined

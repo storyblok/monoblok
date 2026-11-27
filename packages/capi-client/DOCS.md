@@ -104,3 +104,10 @@ even when every response is cached.
   the check is the fallback when neither happens.
 - A job that runs longer than a minute, such as a static build, can see changes published while it
   runs. Set `flush: 'manual'` to keep the content of one run consistent.
+
+<!-- target: src/content/docs/docs/libraries/js/content-delivery-api-client/index.mdx#rate-limiting -->
+<!-- Replaces the `maxConcurrency` row of the `RateLimitConfig` table. -->
+
+| Property            | Default  | Description                                                                                                                            |
+| ------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `requestsPerSecond` | Per tier | Fixed number of requests to start per second. Setting it disables tier detection, and all requests share this limit. Capped at `1000`. |

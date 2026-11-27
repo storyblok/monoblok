@@ -347,27 +347,6 @@ describe("createThrottleManager({ requestsPerSecond })", () => {
     await vi.advanceTimersByTimeAsync(1000);
     expect(starts).toHaveLength(4);
   });
-
-  it("should honor the deprecated maxConcurrency alias", async () => {
-    vi.useFakeTimers();
-    const manager = createThrottleManager({ maxConcurrency: 2 });
-    const { starts } = sendThrough(manager, 5, "/v2/cdn/stories", {});
-
-    await vi.advanceTimersByTimeAsync(0);
-    expect(starts).toHaveLength(2);
-
-    await vi.advanceTimersByTimeAsync(1000);
-    expect(starts).toHaveLength(4);
-  });
-
-  it("should prefer requestsPerSecond over maxConcurrency when both are set", async () => {
-    vi.useFakeTimers();
-    const manager = createThrottleManager({ requestsPerSecond: 2, maxConcurrency: 50 });
-    const { starts } = sendThrough(manager, 5, "/v2/cdn/stories", {});
-
-    await vi.advanceTimersByTimeAsync(0);
-    expect(starts).toHaveLength(2);
-  });
 });
 
 describe("createThrottleManager({})", () => {

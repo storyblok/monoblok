@@ -349,6 +349,18 @@ describe("stories.pages()", () => {
     expect(pageNumbers).toEqual([1, 2]);
   });
 
+  it("should filter every page by the query the walk started with", async () => {
+    const requests = mockList({ path: "stories", key: "stories", itemCount: 4 });
+    const client = createClient();
+    const options = { query: { per_page: 2, starts_with: "news/" } };
+
+    for await (const _page of client.stories.pages(options)) {
+      options.query.starts_with = "events/";
+    }
+
+    expect(requests.map(({ params }) => params.get("starts_with"))).toEqual(["news/", "news/"]);
+  });
+
   it("should end with the failed page's envelope when a page can't be requested", async () => {
     const client = createClient({ spaceId: undefined });
 

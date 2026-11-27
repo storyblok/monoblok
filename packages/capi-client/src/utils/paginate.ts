@@ -336,6 +336,11 @@ export async function* paginateItems<TData, TItem>(
 
 type WalkOptions = { query?: WalkQuery; signal?: AbortSignal };
 
+/** Every page of a walk filters by the query it started with, whatever the caller changes later. */
+const copyWalkOptions = <TOptions extends WalkOptions>(
+  options: TOptions | undefined,
+): TOptions | undefined => options && { ...options, query: options.query && { ...options.query } };
+
 /** Builds a resource's `pages()` and `iterate()` on top of its `list()`. */
 export const createPaginationMethods = <
   DefaultThrowOnError extends boolean,
@@ -362,14 +367,17 @@ export const createPaginationMethods = <
     getItems: (data: TData) => TItem[] | undefined;
   },
 ) => {
-  const toConfig = (options: TOptions | undefined): PaginateConfig<TData, TItem> => ({
-    path,
-    query: options?.query,
-    signal: options?.signal,
-    pinCv: deps.cvMode !== "manual",
-    fetchPage: (pageQuery, signal) => fetchPage(options, pageQuery, signal),
-    getItems,
-  });
+  const toConfig = (options: TOptions | undefined): PaginateConfig<TData, TItem> => {
+    const walkOptions = copyWalkOptions(options);
+    return {
+      path,
+      query: walkOptions?.query,
+      signal: walkOptions?.signal,
+      pinCv: deps.cvMode !== "manual",
+      fetchPage: (pageQuery, signal) => fetchPage(walkOptions, pageQuery, signal),
+      getItems,
+    };
+  };
 
   return {
     /**

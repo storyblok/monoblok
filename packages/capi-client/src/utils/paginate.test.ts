@@ -747,6 +747,29 @@ describe("links.iterate()", () => {
     expect(requests.every((params) => params.get("paginated") === "1")).toBe(true);
   });
 
+  it("should filter every page by the query the walk started with", async () => {
+    const startsWith: (string | null)[] = [];
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/links", ({ request }) => {
+        const params = new URL(request.url).searchParams;
+        startsWith.push(params.get("starts_with"));
+        const uuid = `link-${params.get("page")}`;
+        return HttpResponse.json(
+          { links: { [uuid]: { id: Number(params.get("page")), uuid } } },
+          { headers: { total: "2", "per-page": "1" } },
+        );
+      }),
+    );
+    const client = createClient();
+    const options = { query: { per_page: 1, starts_with: "news/" } };
+
+    for await (const _link of client.links.iterate(options)) {
+      options.query.starts_with = "events/";
+    }
+
+    expect(startsWith).toEqual(["news/", "news/"]);
+  });
+
   it("should complete a restarted walk after content was published mid-walk", async () => {
     let currentCv = 100;
     server.use(

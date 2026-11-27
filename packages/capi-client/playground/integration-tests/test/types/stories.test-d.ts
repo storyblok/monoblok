@@ -13,6 +13,9 @@ import type { StoryblokRichTextInput } from "@storyblok/richtext";
 import {
   type ContentApiClientConfig,
   createApiClient,
+  type Datasource,
+  type DatasourceEntry,
+  type Link,
   type Story,
   type WithInlinedContent,
   type WithInlinedLinks,
@@ -1151,13 +1154,13 @@ describe("stories pagination", () => {
   it("should default pages() to the client's throwOnError on every paginated resource", async () => {
     const client = createApiClient({ accessToken: "test-token", throwOnError: true });
     for await (const page of client.links.pages()) {
-      expectTypeOf(page.data).not.toBeUndefined();
+      expectTypeOf(page.data.links).toEqualTypeOf<Record<string, Link>>();
     }
     for await (const page of client.datasources.pages()) {
-      expectTypeOf(page.data).not.toBeUndefined();
+      expectTypeOf(page.data.datasources).toEqualTypeOf<Datasource[]>();
     }
     for await (const page of client.datasourceEntries.pages()) {
-      expectTypeOf(page.data).not.toBeUndefined();
+      expectTypeOf(page.data.datasource_entries).toEqualTypeOf<DatasourceEntry[]>();
     }
   });
 

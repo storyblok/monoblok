@@ -36,7 +36,10 @@ export type PageQuery = { page: number; per_page: number };
 export type PaginateConfig<TData, TItem> = {
   query: WalkQuery | undefined;
   signal: AbortSignal | undefined;
-  /** A failed request must resolve with `error` set, not reject. */
+  /**
+   * A failed request resolves with `error` set. A rejection fails the page like a transport
+   * failure.
+   */
   fetchPage: (pageQuery: PageQuery, signal: AbortSignal | undefined) => Promise<ApiResponse<TData>>;
   /** Returns `undefined` when the response holds no list of items. */
   getItems: (data: TData) => TItem[] | undefined;
@@ -71,14 +74,30 @@ const describeRequestError = (error: ClientError): string => {
   return error.cause instanceof Error ? error.cause.message : error.message;
 };
 
-/** Identifies a page by its first item, to notice an endpoint that ignores `page`. */
+/**
+ * Identifies a page by its first and last items, to notice an endpoint that ignores `page`.
+ * Serializing whole pages would cost too much for large stories.
+ */
 const fingerprintPage = (items: unknown[]): string | undefined => {
   try {
-    return JSON.stringify(items[0]);
+    return JSON.stringify([items[0], items[items.length - 1]]);
   } catch {
     return undefined;
   }
 };
+
+/** Shapes a rejected page request like a transport failure, which `list()` resolves with. */
+const toFailedResponse = <TData>(error: unknown): ApiResponse<TData> => ({
+  data: undefined,
+  error: new ClientError("API request failed", {
+    status: 0,
+    statusText: "",
+    data: undefined,
+    cause: error,
+  }),
+  response: Response.error(),
+  request: new Request("about:blank"),
+});
 
 // Duplicated in the other API client; change both (ADR-0033).
 async function* walkPages<TData, TItem>(
@@ -180,7 +199,12 @@ async function* walkPages<TData, TItem>(
   };
 
   for (let page = firstPage; ; page++) {
-    const current = await fetchPage({ page, per_page: requestedPerPage }, signal);
+    let current: ApiResponse<TData>;
+    try {
+      current = await fetchPage({ page, per_page: requestedPerPage }, signal);
+    } catch (error) {
+      current = toFailedResponse(error);
+    }
     const perPage =
       readPositiveInteger(current.response.headers.get("per-page")) ?? requestedPerPage;
     const total = readCountHeader(current.response, "total");
@@ -205,13 +229,15 @@ async function* walkPages<TData, TItem>(
     }
     itemsThroughPage += items.length;
 
-    yield { result: { ...current, ...meta, data, error: undefined }, items };
-
+    // Decided before yielding: the caller may mutate the page's items.
     // Counting received items rather than `page * perPage` keeps a page the API capped
     // below the requested `per_page` from ending the walk early.
     const isLastPage =
       items.length === 0 ||
       (total === undefined ? items.length < perPage : itemsThroughPage >= total);
+
+    yield { result: { ...current, ...meta, data, error: undefined }, items };
+
     if (isLastPage) {
       return;
     }

@@ -56,7 +56,7 @@ const collect = async <T>(iterable: AsyncIterable<T>): Promise<T[]> => {
   return items;
 };
 
-const createClient = (config: { throwOnError?: boolean } = {}) =>
+const createClient = (config: { throwOnError?: boolean; spaceId?: number } = {}) =>
   createManagementApiClient({
     personalAccessToken: "token",
     spaceId: 123,
@@ -203,6 +203,32 @@ describe("stories.iterate()", () => {
     expect(requests).toHaveLength(2);
   });
 
+  it("should keep walking when a page starts with the same story as the previous page", async () => {
+    server.use(
+      http.get(`${SPACE_URL}/stories`, ({ request }) => {
+        const page = new URL(request.url).searchParams.get("page");
+        const stories = page === "1" ? [{ id: 1 }, { id: 2 }] : [{ id: 1 }, { id: 3 }];
+        return HttpResponse.json({ stories }, { headers: { total: "4", "per-page": "2" } });
+      }),
+    );
+    const client = createClient();
+
+    const stories = await collect(client.stories.iterate({ query: { per_page: 2 } }));
+
+    expect(stories.map((story) => story.id)).toEqual([1, 2, 1, 3]);
+  });
+
+  it("should throw a PaginationError when a page can't be requested", async () => {
+    const client = createClient({ spaceId: undefined });
+
+    const error = await collect(client.stories.iterate()).catch((error: unknown) => error);
+
+    expect(error).toBeInstanceOf(PaginationError);
+    expect(error).toMatchObject({ reason: "request", page: 1, response: { status: 0 } });
+    expect((error as PaginationError).message).toMatch(/^Page 1 failed: Missing space_id/);
+    expect((error as PaginationError).cause).toMatchObject({ cause: expect.any(Error) });
+  });
+
   it("should not request another page when the loop breaks", async () => {
     const requests = mockList({ path: "stories", key: "stories", itemCount: 4 });
     const client = createClient();
@@ -308,6 +334,40 @@ describe("stories.pages()", () => {
     expect(pages[1]?.page).toBe(2);
     expect(pages[1]?.data).toBeUndefined();
     expect(pages[1]?.error).toBeInstanceOf(PaginationError);
+  });
+
+  it("should keep walking when the caller empties a page's stories", async () => {
+    mockList({ path: "stories", key: "stories", itemCount: 4 });
+    const client = createClient();
+    const pageNumbers: number[] = [];
+
+    for await (const page of client.stories.pages({ query: { per_page: 2 } })) {
+      pageNumbers.push(page.page);
+      page.data?.stories?.splice(0);
+    }
+
+    expect(pageNumbers).toEqual([1, 2]);
+  });
+
+  it("should end with the failed page's envelope when a page can't be requested", async () => {
+    const client = createClient({ spaceId: undefined });
+
+    const pages = await collect(client.stories.pages());
+
+    expect(pages).toHaveLength(1);
+    expect(pages[0]).toMatchObject({ page: 1, data: undefined, response: { status: 0 } });
+    expect(pages[0]?.error).toBeInstanceOf(PaginationError);
+    expect(pages[0]?.error).toMatchObject({ reason: "request", page: 1 });
+  });
+
+  it("should throw a PaginationError when a page can't be requested with throwOnError", async () => {
+    const client = createClient({ spaceId: undefined, throwOnError: true });
+
+    await expect(collect(client.stories.pages())).rejects.toMatchObject({
+      name: "PaginationError",
+      reason: "request",
+      page: 1,
+    });
   });
 
   it("should not fetch a page before it is requested", async () => {

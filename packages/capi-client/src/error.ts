@@ -65,9 +65,10 @@ export type PaginationFailureReason = "request" | "invalid-response" | "snapshot
 /**
  * A failed page of a pagination walk. `iterate()` throws it, and `pages()` yields it as `error`
  * or, with `throwOnError`, throws it. Unlike `list()`, transport failures (timeouts, network
- * errors) are wrapped too, with `response.status` 0 and the original error in `cause.cause`, so
- * they keep the resume point: `iterate({ query: { ...query, page: error.resumePage, cv:
- * error.cv } })`. Aborting the walk's `signal` makes `iterate()` throw the abort reason instead.
+ * errors) and a failing cache provider are wrapped too, with `response.status` 0 and the original
+ * error in `cause.cause`, so they keep the resume point: `iterate({ query: { ...query, page:
+ * error.resumePage, cv: error.cv } })`. Aborting the walk's `signal` makes `iterate()` throw the
+ * abort reason instead.
  */
 export class PaginationError extends ClientError {
   readonly reason: PaginationFailureReason;

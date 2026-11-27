@@ -20,6 +20,17 @@ describe("normalizeNodes", () => {
     const docNode: RichTextDoc = { type: "doc", content };
     expect(normalizeNodes(docNode)).toEqual(content);
   });
+  it("gives sibling nodes of the same type different keys", () => {
+    const normalized = normalizeNodes(
+      [
+        { type: "paragraph", content: [{ type: "text", text: "First" }] },
+        { type: "paragraph", content: [{ type: "text", text: "Second" }] },
+      ],
+      true,
+    );
+    const keys = normalized.map((node) => node._key);
+    expect(new Set(keys).size).toBe(keys.length);
+  });
   const node_and_mark = customRendererFixture.node_and_mark;
   it("unwraps doc node to content array and add keys", () => {
     const normalized = normalizeNodes(node_and_mark.input, true);

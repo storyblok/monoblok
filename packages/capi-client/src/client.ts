@@ -662,7 +662,8 @@ export const createApiClientBase = <
         // An explicit `undefined` would override the client-level setting.
         throwOnError: options.throwOnError ?? throwOnError,
         method,
-        query,
+        // The generated client writes the token into the query object it is given.
+        query: { ...query },
         security,
         url: path,
       }),

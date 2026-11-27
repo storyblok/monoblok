@@ -1,6 +1,7 @@
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { createApiClient, type HttpRequestOptions } from "./client";
 import { ClientError } from "./error";
+import { createMemoryCacheProvider } from "./utils/cache";
 import type { RateLimitContext, RateLimiter } from "./utils/limiter";
 
 const storyResponse = () =>
@@ -169,6 +170,53 @@ describe("createApiClient get()", () => {
 
     expectTypeOf(result.data).toEqualTypeOf<Links | undefined>();
     expect(result.data?.links).toEqual({ a: {} });
+  });
+
+  it("should leave the caller's query untouched and serve a reused one from the cache", async () => {
+    let requests = 0;
+    const client = createApiClient({
+      accessToken: "token",
+      fetch: async () => {
+        requests++;
+        return linksResponse();
+      },
+    });
+    const query = { starts_with: "blog/" };
+
+    await client.get<Links>("/v2/cdn/links", { query });
+    await client.get<Links>("/v2/cdn/links", { query });
+
+    expect(query).toEqual({ starts_with: "blog/" });
+    expect(requests).toBe(1);
+  });
+
+  it("should keep the access token out of cache keys when a query is reused", async () => {
+    const provider = createMemoryCacheProvider();
+    const keys: string[] = [];
+    const client = createApiClient({
+      accessToken: "secret-access-token",
+      cache: {
+        provider: {
+          ...provider,
+          get: (key) => {
+            keys.push(key);
+            return provider.get(key);
+          },
+          set: (key, entry) => {
+            keys.push(key);
+            return provider.set(key, entry);
+          },
+        },
+      },
+      fetch: async () => linksResponse(),
+    });
+    const query = { starts_with: "blog/" };
+
+    await client.get<Links>("/v2/cdn/links", { query });
+    await client.get<Links>("/v2/cdn/links", { query });
+
+    expect(keys.length).toBeGreaterThan(0);
+    expect(keys.filter((key) => key.includes("secret-access-token"))).toEqual([]);
   });
 
   it("should not accept responseStyle", () => {

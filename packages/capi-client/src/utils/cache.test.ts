@@ -49,6 +49,20 @@ describe("createMemoryCacheProvider", () => {
     vi.useRealTimers();
   });
 
+  // Next.js Cache Components rejects a prerender that reads the wall clock, and `get`
+  // runs before every request, once the cache holds entries.
+  it("should not read the wall clock in get()", async () => {
+    const provider = createMemoryCacheProvider();
+    await provider.set("key", { value: "value", ttlMs: 100 });
+    const dateNow = vi.spyOn(Date, "now");
+
+    await expect(provider.get("key")).resolves.toMatchObject({ value: "value" });
+    await expect(provider.get("missing")).resolves.toBeUndefined();
+
+    expect(dateNow).not.toHaveBeenCalled();
+    dateNow.mockRestore();
+  });
+
   it("should return undefined for expired entries in get()", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(1_000);

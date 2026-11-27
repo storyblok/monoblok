@@ -839,3 +839,24 @@ describe("createDefaultRateLimiter({ onRateLimitChange })", () => {
     expect(await admittedImmediately(limiter, ctx, 20)).toBe(4);
   });
 });
+
+describe("createDefaultRateLimiter() clock", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  // Next.js Cache Components rejects a prerender that reads the wall clock,
+  // even when the request itself sits inside <Suspense>.
+  it("should not read the wall clock while admitting or recording a request", async () => {
+    const dateNow = vi.spyOn(Date, "now");
+    const limiter = createDefaultRateLimiter({
+      cacheAware: { cachedRequestsPerSecond: 1000, detectCacheHit: () => false },
+    });
+    const ctx = context({ limit: 4 });
+
+    await limiter.recordResponse?.(ctx, ok());
+    await limiter.acquire(ctx);
+    await limiter.recordResponse?.(ctx, throttled());
+    await limiter.acquire(ctx);
+
+    expect(dateNow).not.toHaveBeenCalled();
+  });
+});

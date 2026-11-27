@@ -40,8 +40,10 @@ import {
   writeMigrationFile,
 } from "./migrations/generate";
 import {
+  MIGRATION_FORMATS,
   pendingContentMigrations,
   plural,
+  warnJsMigrationsDeprecated,
   writeContentMigration,
 } from "../../migrations/content-migrations";
 import { writeLocalComponents } from "./write-local-components";
@@ -105,8 +107,21 @@ schemaCommand
   .option("--force", "With --delete, delete blocks that stories still use", false)
   .option("--migrations", "Generate scaffold migration files for breaking changes", true)
   .addOption(new Option("--no-migrations", "Skip migration generation for breaking changes"))
-  .option("--typed", "Generate one defineMigration file instead of one .js migration per block")
-  .option("--no-before", "With --typed, skip the .before.ts schema snapshot")
+  // Separate from `--migrations`, which also decides whether schema push asks before
+  // generating, so a format can be chosen with or without the questions.
+  // @todo(next-major): Remove with the `js` format; always write typed migrations.
+  .addOption(
+    new Option(
+      "--migration-format <format>",
+      "js writes one .js migration per block (deprecated), typed one defineMigration file",
+    )
+      .choices(MIGRATION_FORMATS)
+      .default("js"),
+  )
+  .option(
+    "--no-migration-snapshot",
+    "With --migration-format typed, skip the migration's .before.ts schema snapshot",
+  )
   .option(
     "--write-components",
     "Write component schemas as local JSON files after push (also removes local files for components deleted via --delete)",
@@ -135,8 +150,9 @@ schemaCommand
       return;
     }
 
-    if (options.typed && !options.migrations) {
-      ui.warn("--typed has no effect with --no-migrations.");
+    const typed = options.migrationFormat === "typed";
+    if (typed && !options.migrations) {
+      ui.warn("--migration-format has no effect with --no-migrations.");
     }
 
     const summary = { total: 0, succeeded: 0, failed: 0 };
@@ -182,7 +198,7 @@ schemaCommand
       const migrationTimestamp = new Date().toISOString();
 
       const writeMigrations = async (changes: ComponentBreakingChanges[]): Promise<string[]> => {
-        if (!options.typed) {
+        if (!typed) {
           const files: string[] = [];
           for (const comp of changes) {
             const file = await writeMigrationFile({
@@ -214,7 +230,7 @@ schemaCommand
           ops,
           // The space renames a block in its stories along with the block, so
           // the migration reads it under its new name.
-          before: options.before
+          before: options.migrationSnapshot
             ? { components: withRenamedBlocks(rawComponents, blockRenames), blocks }
             : undefined,
         });
@@ -444,8 +460,8 @@ schemaCommand
           ui.warn(
             `${totalChanges} breaking change(s) detected in ${breakingChanges.length} component(s).`,
           );
-          if (!options.typed && !options.before) {
-            ui.warn("--no-before has no effect without --typed.");
+          if (!typed && !options.migrationSnapshot) {
+            ui.warn("--no-migration-snapshot has no effect without --migration-format typed.");
           }
 
           // Dry-run: show analysis only, no prompts, no file writes
@@ -525,6 +541,9 @@ schemaCommand
               }
               if (files.length > 0) {
                 generatedMigrations = { files, changes: breakingChanges };
+                if (!typed) {
+                  warnJsMigrationsDeprecated("--migration-format typed");
+                }
               }
             }
           }
@@ -650,7 +669,7 @@ schemaCommand
             );
             keptMigrations = await keepMigrationsForPushedBlocks(generatedMigrations, pushed);
           }
-          // `migrations generate --before-push` reads the changeset, so it
+          // `migrations generate --snapshot before-push` reads the changeset, so it
           // must not take a block the push failed to change for changed.
           await saveChangeset(resolvedPath, {
             ...changeset,
@@ -683,7 +702,7 @@ schemaCommand
         }
         for (const { rename, stories } of pushResult.unfinishedRenames) {
           ui.warn(
-            `${plural(stories, "story", "stories")} still ${stories === 1 ? "uses" : "use"} ${rename.from}: the space stopped renaming the block to ${rename.to} in them. Rename it there with a content migration that holds renameBlock({ block: '${rename.from}', to: '${rename.to}' }), written without a .before.ts snapshot (migrations generate ${rename.to} --schema <entry-file> --no-before), then run it.`,
+            `${plural(stories, "story", "stories")} still ${stories === 1 ? "uses" : "use"} ${rename.from}: the space stopped renaming the block to ${rename.to} in them. Rename it there with a content migration that holds renameBlock({ block: '${rename.from}', to: '${rename.to}' }), written without a .before.ts snapshot (migrations generate ${rename.to} --format typed --schema <entry-file> --no-snapshot), then run it.`,
           );
         }
 

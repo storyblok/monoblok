@@ -1403,7 +1403,8 @@ describe("schema push command", () => {
       "schema.ts",
       "--space",
       DEFAULT_SPACE,
-      "--typed",
+      "--migration-format",
+      "typed",
     ]);
 
     const migration = writtenFile(`migrations/${DEFAULT_SPACE}/20261016090503-update-hero.ts`);
@@ -1456,7 +1457,8 @@ describe("schema push command", () => {
       "schema.ts",
       "--space",
       DEFAULT_SPACE,
-      "--typed",
+      "--migration-format",
+      "typed",
       "--migrations",
     ]);
 
@@ -1500,7 +1502,8 @@ describe("schema push command", () => {
       "schema.ts",
       "--space",
       DEFAULT_SPACE,
-      "--typed",
+      "--migration-format",
+      "typed",
       "--migrations",
     ]);
 
@@ -1541,7 +1544,8 @@ describe("schema push command", () => {
       "schema.ts",
       "--space",
       DEFAULT_SPACE,
-      "--typed",
+      "--migration-format",
+      "typed",
       "--migrations",
     ]);
 
@@ -1668,7 +1672,7 @@ describe("schema push command", () => {
       const writes = componentWrites([remoteBanner], { banner: 3 });
       vi.mocked(confirm).mockResolvedValue(true);
 
-      await push("--typed", "--delete");
+      await push("--migration-format", "typed", "--delete");
 
       expect(confirm).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -1693,7 +1697,7 @@ describe("schema push command", () => {
       componentWrites([remoteBanner], { banner: 3 });
       vi.mocked(confirm).mockResolvedValue(true);
 
-      await push("--typed");
+      await push("--migration-format", "typed");
 
       const migration = writtenFile("20261016090503-update-hero.ts");
       expect(migration).toContain("title: 'Update hero: rename headline to title',");
@@ -1728,7 +1732,7 @@ describe("schema push command", () => {
       const writes = componentWrites([remoteBanner], { banner: 3 });
       vi.mocked(confirm).mockResolvedValue(true);
 
-      await push("--typed");
+      await push("--migration-format", "typed");
 
       expect(writes).toEqual([
         { method: "PUT", id: String(remoteBanner.id), name: "hero", updateContent: true },
@@ -1906,7 +1910,7 @@ describe("schema push command", () => {
       ]);
       expect(console.warn).toHaveBeenCalledWith(
         expect.stringContaining(
-          "300 stories still use banner: the space stopped renaming the block to hero in them. Rename it there with a content migration that holds renameBlock({ block: 'banner', to: 'hero' }), written without a .before.ts snapshot (migrations generate hero --schema <entry-file> --no-before), then run it.",
+          "300 stories still use banner: the space stopped renaming the block to hero in them. Rename it there with a content migration that holds renameBlock({ block: 'banner', to: 'hero' }), written without a .before.ts snapshot (migrations generate hero --format typed --schema <entry-file> --no-snapshot), then run it.",
         ),
       );
       expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Schema pushed to space"));
@@ -2085,7 +2089,7 @@ describe("schema push command", () => {
     });
   });
 
-  it("should skip the snapshot with --no-before", async () => {
+  it("should skip the snapshot with --no-migration-snapshot", async () => {
     const remoteComp = makeMockComponent({
       name: "hero",
       schema: { author_name: { type: "text", pos: 0 }, title: { type: "text", pos: 1 } },
@@ -2108,9 +2112,10 @@ describe("schema push command", () => {
       "schema.ts",
       "--space",
       DEFAULT_SPACE,
-      "--typed",
+      "--migration-format",
+      "typed",
       "--migrations",
-      "--no-before",
+      "--no-migration-snapshot",
     ]);
 
     expect(writtenFile("20261016090503-update-hero.ts")).toContain("defineMigration<Schema>({");
@@ -2211,10 +2216,10 @@ describe("schema push command", () => {
 
     expect(migrationFiles()).toHaveLength(0);
     expect(confirm).not.toHaveBeenCalled();
-    expect(console.warn).not.toHaveBeenCalledWith(expect.stringContaining("--typed"));
+    expect(console.warn).not.toHaveBeenCalledWith(expect.stringContaining("--migration-format"));
   });
 
-  it("should warn that --typed has no effect with --no-migrations", async () => {
+  it("should warn that --migration-format has no effect with --no-migrations", async () => {
     const remoteComp = makeMockComponent({
       name: "hero",
       schema: { author_name: { type: "text" } },
@@ -2236,13 +2241,14 @@ describe("schema push command", () => {
       "schema.ts",
       "--space",
       DEFAULT_SPACE,
-      "--typed",
+      "--migration-format",
+      "typed",
       "--no-migrations",
     ]);
 
     expect(migrationFiles()).toHaveLength(0);
     expect(console.warn).toHaveBeenCalledWith(
-      expect.stringContaining("--typed has no effect with --no-migrations."),
+      expect.stringContaining("--migration-format has no effect with --no-migrations."),
     );
   });
 
@@ -2307,7 +2313,8 @@ describe("schema push command", () => {
       "schema.ts",
       "--space",
       DEFAULT_SPACE,
-      "--typed",
+      "--migration-format",
+      "typed",
       "--migrations",
     ]);
 
@@ -2321,6 +2328,45 @@ describe("schema push command", () => {
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining("Generated migrations are scaffolds"),
     );
+    expect(console.warn).not.toHaveBeenCalledWith(expect.stringContaining("deprecated"));
+  });
+
+  it("should ask before generating typed migrations without an explicit --migrations", async () => {
+    const remoteComp = makeMockComponent({
+      name: "hero",
+      schema: { subtitle: { type: "text", pos: 0 }, title: { type: "text", pos: 1 } },
+    });
+    const localComp = makeMockComponent({
+      name: "hero",
+      schema: { title: { type: "text", pos: 0 } },
+    });
+    preconditions.hasLocalSchema({ components: [localComp] as any, datasources: [] });
+    preconditions.hasRemoteComponents([remoteComp]);
+    preconditions.hasRemoteFolders([]);
+    preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
+    preconditions.canUpdateComponents();
+    vi.mocked(confirm).mockResolvedValue(true);
+
+    await schemaCommand.parseAsync([
+      "node",
+      "test",
+      "push",
+      "schema.ts",
+      "--space",
+      DEFAULT_SPACE,
+      "--migration-format",
+      "typed",
+    ]);
+
+    expect(confirm).toHaveBeenCalledWith(
+      expect.objectContaining({ message: "Generate migration files for breaking changes?" }),
+      expect.anything(),
+    );
+    expect(migrationFiles()).toEqual([
+      expect.stringMatching(/20261016090503-update-hero\.before\.ts$/),
+      expect.stringMatching(/20261016090503-update-hero\.ts$/),
+    ]);
   });
 
   it("should log assumed renames when --migrations is explicit", async () => {
@@ -2396,7 +2442,8 @@ describe("schema push command", () => {
       "schema.ts",
       "--space",
       DEFAULT_SPACE,
-      "--typed",
+      "--migration-format",
+      "typed",
     ]);
 
     expect(writtenFile("20261016090503-update-hero.ts")).toContain(
@@ -2429,7 +2476,8 @@ describe("schema push command", () => {
       "schema.ts",
       "--space",
       DEFAULT_SPACE,
-      "--typed",
+      "--migration-format",
+      "typed",
       "--migrations",
     ]);
 
@@ -2475,7 +2523,8 @@ describe("schema push command", () => {
       "schema.ts",
       "--space",
       DEFAULT_SPACE,
-      "--typed",
+      "--migration-format",
+      "typed",
       "--migrations",
     ]);
 
@@ -2547,7 +2596,8 @@ describe("schema push command", () => {
         "schema.ts",
         "--space",
         DEFAULT_SPACE,
-        "--typed",
+        "--migration-format",
+        "typed",
         "--migrations",
       ]);
     } finally {
@@ -2587,7 +2637,8 @@ describe("schema push command", () => {
       "--space",
       DEFAULT_SPACE,
       "--migrations",
-      "--typed",
+      "--migration-format",
+      "typed",
     ]);
 
     expect(migrationFiles()).toEqual([]);
@@ -2624,7 +2675,8 @@ describe("schema push command", () => {
       "--space",
       DEFAULT_SPACE,
       "--migrations",
-      "--typed",
+      "--migration-format",
+      "typed",
     ]);
 
     expect(migrationFiles()).toEqual([
@@ -2643,7 +2695,7 @@ describe("schema push command", () => {
     );
   });
 
-  it("should leave the blocks a failed push didn't change out of migrations generate --before-push", async () => {
+  it("should leave the blocks a failed push didn't change out of migrations generate --snapshot before-push", async () => {
     const remoteArticle = makeMockComponent({
       name: "article",
       schema: { slug_override: { type: "text", pos: 0 } },
@@ -2682,9 +2734,12 @@ describe("schema push command", () => {
         block,
         "--space",
         DEFAULT_SPACE,
+        "--format",
+        "typed",
         "--schema",
         "schema.ts",
-        "--before-push",
+        "--snapshot",
+        "before-push",
       ]);
     await generate("article");
     await generate("teaser");
@@ -2720,7 +2775,8 @@ describe("schema push command", () => {
       "schema.ts",
       "--space",
       DEFAULT_SPACE,
-      "--typed",
+      "--migration-format",
+      "typed",
       "--migrations",
     ]);
     expect(writtenFile("-update-hero.ts")).toBeDefined();
@@ -2733,6 +2789,8 @@ describe("schema push command", () => {
       "hero",
       "--space",
       DEFAULT_SPACE,
+      "--format",
+      "typed",
       "--schema",
       "schema.ts",
     ]);
@@ -2782,6 +2840,11 @@ describe("schema push command", () => {
         filename.includes("migrations/") && filename.includes("hero.") && filename.endsWith(".js"),
     );
     expect(migrationFile).toBeDefined();
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        ".js migration functions are deprecated and will be removed in the next major version. Pass --migration-format typed to write a typed content migration instead.",
+      ),
+    );
     expect(migrationFile![1]).toContain(
       "Review this migration before running it against your space.",
     );

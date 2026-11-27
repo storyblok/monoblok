@@ -27,6 +27,20 @@ import { displayPath } from "../schema/utils";
 import { fetchStory, updateStory } from "../stories/actions";
 import type { Story } from "../stories/constants";
 
+/**
+ * `js` writes a migration function for `migrations run`, `typed` a `defineMigration` file.
+ * @todo(next-major): Remove the `js` format and the options that choose between the two.
+ */
+export const MIGRATION_FORMATS = ["js", "typed"] as const;
+export type MigrationFormat = (typeof MIGRATION_FORMATS)[number];
+
+/** @todo(next-major): Remove with the `js` migration format. */
+export function warnJsMigrationsDeprecated(typedOption: string): void {
+  getUI().warn(
+    `.js migration functions are deprecated and will be removed in the next major version. Pass ${typedOption} to write a typed content migration instead.`,
+  );
+}
+
 export function migrationsDirectory(path: string | undefined, space: string): string {
   return resolvePath(path, `migrations/${space}`);
 }

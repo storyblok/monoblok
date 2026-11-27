@@ -20,14 +20,15 @@ This will generate a migration file for the specified component:
 
 ## Options
 
-| Option                    | Description                                                                                                                                       | Default                 |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
-| `-s, --space <space>`     | (Required) The ID of the space to generate the migration for                                                                                      | -                       |
-| `--su, --suffix <suffix>` | Suffix to add to the file name (e.g., `{component-name}.{suffix}.js`). Must be a valid file name, without path separators                         | -                       |
-| `-p, --path <path>`       | Custom path to store the migration file                                                                                                           | `.storyblok/migrations` |
-| `--schema <entry-file>`   | Schema entry file that exports `type Schema`. Generates a typed `defineMigration` file and its `.before.ts` snapshot instead of a `.js` migration | -                       |
-| `--no-before`             | With `--schema`, skip the `.before.ts` snapshot                                                                                                   | -                       |
-| `--before-push`           | Snapshot the block as it was before the latest `schema push` that changed it. Requires `--schema` and can't be combined with `--no-before`        | -                       |
+| Option                    | Description                                                                                                                                             | Default                 |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| `-s, --space <space>`     | (Required) The ID of the space to generate the migration for                                                                                            | -                       |
+| `--su, --suffix <suffix>` | Suffix to add to the file name (e.g., `{component-name}.{suffix}.js`). Must be a valid file name, without path separators                               | -                       |
+| `-p, --path <path>`       | Custom path to store the migration file                                                                                                                 | `.storyblok/migrations` |
+| `--format <format>`       | `js` writes a `.js` migration function (deprecated). `typed` writes a `defineMigration` file and its `.before.ts` snapshot. `typed` requires `--schema` | `js`                    |
+| `--schema <entry-file>`   | With `--format typed`, the schema entry file that exports `type Schema`                                                                                 | -                       |
+| `--snapshot <source>`     | With `--format typed`, the block state `.before.ts` holds: `current`, or `before-push` for the block before the latest `schema push` that changed it    | `current`               |
+| `--no-snapshot`           | With `--format typed`, skip the `.before.ts` snapshot                                                                                                   | -                       |
 
 ## Examples
 
@@ -79,7 +80,7 @@ backup/
 4. Generate a typed content migration:
 
 ```bash
-storyblok migrations generate hero --space 12345 --schema src/schema.ts
+storyblok migrations generate hero --space 12345 --format typed --schema src/schema.ts
 ```
 
 The command writes two files, named after the time they were created:
@@ -110,9 +111,9 @@ Where:
 - `{componentName}` is the name of the component
 - `{suffix}` is the suffix in the file name if provided
 
-With `--schema`, the command writes `{timestamp}-{slug}.ts` and `{timestamp}-{slug}.before.ts`,
-where `{timestamp}` is the UTC creation time as `YYYYMMDDHHmmss` and `{slug}` is the component name
-and suffix in lowercase, joined by hyphens.
+With `--format typed`, the command writes `{timestamp}-{slug}.ts` and
+`{timestamp}-{slug}.before.ts`, where `{timestamp}` is the UTC creation time as `YYYYMMDDHHmmss` and
+`{slug}` is the component name and suffix in lowercase, joined by hyphens.
 
 ### Component names that are not file names
 

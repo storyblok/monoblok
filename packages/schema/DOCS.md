@@ -65,8 +65,8 @@ export const schema = defineSchema({ blocks: { authorBlock, mvpBlock } });
 export type Before = Schema<typeof schema>;
 ```
 
-[`schema push --typed`](/docs/tooling/cli/schema/push#typed-content-migrations) and
-[`migrations generate --schema`](/docs/tooling/cli/migrations/generate#typed-content-migrations)
+[`schema push --migration-format typed`](/docs/tooling/cli/schema/push#typed-content-migrations) and
+[`migrations generate --format typed`](/docs/tooling/cli/migrations/generate#typed-content-migrations)
 write both files from the blocks in the space. Keep the snapshot unchanged once the migration ships,
 so the names the migration reads stay typed. The names it writes are typed against `Schema`, so a
 later rename or removal of such a field is a type error in the migration. Once every space has run

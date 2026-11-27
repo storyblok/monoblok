@@ -54,8 +54,8 @@ kinds of migrations:
 - **Content migrations:** files that default-export `defineMigration()` from
   [@storyblok/schema](/docs/libraries/js/schema#content-migrations). A content migration describes
   its changes as typed ops across any number of blocks.
-  [`schema push --typed`](/docs/tooling/cli/schema/push#typed-content-migrations) writes one for the
-  breaking changes of a push.
+  [`schema push --migration-format typed`](/docs/tooling/cli/schema/push#typed-content-migrations)
+  writes one for the breaking changes of a push.
 
 ## Prerequisites
 
@@ -176,8 +176,8 @@ When every op of a content migration is skipped and a complete run of it is in p
 reports the content migration as superseded by a later schema change in one line.
 
 Run each content migration before you push the next schema change, and push the schema before you
-run a content migration that writes new fields. `schema push --typed` pushes before you run the
-migration it writes.
+run a content migration that writes new fields. `schema push --migration-format typed` pushes before
+you run the migration it writes.
 
 Delete a content migration and its snapshot once every space it targets has run it. A later rename,
 removal, or type change of a field it writes is a type error in that migration.
@@ -233,7 +233,7 @@ The following examples assume you defined a `space` in a configuration file. A t
 pushes the schema, previews the content migration `schema push` wrote, and runs it:
 
 ```bash
-storyblok schema push src/schema/schema.ts --typed
+storyblok schema push src/schema/schema.ts --migration-format typed
 storyblok migrations run 20261029141150-rename-twitter-to-x --dry-run
 storyblok migrations run 20261029141150-rename-twitter-to-x --publish published
 ```
@@ -473,9 +473,9 @@ In the introduction’s list of resource clients, add `releases` after `presets`
 ````mdx
 ## Typed content migrations
 
-Pass `--schema` with your schema entry file to generate a typed content migration for
-[`migrations run`](/docs/tooling/cli/migrations/run) instead, next to a snapshot of the block as it
-is in the space:
+Pass `--format typed` and `--schema` with your schema entry file to generate a typed content
+migration for [`migrations run`](/docs/tooling/cli/migrations/run) instead, next to a snapshot of
+the block as it is in the space:
 
 ```text
 .storyblok/
@@ -495,29 +495,35 @@ Add `.storyblok/migrations` to the `include` of your `tsconfig.json`, so a type 
 fails your type check. Commit both files, and keep the snapshot unchanged once the migration ships.
 
 Generate the migration before you push the schema change, so the snapshot holds the fields the
-migration reads. When `schema push` already changed the block, pass `--before-push` to snapshot it
-as it was before that push. A push that failed to change the block doesn’t count. For a block that
-push renamed, the snapshot holds the block under its new name, since the space renamed it in its
-stories. Without `--before-push`, the command warns when a push changed the block and no content
-migration was written since. Pass `--no-before` to skip the snapshot.
+migration reads. When `schema push` already changed the block, pass `--snapshot before-push` to
+snapshot it as it was before that push. The command reads that state from the changeset
+`schema push` saved in `.storyblok/schema/changesets/`, so run it where you pushed. A push that
+failed to change the block doesn’t count. For a block that push renamed, the snapshot holds the
+block under its new name, since the space renamed it in its stories. Without
+`--snapshot before-push`, the command warns when a push changed the block and no content migration
+was written since. Pass `--no-snapshot` to skip the snapshot.
+
+The `.js` migration functions the command writes without `--format typed` are deprecated and will be
+removed in the next major version of the CLI.
 ````
 
 <!-- target: src/content/docs/docs/tooling/cli/migrations/generate.mdx#flags (add the rows after `--suffix`) -->
 
-| Flag            | Type    | Description                                                                                                                                               |
-| --------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--schema`      | string  | _Optional._ Path to the schema entry file, which must export `type Schema`. Generates a typed content migration and its snapshot instead of a `.js` file. |
-| `--no-before`   | boolean | _Optional._ With `--schema`, skip the snapshot.                                                                                                           |
-| `--before-push` | boolean | _Optional._ Snapshot the block as it was before the latest `schema push` that changed it. Requires `--schema` and can’t be combined with `--no-before`.   |
+| Flag            | Type    | Description                                                                                                                                                             |
+| --------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--format`      | string  | _Optional._ `js` (default, deprecated) writes a `.js` migration function. `typed` writes a typed content migration and its snapshot. `typed` requires `--schema`.       |
+| `--schema`      | string  | _Optional._ With `--format typed`, path to the schema entry file, which must export `type Schema`.                                                                      |
+| `--snapshot`    | string  | _Optional._ With `--format typed`, the block state the snapshot holds: `current` (default) or `before-push`, the block before the latest `schema push` that changed it. |
+| `--no-snapshot` | boolean | _Optional._ With `--format typed`, skip the snapshot.                                                                                                                   |
 
 <!-- target: src/content/docs/docs/tooling/cli/migrations/generate.mdx#examples (append to the code block) -->
 
 ```bash
 # Generate a typed content migration for the "author" block
-storyblok migrations generate author --schema src/schema/schema.ts
+storyblok migrations generate author --format typed --schema src/schema/schema.ts
 
 # The same, for a block schema push already changed
-storyblok migrations generate author --schema src/schema/schema.ts --before-push
+storyblok migrations generate author --format typed --schema src/schema/schema.ts --snapshot before-push
 ```
 
 <!-- target: src/content/docs/docs/tooling/cli/schema/push.mdx#breaking-changes-and-migrations (replace the section body) -->
@@ -539,8 +545,9 @@ that isn’t required:
   similar, if the two names share a run of characters at least 30% as long as the longer name.
 
 By default, the command writes one `.js` migration per changed block for
-[`migrations run`](/docs/tooling/cli/migrations/run). With `--dry-run`, it prints the breaking
-changes and detected renames without writing migration files.
+[`migrations run`](/docs/tooling/cli/migrations/run). `.js` migrations are deprecated and will be
+removed in the next major version of the CLI. With `--dry-run`, it prints the breaking changes and
+detected renames without writing migration files.
 
 Before a push that changes the space, the command warns about content migrations pending on this
 machine. Run the ones written for an earlier schema change before the push, since `migrations run`
@@ -549,12 +556,15 @@ you push after the push.
 
 ### Typed content migrations
 
-Pass `--typed` to write one typed content migration for all changed blocks instead, next to a
-`.before.ts` snapshot of those blocks as they are before the push:
+Pass `--migration-format typed` to write one typed content migration for all changed blocks instead,
+next to a `.before.ts` snapshot of those blocks as they are before the push:
 
 ```bash
-storyblok schema push src/schema/schema.ts --typed
+storyblok schema push src/schema/schema.ts --migration-format typed
 ```
+
+`--migration-format` only picks the file format, so the command still asks before it generates
+migrations unless you pass `--migrations`.
 
 The content migration types the fields it writes against your schema, so it stops compiling once a
 later push renames or removes one of them. Once every space has run it, delete the content migration
@@ -609,19 +619,20 @@ Complete every `TODO` before the first run. `migrations run` writes a story only
 succeeds on it, so one refused op also keeps the changes to the story’s other blocks out.
 
 `migrations run` runs `.js` migrations and typed content migrations from the same directory. To
-switch to typed content migrations, push with `--typed`. Keep the `.js` files until every space has
-run them.
+switch to typed content migrations, push with `--migration-format typed`. Keep the `.js` files until
+every space has run them.
 
 ### Multiple spaces
 
 Each space keeps its content migrations in its own directory, `.storyblok/migrations/<space-id>/`.
 To take a schema change from one space to another, such as from development to production, push it
-to each space with `--typed`, and run the content migration it writes in that space:
+to each space with `--migration-format typed`, and run the content migration it writes in that
+space:
 
 ```bash
-storyblok schema push src/schema/schema.ts --typed --space 12345
+storyblok schema push src/schema/schema.ts --migration-format typed --space 12345
 storyblok migrations run --space 12345
-storyblok schema push src/schema/schema.ts --typed --space 67890
+storyblok schema push src/schema/schema.ts --migration-format typed --space 67890
 storyblok migrations run --space 67890
 ```
 
@@ -659,9 +670,9 @@ the old name:
 When the number of stories that use the old name stops dropping for a minute, the command continues
 and names how many stories still use it. Rename the block in those stories with a content migration
 that holds `renameBlock()`. Generate the migration with
-`migrations generate <new-name> --schema <entry-file> --no-before`, since the space no longer holds
-the old block to snapshot. When stories still use the old name after 10 minutes, the command stops.
-Run `schema push` again once the space finishes the rename.
+`migrations generate <new-name> --format typed --schema <entry-file> --no-snapshot`, since the space
+no longer holds the old block to snapshot. When stories still use the old name after 10 minutes, the
+command stops. Run `schema push` again once the space finishes the rename.
 
 While the space renames a block or field in the background, it refuses updates to every block. The
 command retries those updates for up to 10 minutes.
@@ -693,9 +704,9 @@ If the command can’t read the space, it names the migration files and leaves t
 
 <!-- target: src/content/docs/docs/tooling/cli/schema/push.mdx#flags (replace the `--migrations` row, then add the rows after it) -->
 
-| Flag           | Type    | Description                                                                                                                                            |
-| -------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `--migrations` | boolean | _Optional._ Generate migration files for breaking changes without asking, taking detected field renames as given. Pass `--no-migrations` to skip them. |
-| `--typed`      | boolean | _Optional._ Generate one typed content migration instead of one `.js` migration per block. Has no effect with `--no-migrations`.                       |
-| `--no-before`  | boolean | _Optional._ With `--typed`, skip the schema snapshot.                                                                                                  |
-| `--force`      | boolean | _Optional._ With `--delete`, delete blocks that stories still use.                                                                                     |
+| Flag                      | Type    | Description                                                                                                                                                    |
+| ------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--migrations`            | boolean | _Optional._ Generate migration files for breaking changes without asking, taking detected field renames as given. Pass `--no-migrations` to skip them.         |
+| `--migration-format`      | string  | _Optional._ `js` (default, deprecated) writes one `.js` migration per block. `typed` writes one typed content migration. Has no effect with `--no-migrations`. |
+| `--no-migration-snapshot` | boolean | _Optional._ With `--migration-format typed`, skip the migration’s schema snapshot.                                                                             |
+| `--force`                 | boolean | _Optional._ With `--delete`, delete blocks that stories still use.                                                                                             |

@@ -1,14 +1,18 @@
-import type { Command } from "commander";
+import { type Command, Option } from "commander";
 import chalk from "chalk";
 
-import type { MigrationsGenerateOptions } from "./constants";
+import { type MigrationsGenerateOptions, SNAPSHOT_SOURCES } from "./constants";
 import { colorPalette, commands } from "../../../constants";
 import { CommandError, handleError, requireAuthentication } from "../../../utils";
 import { session } from "../../../session";
 import { fetchComponent, fetchComponents } from "../../../commands/components";
 import { migrationsCommand } from "../command";
 import { generateMigration, hasMigrationSince, latestPushChanging } from "./actions";
-import { writeContentMigration } from "../content-migrations";
+import {
+  MIGRATION_FORMATS,
+  warnJsMigrationsDeprecated,
+  writeContentMigration,
+} from "../content-migrations";
 import { displayPath } from "../../schema/utils";
 import { getUI } from "../../../lib/ui";
 import { getLogger } from "../../../lib/logger/logger";
@@ -19,18 +23,31 @@ const generateCmd = migrationsCommand
   .description("Generate a migration file")
   .option(
     "--su, --suffix <suffix>",
-    "suffix to add to the file name (e.g. {component-name}.<suffix>.js; with --schema, appended to the slug)",
+    "suffix to add to the file name (e.g. {component-name}.<suffix>.js; with --format typed, appended to the slug)",
   )
   .option("-s, --space <space>", "space ID")
+  // @todo(next-major): Remove `--format` once `js` goes; always write typed migrations.
+  .addOption(
+    new Option(
+      "--format <format>",
+      "js writes a .js migration function (deprecated), typed a defineMigration file",
+    )
+      .choices(MIGRATION_FORMATS)
+      .default("js"),
+  )
   .option(
     "--schema <entry-file>",
-    "schema entry file that exports type Schema; generates a typed defineMigration file instead of a .js migration",
+    "with --format typed, the schema entry file that exports type Schema",
   )
-  .option("--no-before", "with --schema, skip the .before.ts schema snapshot")
-  .option(
-    "--before-push",
-    "with --schema, snapshot the block as it was before the latest schema push that changed it",
-  );
+  .addOption(
+    new Option(
+      "--snapshot <source>",
+      "with --format typed, the block state the .before.ts snapshot holds: current, or before-push for the block as it was before the latest schema push that changed it",
+    )
+      .choices(SNAPSHOT_SOURCES)
+      .default("current"),
+  )
+  .addOption(new Option("--no-snapshot", "with --format typed, skip the .before.ts snapshot"));
 
 generateCmd.action(
   async (
@@ -50,7 +67,9 @@ generateCmd.action(
     );
 
     const { space, path, verbose } = command.optsWithGlobals();
-    const { suffix, schema: schemaEntry, before, beforePush } = options;
+    const { suffix, format, schema: schemaEntry, snapshot } = options;
+    const typed = format === "typed";
+    const beforePush = snapshot === "before-push";
 
     logger.info("Migration generation started", {
       componentName,
@@ -78,19 +97,26 @@ generateCmd.action(
       return;
     }
 
-    if (beforePush && !schemaEntry) {
+    if (typed && !schemaEntry) {
       handleError(
         new CommandError(
-          "--before-push snapshots the block for a typed content migration, so it requires --schema.",
+          "--format typed types the migration against your schema, so it requires --schema <entry-file>.",
         ),
         verbose,
       );
       return;
     }
-    if (beforePush && !before) {
+    if (!typed && schemaEntry) {
+      handleError(
+        new CommandError("--schema types a defineMigration file, so it requires --format typed."),
+        verbose,
+      );
+      return;
+    }
+    if (beforePush && !typed) {
       handleError(
         new CommandError(
-          "--before-push snapshots the block, so it can't be combined with --no-before.",
+          "--snapshot before-push snapshots the block for a typed content migration, so it requires --format typed.",
         ),
         verbose,
       );
@@ -117,19 +143,19 @@ generateCmd.action(
       );
       return;
     }
-    if (!schemaEntry && !before) {
-      ui.warn("--no-before has no effect without --schema.");
+    if (!typed && snapshot === false) {
+      ui.warn("--no-snapshot has no effect without --format typed.");
     }
 
     const spinner = ui.createSpinner(`Generating migration for component ${componentName}...`);
     try {
-      const snapshotted = schemaEntry && before;
+      const snapshotted = schemaEntry && snapshot !== false;
       const push = snapshotted ? await latestPushChanging(path, space, componentName) : undefined;
       if (beforePush && !push) {
         spinner.failed(`Failed to generate migration for component ${componentName}`);
         handleError(
           new CommandError(
-            `No schema push to space ${space} recorded a change to ${componentName}, so there is no earlier state to snapshot. Run without --before-push.`,
+            `No schema push to space ${space} recorded a change to ${componentName}, so there is no earlier state to snapshot. Run without --snapshot before-push.`,
           ),
           verbose,
         );
@@ -139,7 +165,7 @@ generateCmd.action(
       // pushed schema, so a new one most likely starts from there too.
       if (push && !beforePush && !(await hasMigrationSince(path, space, push).catch(() => false))) {
         ui.warn(
-          `schema push changed ${componentName} at ${push.timestamp}, so the snapshot describes the block after that push. Pass --before-push to snapshot it as it was before.`,
+          `schema push changed ${componentName} at ${push.timestamp}, so the snapshot describes the block after that push. Pass --snapshot before-push to snapshot it as it was before.`,
         );
       }
       const components = !snapshotted
@@ -183,6 +209,9 @@ generateCmd.action(
       );
       for (const snapshotPath of snapshotPaths) {
         ui.ok(`Schema snapshot: ${chalk.hex(colorPalette.MIGRATIONS)(snapshotPath)}`);
+      }
+      if (!typed) {
+        warnJsMigrationsDeprecated("--format typed --schema <entry-file>");
       }
 
       logger.info("Migration generation finished", {

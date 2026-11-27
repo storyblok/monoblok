@@ -94,7 +94,19 @@ describe("migrations generate command", () => {
     vol.reset();
     getProgram().setOptionValueWithSource("path", undefined, "default");
     const generateCmd = migrationsCommand.commands.find((command) => command.name() === "generate");
-    Reflect.set(generateCmd as object, "_optionValues", { before: true });
+    Reflect.set(generateCmd as object, "_optionValues", { format: "js", snapshot: "current" });
+  });
+
+  it("should warn that .js migration functions are deprecated", async () => {
+    preconditions.componentExists();
+
+    await generate("component-name");
+
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        ".js migration functions are deprecated and will be removed in the next major version. Pass --format typed --schema <entry-file> to write a typed content migration instead.",
+      ),
+    );
   });
 
   it("should generate a migration using default path", async () => {
@@ -264,7 +276,7 @@ describe("migrations generate command", () => {
       preconditions.componentExists();
       preconditions.hasSchemaEntry();
 
-      await generate("component-name", "--schema", "src/schema.ts");
+      await generate("component-name", "--format", "typed", "--schema", "src/schema.ts");
 
       const migration = writtenFile(`migrations/12345/${ID}.ts`);
       const before = writtenFile(`migrations/12345/${ID}.before.ts`);
@@ -287,33 +299,88 @@ describe("migrations generate command", () => {
       preconditions.hasSchemaEntry();
       preconditions.hasMigrations("0001-a.ts", "20261016090503-b.ts", "legacy.js");
 
-      await generate("component-name", "--schema", "src/schema.ts", "--suffix", "drop-title");
+      await generate(
+        "component-name",
+        "--format",
+        "typed",
+        "--schema",
+        "src/schema.ts",
+        "--suffix",
+        "drop-title",
+      );
 
       expect(writtenFile("20261016090504-component-name-drop-title.ts")).toBeDefined();
       expect(writtenFile("20261016090504-component-name-drop-title.before.ts")).toBeDefined();
     });
 
-    it("should skip the snapshot with --no-before", async () => {
+    it("should skip the snapshot with --no-snapshot", async () => {
       preconditions.componentExists();
       preconditions.hasSchemaEntry();
 
-      await generate("component-name", "--schema", "src/schema.ts", "--no-before");
+      await generate(
+        "component-name",
+        "--format",
+        "typed",
+        "--schema",
+        "src/schema.ts",
+        "--no-snapshot",
+      );
 
       expect(writtenFile(`${ID}.ts`)).toContain("defineMigration<Schema>([");
       expect(writtenFile(".before.ts")).toBeUndefined();
     });
 
-    it("should warn that --no-before needs --schema", async () => {
+    it("should not warn about deprecated .js migration functions", async () => {
+      preconditions.componentExists();
+      preconditions.hasSchemaEntry();
+
+      await generate("component-name", "--format", "typed", "--schema", "src/schema.ts");
+
+      expect(console.warn).not.toHaveBeenCalledWith(expect.stringContaining("deprecated"));
+    });
+
+    it("should warn that --no-snapshot needs --format typed", async () => {
       preconditions.componentExists();
 
-      await generate("component-name", "--no-before");
+      await generate("component-name", "--no-snapshot");
 
       expect(console.warn).toHaveBeenCalledWith(
-        expect.stringContaining("--no-before has no effect without --schema."),
+        expect.stringContaining("--no-snapshot has no effect without --format typed."),
       );
     });
 
-    it("should refuse --before-push without --schema with one error", async () => {
+    it("should refuse --format typed without --schema", async () => {
+      preconditions.componentExists();
+
+      await generate("component-name", "--format", "typed");
+
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "--format typed types the migration against your schema, so it requires --schema <entry-file>.",
+        ),
+      );
+      expect(Object.keys(vol.toJSON())).not.toContainEqual(
+        expect.stringContaining("migrations/12345"),
+      );
+    });
+
+    it("should refuse --schema without --format typed", async () => {
+      preconditions.componentExists();
+      preconditions.hasSchemaEntry();
+
+      await generate("component-name", "--schema", "src/schema.ts");
+
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "--schema types a defineMigration file, so it requires --format typed.",
+        ),
+      );
+      expect(Object.keys(vol.toJSON())).not.toContainEqual(
+        expect.stringContaining("migrations/12345"),
+      );
+    });
+
+    it("should refuse --snapshot before-push without --format typed with one error", async () => {
       preconditions.componentExists();
       vol.fromJSON({
         ".storyblok/schema/changesets/2026-10-16T09-00-00-000Z.json": JSON.stringify({
@@ -324,11 +391,11 @@ describe("migrations generate command", () => {
         }),
       });
 
-      await generate("component-name", "--before-push");
+      await generate("component-name", "--snapshot", "before-push");
 
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining(
-          "--before-push snapshots the block for a typed content migration, so it requires --schema.",
+          "--snapshot before-push snapshots the block for a typed content migration, so it requires --format typed.",
         ),
       );
       expect(console.warn).not.toHaveBeenCalled();
@@ -338,26 +405,10 @@ describe("migrations generate command", () => {
       );
     });
 
-    it("should refuse --before-push with --no-before", async () => {
-      preconditions.componentExists();
-      preconditions.hasSchemaEntry();
-
-      await generate("component-name", "--schema", "src/schema.ts", "--no-before", "--before-push");
-
-      expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining(
-          "--before-push snapshots the block, so it can't be combined with --no-before.",
-        ),
-      );
-      expect(Object.keys(vol.toJSON())).not.toContainEqual(
-        expect.stringContaining("migrations/12345"),
-      );
-    });
-
     it("should refuse a schema entry that does not exist", async () => {
       preconditions.componentExists();
 
-      await generate("component-name", "--schema", "src/missing.ts");
+      await generate("component-name", "--format", "typed", "--schema", "src/missing.ts");
 
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining("Schema entry file not found or not a file: src/missing.ts"),
@@ -371,7 +422,7 @@ describe("migrations generate command", () => {
       preconditions.componentExists();
       preconditions.hasSchemaEntry();
 
-      await generate("component-name", "--schema", "src");
+      await generate("component-name", "--format", "typed", "--schema", "src");
 
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining("Schema entry file not found or not a file: src"),
@@ -404,12 +455,20 @@ describe("migrations generate command", () => {
         }),
       });
 
-      it("should snapshot the block as it was before the push with --before-push", async () => {
+      it("should snapshot the block as it was before the push with --snapshot before-push", async () => {
         preconditions.componentExists();
         preconditions.hasSchemaEntry();
         vol.fromJSON(changesetFor(12345, "component-name"));
 
-        await generate("component-name", "--schema", "src/schema.ts", "--before-push");
+        await generate(
+          "component-name",
+          "--format",
+          "typed",
+          "--schema",
+          "src/schema.ts",
+          "--snapshot",
+          "before-push",
+        );
 
         const before = writtenFile(`${ID}.before.ts`);
         expect(before).toContain("defineField('old_title'");
@@ -417,7 +476,7 @@ describe("migrations generate command", () => {
       });
 
       it.each(["renamed-block", "component-name"])(
-        "should snapshot a block a push renamed under its new name when asked for it as %s with --before-push",
+        "should snapshot a block a push renamed under its new name when asked for it as %s with --snapshot before-push",
         async (name) => {
           preconditions.componentExists();
           preconditions.hasSchemaEntry();
@@ -445,7 +504,15 @@ describe("migrations generate command", () => {
             ),
           });
 
-          await generate(name, "--schema", "src/schema.ts", "--before-push");
+          await generate(
+            name,
+            "--format",
+            "typed",
+            "--schema",
+            "src/schema.ts",
+            "--snapshot",
+            "before-push",
+          );
 
           const before = writtenFile(".before.ts");
           expect(before).toContain("name: 'renamed-block'");
@@ -485,7 +552,15 @@ describe("migrations generate command", () => {
           }),
         });
 
-        await generate("card", "--schema", "src/schema.ts", "--before-push");
+        await generate(
+          "card",
+          "--format",
+          "typed",
+          "--schema",
+          "src/schema.ts",
+          "--snapshot",
+          "before-push",
+        );
 
         const before = writtenFile(".before.ts");
         expect(before).toContain("'teaser'");
@@ -501,12 +576,20 @@ describe("migrations generate command", () => {
           ...changesetFor(99999, "component-name", "2026-10-16T09:02:00.000Z", "other_title"),
         });
 
-        await generate("component-name", "--schema", "src/schema.ts", "--before-push");
+        await generate(
+          "component-name",
+          "--format",
+          "typed",
+          "--schema",
+          "src/schema.ts",
+          "--snapshot",
+          "before-push",
+        );
 
         expect(writtenFile(`${ID}.before.ts`)).toContain("defineField('old_title'");
       });
 
-      it("should skip a push that failed to change the block with --before-push", async () => {
+      it("should skip a push that failed to change the block with --snapshot before-push", async () => {
         preconditions.componentExists();
         preconditions.hasSchemaEntry();
         vol.fromJSON({
@@ -520,7 +603,15 @@ describe("migrations generate command", () => {
           ),
         });
 
-        await generate("component-name", "--schema", "src/schema.ts", "--before-push");
+        await generate(
+          "component-name",
+          "--format",
+          "typed",
+          "--schema",
+          "src/schema.ts",
+          "--snapshot",
+          "before-push",
+        );
 
         expect(writtenFile(`${ID}.before.ts`)).toContain("defineField('old_title'");
       });
@@ -530,7 +621,7 @@ describe("migrations generate command", () => {
         preconditions.hasSchemaEntry();
         vol.fromJSON(changesetFor(12345, "component-name", pushedAt, "old_title", true));
 
-        await generate("component-name", "--schema", "src/schema.ts");
+        await generate("component-name", "--format", "typed", "--schema", "src/schema.ts");
 
         expect(writtenFile(`${ID}.before.ts`)).toContain("defineField('title'");
         expect(console.warn).not.toHaveBeenCalledWith(
@@ -538,17 +629,17 @@ describe("migrations generate command", () => {
         );
       });
 
-      it("should warn that the snapshot describes the pushed block without --before-push", async () => {
+      it("should warn that the snapshot describes the pushed block without --snapshot before-push", async () => {
         preconditions.componentExists();
         preconditions.hasSchemaEntry();
         vol.fromJSON(changesetFor(12345, "component-name"));
 
-        await generate("component-name", "--schema", "src/schema.ts");
+        await generate("component-name", "--format", "typed", "--schema", "src/schema.ts");
 
         expect(writtenFile(`${ID}.before.ts`)).toContain("defineField('title'");
         expect(console.warn).toHaveBeenCalledWith(
           expect.stringContaining(
-            `schema push changed component-name at ${pushedAt}, so the snapshot describes the block after that push. Pass --before-push to snapshot it as it was before.`,
+            `schema push changed component-name at ${pushedAt}, so the snapshot describes the block after that push. Pass --snapshot before-push to snapshot it as it was before.`,
           ),
         );
       });
@@ -559,7 +650,7 @@ describe("migrations generate command", () => {
         preconditions.hasMigrations("20261016090000-update-component-name.ts");
         vol.fromJSON(changesetFor(12345, "component-name"));
 
-        await generate("component-name", "--schema", "src/schema.ts");
+        await generate("component-name", "--format", "typed", "--schema", "src/schema.ts");
 
         expect(writtenFile(`${ID}.before.ts`)).toBeDefined();
         expect(console.warn).not.toHaveBeenCalledWith(
@@ -579,7 +670,7 @@ describe("migrations generate command", () => {
           }),
         });
 
-        await generate("component-name", "--schema", "src/schema.ts");
+        await generate("component-name", "--format", "typed", "--schema", "src/schema.ts");
 
         expect(console.warn).toHaveBeenCalledWith(
           expect.stringContaining(`schema push changed component-name at ${pushedAt}`),
@@ -592,19 +683,27 @@ describe("migrations generate command", () => {
         preconditions.hasMigrations("20261016085959-card.ts", "0001-legacy-numbering.ts");
         vol.fromJSON(changesetFor(12345, "component-name"));
 
-        await generate("component-name", "--schema", "src/schema.ts");
+        await generate("component-name", "--format", "typed", "--schema", "src/schema.ts");
 
         expect(console.warn).toHaveBeenCalledWith(
           expect.stringContaining(`schema push changed component-name at ${pushedAt}`),
         );
       });
 
-      it("should refuse --before-push when no push to the space changed the block", async () => {
+      it("should refuse --snapshot before-push when no push to the space changed the block", async () => {
         preconditions.componentExists();
         preconditions.hasSchemaEntry();
         vol.fromJSON(changesetFor(99999, "component-name"));
 
-        await generate("component-name", "--schema", "src/schema.ts", "--before-push");
+        await generate(
+          "component-name",
+          "--format",
+          "typed",
+          "--schema",
+          "src/schema.ts",
+          "--snapshot",
+          "before-push",
+        );
 
         expect(console.error).toHaveBeenCalledWith(
           expect.stringContaining(
@@ -620,7 +719,14 @@ describe("migrations generate command", () => {
       preconditions.hasSchemaEntry();
       preconditions.hasMigrations(`${ID}.before.ts`);
 
-      await generate("component-name", "--schema", "src/schema.ts", "--no-before");
+      await generate(
+        "component-name",
+        "--format",
+        "typed",
+        "--schema",
+        "src/schema.ts",
+        "--no-snapshot",
+      );
 
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining(`.storyblok/migrations/12345/${ID}.before.ts already exists`),

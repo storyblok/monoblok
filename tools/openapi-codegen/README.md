@@ -5,9 +5,9 @@ shared `@hey-api/openapi-ts` generator invocation. Not published.
 
 Every package with a `generate:openapi` target is a consumer. Today that is `@storyblok/api-client`,
 `@storyblok/management-api-client`, `@storyblok/schema`, `@storyblok/live-preview`,
-`@storyblok/experiments`, and `@storyblok/richtext`. Do not maintain that list by hand anywhere:
-`pnpm nx run-many -t generate:openapi` resolves it from the target name, so a new consumer is picked
-up automatically.
+`@storyblok/experiments`, `@storyblok/richtext`, and `storyblok` (the CLI). Do not maintain that
+list by hand anywhere: `pnpm nx run-many -t generate:openapi` resolves it from the target name, so a
+new consumer is picked up automatically.
 
 ## Two spec sources
 
@@ -89,8 +89,9 @@ change worth reviewing.
 ## Version policy
 
 Pinned at `0.0.1`. Updates here are chores, so consumers never get a dependency bump from spec
-refreshes or internal refactors. Bump the version only when the exported API (`generate`,
-`copyWrappers`) changes in a way that requires consumers to update their `scripts/generate.ts`.
+refreshes or internal refactors. Bump the version only when the exported API (`generate` and its
+`GenerateConfig` and `KnownType` types) changes in a way that requires consumers to update their
+`scripts/generate.ts`.
 
 ## CI contract
 

@@ -1,46 +1,34 @@
-# CLI Schema Command — Manual Test Playground
+# Schema Command Playground
 
-Test playground for `storyblok schema push`, `init`, and `rollback`.
-
-Includes:
-
-- Composability patterns
-- Versioning
-- Use in a webapp, fully typed and using discriminated types for full Content types experience
+Test playground for `storyblok schema push`, `init`, and `rollback`, covering composability patterns
+(`composability/`), schema versioning (`versions/`), and typed API client usage (`app/`).
 
 ## Setup
 
-1. Create a space on Storyblok (or use an empty one).
-
-2. Authenticate and set the space ID:
+1. Create an empty space.
+2. Log in and set the space ID:
 
    ```bash
-   storyblok login # or prefix it with pnpm (pnpm storyblok login) if you're running local version
+   pnpm exec storyblok login
    export STORYBLOK_SPACE_ID=<your-space-id>
    ```
 
-3. Install dependencies and build (from monorepo root):
+3. Install and build from the monorepo root:
 
    ```bash
    pnpm install
    pnpm nx run-many --target=build --parallel=3 -p=tag:npm:public
    ```
 
-4. Run scripts from this directory:
+4. Run scripts from `packages/schema/playground/vanilla`.
 
-   ```bash
-   cd packages/cli/playground/schema
-   pnpm schema:push
-   ```
-
-## Quick test commands
+## Commands
 
 ```bash
-pnpm schema:init          # Scaffold a schema.ts from a existing space (intended for single use)
-pnpm schema:push          # Push main schema
+pnpm schema:init       # Scaffold a schema.ts from an existing space
+pnpm schema:push       # Push base/schema.ts
 pnpm schema:rollback
-pnpm composability        # Push the schema in composability/schema.ts
-pnpm ver:1.0.0             # Push version 1.0.0
-pnpm ver:1.1.0             # Push version 1.1.0
-pnpm ver:2.0.0             # Push version 2.0.0
+pnpm ver:1.0.0         # Push versions/v1.0.0.ts (also 1.1.0, 2.0.0)
+pnpm validate          # Run app/validate.ts
+pnpm exec storyblok schema push composability/schema.ts -s $STORYBLOK_SPACE_ID
 ```

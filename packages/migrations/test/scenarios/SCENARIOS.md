@@ -9,6 +9,5 @@
 | `has-cross-references-target` | Target space: same components, 3 plain stories. Seed with `--space $STORYBLOK_SPACE_ID_TARGET`.                                                                                                                                                  |
 
 A story's `uuid` and a multilink's `id` are both real uuid strings, and the same slug carries the
-same uuid in the source and target scenarios. Fixtures previously used the numeric story id here,
-which `mapRefs` skips, so the one scenario built to exercise remapping could not have detected a
-broken remap.
+same uuid in the source and target scenarios. `mapRefs` skips numeric story ids, so fixtures using
+them couldn't detect a broken remap.

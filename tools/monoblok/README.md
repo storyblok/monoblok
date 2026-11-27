@@ -24,7 +24,6 @@ Create a `repo-manifest.json` file in the monorepo root to define packages for m
 ```json
 {
   "@storyblok/region-helper": {
-    "remote": "storyblok-region-helper",
     "repo": "storyblok/region-helper",
     "branch": "main",
     "path": "packages/region-helper"

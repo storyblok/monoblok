@@ -1,46 +1,11 @@
-# Astro Starter Kit: Minimal
+# Schema Astro Playground
 
-```sh
-pnpm create astro@latest -- --template minimal
-```
+Astro site whose blocks, datasources, and content come from a code-defined schema in `src/schema/`,
+for manually testing `@storyblok/schema` with the `storyblok schema` commands.
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+Set `STORYBLOK_SPACE_ID`, `STORYBLOK_TOKEN` (personal access token, for `seed`), and
+`STORYBLOK_PREVIEW_TOKEN` (for `dev`), and log in with the CLI. Then run from this directory:
 
-## 🚀 Project Structure
-
-Inside of your Astro project, you'll see the following folders and files:
-
-```text
-/
-├── public/
-├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
-```
-
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a
-route based on its file name.
-
-There's nothing special about `src/components/`, but that's where we like to put any
-Astro/React/Vue/Svelte/Preact components.
-
-Any static assets, like images, can be placed in the `public/` directory.
-
-## 🧞 Commands
-
-All commands are run from the root of the project, from a terminal:
-
-| Command                | Action                                           |
-| :--------------------- | :----------------------------------------------- |
-| `pnpm install`         | Installs dependencies                            |
-| `pnpm dev`             | Starts local dev server at `localhost:4321`      |
-| `pnpm build`           | Build your production site to `./dist/`          |
-| `pnpm preview`         | Preview your build locally, before deploying     |
-| `pnpm astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `pnpm astro -- --help` | Get help using the Astro CLI                     |
-
-## 👀 Want to learn more?
-
-Feel free to check [our documentation](https://docs.astro.build) or jump into our
-[Discord server](https://astro.build/chat).
+- `pnpm seed`: clean the space and push the schema, datasources, assets, and stories
+- `pnpm schema:push`, `pnpm schema:init`, `pnpm schema:rollback`: run the schema commands
+- `pnpm dev`: start the site

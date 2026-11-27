@@ -1,6 +1,7 @@
 # ADR-0004: OpenAPI Specs Pulled on Demand
 
-**Status:** Accepted **Date:** 2026-05-27
+**Status:** Accepted  
+**Date:** 2026-05-27
 
 ## Context
 

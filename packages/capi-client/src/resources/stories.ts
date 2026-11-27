@@ -28,6 +28,7 @@ import type {
 } from "../utils/inline-links";
 import { inlineStoriesContent, resolveRelationMap } from "../utils/inline-relations";
 import type { ApiResponse, FetchOptions, ResourceDeps } from "../client";
+import { applyCvToQuery, extractCv } from "../utils/cv";
 import { ClientError } from "../error";
 import type {
   BlockFields,
@@ -637,6 +638,7 @@ export function createStoriesResource<
     inlineLinks: shouldInlineLinks = false,
     circularRelations,
     throttleManager,
+    cvMode = "auto",
   } = deps;
 
   /**
@@ -691,6 +693,19 @@ export function createStoriesResource<
           circularRelations,
         })
       : stories;
+  };
+
+  /**
+   * The query follow-up requests send: under `cv: 'auto'`, a read that went out without a `cv`,
+   * cold or checking the known one, passes on the `cv` its response reported, so they read the
+   * same snapshot.
+   */
+  const snapshotQuery = (
+    requestQuery: Record<string, unknown>,
+    data: unknown,
+  ): Record<string, unknown> => {
+    const servedCv = cvMode === "auto" ? extractCv(data) : undefined;
+    return servedCv === undefined ? requestQuery : applyCvToQuery(requestQuery, servedCv);
   };
 
   /**
@@ -784,7 +799,12 @@ export function createStoriesResource<
           // and `links`/`link_uuids`; consumers keep seeing the generic `Story`.
           const storyData = response.data as unknown as StoryData;
           try {
-            const [story] = await inlineStories([storyData.story], storyData, requestQuery, signal);
+            const [story] = await inlineStories(
+              [storyData.story],
+              storyData,
+              snapshotQuery(requestQuery, storyData),
+              signal,
+            );
             return { ...response, data: { ...response.data, story } };
           } catch (error) {
             if (shouldThrow(throwOnError) || !(error instanceof ClientError)) {
@@ -878,7 +898,7 @@ export function createStoriesResource<
             const stories = await inlineStories(
               storiesData.stories,
               storiesData,
-              requestQuery,
+              snapshotQuery(requestQuery, storiesData),
               signal,
             );
             return { ...response, data: { ...response.data, stories } };

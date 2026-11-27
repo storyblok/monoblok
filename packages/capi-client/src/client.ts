@@ -5,7 +5,12 @@ import type {
   CacheStrategyHandler,
   StrategyFailure,
 } from "./utils/cache";
-import { createMemoryCacheProvider, createStrategy, isTransientStatus } from "./utils/cache";
+import {
+  createMemoryCacheProvider,
+  createNetworkFirstStrategy,
+  createStrategy,
+  isTransientStatus,
+} from "./utils/cache";
 import { ClientError } from "./error";
 import type { RateLimitConfig, ThrottleManager } from "./utils/rate-limit";
 import { createThrottleManager } from "./utils/rate-limit";
@@ -17,8 +22,15 @@ import {
   extractSpaceVersion,
   isCvPinned,
 } from "./utils/cv";
+import { claimCvCheck, cvCheckedKey, readCvClock, recordCvChecked } from "./utils/cv-refresh";
 import { querySerializer } from "./utils/query-serializer";
-import { createCacheKey, isDraftRequest, isSpacesMeRequest, shouldUseCache } from "./utils/request";
+import {
+  createCacheKey,
+  isCvCheckRequest,
+  isDraftRequest,
+  isSpacesMeRequest,
+  shouldUseCache,
+} from "./utils/request";
 import { createTokenId } from "./utils/token-id";
 import {
   haveVersionsChanged,
@@ -164,6 +176,8 @@ export interface ResourceDeps<DefaultThrowOnError extends boolean = false> {
     p: Promise<unknown>,
   ) => Promise<ApiResponse<TData, ThrowOnError>>;
   throttleManager: ThrottleManager;
+  /** `'manual'` keeps follow-up requests free of a `cv`. */
+  cvMode?: CacheConfig["cv"];
 }
 
 // ---------------------------------------------------------------------------
@@ -181,19 +195,31 @@ export interface CacheConfig {
    * Custom cache provider. Defaults to an in-memory LRU cache (1,000 entries).
    *
    * Clients may share a provider, which lets per-request clients share the publish signal.
-   * Keys are scoped per access token. The key `sb:versions:v1:<tokenId>` is reserved for
-   * the version watermarks.
+   * Keys are scoped per access token. The keys `sb:versions:v1:<tokenId>` and
+   * `sb:cv-checked:v1:<tokenId>` are reserved for the version watermarks and the `cv` check.
    */
   provider?: CacheProvider;
-  /** Cache strategy for published requests. @default 'cache-first' */
+  /**
+   * Cache strategy for published requests. A custom handler that answers from `cachedResult`
+   * whenever it has one never sends the `cv` check (see `cv`), so it shows a publish only
+   * once the entry's TTL expires.
+   *
+   * @default 'cache-first'
+   */
   strategy?: CacheStrategy | CacheStrategyHandler;
   /** Time-to-live in milliseconds for cached entries. @default 60_000 */
   ttlMs?: number;
   /**
    * Controls how the `cv` (content version) query parameter is managed.
    *
-   * - `'auto'` (default): automatically attach the tracked `cv` to
-   *   subsequent published requests for cache busting.
+   * - `'auto'` (default): attach the tracked `cv` to published requests, so the CDN
+   *   serves them from its cache. The CDN keeps serving a `cv` it holds after a publish,
+   *   so under `flush: 'auto'`, at most once a minute, a published read of stories or links
+   *   goes out without it to learn the current one, even when the response is cached. Under
+   *   `'cache-first'` and `'network-first'`, when that read fails transiently (a network
+   *   error, a 5xx, 408, 413 or 429) once its retries are exhausted, the cached response is
+   *   returned; any other error is returned as usual. Under `'swr'` it is the background
+   *   revalidation; a custom strategy handler decides whether that read uses the network.
    * - `'manual'`: do not attach `cv` to outgoing requests. The client still
    *   tracks the cv for cache invalidation, but the query parameter is not sent.
    *   Useful for SSR with edge caching where stable URLs are required.
@@ -206,8 +232,10 @@ export interface CacheConfig {
    * - `'auto'` (default): entries stop being served once the API reports a newer version
    *   than the one they were served under. The provider isn't emptied; stale entries
    *   expire by TTL or eviction.
-   * - `'manual'`: a version change never invalidates a cached entry; call
-   *   `client.flushCache()` explicitly, for example from a webhook.
+   * - `'manual'`: a version change never invalidates a cached entry, and the client never
+   *   checks the known `cv` (see `cv`); call `client.flushCache()` explicitly, for example
+   *   from a webhook. A newer `cv` the client learns, e.g. from a draft read, still applies to
+   *   requests that miss the cache, while cached entries serve the old snapshot until then.
    *
    * In either mode, a response that was in flight across a publish or a `flushCache()` is
    * not cached. One issued before any `cv` was known is caught only by a moved space
@@ -286,8 +314,9 @@ export interface ContentApiClientConfig<
    * Keep `response.url`: the client learns the current `cv` from the URL the API redirected a
    * request to. A rebuilt `Response` (e.g. `new Response(r.body, r)`) drops it; then only
    * story responses teach a `cv`, from their body, and an app that reads no stories caches with
-   * TTL-only invalidation. Interceptors and framework caches that rebuild the `Response` do the
-   * same, e.g. Next.js `cacheComponents` prerender caches return `url: ""`.
+   * TTL-only invalidation, which the once-a-minute `cv` check doesn't change. Interceptors and
+   * framework caches that rebuild the `Response` do the same, e.g. Next.js `cacheComponents`
+   * prerender caches return `url: ""`.
    *
    * @default globalThis.fetch
    */
@@ -420,11 +449,19 @@ export const createApiClientBase = <
       ? createStrategy(cache.strategy, swrOptions)
       : cache.strategy
     : createStrategy("cache-first");
+  // A check of the `cv` must reach the origin, yet a failing one should not cost a read the
+  // cache could have answered, so `cache-first` checks network-first. `swr` already revalidates
+  // in the background, so it checks there, and a custom handler decides for itself.
+  const cvCheckStrategy =
+    cache.strategy === undefined || cache.strategy === "cache-first"
+      ? createNetworkFirstStrategy()
+      : strategy;
   const cacheTtlMs = cache.ttlMs ?? 60_000;
   const cacheFlush = cache.flush ?? "auto";
   const cvMode = cache.cv ?? "auto";
   const tokenId = createTokenId(accessToken);
   const watermarksKey = versionsKey(tokenId);
+  const checkKey = cvCheckedKey(tokenId);
 
   const client: Client = createClient(
     createConfig({
@@ -453,6 +490,10 @@ export const createApiClientBase = <
       },
     }),
   );
+
+  // The final URL of an error response, which a `ClientError` doesn't carry, for the `cv` it
+  // was redirected to.
+  const errorResponseUrls = new WeakMap<ClientError, string>();
 
   client.interceptors.error.use(
     (
@@ -487,11 +528,13 @@ export const createApiClientBase = <
         });
       }
 
-      return new ClientError(response.statusText || "API request failed", {
+      const clientError = new ClientError(response.statusText || "API request failed", {
         status: response.status,
         statusText: response.statusText,
         data: error,
       });
+      errorResponseUrls.set(clientError, response.url);
+      return clientError;
     },
   );
 
@@ -544,7 +587,7 @@ export const createApiClientBase = <
    */
   const applyResponseVersions = async (
     path: string,
-    result: ApiResponse,
+    data: unknown,
     {
       servedCv,
       currentCv,
@@ -558,8 +601,8 @@ export const createApiClientBase = <
       issuedUnder?: { knownCv?: number; knownSpaceVersion?: number };
       generationAtIssue: number;
     },
-  ): Promise<boolean> => {
-    const spaceVersion = isSpacesMeRequest(path) ? extractSpaceVersion(result.data) : undefined;
+  ): Promise<{ mayCache: boolean; isStaleEdgeRead: boolean }> => {
+    const spaceVersion = isSpacesMeRequest(path) ? extractSpaceVersion(data) : undefined;
     const current = await readVersions(cacheProvider, watermarksKey);
 
     // A superseded response served from the new `cv` only lost a race; keep it.
@@ -607,13 +650,17 @@ export const createApiClientBase = <
       // to the write itself.
       const latest = await readVersions(cacheProvider, watermarksKey);
       if ((latest?.generation ?? 0) !== (current?.generation ?? 0)) {
-        return false;
+        return { mayCache: false, isStaleEdgeRead };
       }
 
       await writeVersions(cacheProvider, watermarksKey, next);
+      // The known `cv` only moves to a current one, so learning one restarts the refresh window.
+      if (next.knownCv !== undefined && next.knownCv !== current?.knownCv) {
+        await recordCvChecked(cacheProvider, checkKey, readCvClock());
+      }
     }
 
-    return mayCache;
+    return { mayCache, isStaleEdgeRead };
   };
 
   /**
@@ -689,7 +736,6 @@ export const createApiClientBase = <
       const latest = await readVersions(cacheProvider, watermarksKey).catch(() => versions);
       return { versions: latest };
     }
-
     let release = () => {};
     const discovery = new Promise<void>((resolve) => {
       release = resolve;
@@ -715,8 +761,9 @@ export const createApiClientBase = <
 
     if (!cacheEnabled) {
       // No `cv` is attached: on `/cdn/spaces/me` it would fragment the edge cache polling
-      // depends on, and drafts ignore it. Drafts come from the origin, so a draft's `cv` is
-      // current and a publish signal, the only one for apps that never poll `/cdn/spaces/me`.
+      // depends on, and drafts ignore it. A draft's `cv` is still a publish signal, the
+      // only one for apps that never poll `/cdn/spaces/me`. Drafts come from the origin, so
+      // their `cv` is current; other uncached responses teach none.
       const versionsAtIssue = readVersions(cacheProvider, watermarksKey);
       // Awaited after the request; prevents an unhandled rejection meanwhile.
       versionsAtIssue.catch(() => undefined);
@@ -724,7 +771,7 @@ export const createApiClientBase = <
 
       try {
         const versions = await versionsAtIssue;
-        await applyResponseVersions(path, networkResult, {
+        await applyResponseVersions(path, networkResult.data, {
           servedCv: extractServedCv(networkResult, { method, path, query: rawQuery }),
           currentCv: isDraftRequest(rawQuery) ? extractCv(networkResult.data) : undefined,
           issuedUnder: {
@@ -791,8 +838,23 @@ export const createApiClientBase = <
       cachedEntry?.cv !== undefined &&
       cachedEntry.cv !== versions?.knownCv;
     const cachedResult = isStaleByCv ? undefined : cachedEntry?.value;
+    // Under `flush: 'manual'` only `flushCache()` changes what a cached key serves, so a check
+    // would cost a request per minute for nothing. A caller's own `cv` is sent as given, even
+    // when it matches the known one.
+    const mayCheckCv =
+      cvMode === "auto" &&
+      cacheFlush === "auto" &&
+      callerCv === undefined &&
+      versions?.knownCv !== undefined &&
+      isCvCheckRequest(path);
+    const cvCheck = mayCheckCv
+      ? await claimCvCheck(cacheProvider, checkKey, readCvClock())
+      : undefined;
+    const isCvCheck = cvCheck !== undefined;
 
+    let hasLoadedNetwork = false;
     const loadNetwork = async () => {
+      hasLoadedNetwork = true;
       const discovery = isPinnedRequest ? { versions } : await awaitCvDiscovery(versions);
       try {
         return await loadNetworkUnder(discovery.versions);
@@ -802,48 +864,98 @@ export const createApiClientBase = <
     };
 
     const loadNetworkUnder = async (versions: VersionWatermarks | undefined) => {
-      // Without a known `cv`, the origin redirects the bare request to the current one.
+      // Without a known `cv`, or to check it, the origin redirects the bare request to the
+      // current one.
       const query =
-        cvMode === "auto" && versions?.knownCv !== undefined
+        cvMode === "auto" && versions?.knownCv !== undefined && !isCvCheck
           ? applyCvToQuery(cacheableQuery, versions.knownCv)
           : cacheableQuery;
 
-      const result = await fetchFn(query);
+      // An error response was redirected like any other, so its URL holds the served `cv` too.
+      const applyServedVersions = (result: {
+        data?: unknown;
+        response?: Pick<Response, "url">;
+      }) => {
+        // A pinned `cv` the edge doesn't hold (e.g. `cv: Date.now()`) is redirected to the
+        // current one, so only a response reporting the pinned `cv` or none is that snapshot.
+        const servedCv = extractServedCv(result, { method, path, query });
+        const isPinnedSnapshot =
+          isPinnedRequest && (servedCv === undefined || servedCv === callerCv);
+        const issuedUnder = isPinnedSnapshot
+          ? undefined
+          : { knownCv: versions?.knownCv, knownSpaceVersion: versions?.knownSpaceVersion };
+        const currentCv = isPinnedSnapshot
+          ? undefined
+          : extractCurrentCv(result, { method, path, query });
+        return applyResponseVersions(path, result.data, {
+          servedCv,
+          currentCv,
+          honorOlderSnapshot: isPinnedSnapshot,
+          issuedUnder,
+          generationAtIssue: versions?.generation ?? 0,
+        }).then((versions) => ({
+          ...versions,
+          servedCv,
+          currentCv,
+          issuedUnder,
+          isPinnedSnapshot,
+        }));
+      };
 
-      // A pinned `cv` the edge doesn't hold (e.g. `cv: Date.now()`) is redirected to the
-      // current one, so only a response reporting the pinned `cv` or none is that snapshot.
-      const servedCv = extractServedCv(result, { method, path, query });
-      const isPinnedSnapshot = isPinnedRequest && (servedCv === undefined || servedCv === callerCv);
-      const issuedUnder = isPinnedSnapshot
-        ? undefined
-        : { knownCv: versions?.knownCv, knownSpaceVersion: versions?.knownSpaceVersion };
-      const currentCv = isPinnedSnapshot
-        ? undefined
-        : extractCurrentCv(result, { method, path, query });
-      const mayCache = await applyResponseVersions(path, result, {
-        servedCv,
-        currentCv,
-        honorOlderSnapshot: isPinnedSnapshot,
-        issuedUnder,
-        generationAtIssue: versions?.generation ?? 0,
-      });
+      let result: ApiResponse<TData, ThrowOnError>;
+      try {
+        result = await fetchFn(query);
+      } catch (error) {
+        const url = error instanceof ClientError ? errorResponseUrls.get(error) : undefined;
+        if (url !== undefined) {
+          // A rejection under `throwOnError` still teaches the versions of its response.
+          await applyServedVersions({ response: { url } }).catch(() => undefined);
+        }
+        throw error;
+      } finally {
+        // Recorded once the check is answered, whatever it learned, so a failing one costs one
+        // attempt per window.
+        if (cvCheck) {
+          await recordCvChecked(cacheProvider, checkKey, cvCheck.claimedAt);
+        }
+      }
 
-      if (result.error === undefined && mayCache) {
+      const { mayCache, isStaleEdgeRead, servedCv, currentCv, issuedUnder, isPinnedSnapshot } =
+        await applyServedVersions(result);
+
+      // A check answered by an edge node still holding an older snapshot would flip content
+      // back until the next check.
+      if (isCvCheck && isStaleEdgeRead && cachedResult !== undefined) {
+        return cachedResult;
+      }
+      // A check sent no `cv`, so without a learned one nothing describes its response.
+      const cv = isPinnedSnapshot
+        ? servedCv
+        : (currentCv ?? (isCvCheck ? undefined : issuedUnder?.knownCv));
+      const isUndescribedCheck = isCvCheck && cv === undefined;
+      if (result.error === undefined && mayCache && !isUndescribedCheck) {
         // Untagged (no `cv` sent, none learned), the entry expires by TTL alone.
-        const cv = isPinnedSnapshot ? servedCv : (currentCv ?? issuedUnder?.knownCv);
         await cacheProvider.set(key, { value: result, ttlMs: cacheTtlMs, cv });
       }
 
       return result;
     };
 
-    return strategy({
-      key,
-      cachedResult,
-      loadNetwork,
-      getFailure,
-      getThrownFailure,
-    });
+    try {
+      return await (isCvCheck ? cvCheckStrategy : strategy)({
+        key,
+        cachedResult,
+        loadNetwork,
+        getFailure,
+        getThrownFailure,
+      });
+    } finally {
+      // An `swr` revalidation of this key in flight, or a custom handler answering from the
+      // cache, sends no check; the next read claims it instead.
+      if (!hasLoadedNetwork) {
+        cvCheck?.release();
+      }
+    }
   };
 
   const request = async (
@@ -888,6 +1000,7 @@ export const createApiClientBase = <
     requestWithCache,
     asApiResponse,
     throttleManager,
+    cvMode,
   };
 
   // Keep the declaration output aligned with ContentApiClient["stories"].

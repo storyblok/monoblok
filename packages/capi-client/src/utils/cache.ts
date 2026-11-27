@@ -65,8 +65,8 @@ export interface CacheEntryInput<TValue = unknown> {
  * Stores cache entries for the client.
  *
  * Providers must round-trip entries unchanged, including `cv`: losing it silently degrades
- * invalidation to TTL alone. The key `sb:versions:v1:<tokenId>` is reserved for the client's
- * version watermarks.
+ * invalidation to TTL alone. The keys `sb:versions:v1:<tokenId>` and `sb:cv-checked:v1:<tokenId>`
+ * are reserved for the client's version watermarks and `cv` check.
  *
  * Providers must expire entries after `ttlMs`; the client doesn't check it and leaves
  * invalidated entries in place.

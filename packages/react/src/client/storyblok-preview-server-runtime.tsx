@@ -101,7 +101,7 @@ function LiveContent({
 }: {
   promise: Promise<ReactNode> | null;
   /** Called with a live render once it's on screen, i.e. rendered without throwing. */
-  onCommit: (node: ReactNode) => void;
+  onCommit: (node: ReactNode, promise: Promise<ReactNode>) => void;
   children: ReactNode;
 }) {
   // reactUse is guaranteed to be defined here: StoryblokPreviewServerRuntime
@@ -114,7 +114,7 @@ function LiveContent({
   // fallback, which would throw again outside the boundary.
   useEffect(() => {
     if (promise) {
-      onCommit(content);
+      onCommit(content, promise);
     }
   }, [promise]);
 
@@ -125,28 +125,36 @@ function LiveContent({
 
 type LiveContentBoundaryProps = {
   promise: Promise<ReactNode> | null;
+  /**
+   * Whether `promise` is a live update that hasn't rendered on screen yet.
+   * Only its errors are the boundary's to handle.
+   */
+  pending: boolean;
   fallback: ReactNode;
   children: ReactNode;
 };
 type LiveContentBoundaryState = {
   hasError: boolean;
+  error: unknown;
   /** The promise that triggered the current error, used to self-reset on the next attempt. */
   capturedPromise: Promise<ReactNode> | null;
 };
 
 /**
- * Catches rejections thrown by React.use() inside LiveContent (e.g. a failed
- * Server Action) and shows the provided fallback — the initial SSR children —
- * instead of crashing the page. Resets automatically when a new promise
- * arrives from the next editor event.
+ * Catches the errors of a live update that hasn't rendered yet: a failed
+ * Server Action, or a result that throws while rendering. Shows the provided
+ * fallback (the last content that rendered) instead of crashing the page, and
+ * resets when a new promise arrives from the next editor event. Any other
+ * error, such as a Client Component in content already on screen throwing
+ * after a click, is thrown again for the app's own error handling.
  */
 const RENDER_FAILED_MESSAGE = "[storyblok] StoryblokPreview: renderContent failed.";
 
 class LiveContentBoundary extends Component<LiveContentBoundaryProps, LiveContentBoundaryState> {
-  state: LiveContentBoundaryState = { hasError: false, capturedPromise: null };
+  state: LiveContentBoundaryState = { hasError: false, error: undefined, capturedPromise: null };
 
-  static getDerivedStateFromError(): Partial<LiveContentBoundaryState> {
-    return { hasError: true };
+  static getDerivedStateFromError(error: unknown): Partial<LiveContentBoundaryState> {
+    return { hasError: true, error };
   }
 
   // Reset when a new promise arrives — each editor event is a fresh retry opportunity.
@@ -155,7 +163,7 @@ class LiveContentBoundary extends Component<LiveContentBoundaryProps, LiveConten
     { hasError, capturedPromise }: LiveContentBoundaryState,
   ): Partial<LiveContentBoundaryState> | null {
     if (hasError && capturedPromise !== null && capturedPromise !== promise) {
-      return { hasError: false, capturedPromise: null };
+      return { hasError: false, error: undefined, capturedPromise: null };
     }
     // Latch the promise that caused the error so the next comparison works.
     if (hasError && capturedPromise === null) {
@@ -169,7 +177,15 @@ class LiveContentBoundary extends Component<LiveContentBoundaryProps, LiveConten
   }
 
   render() {
-    return this.state.hasError ? this.props.fallback : this.props.children;
+    if (!this.state.hasError) {
+      return this.props.children;
+    }
+    if (!this.props.pending) {
+      // Thrown from render, so `componentDidCatch` doesn't run and doesn't
+      // blame `renderContent`.
+      throw this.state.error;
+    }
+    return this.props.fallback;
   }
 }
 
@@ -216,7 +232,10 @@ export function StoryblokPreviewServerRuntime({
   // never runs during the initial server render.
   // Wrapped in an object so a render that resolved to `null` (an empty
   // story) still counts as a render, distinct from "none yet".
-  const [lastGoodContent, setLastGoodContent] = useState<{ node: ReactNode } | null>(null);
+  const [lastGoodContent, setLastGoodContent] = useState<{
+    node: ReactNode;
+    promise: Promise<ReactNode>;
+  } | null>(null);
   const fallback = <>{lastGoodContent ? lastGoodContent.node : children}</>;
 
   // One server action at a time. A story arriving while an action is in-flight
@@ -296,9 +315,9 @@ export function StoryblokPreviewServerRuntime({
   // pending edit.
   // A failed action later must fall back to the last render that made it on
   // screen, not the one from page load.
-  function handleCommit(node: ReactNode) {
+  function handleCommit(node: ReactNode, promise: Promise<ReactNode>) {
     if (mounted.current) {
-      setLastGoodContent({ node });
+      setLastGoodContent({ node, promise });
     }
   }
 
@@ -316,7 +335,11 @@ export function StoryblokPreviewServerRuntime({
   );
 
   return (
-    <LiveContentBoundary promise={livePromise} fallback={fallback}>
+    <LiveContentBoundary
+      promise={livePromise}
+      pending={livePromise !== null && livePromise !== lastGoodContent?.promise}
+      fallback={fallback}
+    >
       <Suspense fallback={fallback}>
         <LiveContent promise={livePromise} onCommit={handleCommit}>
           {children}

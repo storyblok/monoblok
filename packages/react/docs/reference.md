@@ -329,7 +329,8 @@ export default async function Home() {
 calls the Server Action on every change and streams the result in, keeping the current content on
 screen until the update arrives. `StoryblokPreview` runs one Server Action at a time. If the Server
 Action fails, `StoryblokPreview` logs the error and keeps the last successfully rendered content
-visible.
+visible. An error in content that is already on screen, such as a Client Component that throws after
+a click, reaches the app's error handling as usual.
 
 While the Visual Editor shows a previous version of the story, it sends the story without content.
 `StoryblokPreview` ignores these changes and keeps the current content. When the `story` prop

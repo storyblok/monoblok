@@ -1197,6 +1197,62 @@ describe("lazy factory resolution", () => {
     expect(factory).toHaveBeenCalledTimes(2);
     warnSpy.mockRestore();
   });
+
+  describe("rebuilding with an invalid entry", () => {
+    function Counter({ testId }: { testId: string }) {
+      const [count, setCount] = useState(0);
+      return (
+        <button data-testid={testId} onClick={() => setCount(count + 1)}>
+          {count}
+        </button>
+      );
+    }
+
+    // A factory that creates components on every call, like `memo()` or
+    // Next.js `dynamic()` inside it, with one entry that stays invalid.
+    function setup() {
+      const { StoryblokBlock } = defineStoryblokBlocks(() => ({
+        components: {
+          counter: memo(() => <Counter testId="counter" />),
+          typo: undefined as any,
+        },
+        fallback: forwardRef<HTMLButtonElement, StoryblokBlockComponentProps>(() => (
+          <Counter testId="fallback" />
+        )),
+      }));
+      function App({ tick }: { tick: number }) {
+        return (
+          <div data-tick={tick}>
+            <StoryblokBlock block={makeBlockData({ component: "counter" })} />
+            <StoryblokBlock block={makeBlockData({ component: "unregistered" })} />
+          </div>
+        );
+      }
+      return App;
+    }
+
+    it("should keep the state of a block that was valid on an earlier render", () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      const App = setup();
+      const { getByTestId, rerender } = render(<App tick={0} />);
+
+      act(() => getByTestId("counter").click());
+      rerender(<App tick={1} />);
+
+      expect(getByTestId("counter")).toHaveTextContent("1");
+    });
+
+    it("should keep the state of a block that renders the fallback", () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      const App = setup();
+      const { getByTestId, rerender } = render(<App tick={0} />);
+
+      act(() => getByTestId("fallback").click());
+      rerender(<App tick={1} />);
+
+      expect(getByTestId("fallback")).toHaveTextContent("1");
+    });
+  });
 });
 
 describe("warning cap", () => {

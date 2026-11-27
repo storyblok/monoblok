@@ -234,6 +234,11 @@ export function defineStoryblokBlocks<TExtraProps extends StoryblokExtraProps = 
   // resolves once it's assigned. A factory with side effects may therefore
   // run more than once until it returns a valid registry.
   let resolved: ResolvedRegistry | undefined;
+  // The last build that wasn't cached. A rebuild keeps its valid entries and
+  // `fallback`: the factory creates new components on every call (a `memo()`,
+  // a `forwardRef()`, or Next.js `dynamic()`), and a new component type
+  // remounts its blocks and loses their state.
+  let previous: ResolvedRegistry | undefined;
   // Warnings already printed, so re-renders (and a server rendering the same
   // page on every request) don't repeat the same warning.
   const warned = new Set<string>();
@@ -252,6 +257,11 @@ export function defineStoryblokBlocks<TExtraProps extends StoryblokExtraProps = 
     const entries = new Map<string, ResolvedEntry>();
     const invalid = new Map<string, string>();
     for (const [type, entry] of Object.entries(components)) {
+      const kept = previous?.entries.get(type);
+      if (kept) {
+        entries.set(type, kept);
+        continue;
+      }
       const result = resolveEntry(type, entry, suspenseFallback);
       if (typeof result === "string") {
         invalid.set(type, result);
@@ -268,16 +278,18 @@ export function defineStoryblokBlocks<TExtraProps extends StoryblokExtraProps = 
       fallback:
         fallback == null || invalidFallback
           ? undefined
-          : {
+          : (previous?.fallback ?? {
               Component: fallback,
               needsSuspense: isLazyComponent(fallback),
               fallbackNode: suspenseFallback,
-            },
+            }),
       invalidFallback,
       warnings,
     };
     if (invalid.size === 0 && !invalidFallback) {
       resolved = registry;
+    } else {
+      previous = registry;
     }
     return registry;
   }

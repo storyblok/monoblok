@@ -1,4 +1,4 @@
-import { type ReactNode, StrictMode, Suspense, useState } from "react";
+import { Component, type ReactNode, StrictMode, Suspense, useState } from "react";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, act, within } from "@testing-library/react";
 import { type LivePreviewStory, onStoryblokEditorEvent } from "@storyblok/live-preview";
@@ -84,6 +84,32 @@ function StatefulContent({ label }: { label: string }) {
       {label}:{count}
     </button>
   );
+}
+
+/** A Client Component that works until it's clicked, like one with a bug in its click handler. */
+function ThrowsOnClick() {
+  const [clicked, setClicked] = useState(false);
+  if (clicked) {
+    throw new Error("click failed");
+  }
+  return <button data-testid="throws-on-click" onClick={() => setClicked(true)} />;
+}
+
+/** The app's own error handling, like a Next.js `error.tsx`. */
+class AppErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state: { error: Error | null } = { error: null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  render() {
+    return this.state.error ? (
+      <div data-testid="app-error">{this.state.error.message}</div>
+    ) : (
+      this.props.children
+    );
+  }
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
@@ -522,6 +548,43 @@ describe("StoryblokPreview (server mode)", () => {
       expect.anything(),
     );
 
+    consoleSpy.mockRestore();
+  });
+
+  it("should let an error after a click in the initial content reach the app's error handling", async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const renderContent = vi.fn().mockResolvedValueOnce(<ThrowsOnClick />);
+
+    const element = await StoryblokPreview({ story: makeStory(), renderContent, debounceMs: 0 });
+    const { getByTestId } = render(<AppErrorBoundary>{element}</AppErrorBoundary>);
+    act(() => getByTestId("throws-on-click").click());
+
+    expect(getByTestId("app-error")).toHaveTextContent("click failed");
+    expect(consoleSpy).not.toHaveBeenCalledWith(
+      "[storyblok] StoryblokPreview: renderContent failed.",
+      expect.anything(),
+    );
+    consoleSpy.mockRestore();
+  });
+
+  it("should let an error after a click in a rendered live update reach the app's error handling", async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const renderContent = vi
+      .fn()
+      .mockResolvedValueOnce(<div>initial</div>)
+      .mockResolvedValueOnce(<ThrowsOnClick />);
+
+    const element = await StoryblokPreview({ story: makeStory(), renderContent, debounceMs: 0 });
+    const { getByTestId } = render(<AppErrorBoundary>{element}</AppErrorBoundary>);
+    await vi.waitFor(() => expect(editorCallback).toBeDefined());
+    await fireEditorEvent(editorCallback!, makeStory({ slug: "updated" }));
+    act(() => getByTestId("throws-on-click").click());
+
+    expect(getByTestId("app-error")).toHaveTextContent("click failed");
+    expect(consoleSpy).not.toHaveBeenCalledWith(
+      "[storyblok] StoryblokPreview: renderContent failed.",
+      expect.anything(),
+    );
     consoleSpy.mockRestore();
   });
 

@@ -50,6 +50,8 @@ export type PushChangingBlock = {
   components: WireComponent[];
   /** The name the push gave the block. */
   block: string;
+  /** The push created the block, so there is no earlier state of it. */
+  created: boolean;
   /** The ids of the content migrations the push wrote. */
   migrations: string[];
 };
@@ -82,6 +84,7 @@ export async function latestPushChanging(
       timestamp: changeset.timestamp,
       components: withRenamedBlocks(changeset.remote.components, renames),
       block: match.name,
+      created: match.action === "create",
       migrations: changeset.migrations ?? [],
     };
   }

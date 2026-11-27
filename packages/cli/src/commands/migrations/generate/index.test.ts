@@ -644,6 +644,62 @@ describe("migrations generate command", () => {
         );
       });
 
+      const createdBy = (changed: string) => ({
+        [`.storyblok/schema/changesets/${pushedAt.replace(/[:.]/g, "-")}.json`]: JSON.stringify({
+          timestamp: pushedAt,
+          spaceId: 12345,
+          remote: { components: [childComponent], componentFolders: [], datasources: [] },
+          changes: [{ type: "component", name: changed, action: "create" }],
+        }),
+      });
+
+      it("should not suggest --snapshot before-push for a block the push created", async () => {
+        preconditions.componentExists();
+        preconditions.hasSchemaEntry();
+        vol.fromJSON(createdBy("component-name"));
+
+        await generate("component-name", "--format", "typed", "--schema", "src/schema.ts");
+
+        expect(writtenFile(`${ID}.before.ts`)).toContain("defineField('title'");
+        expect(console.warn).not.toHaveBeenCalledWith(
+          expect.stringContaining("--snapshot before-push"),
+        );
+      });
+
+      it("should refuse --snapshot before-push for a block the push created", async () => {
+        preconditions.componentExists();
+        preconditions.hasSchemaEntry();
+        vol.fromJSON(createdBy("component-name"));
+
+        await generate(
+          "component-name",
+          "--format",
+          "typed",
+          "--schema",
+          "src/schema.ts",
+          "--snapshot",
+          "before-push",
+        );
+
+        expect(console.error).toHaveBeenCalledWith(
+          expect.stringContaining(
+            `component-name didn't exist before the schema push at ${pushedAt}, so there is no earlier state to snapshot. Run without --snapshot before-push.`,
+          ),
+        );
+        expect(writtenFile(`${ID}.ts`)).toBeUndefined();
+      });
+
+      it("should generate the migration when a changeset can't be read", async () => {
+        preconditions.componentExists();
+        preconditions.hasSchemaEntry();
+        vol.fromJSON({ ".storyblok/schema/changesets/2026-10-16T09-00-00-000Z.json": "{" });
+
+        await generate("component-name", "--format", "typed", "--schema", "src/schema.ts");
+
+        expect(writtenFile(`${ID}.ts`)).toContain("defineMigration<Schema, Before>([");
+        expect(writtenFile(`${ID}.before.ts`)).toContain("defineField('title'");
+      });
+
       it("should not warn about a push older than the space's newest content migration", async () => {
         preconditions.componentExists();
         preconditions.hasSchemaEntry();

@@ -10,7 +10,7 @@
  */
 export { nextMigrationId } from "../migrations/load-migrations";
 export { coercionBetween } from "../migrations/ops";
-export { formatValue, INDENT, isIdentifier, quoteString, RawCode } from "./format";
+export { formatValue, INDENT, isIdentifier, quoteString } from "./format";
 export {
   collectRestrictionFolderVars,
   generateFieldCode,
@@ -20,7 +20,6 @@ export {
   stripKeys,
   toLayoutDslField,
 } from "./field";
-export type { TagRef } from "./field";
 export { generateMigrationSource } from "./migration-source";
 export type { GenerateMigrationSourceOptions, MigrationOpSource } from "./migration-source";
 export { componentVarName, resolveVarNames, toCamelCaseIdentifier } from "./names";

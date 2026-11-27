@@ -25,8 +25,6 @@ import {
   isRecord,
 } from "../utils";
 
-export { componentVarName, resolveVarNames } from "@storyblok/schema/internal/codegen";
-
 /** `<block>.<field>` paths of layout fields whose `required` `toLayoutDslField` removes. */
 export function collectRequiredLayoutFields(components: Component[]): string[] {
   const result: string[] = [];

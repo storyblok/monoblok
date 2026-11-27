@@ -92,12 +92,10 @@ export function withBlockRenames(
   return { ...remote, components };
 }
 
-const BLOCK_LIST_KEYS = ["component_whitelist", "component_denylist"];
-
 /**
- * `components` as the space holds them once it renamed each block in `renames`:
- * the block under its new name, and the fields that allow, deny, or filter by
- * it naming it so.
+ * `components` as a `.before.ts` snapshot needs them once the space renamed each
+ * block in `renames`: the block under its new name, and the allow lists naming it
+ * so. The snapshot keeps no deny list or content type filter.
  */
 export function withRenamedBlocks(
   components: readonly WireComponent[],
@@ -108,16 +106,9 @@ export function withRenamedBlocks(
   const rename = (name: unknown) => (typeof name === "string" ? (renamed.get(name) ?? name) : name);
   const renameReferences = (field: unknown) => {
     if (!isRecord(field)) return field;
-    const references: [string, unknown][] = BLOCK_LIST_KEYS.filter((key) =>
-      Array.isArray(field[key]),
-    ).map((key) => {
-      const list: unknown[] = Array.isArray(field[key]) ? field[key] : [];
-      return [key, list.map(rename)];
-    });
-    if (typeof field.filter_content_type === "string") {
-      references.push(["filter_content_type", rename(field.filter_content_type)]);
-    }
-    return references.length === 0 ? field : { ...field, ...Object.fromEntries(references) };
+    return Array.isArray(field.component_whitelist)
+      ? { ...field, component_whitelist: field.component_whitelist.map(rename) }
+      : field;
   };
   return components.map((component) => ({
     ...component,

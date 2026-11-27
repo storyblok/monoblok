@@ -1,9 +1,7 @@
-<script> 
-  import { storyblokEditable } from "@storyblok/svelte"
-
-  export let blok;
+<script>
+	let { block, editable } = $props();
 </script>
 
-<div class="feature" use:storyblokEditable={blok}>
-  <span>{blok.name}</span>
+<div class="feature" {...editable}>
+	<span>{block.name}</span>
 </div>

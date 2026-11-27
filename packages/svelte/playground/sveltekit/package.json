@@ -11,17 +11,18 @@
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
   },
   "dependencies": {
+    "@storyblok/api-client": "workspace:*",
     "@storyblok/svelte": "workspace:*"
   },
   "devDependencies": {
-    "@sveltejs/adapter-auto": "^5.0.0",
-    "@sveltejs/kit": "^2.70.0",
-    "@sveltejs/vite-plugin-svelte": "^5.0.3",
-    "@vitejs/plugin-basic-ssl": "^2.0.0",
-    "svelte": "^5.55.7",
-    "svelte-check": "^4.1.5",
+    "@sveltejs/adapter-auto": "^9.0.0",
+    "@sveltejs/kit": "^3.4.1",
+    "@sveltejs/vite-plugin-svelte": "^7.3.2",
+    "@vitejs/plugin-basic-ssl": "^2.3.0",
+    "svelte": "^5.59.2",
+    "svelte-check": "catalog:",
     "typescript": "catalog:",
-    "vite": "^6.4.3"
+    "vite": "^8.3.8"
   },
   "nx": {
     "projectType": "application"

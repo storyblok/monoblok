@@ -18,6 +18,7 @@ catalog:
   oxlint: 1.76.0
   pathe: ^2.0.3
   publint: ^0.3.22
+  svelte-check: ^4.7.8
   tsx: ^4.21.0
   typescript: 6.0.3
   vite-plugin-dts: ^5.0.3

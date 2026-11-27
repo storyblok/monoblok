@@ -1,8 +1,9 @@
 <script lang="ts">
-  import type { SbSvelteRichTextProps } from '$lib/richtext-helpers';
+  import type { StoryblokSvelteRichTextProps } from '$lib/richtext-helpers';
 
-  const { context, text }: SbSvelteRichTextProps<'text'> = $props();
-  const prefix = $derived((context?.data as { prefix: string } | undefined)?.prefix ?? '');
+  const { context, text }: StoryblokSvelteRichTextProps<'text', { prefix: string }> =
+    $props();
+  const prefix = $derived(context.data.prefix);
 </script>
 
 {prefix} {text.toUpperCase()}

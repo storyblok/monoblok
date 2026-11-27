@@ -1,0 +1,10 @@
+{
+  "name": "page",
+  "display_name": "Page",
+  "component_group_uuid": null,
+  "is_root": true,
+  "is_nestable": false,
+  "schema": {
+    "body": { "type": "bloks", "pos": 0 }
+  }
+}

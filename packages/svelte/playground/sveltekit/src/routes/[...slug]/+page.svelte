@@ -1,28 +1,32 @@
 <script lang="ts">
-  import { StoryblokComponent, useStoryblokBridge } from '@storyblok/svelte';
+  import { refreshAll } from '$app/navigation';
+  import { onStoryblokEditorEvent } from '@storyblok/svelte';
+  import type { LivePreviewStory } from '@storyblok/svelte';
   import type { PageData } from './$types';
-  import { onMount } from 'svelte';
+  import { StoryblokBlock } from '../../storyblok';
 
-  let { data = $bindable() }: { data: PageData } = $props();
-  let story = $state(data.story);
-  let loaded = $state(false);
-  onMount(() => {
-    loaded = true;
-    if (story) {
-      useStoryblokBridge(data.story.id, (newStory) => (story = newStory), {
+  const { data }: { data: PageData } = $props();
+  // Resets to the loaded story on navigation, and takes Visual Editor updates in between.
+  let story = $derived<LivePreviewStory>(data.story);
+
+  $effect(() =>
+    onStoryblokEditorEvent(
+      (newStory) => {
+        // The Visual Editor can send another story's updates, for example after a
+        // client-side navigation inside the preview. Only take this page's story.
+        if (newStory.id === data.story.id) story = newStory;
+      },
+      {
         preventClicks: true,
         resolveLinks: 'url',
-      });
-    }
-  });
+        // Refetch the story on save and publish instead of reloading the page.
+        onChange: () => refreshAll(),
+      },
+    ),
+  );
 </script>
 
 <main>
-  {#key story}
-    <h1>Welcome to StoryblokKit</h1>
-
-    {#if loaded}
-      <StoryblokComponent blok={story.content} />
-    {/if}
-  {/key}
+  <h1>Welcome to StoryblokKit</h1>
+  <StoryblokBlock block={story.content} />
 </main>

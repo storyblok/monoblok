@@ -1,7 +1,7 @@
 <script lang="ts">
-  import type { SbSvelteRichTextProps } from '$lib/richtext-helpers';
+  import type { StoryblokSvelteRichTextProps } from '$lib/richtext-helpers';
 
-  const props: SbSvelteRichTextProps<'heading'> = $props();
+  const props: StoryblokSvelteRichTextProps<'heading'> = $props();
   const tag = $derived(`h${props.attrs?.level ?? 1}`);
 </script>
 

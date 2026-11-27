@@ -1,0 +1,22 @@
+{
+  "name": "@storyblok/agent-evals",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Internal: AXIS scenarios comparing coding-agent skill sets on monoblok tasks. Not published.",
+  "type": "module",
+  "scripts": {
+    "evals": "bash ./run.sh",
+    "lint": "vp lint",
+    "lint:fix": "vp lint --fix",
+    "test": "vp test run",
+    "test:types": "tsc --noEmit --skipLibCheck"
+  },
+  "devDependencies": {
+    "@netlify/axis": "1.21.0",
+    "@storyblok/lint-config": "workspace:*",
+    "@types/node": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

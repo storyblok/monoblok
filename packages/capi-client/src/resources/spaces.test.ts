@@ -1375,6 +1375,37 @@ describe("spaces.get() as a cache invalidation signal", () => {
     expect(new URL(storyUrls[storyUrls.length - 1]).searchParams.get("cv")).toBe("2000");
   });
 
+  it("should refetch a pin that was redirected once a publish supersedes the cv it got", async () => {
+    let currentCv = 2000;
+    const storyUrls: string[] = [];
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        const url = new URL(request.url);
+        const isDraft = url.searchParams.get("version") === "draft";
+        // The edge holds only the current cv and redirects any other.
+        if (!isDraft && Number(url.searchParams.get("cv")) !== currentCv) {
+          url.searchParams.set("cv", String(currentCv));
+          return HttpResponse.redirect(url.toString(), 301);
+        }
+        storyUrls.push(request.url);
+        return HttpResponse.json({ stories: [{ name: `v${currentCv}` }], cv: currentCv });
+      }),
+    );
+    const client = createApiClient({ accessToken: "redirected-pin-publish-token" });
+
+    const first = await client.get("v2/cdn/stories", {
+      query: { version: "published", cv: 5000 },
+    });
+    currentCv = 3000; // content was published
+    await client.get("v2/cdn/stories", { query: { version: "draft" } });
+    const second = await client.get("v2/cdn/stories", {
+      query: { version: "published", cv: 5000 },
+    });
+
+    expect(first.data).toMatchObject({ stories: [{ name: "v2000" }], cv: 2000 });
+    expect(second.data).toMatchObject({ stories: [{ name: "v3000" }], cv: 3000 });
+  });
+
   it("should keep a response that reports the cv which superseded it", async () => {
     let releaseSlow: () => void = () => {};
     const slow = new Promise<void>((resolve) => (releaseSlow = resolve));

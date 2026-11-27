@@ -775,15 +775,18 @@ export const createApiClientBase = <
       callerCv !== undefined &&
       callerCv === versions?.knownCv &&
       unpinnedEntry?.cv === callerCv;
-    // A pinned snapshot lives under its own key, is immune to publishes, and expires by TTL.
+    // A pinned request lives under its own key.
     const isPinnedRequest = pinnedKey !== undefined && !sharesUnpinnedEntry;
     const key = isPinnedRequest ? pinnedKey : unpinnedKey;
     const cacheableQuery = isPinnedRequest ? rawQuery : unpinnedQuery;
     const cachedEntry = isPinnedRequest ? pinnedEntry : unpinnedEntry;
+    // The pinned snapshot is immune to publishes and expires by TTL. A pin redirected to the
+    // current cv holds that one, which a publish supersedes like any other.
+    const holdsPinnedSnapshot = isPinnedRequest && cachedEntry?.cv === callerCv;
     // A missing record (e.g. evicted) makes tagged entries stale rather than TTL-only.
     const isStaleByCv =
       cacheFlush === "auto" &&
-      !isPinnedRequest &&
+      !holdsPinnedSnapshot &&
       cachedEntry?.cv !== undefined &&
       cachedEntry.cv !== versions?.knownCv;
     const cachedResult = isStaleByCv ? undefined : cachedEntry?.value;

@@ -99,9 +99,11 @@ version watermarks in the cache provider. Invalidation is a mismatch, not a flus
    the pinned `cv`, or reports no `cv` at all. The stale-read rule is gated on that, because the
    snapshot a pinned request receives looks exactly like a stale edge read. A `cv` the edge doesn't
    hold, such as the documented `cv: Date.now()` cache bust, is redirected to the current version,
-   and that response is tracked like any other. With `cache.cv: 'auto'`, a pin equal to `knownCv`
-   asks for the snapshot an unpinned request gets, so it shares the unpinned entry while that
-   entry's tag matches the pin.
+   and that response is tracked like any other. Its entry, still under the pinned key, is tagged
+   with the `cv` it was redirected to, and a publish invalidates it like any other entry. Only an
+   entry tagged with the pin itself, or untagged, is immune. With `cache.cv: 'auto'`, a pin equal to
+   `knownCv` asks for the snapshot an unpinned request gets, so it shares the unpinned entry while
+   that entry's tag matches the pin.
 9. **`flushCache()` stays** for webhook-driven invalidation under `cache.flush: 'manual'`. It
    empties the provider and resets the record, keeping `highestCv`, `knownSpaceVersion`, and the
    bumped `generation`.

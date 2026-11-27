@@ -292,12 +292,63 @@ function patchMapiInput(spec: unknown): void {
   addStrataSearchOperation(spec);
 }
 
+const CDN_STORIES_PATH = "/v2/cdn/stories";
+
+/**
+ * Accept `any_in_array` in "Retrieve Multiple Stories" `filter_query`.
+ *
+ * The API supports it (match stories whose array field holds at least one of the
+ * values), and the Management API spec already declares it, but the Content
+ * Delivery API spec leaves it out. It takes the same value shapes as `in_array`.
+ * No-op once upstream declares it.
+ */
+function addAnyInArrayFilter(spec: unknown): void {
+  if (!isRecord(spec) || !isRecord(spec.paths)) {
+    return;
+  }
+  const stories = spec.paths[CDN_STORIES_PATH];
+  if (!isRecord(stories) || !isRecord(stories.get) || !Array.isArray(stories.get.parameters)) {
+    return;
+  }
+  const filterQuery: unknown = stories.get.parameters.find(
+    (parameter) => isRecord(parameter) && parameter.name === "filter_query",
+  );
+  const operators =
+    isRecord(filterQuery) &&
+    isRecord(filterQuery.schema) &&
+    isRecord(filterQuery.schema.additionalProperties)
+      ? filterQuery.schema.additionalProperties.properties
+      : undefined;
+  if (!isRecord(operators) || !operators.in_array || operators.any_in_array) {
+    return;
+  }
+  // Rebuild to keep `any_in_array` next to its siblings in the generated type.
+  const entries = Object.entries(operators).flatMap(([key, value]) =>
+    key === "in_array"
+      ? [
+          [key, value],
+          ["any_in_array", structuredClone(value)],
+        ]
+      : [[key, value]],
+  );
+  for (const key of Object.keys(operators)) {
+    delete operators[key];
+  }
+  Object.assign(operators, Object.fromEntries(entries));
+}
+
+function patchCapiInput(spec: unknown): void {
+  // @todo(openapi-spec): Remove once the upstream CDN spec declares `any_in_array`.
+  addAnyInArrayFilter(spec);
+}
+
 /**
  * Whole-document patches per spec. The generator's parser config reads them from
  * here, and so does tooling that parses a spec on its own, so the two always see
  * the same schemas.
  */
 const INPUT_PATCHES: Partial<Record<SpecSource, (spec: unknown) => void>> = {
+  capi: patchCapiInput,
   mapi: patchMapiInput,
 };
 
@@ -323,5 +374,6 @@ const MAPI_PARSER: Parser = {
 
 /** Parser config per spec, or `undefined` when a spec needs no patches. */
 export const SPEC_PARSERS: Partial<Record<SpecSource, Parser>> = {
+  capi: { patch: { input: INPUT_PATCHES.capi } },
   mapi: MAPI_PARSER,
 };

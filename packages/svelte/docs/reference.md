@@ -520,8 +520,8 @@ registry that requires a `locale` prop:
 | `LivePreviewStory`                             | The story passed to the `onStoryblokEditorEvent` callback.                                                                                                  |
 | `StoryblokEditorChangeEvent`                   | A Visual Editor change event, re-exported from `@storyblok/live-preview`.                                                                                   |
 
-`@storyblok/svelte` also re-exports the rich text types of `@storyblok/richtext`, such as
-`StoryblokRichTextNode` and `StoryblokRichTextImageOptions`.
+Import rich text types such as `StoryblokRichTextInput` and `StoryblokRichTextNode` from
+`@storyblok/richtext`. Install it with `npm install @storyblok/richtext@latest`.
 
 ## Further resources
 

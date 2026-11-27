@@ -22,17 +22,3 @@ export type {
   LivePreviewStory,
   StoryblokEditorChangeEvent,
 } from "@storyblok/live-preview";
-
-export type {
-  StoryblokRichTextElement,
-  StoryblokRichTextImageOptions,
-  StoryblokRichTextInput,
-  StoryblokRichTextMark,
-  StoryblokRichTextMarkWithKey,
-  StoryblokRichTextNode,
-  StoryblokRichTextNodeWithKey,
-  StoryblokRichTextProps,
-  StoryblokRichTextRenderContext,
-  StoryblokRichTextRenderSpec,
-  StoryblokRichTextTextNode,
-} from "@storyblok/richtext";

@@ -423,11 +423,11 @@ input, like the story.
 | `bridgeOptions` | Options for the Storyblok Bridge, such as `resolveRelations`. `StoryblokPreview` reads them once, when it mounts. Learn more in the [@storyblok/preview-bridge reference](https://www.storyblok.com/docs/libraries/js/preview-bridge). In `@storyblok/react`, also accepts [`onChange` and `onError`](#saved-and-published-changes). | `object`   |
 | `debounceMs`    | Milliseconds to wait after the last change in the Visual Editor before updating the content. In `@storyblok/react/rsc`, the default is `200`; otherwise, updates are immediate.                                                                                                                                                      | `number`   |
 
-When fetching a story with the `resolve_relations` parameter, also pass the same relations as
-`bridgeOptions.resolveRelations`, so the relations stay resolved after a live update. Enable
-`inlineRelations` in the
+When fetching a story with the `resolve_relations` or `resolve_links` parameter, also pass the same
+values as `bridgeOptions.resolveRelations` or `bridgeOptions.resolveLinks`, so relations and links
+stay resolved after a live update. Enable `inlineRelations` and `inlineLinks` in the
 [API client](https://www.storyblok.com/docs/libraries/js/content-delivery-api-client) to inline the
-resolved stories into the content.
+resolved stories into the content, so fetched stories have the same shape as live updates.
 
 `StoryblokPreview` ignores changes to other stories, so a page and, for example, a navigation story
 can each use their own `StoryblokPreview` on the same page.
@@ -436,7 +436,8 @@ can each use their own `StoryblokPreview` on the same page.
 
 By default, saving or publishing the story in the Visual Editor reloads the page. In
 `@storyblok/react`, pass `bridgeOptions.onChange` to replace the reload, for example, to refetch
-data with `router.refresh()` in Next.js:
+data with `router.refresh()` in Next.js. In this example, `router` comes from `useRouter()` in
+`next/navigation`, called inside a Client Component:
 
 ```jsx
 <StoryblokPreview

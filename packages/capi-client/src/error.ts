@@ -51,3 +51,53 @@ export class ClientError extends Error {
     };
   }
 }
+
+/**
+ * Why a page of a pagination walk failed:
+ * - `request`: the request failed or was aborted. `response` and `cause` hold the HTTP or
+ *   transport error.
+ * - `invalid-response`: the API answered, but not with a page of items.
+ * - `snapshot-changed`: the page came from a different `cv`, so its offsets don't line up with
+ *   the walk's earlier pages.
+ */
+export type PaginationFailureReason = "request" | "invalid-response" | "snapshot-changed";
+
+/**
+ * A failed page of a pagination walk. `iterate()` throws it, and `pages()` yields it as `error`
+ * or, with `throwOnError`, throws it. Unlike `list()`, transport failures (timeouts, network
+ * errors) and a failing cache provider are wrapped too, with `response.status` 0 and the original
+ * error in `cause.cause`, so they keep the resume point: `iterate({ query: { ...query, page:
+ * error.resumePage, cv: error.cv } })`. Aborting the walk's `signal` makes `iterate()` throw the
+ * abort reason instead.
+ */
+export class PaginationError extends ClientError {
+  readonly reason: PaginationFailureReason;
+  /** The page that failed. */
+  readonly page: number;
+  /**
+   * The page a new walk resumes from: the failed page, or after `snapshot-changed` the page
+   * that restarts the walk.
+   */
+  readonly resumePage: number;
+  /** The snapshot a new walk resumes in, if any. Unset after `snapshot-changed`. */
+  readonly cv?: number;
+
+  constructor(
+    message: string,
+    options: {
+      reason: PaginationFailureReason;
+      page: number;
+      resumePage: number;
+      cv?: number;
+      response: ClientError["response"];
+      cause?: unknown;
+    },
+  ) {
+    super(message, { ...options.response, cause: options.cause });
+    this.name = "PaginationError";
+    this.reason = options.reason;
+    this.page = options.page;
+    this.resumePage = options.resumePage;
+    this.cv = options.cv;
+  }
+}

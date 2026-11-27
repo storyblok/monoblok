@@ -20,6 +20,7 @@ import type {
 import type { Block as Component } from "../generated/types/block";
 import type { MapiStory, StoryCreate, StoryUpdate } from "../generated/types/mapi-story";
 import type { ApiResponse, FetchOptions, MapiResourceDeps } from "../client";
+import { createPaginationMethods } from "../utils/paginate";
 import { resolveSpaceId, type SpaceIdPathOverride } from "./shared";
 
 export type StoryListQuery = NonNullable<ListStoriesData["query"]>;
@@ -90,7 +91,7 @@ export function createStoriesResource<
   const { client, spaceId, wrapRequest } = deps;
   const getSpaceId = (path?: SpaceIdPathOverride["path"]) => resolveSpaceId(spaceId, path);
 
-  return {
+  const resource = {
     list<ThrowOnError extends boolean = DefaultThrowOnError>(
       options: {
         query?: ListStoriesData["query"];
@@ -302,4 +303,19 @@ export function createStoriesResource<
       );
     },
   };
+
+  type ListOptions = Omit<NonNullable<Parameters<typeof resource.list>[0]>, "throwOnError">;
+
+  const paginationMethods = createPaginationMethods(deps, {
+    fetchPage: (options: ListOptions | undefined, pageQuery, signal) =>
+      resource.list({
+        ...options,
+        query: { ...options?.query, ...pageQuery },
+        signal,
+        throwOnError: false,
+      }),
+    getItems: (data) => data.stories,
+  });
+
+  return { ...resource, ...paginationMethods };
 }

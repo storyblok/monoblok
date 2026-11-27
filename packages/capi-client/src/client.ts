@@ -176,8 +176,13 @@ export interface ResourceDeps<DefaultThrowOnError extends boolean = false> {
     p: Promise<unknown>,
   ) => Promise<ApiResponse<TData, ThrowOnError>>;
   throttleManager: ThrottleManager;
-  /** `'manual'` keeps follow-up requests free of a `cv`. */
+  /** `'manual'` keeps follow-up requests free of a `cv` and pagination walks from pinning one. */
   cvMode?: CacheConfig["cv"];
+  /**
+   * The served `cv` stored with the cache entry a result was read from, for a provider that
+   * serializes entries and so loses the `Response` URL it is otherwise read from.
+   */
+  readCachedServedCv?: (result: ApiResponse<unknown, boolean>) => number | undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -750,6 +755,8 @@ export const createApiClientBase = <
     return { versions, endDiscovery };
   };
 
+  const cachedServedCvs = new WeakMap<ApiResponse<unknown, boolean>, number>();
+
   const requestWithCache = async <TData = unknown, ThrowOnError extends boolean = false>(
     method: "GET",
     path: string,
@@ -838,6 +845,9 @@ export const createApiClientBase = <
       cachedEntry?.cv !== undefined &&
       cachedEntry.cv !== versions?.knownCv;
     const cachedResult = isStaleByCv ? undefined : cachedEntry?.value;
+    if (cachedResult !== undefined && cachedEntry?.servedCv !== undefined) {
+      cachedServedCvs.set(cachedResult, cachedEntry.servedCv);
+    }
     // Under `flush: 'manual'` only `flushCache()` changes what a cached key serves, so a check
     // would cost a request per minute for nothing. A caller's own `cv` is sent as given, even
     // when it matches the known one.
@@ -935,7 +945,7 @@ export const createApiClientBase = <
       const isUndescribedCheck = isCvCheck && cv === undefined;
       if (result.error === undefined && mayCache && !isUndescribedCheck) {
         // Untagged (no `cv` sent, none learned), the entry expires by TTL alone.
-        await cacheProvider.set(key, { value: result, ttlMs: cacheTtlMs, cv });
+        await cacheProvider.set(key, { value: result, ttlMs: cacheTtlMs, cv, servedCv });
       }
 
       return result;
@@ -1001,6 +1011,7 @@ export const createApiClientBase = <
     asApiResponse,
     throttleManager,
     cvMode,
+    readCachedServedCv: (result) => cachedServedCvs.get(result),
   };
 
   // Keep the declaration output aligned with ContentApiClient["stories"].

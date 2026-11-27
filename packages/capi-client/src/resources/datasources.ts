@@ -6,13 +6,14 @@ import type {
   ListDatasourcesResponses,
 } from "../generated/capi/types.gen";
 import type { ApiResponse, FetchOptions, ResourceDeps } from "../client";
+import { createPaginationMethods } from "../utils/paginate";
 
 export function createDatasourcesResource<DefaultThrowOnError extends boolean = false>(
   deps: ResourceDeps<DefaultThrowOnError>,
 ) {
   const { client, requestWithCache, asApiResponse, throttleManager } = deps;
 
-  return {
+  const resource = {
     get: async <ThrowOnError extends boolean = DefaultThrowOnError>(
       id: GetDatasourceByIdData["path"]["id"],
       options: {
@@ -79,4 +80,20 @@ export function createDatasourcesResource<DefaultThrowOnError extends boolean = 
       );
     },
   };
+
+  type ListOptions = Omit<NonNullable<Parameters<typeof resource.list>[0]>, "throwOnError">;
+
+  const paginationMethods = createPaginationMethods(deps, {
+    path: "/v2/cdn/datasources",
+    fetchPage: (options: ListOptions | undefined, pageQuery, signal) =>
+      resource.list({
+        ...options,
+        query: { ...options?.query, ...pageQuery },
+        signal,
+        throwOnError: false,
+      }),
+    getItems: (data) => data.datasources,
+  });
+
+  return { ...resource, ...paginationMethods };
 }

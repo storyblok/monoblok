@@ -30,6 +30,8 @@ import { inlineStoriesContent, resolveRelationMap } from "../utils/inline-relati
 import type { ApiResponse, FetchOptions, ResourceDeps } from "../client";
 import { applyCvToQuery, extractCv } from "../utils/cv";
 import { ClientError } from "../error";
+import type { PageResult, PaginateConfig } from "../utils/paginate";
+import { paginateItems, paginatePages } from "../utils/paginate";
 import type {
   BlockFields,
   Block as Component,
@@ -715,7 +717,7 @@ export function createStoriesResource<
   const shouldThrow = (throwOnError: boolean | undefined) =>
     throwOnError ?? client.getConfig().throwOnError ?? false;
 
-  return {
+  const resource = {
     get: async <
       ThrowOnError extends boolean = DefaultThrowOnError,
       const ResolveRelationsStr extends string | undefined = undefined,
@@ -912,6 +914,131 @@ export function createStoriesResource<
         },
         cacheOptions,
       );
+    },
+  };
+
+  type ListOptions<
+    ThrowOnError extends boolean,
+    ResolveRelationsStr extends string | undefined,
+    ResolveLinksStr extends ResolveLinks | undefined,
+  > = NonNullable<
+    Parameters<typeof resource.list<ThrowOnError, ResolveRelationsStr, ResolveLinksStr>>[0]
+  >;
+
+  type IterateOptions<
+    ResolveRelationsStr extends string | undefined,
+    ResolveLinksStr extends ResolveLinks | undefined,
+  > = Omit<ListOptions<boolean, ResolveRelationsStr, ResolveLinksStr>, "throwOnError" | "query"> & {
+    query?: Omit<
+      NonNullable<ListOptions<boolean, ResolveRelationsStr, ResolveLinksStr>["query"]>,
+      | (InlineRelations extends true ? never : "resolve_relations")
+      | (InlineLinks extends true ? never : "resolve_links")
+    >;
+  };
+
+  type PageData<
+    ResolveRelationsStr extends string | undefined,
+    ResolveLinksStr extends ResolveLinks | undefined,
+  > = ListResponse<
+    TComponents,
+    InlineRelations,
+    ResolveRelationsStr,
+    TFieldPlugins,
+    InlineLinks,
+    ResolveLinksStr
+  >;
+
+  const toPaginateConfig = <
+    ThrowOnError extends boolean,
+    const ResolveRelationsStr extends string | undefined,
+    const ResolveLinksStr extends ResolveLinks | undefined,
+  >(
+    options: ListOptions<ThrowOnError, ResolveRelationsStr, ResolveLinksStr>,
+  ): PaginateConfig<
+    PageData<ResolveRelationsStr, ResolveLinksStr>,
+    PageData<ResolveRelationsStr, ResolveLinksStr>["stories"][number]
+  > => ({
+    path: "/v2/cdn/stories",
+    query: options.query,
+    signal: options.signal,
+    pinCv: cvMode !== "manual",
+    fetchPage: (pageQuery, signal) =>
+      resource.list<false, ResolveRelationsStr, ResolveLinksStr>({
+        ...options,
+        query: { ...options.query, ...pageQuery },
+        signal,
+        throwOnError: false,
+      }),
+    getItems: (data) => data.stories,
+  });
+
+  const ENVELOPE_ONLY_PARAMS = [
+    { param: "resolve_relations", envelope: "rels", inlinedBy: "inlineRelations" },
+    { param: "resolve_links", envelope: "links", inlinedBy: "inlineLinks" },
+  ] as const;
+  const inlinedBy = { inlineRelations: Boolean(inlineRelations), inlineLinks: shouldInlineLinks };
+
+  const assertIterableQuery = (query: Record<string, unknown> | undefined) => {
+    for (const { param, envelope, inlinedBy: option } of ENVELOPE_ONLY_PARAMS) {
+      if (query?.[param] && !inlinedBy[option]) {
+        throw new TypeError(
+          `stories.iterate() takes \`${param}\` only with \`${option}: true\`. ` +
+            `Use stories.pages() to read each page's \`${envelope}\`.`,
+        );
+      }
+    }
+  };
+
+  return {
+    ...resource,
+
+    /**
+     * Walks every page of stories, yielding one `list()` response per page. A failed page is
+     * the last value yielded, so check `error` on each one. With `throwOnError`, it throws a
+     * `PaginationError` instead.
+     *
+     * Published walks fail with a `snapshot-changed` `PaginationError` when content is
+     * published mid-walk: later pages are pinned to the first page's `cv`, which the CDN serves
+     * only for pages it still caches. Draft walks, and walks under `cache.cv: 'manual'`, aren't
+     * pinned, so concurrent edits can skip or repeat items.
+     */
+    pages: <
+      ThrowOnError extends boolean = DefaultThrowOnError,
+      const ResolveRelationsStr extends string | undefined = undefined,
+      const ResolveLinksStr extends ResolveLinks | undefined = undefined,
+    >(
+      options: ListOptions<ThrowOnError, ResolveRelationsStr, ResolveLinksStr> = {},
+    ): AsyncGenerator<
+      PageResult<PageData<ResolveRelationsStr, ResolveLinksStr>, ThrowOnError>,
+      void,
+      undefined
+    > =>
+      paginatePages(
+        toPaginateConfig(options),
+        options.throwOnError,
+        client.getConfig().throwOnError ?? false,
+      ),
+
+    /**
+     * Walks every story across all pages, the replacement for `getAll()` in
+     * `storyblok-js-client`. A failed page throws a `PaginationError`. Pinned like `pages()`.
+     *
+     * Takes `resolve_relations` only with `inlineRelations`, and `resolve_links` only with
+     * `inlineLinks`: otherwise the resolved entries reach only each page's `rels` and `links`,
+     * which `pages()` exposes. Throws a `TypeError` otherwise.
+     */
+    iterate: <
+      const ResolveRelationsStr extends string | undefined = undefined,
+      const ResolveLinksStr extends ResolveLinks | undefined = undefined,
+    >(
+      options: IterateOptions<ResolveRelationsStr, ResolveLinksStr> = {},
+    ): AsyncGenerator<
+      PageData<ResolveRelationsStr, ResolveLinksStr>["stories"][number],
+      void,
+      undefined
+    > => {
+      assertIterableQuery(options.query);
+      return paginateItems(toPaginateConfig(options));
     },
   };
 }

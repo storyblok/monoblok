@@ -11,6 +11,7 @@ import type {
   ReplaceDatasourceEntryResponses,
 } from "../generated/mapi/types.gen";
 import type { ApiResponse, FetchOptions, MapiResourceDeps } from "../client";
+import { createPaginationMethods } from "../utils/paginate";
 import { buildCallOptions, resolveSpaceId, type SpaceIdPathOverride } from "./shared";
 
 export function createDatasourceEntriesResource<DefaultThrowOnError extends boolean = false>(
@@ -19,7 +20,7 @@ export function createDatasourceEntriesResource<DefaultThrowOnError extends bool
   const { client, spaceId, wrapRequest } = deps;
   const getSpaceId = (path?: SpaceIdPathOverride["path"]) => resolveSpaceId(spaceId, path);
 
-  return {
+  const resource = {
     list<ThrowOnError extends boolean = DefaultThrowOnError>(
       options: {
         query?: ListDatasourceEntriesData["query"];
@@ -169,4 +170,19 @@ export function createDatasourceEntriesResource<DefaultThrowOnError extends bool
       );
     },
   };
+
+  type ListOptions = Omit<NonNullable<Parameters<typeof resource.list>[0]>, "throwOnError">;
+
+  const paginationMethods = createPaginationMethods(deps, {
+    fetchPage: (options: ListOptions | undefined, pageQuery, signal) =>
+      resource.list({
+        ...options,
+        query: { ...options?.query, ...pageQuery },
+        signal,
+        throwOnError: false,
+      }),
+    getItems: (data) => data.datasource_entries,
+  });
+
+  return { ...resource, ...paginationMethods };
 }

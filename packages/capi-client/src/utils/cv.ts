@@ -41,7 +41,8 @@ const extractCvFromUrl = (url: string | undefined) => {
  * cacheable published request's URL names the served snapshot; draft and `/cdn/spaces/me`
  * URLs keep whatever `cv` the caller sent.
  *
- * The served snapshot isn't necessarily the current one, see `extractCurrentCv`.
+ * The served snapshot isn't necessarily the current one, see `extractCurrentCv`. It is read on
+ * every cacheable endpoint because pagination walks pin later pages to it.
  */
 export const extractServedCv = (
   result: { data?: unknown; response?: Pick<Response, "url"> },

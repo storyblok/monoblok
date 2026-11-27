@@ -51,6 +51,11 @@ export interface CacheEntry<TValue = unknown> {
    * for a read that went out before any `cv` was known and wasn't redirected.
    */
   cv?: number;
+  /**
+   * The `cv` of the snapshot the response was served from, which pagination walks pin later
+   * pages to. It can differ from `cv`, e.g. when a custom `fetch` lost the response's URL.
+   */
+  servedCv?: number;
 }
 
 export interface CacheEntryInput<TValue = unknown> {
@@ -59,14 +64,20 @@ export interface CacheEntryInput<TValue = unknown> {
   ttlMs: number;
   /** See {@link CacheEntry.cv}. */
   cv?: number;
+  /** See {@link CacheEntry.servedCv}. */
+  servedCv?: number;
 }
 
 /**
  * Stores cache entries for the client.
  *
- * Providers must round-trip entries unchanged, including `cv`: losing it silently degrades
- * invalidation to TTL alone. The keys `sb:versions:v1:<tokenId>` and `sb:cv-checked:v1:<tokenId>`
- * are reserved for the client's version watermarks and `cv` check.
+ * Providers must round-trip entries unchanged, including `cv` and `servedCv`: losing `cv`
+ * silently degrades invalidation to TTL alone, and losing `servedCv` keeps pagination walks over
+ * `/cdn/links` from noticing a publish mid-walk. The keys `sb:versions:v1:<tokenId>` and
+ * `sb:cv-checked:v1:<tokenId>` are reserved for the client's version watermarks and `cv` check.
+ *
+ * A provider that serializes entries loses the `Response` in `value.response`: its headers and
+ * URL. Pagination walks then report no `total`.
  *
  * Providers must expire entries after `ttlMs`; the client doesn't check it and leaves
  * invalidated entries in place.

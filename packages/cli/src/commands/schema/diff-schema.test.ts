@@ -237,14 +237,76 @@ describe("diffSchema", () => {
     ]);
   });
 
-  it("should not report a reordered dimension list as a change without saying what changed", () => {
+  it("should treat a reordered dimension list as unchanged", () => {
     const de: Dimension = { id: 1, name: "de", entry_value: "farben" };
     const fr: Dimension = { id: 2, name: "fr", entry_value: "couleurs" };
     const from = normalized([], [makeDimensionedDatasource("Colors", "colors", [de, fr])]);
     const to = normalized([], [makeDimensionedDatasource("Colors", "colors", [fr, de])]);
 
-    const changes = diffSchema(from, to).diffs[0].changes;
-    expect(changes.map((c) => c.field)).toEqual(["dimensions"]);
+    const result = diffSchema(from, to);
+
+    expect(result.unchanged).toBe(1);
+    expect(result.updates).toBe(0);
+  });
+
+  it("should report a renamed dimension as a name change rather than a removal", () => {
+    const from = normalized(
+      [],
+      [
+        makeDimensionedDatasource("Colors", "colors", [
+          { id: 1, name: "Light Mode", entry_value: "light" },
+        ]),
+      ],
+    );
+    const to = normalized(
+      [],
+      [
+        makeDimensionedDatasource("Colors", "colors", [
+          { id: 2, name: "Light", entry_value: "light" },
+        ]),
+      ],
+    );
+
+    expect(diffSchema(from, to).diffs[0].changes).toEqual([
+      {
+        field: "dimensions.Light Mode.name",
+        change: "modified",
+        before: "Light Mode",
+        after: "Light",
+      },
+    ]);
+  });
+
+  it("should report a dimension whose name and entry_value both changed as removed and added", () => {
+    const from = normalized(
+      [],
+      [
+        makeDimensionedDatasource("Colors", "colors", [
+          { id: 1, name: "Light Mode", entry_value: "light" },
+        ]),
+      ],
+    );
+    const to = normalized(
+      [],
+      [
+        makeDimensionedDatasource("Colors", "colors", [
+          { id: 2, name: "Sepia", entry_value: "sepia" },
+        ]),
+      ],
+    );
+
+    expect(diffSchema(from, to).diffs[0].changes).toEqual([
+      {
+        field: "dimensions.Light Mode",
+        change: "removed",
+        before: { name: "Light Mode", entry_value: "light" },
+      },
+      {
+        field: "dimensions.Sepia",
+        change: "added",
+        after: { name: "Sepia", entry_value: "sepia" },
+      },
+    ]);
   });
 
   it("should treat a datasource without dimensions as unchanged when base has empty dimensions", () => {

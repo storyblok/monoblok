@@ -225,6 +225,53 @@ describe("classifyExports unpushable fields", () => {
   });
 });
 
+// Regression: a non-array `dimensions` reads as no dimensions and deletes every
+// remote one; a dimension without a `name` or `entry_value` is dropped from the
+// update and pushes green; a blank one fails mid-push, after other entities were
+// written.
+describe("classifyExports unpushable dimensions", () => {
+  const withDimensions = (dimensions: unknown) => ({
+    themes: { name: "Themes", slug: "themes", dimensions },
+  });
+
+  it("should throw on dimensions that are not an array", () => {
+    expect(() => classifyExports(withDimensions({ name: "Dark", entry_value: "dark" }))).toThrow(
+      '"dimensions" in datasource "themes" is not an array',
+    );
+  });
+
+  it("should throw on a dimension that is not an object", () => {
+    expect(() => classifyExports(withDimensions([null]))).toThrow(
+      'the dimension at index 0 in datasource "themes" is not an object.',
+    );
+  });
+
+  it("should throw on a dimension with no entry_value", () => {
+    expect(() =>
+      classifyExports(withDimensions([{ name: "Dark", entry_value: "dark" }, { name: "Light" }])),
+    ).toThrow(
+      'the dimension at index 1 in datasource "themes" has a missing or blank "entry_value"',
+    );
+  });
+
+  it("should throw on a blank name or entry_value", () => {
+    expect(() => classifyExports(withDimensions([{ name: "  ", entry_value: "" }]))).toThrow(
+      'the dimension at index 0 in datasource "themes" has a missing or blank "name", the dimension at index 0 in datasource "themes" has a missing or blank "entry_value"',
+    );
+  });
+
+  // `schema push` decides against the remote state whether duplicates may be sent.
+  it("should accept dimensions sharing a value", () => {
+    const result = classifyExports(
+      withDimensions([
+        { name: "Light", entry_value: "light" },
+        { name: "Day", entry_value: "light" },
+      ]),
+    );
+    expect(result.datasources).toHaveLength(1);
+  });
+});
+
 describe("classifyExports folders", () => {
   const folder = (name: string, parent?: any) => ({
     name,

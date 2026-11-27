@@ -191,6 +191,45 @@ describe("executeRollback", () => {
   });
   afterAll(() => server.close());
 
+  it("should refuse a datasource update restoring a value another remote dimension holds", async () => {
+    const ops: RollbackOp[] = [
+      {
+        type: "datasource",
+        name: "Colors",
+        action: "update",
+        payload: {
+          name: "Colors",
+          slug: "colors",
+          dimensions: [
+            { name: "A", entry_value: "a" },
+            { name: "C", entry_value: "c" },
+          ],
+        },
+      },
+    ];
+    const remote: RemoteSchemaData = {
+      components: new Map(),
+      internalTags: new Map(),
+      componentFolders: new Map(),
+      datasources: new Map([
+        [
+          "Colors",
+          {
+            id: 5,
+            name: "Colors",
+            slug: "colors",
+            dimensions: [{ id: 10, name: "C", entry_value: "a" }],
+          },
+        ],
+      ]),
+    };
+
+    // No datasource handler is registered, so a request would fail the test.
+    await expect(executeRollback("12345", ops, remote)).rejects.toThrow(
+      "dimension 'C' (entry_value 'c') uses the name 'C' still held by the existing dimension 'C' (entry_value 'a')",
+    );
+  });
+
   it("should send a component create for a create rollback op", async () => {
     const ops: RollbackOp[] = [
       {

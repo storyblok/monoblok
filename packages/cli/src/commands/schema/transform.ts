@@ -3,8 +3,10 @@ import type {
   ComponentUpdate,
   Datasource,
   DatasourceCreate,
+  DatasourceUpdate,
   Field,
 } from "../../types";
+import { type DimensionIdentity, isDimensionIdentity, pairDimensions } from "./dimensions";
 import { type ComponentOptionalKey, isRecord } from "./utils";
 
 function isSchemaField(value: unknown): value is Field {
@@ -85,6 +87,12 @@ export function toComponentUpdate(input: unknown): ComponentUpdate {
   return buildComponentPayload(input) satisfies ComponentUpdate;
 }
 
+function declaredDimensions(dimensions: unknown[]): DimensionIdentity[] {
+  return dimensions
+    .filter(isDimensionIdentity)
+    .map(({ name, entry_value }) => ({ name, entry_value }));
+}
+
 /** Converts an unknown input to a DatasourceCreate-compatible payload. */
 export function toDatasourceCreate(input: unknown): DatasourceCreate {
   if (!isRecord(input)) {
@@ -97,45 +105,37 @@ export function toDatasourceCreate(input: unknown): DatasourceCreate {
   };
 
   if (Array.isArray(input.dimensions)) {
-    result.dimensions_attributes = input.dimensions
-      .filter(
-        (d: unknown) =>
-          isRecord(d) && typeof d.name === "string" && typeof d.entry_value === "string",
-      )
-      .map((d: Record<string, unknown>) => ({
-        name: d.name as string,
-        entry_value: d.entry_value as string,
-      }));
+    result.dimensions_attributes = declaredDimensions(input.dimensions);
   }
 
   return result;
 }
 
 /**
- * Builds a datasource update payload that handles dimension deletions.
- * The Storyblok API requires `{ id, _destroy: true }` to remove dimensions;
- * an empty `dimensions_attributes` array is a no-op.
+ * The Management API treats a dimension without an `id` as new and rejects it
+ * when its `name` or `entry_value` already exists. Removing one requires
+ * `{ id, _destroy: true }`; an empty `dimensions_attributes` array is a no-op.
  */
-export function toDatasourceUpdate(input: unknown, remote: Datasource): Record<string, unknown> {
+export function toDatasourceUpdate(input: unknown, remote: Datasource): DatasourceUpdate {
   const base = toDatasourceCreate(input);
-  const localDims = base.dimensions_attributes ?? [];
-  const remoteDims = remote.dimensions ?? [];
+  const localDimensions =
+    isRecord(input) && Array.isArray(input.dimensions) ? declaredDimensions(input.dimensions) : [];
+  const remoteDimensions = (remote.dimensions ?? []).filter((rd) => rd.id != null);
 
-  if (remoteDims.length === 0) {
+  if (remoteDimensions.length === 0) {
     return base;
   }
 
-  const localKeys = new Set(localDims.map((d) => `${d.name}::${d.entry_value}`));
-  const destroyEntries = remoteDims
-    .filter((rd) => rd.id != null && !localKeys.has(`${rd.name}::${rd.entry_value}`))
-    .map((rd) => ({ id: rd.id, _destroy: true }));
+  const { pairs, unmatchedRemote } = pairDimensions(localDimensions, remoteDimensions);
 
-  if (destroyEntries.length > 0) {
-    return {
-      ...base,
-      dimensions_attributes: [...localDims, ...destroyEntries],
-    };
-  }
-
-  return base;
+  return {
+    ...base,
+    dimensions_attributes: [
+      ...localDimensions.map((local) => {
+        const match = pairs.get(local);
+        return match ? { id: match.id, ...local } : local;
+      }),
+      ...unmatchedRemote.map((rd) => ({ id: rd.id, _destroy: true })),
+    ],
+  };
 }

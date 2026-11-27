@@ -16,6 +16,11 @@ import { loadSchema } from "../load-schema";
 import { diffSchema } from "../diff-schema";
 import { fetchRemoteSchema, localToNormalized, remoteToNormalized } from "../actions";
 import { buildGroupPathByUuid } from "../folders";
+import {
+  describeDimensionConflicts,
+  describeDuplicateDimensions,
+  removedDimensionNames,
+} from "../dimensions";
 import { buildChangesetEntries, executePush, formatDiffOutput } from "./actions";
 import { saveChangeset } from "../changeset";
 import { analyzeBreakingChanges } from "./migrations/analyze";
@@ -109,6 +114,23 @@ schemaCommand
       // 5. Display diffs
       ui.br();
       ui.log(formatDiffOutput(diffResult, { delete: options.delete }));
+
+      const datasourceWrites = diffResult.diffs.filter(
+        (d) => d.type === "datasource" && (d.action === "create" || d.action === "update"),
+      );
+      // A duplicate is reported on its own: the conflict it also causes would
+      // suggest a two-step update, which does not resolve it.
+      const dimensionConflicts = datasourceWrites
+        .map(
+          (d) =>
+            describeDuplicateDimensions(d.name, d.after?.dimensions, d.before?.dimensions) ??
+            describeDimensionConflicts(d.name, d.after?.dimensions, d.before?.dimensions),
+        )
+        .filter((message) => message !== null);
+      if (dimensionConflicts.length > 0) {
+        handleError(new CommandError(dimensionConflicts.join("\n")), verbose);
+        return;
+      }
 
       // 6. Analyze breaking changes and offer migration generation
       if (options.migrations) {
@@ -252,6 +274,14 @@ schemaCommand
               );
             }
           }
+        }
+      }
+
+      for (const datasource of datasourceWrites) {
+        for (const dimension of removedDimensionNames(datasource)) {
+          ui.warn(
+            `Dimension '${dimension}' of datasource '${datasource.name}' will be deleted along with the values entered for it.`,
+          );
         }
       }
 

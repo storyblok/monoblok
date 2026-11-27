@@ -111,6 +111,7 @@ export interface SchemaDatasourceLike {
    * datasources sharing a name collide there even when their slugs differ.
    */
   name?: string;
+  dimensions?: readonly { name?: string; entry_value?: string }[];
 }
 
 /** A field plugin registration (`defineFieldPlugin` result). */

@@ -167,6 +167,54 @@ function assertPushableFields(components: Record<string, unknown>[]): void {
   }
 }
 
+const DIMENSION_IDENTITY_KEYS = ["name", "entry_value"] as const;
+
+/**
+ * Fails the load when a datasource declares dimensions the push cannot carry.
+ *
+ * A `dimensions` value that is not an array reads as no dimensions, so the push
+ * deletes every dimension the space holds. A dimension without a string `name`
+ * and `entry_value` is dropped from the update, so it never reaches the space
+ * and nothing reports it. A blank one is rejected by the Management API, but
+ * only once the push is underway, after other entities may already have been
+ * written. `schema validate` reports the same problems as
+ * `invalid_datasource_dimensions` / `invalid_dimension*`.
+ */
+function assertPushableDimensions(datasources: Record<string, unknown>[]): void {
+  const problems: string[] = [];
+  for (const datasource of datasources) {
+    const datasourceLabel = `datasource "${String(datasource.slug)}"`;
+    const dimensions = datasource.dimensions;
+    if (dimensions === undefined) {
+      continue;
+    }
+    if (!Array.isArray(dimensions)) {
+      problems.push(`"dimensions" in ${datasourceLabel} is not an array`);
+      continue;
+    }
+    dimensions.forEach((dimension: unknown, index) => {
+      const dimensionLabel = `the dimension at index ${index} in ${datasourceLabel}`;
+      if (!isRecord(dimension)) {
+        problems.push(`${dimensionLabel} is not an object`);
+        return;
+      }
+      for (const key of DIMENSION_IDENTITY_KEYS) {
+        const value = dimension[key];
+        if (typeof value !== "string" || value.trim() === "") {
+          problems.push(`${dimensionLabel} has a missing or blank "${key}"`);
+        }
+      }
+    });
+  }
+
+  if (problems.length > 0) {
+    throw new CommandError(
+      `Datasource dimensions that cannot be pushed: ${problems.join(", ")}. ` +
+        `Run \`storyblok schema validate\` for the full report.`,
+    );
+  }
+}
+
 const toArray = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
 
 /**
@@ -180,6 +228,7 @@ export function classifyExports(moduleExports: Record<string, unknown>): SchemaD
 
   assertUniqueIdentities(components, datasources);
   assertPushableFields(components);
+  assertPushableDimensions(datasources);
 
   // Harvest derived (unregistered) folder display paths from each component's
   // `folder` field and from both of its restriction lists. Reads the raw DSL

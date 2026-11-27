@@ -74,10 +74,10 @@ const preconditions = {
       ),
     );
   },
-  hasRemoteDatasources() {
+  hasRemoteDatasources(datasources: unknown[] = []) {
     server.use(
       http.get(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/datasources`, () =>
-        HttpResponse.json({ datasources: [] }),
+        HttpResponse.json({ datasources }),
       ),
     );
   },
@@ -148,7 +148,7 @@ describe("schema rollback command", () => {
     preconditions.hasChangeset(
       makeChangeset([{ type: "component", name: "hero", action: "create", after: { ...comp } }]),
     );
-    // no remote fetch needed in dry-run (we stop before that)
+    preconditions.hasEmptyRemote();
 
     await schemaCommand.parseAsync([
       "node",
@@ -161,7 +161,54 @@ describe("schema rollback command", () => {
     ]);
 
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Dry run"));
-    // msw configured with onUnhandledRequest: 'error' — no fetch handlers registered, so any HTTP call would fail
+  });
+
+  it("should refuse in dry-run mode a rollback the Management API would reject", async () => {
+    preconditions.hasChangeset(
+      makeChangeset([
+        {
+          type: "datasource",
+          name: "Colors",
+          action: "update",
+          before: {
+            name: "Colors",
+            slug: "colors",
+            dimensions: [
+              { name: "A", entry_value: "a" },
+              { name: "C", entry_value: "c" },
+            ],
+          },
+          after: { name: "Colors", slug: "colors", dimensions: [{ name: "C", entry_value: "a" }] },
+        },
+      ]),
+    );
+    preconditions.hasRemoteComponents([]);
+    preconditions.hasRemoteFolders();
+    preconditions.hasRemoteTags();
+    preconditions.hasRemoteDatasources([
+      {
+        id: 5,
+        name: "Colors",
+        slug: "colors",
+        dimensions: [{ id: 10, name: "C", entry_value: "a" }],
+      },
+    ]);
+
+    await schemaCommand.parseAsync([
+      "node",
+      "test",
+      "rollback",
+      CHANGESET_PATH,
+      "--space",
+      DEFAULT_SPACE,
+      "--dry-run",
+    ]);
+
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining("Datasource 'Colors' cannot be updated in one step"),
+    );
+    expect(console.error).not.toHaveBeenCalledWith(expect.stringContaining("Dry run"));
+    expect(process.exitCode).toBe(2);
   });
 
   it("includes folder operations in the rollback preview", async () => {
@@ -175,6 +222,7 @@ describe("schema rollback command", () => {
         },
       ]),
     );
+    preconditions.hasEmptyRemote();
 
     await schemaCommand.parseAsync([
       "node",
@@ -315,7 +363,7 @@ describe("schema rollback command", () => {
       [CHANGESET_PATH]: JSON.stringify(changeset),
     });
     vi.mocked(select).mockResolvedValue(CHANGESET_PATH);
-    // dry-run so we don't need remote fetch or confirm
+    preconditions.hasEmptyRemote();
     await schemaCommand.parseAsync([
       "node",
       "test",
@@ -396,6 +444,7 @@ describe("schema rollback command", () => {
     vol.fromJSON({
       [CHANGESET_PATH]: JSON.stringify(changeset),
     });
+    preconditions.hasEmptyRemote();
 
     await schemaCommand.parseAsync([
       "node",

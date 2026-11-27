@@ -360,6 +360,108 @@ describe("alterField() typing", () => {
   });
 });
 
+describe("callback return typing", () => {
+  it("should check a written value against the field's type in the post-migration schema", () => {
+    defineMigration<FixtureSchema>([
+      // @ts-expect-error a bloks field cannot hold a string
+      alterField({ block: "section", field: "items" }, () => "not blocks"),
+    ]);
+    defineMigration<FixtureSchema>([
+      // @ts-expect-error a text field cannot hold a number
+      addField({ block: "card", field: "slug" }, () => 42),
+    ]);
+    defineMigration<FixtureSchema>([
+      mergeFields(
+        { block: "card", fields: ["title", "description"], into: "slug" },
+        // @ts-expect-error a text field cannot hold an array
+        (values) => values,
+      ),
+    ]);
+  });
+
+  it("should accept an object literal whose discriminants are string literals", () => {
+    defineMigration<ProbeFieldTypesSchema>([
+      addField({ block: "probe_hero", field: "cta_link" }, () => ({
+        id: "",
+        url: "https://example.com",
+        linktype: "url",
+        fieldtype: "multilink",
+        cached_url: "https://example.com",
+      })),
+      alterField({ block: "probe_hero", field: "cta_link" }, () => ({
+        id: "",
+        url: "https://example.com",
+        linktype: "url",
+        fieldtype: "multilink",
+        cached_url: "https://example.com",
+      })),
+      mergeFields({ block: "probe_hero", fields: ["headline"], into: "cta_link" }, () => ({
+        id: "",
+        url: "https://example.com",
+        linktype: "url",
+        fieldtype: "multilink",
+        cached_url: "https://example.com",
+      })),
+    ]);
+    defineMigration<ProbeFieldTypesSchema>([
+      // @ts-expect-error a multilink has no "page" link type
+      addField({ block: "probe_hero", field: "cta_link" }, () => ({ linktype: "page" })),
+    ]);
+  });
+
+  it("should accept a mutable array for a bloks field", () => {
+    defineMigration<ProbeFieldTypesSchema>([
+      addField({ block: "probe_kitchen_sink", field: "bloks_field" }, () => []),
+      alterField({ block: "probe_kitchen_sink", field: "bloks_field" }, (value) => [
+        ...(value ?? []),
+      ]),
+    ]);
+  });
+
+  it("should accept an inline richtext document, nested arrays included", () => {
+    defineMigration<FixtureSchema>([
+      alterField({ block: "article", field: "body" }, (value) =>
+        value
+          ? value
+          : {
+              type: "doc",
+              content: [{ type: "paragraph", content: [{ type: "text", text: "Hi" }] }],
+            },
+      ),
+      addField({ block: "article", field: "body" }, () => ({
+        type: "doc",
+        content: [{ type: "paragraph", content: [{ type: "text", text: "Hi" }] }],
+      })),
+    ]);
+    defineMigration<FixtureSchema>([
+      alterField({ block: "article", field: "body" }, () => ({
+        type: "doc",
+        // @ts-expect-error a richtext node has no "para" type
+        content: [{ type: "para" }],
+      })),
+    ]);
+  });
+
+  it("should accept blocks with nested arrays for a bloks field", () => {
+    defineMigration<FixtureSchema>([
+      alterField({ block: "section", field: "items" }, () => [
+        { _uid: "c1", component: "card", title: "Hi", meta: [] },
+      ]),
+    ]);
+  });
+
+  it("should let addField leave a block untouched by returning undefined", () => {
+    defineMigration<FixtureSchema>([addField({ block: "card", field: "slug" }, () => undefined)]);
+  });
+
+  it("should accept any value for a field the post-migration schema does not describe", () => {
+    defineMigration<AfterRenameMetaAuthor, FixtureSchema>([
+      alterField({ block: "meta", field: "author" }, () => 42),
+      renameField({ block: "meta", field: "author", to: "written_by" }),
+    ]);
+  });
+});
+
 describe("without schema types", () => {
   it("should hand alterBlock the block as a plain record and accept any record back", () => {
     defineMigration([
@@ -556,6 +658,25 @@ describe("fieldsToBlock", () => {
         // @ts-expect-error a key op applies to every instance
         under: "section",
       }),
+    ]);
+  });
+});
+
+describe("blocks a callback creates", () => {
+  it("should accept a block without a _uid, since the runner derives one", () => {
+    defineMigration<FixtureSchema>([
+      addField({ block: "card", field: "meta" }, () => [{ component: "meta", og_title: "new" }]),
+      alterBlock({ block: "section" }, (block) => ({
+        ...block,
+        meta: [{ component: "meta", author: "Ada" }],
+      })),
+    ]);
+  });
+
+  it("should still check the values of a block without a _uid", () => {
+    defineMigration<FixtureSchema>([
+      // @ts-expect-error og_title holds text
+      addField({ block: "card", field: "meta" }, () => [{ component: "meta", og_title: 42 }]),
     ]);
   });
 });

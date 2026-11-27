@@ -35,7 +35,8 @@ type FieldSchema = ComponentPropertySchema & {
   required?: boolean;
   source?: string;
   datasource_slug?: string;
-  filter_content_type?: string[];
+  // Fields created with older versions of Storyblok store a single content type as a string
+  filter_content_type?: string | string[];
   exclude_empty_option?: boolean;
   restrict_components?: boolean;
   restrict_type?: string;
@@ -141,8 +142,11 @@ const getPropertyTypeAnnotation = (property: FieldSchema, prefix?: string, suffi
   if (property.source === "internal_stories") {
     // Only if there is a filter_content_type, we can return a proper type
     if (property.filter_content_type) {
+      const contentTypes = Array.isArray(property.filter_content_type)
+        ? property.filter_content_type
+        : [property.filter_content_type];
       return {
-        tsType: `(${property.filter_content_type
+        tsType: `(${contentTypes
           .map((type2) => getStoryType(type2, prefix, suffix))
           // In this case property.type can be `option` or `options`. In case of `options` the type should be an array
           .join(" | ")} | string )${property.type === "options" ? "[]" : ""}`,

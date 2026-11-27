@@ -34,6 +34,8 @@ export async function validateStory(story: unknown, schema: SchemaLike): Promise
 /** A schema entry file loaded into the shape the validators accept. */
 export interface LoadedSchema {
   schema: SchemaLike;
+  /** The block definitions as exported, for consumers that map them to another shape. */
+  blockDefinitions: Record<string, unknown>[];
   /** Number of blocks + datasources defined in the entry file. */
   entityCount: number;
 }
@@ -86,5 +88,9 @@ export async function loadSchemaEntry(
   // each entry is a `define*()` result, which conforms to the loose SchemaLike
   // runtime contract the validators accept.
   const schema = { blocks: components, datasources, fieldPlugins } as unknown as SchemaLike;
-  return { schema, entityCount: components.length + datasources.length };
+  return {
+    schema,
+    blockDefinitions: components,
+    entityCount: components.length + datasources.length,
+  };
 }

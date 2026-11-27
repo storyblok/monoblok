@@ -8,9 +8,6 @@ export default defineConfig({
   // Kit 3 looks for a legacy `svelte.config.js` in the root, which defaults to the cwd. Tools that load
   // this config from the package directory would find the package's own `svelte.config.js`.
   root: import.meta.dirname,
-  define: {
-    "import.meta.env.STORYBLOK_PREVIEW_TOKEN": JSON.stringify(process.env.STORYBLOK_PREVIEW_TOKEN),
-  },
   plugins: [sveltekit({ adapter: adapter() }), basicSsl()],
   resolve: {
     alias: {

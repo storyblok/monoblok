@@ -69,7 +69,7 @@
     "@storyblok/lint-config": "workspace:*",
     "@storyblok/visual-editor-qa": "workspace:*",
     "@sveltejs/adapter-auto": "^5.0.0",
-    "@sveltejs/kit": "^2.70.0",
+    "@sveltejs/kit": "^3.1.1",
     "@sveltejs/package": "^2.3.10",
     "@sveltejs/vite-plugin-svelte": "^5.0.3",
     "@types/node": "catalog:",

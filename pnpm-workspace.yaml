@@ -25,7 +25,7 @@ catalog:
   vitest: ^4.1.10
   vue: ^3.5.44
   vue-tsc: ^3.3.10
-  zod: ^4.6.5
+  zod: ^4.6.6
 
 # Named catalogs pin the framework version matrix the playgrounds exist to
 # cover. Keep them separate from `catalog:` so bumping the toolchain never
